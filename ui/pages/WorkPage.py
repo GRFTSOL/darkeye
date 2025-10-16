@@ -111,7 +111,7 @@ class WorkPage(LazyWidget):
 
 
         self.scope_combo = QComboBox()
-        self.scope_combo.addItems(["公共库范围","收藏库范围","收藏未观看"])
+        self.scope_combo.addItems(["公共库范围","收藏库范围","收藏未观看","已撸过"])
         self.scope_combo.setCurrentText(self.scope)
 
         self.filter_widget = QWidget()
@@ -322,6 +322,10 @@ WHERE cn_name LIKE ? OR jp_name LIKE ?
         if self.scope=="收藏库范围"or self.scope=="收藏未观看":
             join="JOIN priv.favorite_work fav ON fav.work_id=work.work_id\n"
             query+=join
+        
+        if self.scope=="已撸过":
+            join="JOIN priv.masturbation  ON priv.masturbation.work_id=work.work_id\n"
+            query+=join
 
         if self.order=="拍摄年龄顺序"or self.order=="拍摄年龄逆序":
             join="JOIN v_work_all_info v ON work.work_id = v.work_id\n"
@@ -429,10 +433,10 @@ HAVING COUNT(DISTINCT wtr2.tag_id) = ?
 
         with sqlite3.connect(f"file:{DATABASE}?mode=ro",uri=True) as conn:
             cursor = conn.cursor()
-            if self.scope=="收藏库范围"or self.scope=="收藏未观看": attach_private_db(cursor)
+            if self.scope=="收藏库范围"or self.scope=="收藏未观看"or self.scope=="已撸过": attach_private_db(cursor)
             cursor.execute(query,params)
             results=cursor.fetchall()
-            if self.scope=="收藏库范围"or self.scope=="收藏未观看": detach_private_db(cursor)
+            if self.scope=="收藏库范围"or self.scope=="收藏未观看"or self.scope=="已撸过": detach_private_db(cursor)
 
         return results
 
