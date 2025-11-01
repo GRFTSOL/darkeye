@@ -547,6 +547,14 @@ class ViewModel(QObject):
         for key in self._changed_flags:
             self.set_state(key,False)
 
+
+    @Slot()
+    def jump_detail_page(self):
+        '''跳转到显示页面'''
+        from controller.GlobalSignalBus import global_signals
+        work_id = get_workid_by_serialnumber(self.get_serial_number().strip())
+        if work_id:
+            global_signals.work_clicked.emit(work_id)
 #----------------------------------------------------------
 #                        翻译函数
 #----------------------------------------------------------
@@ -618,6 +626,7 @@ class AddWorkTabPage3(LazyWidget):
         self.input_serial_number=CompleterLineEdit(get_serial_number)
 
         self.btn_load_form_db=QPushButton("加载")
+        self.btn_jump_detail=QPushButton("显示页")
 
 
         self.label_time=QLabel("发布日期：")
@@ -665,6 +674,7 @@ class AddWorkTabPage3(LazyWidget):
         left_small_layout1.addWidget(self.label_serial_umber)
         left_small_layout1.addWidget(self.input_serial_number)
         left_small_layout1.addWidget(self.btn_load_form_db)
+        left_small_layout1.addWidget(self.btn_jump_detail)
 
         left_small_layout2 = QHBoxLayout()
         left_small_layout2.addWidget(self.label_time)
@@ -827,6 +837,8 @@ class AddWorkTabPage3(LazyWidget):
         self.btn_save_to_ini.clicked.connect(self.viewmodel.save_state)
         self.btn_load_from_ini.clicked.connect(self.viewmodel.load_previous_state)
         self.btn_load_form_db.clicked.connect(self.viewmodel._load_from_db)
+        self.btn_jump_detail.clicked.connect(self.viewmodel.jump_detail_page)
+
         self.btn_trans_title.clicked.connect(self.viewmodel._trans_title)
         self.btn_trans_story.clicked.connect(self.viewmodel._trans_story)
 
@@ -968,7 +980,6 @@ class AddWorkTabPage3(LazyWidget):
             self.viewmodel.set_cover(str(dst_path))#UI更新
         else:
             self.msg.show_warning("错误",message)
-
 
 
     @Slot(dict)

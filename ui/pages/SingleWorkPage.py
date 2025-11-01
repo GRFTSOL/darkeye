@@ -153,8 +153,14 @@ class WorkInfo(QWidget):
         self.label_layout.addWidget(self.label_tag)
 
         self.heart=HeartLabel()
-
         self.trash=IconPushButton("trash-2.png",24,24)
+        self.modify=IconPushButton("square-pen.png",24,24)
+        
+        tool_v_layout=QVBoxLayout()
+        tool_v_layout.addWidget(self.heart,0,Qt.AlignCenter)
+        tool_v_layout.addWidget(self.trash,0,Qt.AlignCenter)
+        tool_v_layout.addWidget(self.modify,0,Qt.AlignCenter)
+        tool_v_layout.addStretch()
         
         serialnumber_v_layout=QVBoxLayout()
 
@@ -177,8 +183,8 @@ class WorkInfo(QWidget):
         mainlayout.setContentsMargins(0,0,0,0)
 
         mainlayout.addStretch()
-        mainlayout.addWidget(self.trash,0,Qt.AlignRight|Qt.AlignTop)
-        mainlayout.addWidget(self.heart,0,Qt.AlignRight|Qt.AlignTop)
+
+        mainlayout.addLayout(tool_v_layout)
         mainlayout.addWidget(self.label)
         mainlayout.addWidget(self.actress)
         mainlayout.addLayout(director_v_layout)
@@ -191,6 +197,7 @@ class WorkInfo(QWidget):
     def signal_connect(self):
         self.heart.clicked.connect(self.on_clicked_heart)
         self.trash.clicked.connect(self.on_clicked_delete)
+        self.modify.clicked.connect(self.on_modify_clicked)
         
     
     def update_actress(self, actress_list:list[dict],actor_list:list[dict]):
@@ -286,6 +293,14 @@ class WorkInfo(QWidget):
             delete_favorite_work(self._work_id)
         from controller.GlobalSignalBus import global_signals
         global_signals.like_work_changed.emit()
+
+    @Slot()
+    def on_modify_clicked(self):
+        '''点击了修改按钮'''
+        from controller.GlobalSignalBus import global_signals
+        if self._work_id is None:
+            return
+        global_signals.modify_work_clicked.emit(self.serial_number.text().strip())
 
     def update(self,work_id):
         from core.database.query import get_workinfo_by_workid,findActressFromWorkID,get_worktaginfo_by_workid,query_work,findActorFromWorkID
