@@ -33,8 +33,10 @@ class SingleActressInfo(QWidget):
         self.name_widget_layout.addWidget(self.heart,alignment=Qt.AlignBottom)
         self.name_widget_layout.addStretch()
 
-        self.birthday=QLabel("出生日期xxxx年xx月xx日")
+        self.birthday=QLabel("xxxx年xx月xx日")
+        self.debutday=QLabel("xxxx年xx月xx日")
         label_birthday=QLabel("生日")
+        label_debutday=QLabel("出道日期")
         #试一下的是动态信息，包括曾用名，等等
 
         self.pic=OctImage()#这个已经固定大小了
@@ -44,6 +46,8 @@ class SingleActressInfo(QWidget):
         self.dyna_layout=QGridLayout()
         self.dyna_layout.addWidget(label_birthday,0,0)
         self.dyna_layout.addWidget(self.birthday,0,1)
+        self.dyna_layout.addWidget(label_debutday,1,0)
+        self.dyna_layout.addWidget(self.debutday,1,1)
 
 
         info_layout=QHBoxLayout()
@@ -96,6 +100,10 @@ class SingleActressInfo(QWidget):
         font-size:16px;
         color: #333333; /* 深灰色 */
 """)
+        self.debutday.setStyleSheet("""
+        font-size:16px;
+        color: #333333; /* 深灰色 */
+""")
 
     def update(self,actress_id):
         '''传入一个actress_id并更新整个页面'''
@@ -114,6 +122,7 @@ class SingleActressInfo(QWidget):
         self.kana_name.setText(actress['kana'])
         self.en_name.setText(actress['en'])
         self.birthday.setText(convert_date(actress['birthday']))
+        self.debutday.setText(convert_date(actress['debut_date']))
 
         #更新雷达图
         values=self.calc_radar_value(actress,data)
@@ -136,8 +145,8 @@ class SingleActressInfo(QWidget):
         chain.pop()
         #logging.debug(chain)
         
-        while self.dyna_layout.count()>2:#先清除layout中的元素
-            item = self.dyna_layout.takeAt(2)
+        while self.dyna_layout.count()>4:#先清除layout中的元素
+            item = self.dyna_layout.takeAt(4)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()  # 删除控件
@@ -215,12 +224,14 @@ class SingleActressInfo(QWidget):
             "H":27.5,
             "I":30,
             "J":32.5,
-            "L":35,
-            "M":37.5,
-            "N":40,
-            "O":42.5
+            "K":35,
+            "L":37.5,
+            "M":40,
+            "N":42.5,
+            "O":45,
+            "P":47.5
         }
-        cup_map_cn={#B杯是10-12.5
+        cup_map_cn={#A杯是7.5-10，B杯是10-12.5
             "A":10,
             "B":12.5,
             "C":15,
@@ -231,9 +242,9 @@ class SingleActressInfo(QWidget):
             "H":27.5,
             "I":30,
             "J":32.5,
-            "L":35,
-            "M":37.5,
-            "N":40
+            "K":35,
+            "L":37.5,
+            "M":40
         }
         cup_list:list[str]=[row["cup"] for row in data]
         cup_diff_list=[cup_map_jp.get(cup.upper(), None) for cup in cup_list]

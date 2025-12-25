@@ -165,10 +165,12 @@ def add_tag2work(work_id:int,tag_ids:list[int])->bool:
 def rename_save_image(_path:str,name:str,type:str):
     '''更改名字保存封面图片到库中，并且将相对地址写入数据库
     _path:一个图片的绝对地址
-    name:图片要更改的名字'''
+    name:图片要更改的名字
+    这个要带格式转换，将其他的格式转换成jpg格式保存，否则可能会有兼容性问题
+    '''
     from pathlib import Path
     from config import WORKCOVER_PATH,ACTRESSIMAGES_PATH,ACTORIMAGES_PATH
-    from utils.utils import delete_image
+    from utils.utils import delete_image,webp_to_jpg_pillow,png_to_jpg_pillow
     import shutil
     if type=="cover":
         dst_path:Path = Path(WORKCOVER_PATH) / name
@@ -188,7 +190,16 @@ def rename_save_image(_path:str,name:str,type:str):
     if src_path.resolve() == dst_path.resolve():
         return
     
-    shutil.copy(src_path, dst_path)
+    match src_path.suffix.lower():
+        case ".jpg"|".jpeg":
+            shutil.copy(src_path, dst_path)
+        case ".webp":
+            webp_to_jpg_pillow(src_path,dst_path)
+        case ".png":
+            png_to_jpg_pillow(src_path,dst_path)
+
+
+
     logging.info("图片复制成功，已保存位置为：%s",dst_path)
 
     #删除临时地址的文件

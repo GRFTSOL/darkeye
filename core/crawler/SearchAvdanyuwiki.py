@@ -60,6 +60,7 @@ def SearchInfoDanyukiwi(serial_number)->dict|None:
         "actress_list":actress_list,  
         "cover":img_src
     }
+    这里提取图片有额外的渠道通过 missav 来爬取 https://fourhoi.com/ipx-787/cover-n.jpg 这个格式就可以下载了，会比
     """
     article=search_work(serial_number)
     if article is None:

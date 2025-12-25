@@ -364,3 +364,69 @@ def sort_dict_list_by_keys(data: list[dict], key_order: list[str]) -> list[dict]
         ordered_dict = {key: d.get(key) for key in key_order}
         ordered_data.append(ordered_dict)
     return ordered_data
+
+
+def webp_to_jpg_pillow(input_path, output_path=None, quality=100):
+    """
+    使用Pillow将WebP转换为JPG
+    
+    Args:
+        input_path: 输入WebP文件路径
+        output_path: 输出JPG文件路径（可选）
+        quality: JPG质量，1-100，默认95
+    """
+    # 如果未指定输出路径，自动生成
+    if output_path is None:
+        output_path = input_path.rsplit('.', 1)[0] + '.jpg'
+    
+    try:
+        logging.debug("开始转换webp为jpg，输入路径:%s,输出路径:%s",input_path,output_path)
+        # 打开WebP图像
+        with Image.open(input_path) as img:
+            # 转换为RGB模式（去除Alpha通道）
+            if img.mode in ('RGBA', 'LA'):
+                # 创建白色背景
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[-1])
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # 保存为JPG
+            img.save(output_path, 'JPEG', quality=quality, optimize=True)
+            print(f"转换成功: {input_path} -> {output_path}")
+            
+    except Exception as e:
+        print(f"转换失败: {e}")
+
+def png_to_jpg_pillow(input_path, output_path=None, quality=95):
+    """
+    使用Pillow将PNG转换为JPG
+    
+    Args:
+        input_path: 输入PNG文件路径
+        output_path: 输出JPG文件路径（可选）
+        quality: JPG质量，1-100，默认95
+    """
+    # 如果未指定输出路径，自动生成
+    if output_path is None:
+        output_path = input_path.rsplit('.', 1)[0] + '.jpg'
+    
+    try:
+        # 打开PNG图像
+        with Image.open(input_path) as img:
+            # 转换为RGB模式（去除Alpha通道）
+            if img.mode in ('RGBA', 'LA'):
+                # 创建白色背景
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[-1])
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # 保存为JPG
+            img.save(output_path, 'JPEG', quality=quality, optimize=True)
+            print(f"转换成功: {input_path} -> {output_path}")
+            
+    except Exception as e:
+        print(f"转换失败: {e}")

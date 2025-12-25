@@ -5,8 +5,9 @@ from ui.widgets.CrawlerToolBox import CrawlerToolBox
 import logging,json,asyncio
 from pathlib import Path
 from enum import Enum
+from datetime import datetime
 
-from config import settings,WORKCOVER_PATH
+from config import settings,WORKCOVER_PATH,TEMP_PATH
 from ui.widgets import ActressSelector,CompleterLineEdit,ActorSelector,CoverDropWidget,TagSelector4
 from core.database.query import getUniqueDirector,get_work_tags,get_workinfo_by_workid,get_actressid_by_workid,get_actorid_by_workid,get_unique_short_story,exist_actor,get_workid_by_serialnumber,exist_actress
 from core.database.insert import InsertNewWorkByHand,InsertNewActor,InsertNewActress
@@ -15,6 +16,8 @@ from utils.utils import mse,load_ini_ids,covert_fanza,translate_text
 from ui.basic import IconPushButton
 from ui.base import LazyWidget
 from controller.MessageService import MessageBoxService,IMessageService
+from core.crawler import CrawlerThreadResult
+from core.crawler.download import download_image
 
 class ButtonState(Enum):
     NORMAL = 1
@@ -562,7 +565,7 @@ class ViewModel(QObject):
     @Slot()
     def _trans_title(self):
         '''调用google第三方翻译，不稳定，将日文翻译成中文写到框内'''
-        from core.crawler import CrawlerThreadResult
+
         self.title_thread=CrawlerThreadResult(lambda:asyncio.run(translate_text(self.get_jp_title())))#传一个函数名进去
         self.title_thread.finished.connect(self._on_trans_title)
         self.title_thread.start()
@@ -570,7 +573,7 @@ class ViewModel(QObject):
     @Slot()
     def _trans_story(self):
         '''调用google第三方翻译，不稳定，将日文翻译成中文写到框内'''
-        from core.crawler import CrawlerThreadResult
+
         #后台线程爬虫
         self.story_thread=CrawlerThreadResult(lambda:asyncio.run(translate_text(self.get_jp_story())))#传一个函数名进去
         self.story_thread.finished.connect(self._on_trans_story)
@@ -870,7 +873,7 @@ class AddWorkTabPage3(LazyWidget):
         '''开启后台线程辅助爬信息,判断哪些要不要爬'''
         from core.crawler.SearchAvdanyuwiki import SearchInfoDanyukiwi
         from core.crawler.SearchJavtxt import fetch_javtxt_movie_info
-        from core.crawler import CrawlerThreadResult
+
         #现在这个有个问题，就是新爬的作品不会把缓存写进去，不过这也不是什么很大的问题，这种网页也只有爬一次的价值，作品的信息不可能变
         #有一个被勾选了就去爬avdanyukiwi，里面的信息就是拷贝fanza的，而且多了男优信息，但是没有故事标题
 
@@ -903,6 +906,9 @@ class AddWorkTabPage3(LazyWidget):
         if result is None:
             logging.warning("爬danyukiwi产生错误信息")
             self.msg.show_warning("错误","爬danyukiwi产生错误信息，可能被阻挡了，可能爬虫策略失效，请稍后再试")
+            if self.crawler_toolbox.cb_cover.isChecked():
+                #missav封面下载
+                self.download_image_missav()
             return
         data=result
 
@@ -955,9 +961,7 @@ class AddWorkTabPage3(LazyWidget):
         if self.crawler_toolbox.cb_cover.isChecked():
             from core.crawler.download import download_image
             from core.database.update import update_fanza_cover_url
-            from datetime import datetime
-            from config import TEMP_PATH
-            from core.crawler import CrawlerThreadResult
+
             #这个要开全局访问才能下载图片
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             dst_name = f"image_{timestamp}.jpg"  # 直接获取后缀
@@ -979,7 +983,35 @@ class AddWorkTabPage3(LazyWidget):
         if success:
             self.viewmodel.set_cover(str(dst_path))#UI更新
         else:
+            #self.msg.show_warning("错误",message)
+            logging.warning("封面图片下载失败:%s",message)
+            self.download_image_missav()
+            
+
+    def download_image_missav(self):
+        logging.info("尝试使用missav的封面下载方式")#这个后面还是要改
+            
+        serial_number=self.viewmodel.serial_number.lower()
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        dst_name = f"image_{timestamp}.jpg"  # 直接获取后缀
+    
+        TEMP_PATH.mkdir(parents=True, exist_ok=True)#若不存在临时目录，自动创建
+        # 构建目标路径（自动处理跨平台路径分隔符）
+        dst_path = Path(TEMP_PATH) / dst_name#这个是个绝对地址
+
+        imageurl="https://fourhoi.com/"+serial_number+"/cover-n.jpg"#这个是misav的封面获取方式
+        self.thread4=CrawlerThreadResult(lambda:download_image(imageurl,dst_path))#下载图片放后台线程
+        self.thread4.finished.connect(lambda result:self._on_download_image_result1(result,dst_path))
+        self.thread4.start()
+
+    @Slot(tuple,Path)
+    def _on_download_image_result1(self,result:tuple,dst_path:Path):
+        success,message=result
+        if success:
+            self.viewmodel.set_cover(str(dst_path))#UI更新
+        else:
             self.msg.show_warning("错误",message)
+
 
 
     @Slot(dict)

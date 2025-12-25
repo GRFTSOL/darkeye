@@ -188,7 +188,7 @@ def analyse(resopnse)->dict:
     return new_data
 
 def choosehtml(response,name):
-    '''遇到多选项页面后需二次点击,大概占10%'''
+    '''遇到多选项页面后需二次点击,大概占10%,现在这个失效了，需要更新'''
     soup = BeautifulSoup(response.text, 'html.parser')
     details_tds=soup.find_all('td',class_='details')
     #0.1%遇到重名女优，这时就选作品量大的那个,简单判断需要作品数量>20

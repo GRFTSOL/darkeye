@@ -26,10 +26,11 @@ class PlotTabPage(LazyWidget):
         self.btn_mostLikeActress= QPushButton("最喜欢的女优柱状图")
         self.btn_ActressBodyHWratio= QPushButton("女优身材腰臀比气泡图")
 
-        btn_TagWordClould=QPushButton("Tag词云生成")
-        btn_TagWordClould.setEnabled(False)
+        self.btn_TagWordClould=QPushButton("Tag词云生成")
+
         btn_YearReport=QPushButton("撸管年回忆录")
-        btn_YearReport.setEnabled(False) 
+        btn_YearReport.setEnabled(False)
+        self.btn_addTimeDistribution=QPushButton("按添加时间统计作品数")
         
         radio_group = QGroupBox("选择统计范围")
         self.rbtn_public=QRadioButton("公共数据库")
@@ -86,13 +87,16 @@ class PlotTabPage(LazyWidget):
         statistics_group_layout.addWidget(self.btn_cupDistribution)
         statistics_group_layout.addWidget(self.btn_directorStat)
         statistics_group_layout.addWidget(self.btn_makerStat)
+        statistics_group_layout.addWidget(self.btn_TagWordClould)
         
         toolbar_layout.addWidget(statistics_group)
 
         toolbar_layout.addWidget(self.btn_BWH_Distribution)
         toolbar_layout.addWidget(self.btn_mostLikeActress)
-        toolbar_layout.addWidget(btn_TagWordClould)
+        toolbar_layout.addWidget(self.btn_addTimeDistribution)
+
         toolbar_layout.addWidget(btn_YearReport)
+
 
         #总装
         outlayout=QVBoxLayout(self)
@@ -110,6 +114,8 @@ class PlotTabPage(LazyWidget):
         self.btn_ActressBodyHWratio.clicked.connect(self.actress_body_wh_ratio)
         self.btn_mostLikeActress.clicked.connect(self.canvas.draw_mostlikeActress)
         self.btn_makerStat.clicked.connect(self.studio_bar)
+        self.btn_addTimeDistribution.clicked.connect(self.canvas.draw_addTimeDistribution)
+        self.btn_TagWordClould.clicked.connect(self.tagWordCloud)
 
     @Slot()
     def age_distribution(self):
@@ -180,3 +186,13 @@ class PlotTabPage(LazyWidget):
             self.canvas.draw_studioBar(2)
         elif self.rbtn_public.isChecked():
             self.canvas.draw_studioBar(-1)
+
+    def tagWordCloud(self):
+        if self.rbtn_collect.isChecked():
+            self.canvas.draw_workTagCloud(0)
+        elif self.rbtn_singlwork.isChecked():
+            self.canvas.draw_workTagCloud(1)
+        elif self.rbtn_plane.isChecked():
+            self.canvas.draw_workTagCloud(2)
+        elif self.rbtn_public.isChecked():
+            self.canvas.draw_workTagCloud(-1)

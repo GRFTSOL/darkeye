@@ -6,6 +6,7 @@ from config import DATABASE,PRIVATE_DATABASE
 import logging
 from .db_utils import attach_private_db,detach_private_db
 from .connection import get_connection
+from datetime import datetime
 
 # 跨库的CTE查询，无法直接在sqlite数据库里的创造的视图
 masturbationsql=f'''masturbation_count AS(--按照有work_id撸管记录，统计每部作品撸了几次
@@ -56,6 +57,23 @@ def get_all_work_id()->list[int]:
         cursor.execute(query)
         rows = cursor.fetchall()
         return [row[0] for row in rows]
+
+def get_all_work_addtime()->list[datetime]:
+    '''获得所有的work添加的时间,返回时间的list'''
+    query = '''
+    SELECT
+    create_time
+    FROM
+    work
+    '''
+    from datetime import datetime
+    with get_connection(DATABASE,True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        return [datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S") for row in rows]
+
+
 
 
 def query_studio(work_id:int)->str|None:
@@ -1344,6 +1362,82 @@ LIMIT 10
         results = cursor.fetchall()
         if scope in (0,1,2):detach_private_db(cursor)
     return results
+
+def get_tag_frequence(scope:int)->dict:
+    '''获得tag使用次数的sql语句
+    参数:
+        scope (int): 查询范围
+            0  - 收藏作品中出现的制作商及数量
+            1  - 作品中撸管作品统计
+            2  - 作品中撸管次数加权统计
+           -1  - 全库中出及数量统计
+    返回字典，形式如下：
+    {
+        '黑丝':20,
+        '制服':35,
+        '口交':50
+    }
+    然后可以直接传给wordcloud生成词云
+    '''
+    match scope:
+        case 0:
+            query='''
+        SELECT 
+        tag_name,
+        count(tag_name) AS num
+        FROM work_tag_relation
+        JOIN priv.favorite_work fav ON fav.work_id=work_tag_relation.work_id
+        JOIN tag ON work_tag_relation.tag_id=tag.tag_id
+        WHERE tag.tag_type_id !=1 AND tag.tag_type_id !=6--取消基本信息的统计与地点统计
+        GROUP BY tag_name
+        ORDER BY num DESC
+            '''
+        case 1:
+            query=f'''WITH {masturbationsql}
+            SELECT 
+            tag_name,
+            count(tag_name) AS num
+            FROM work_tag_relation
+            JOIN masturbation_count ON masturbation_count.work_id=work_tag_relation.work_id
+            JOIN tag ON work_tag_relation.tag_id=tag.tag_id
+            WHERE tag.tag_type_id !=1 AND tag.tag_type_id !=6--取消基本信息的统计与地点统计
+            GROUP BY tag_name
+            ORDER BY num DESC
+            '''
+        case 2:
+            query=f'''
+WITH {masturbationsql}
+SELECT
+	tag_name,
+	sum(masturbation_count.masturbation_count) AS num
+FROM work_tag_relation
+JOIN masturbation_count ON masturbation_count.work_id=work_tag_relation.work_id
+JOIN tag ON work_tag_relation.tag_id=tag.tag_id
+WHERE tag.tag_type_id !=1 AND tag.tag_type_id !=6--取消基本信息的统计与地点统计
+GROUP BY tag_name
+ORDER BY num DESC
+
+'''
+        case -1:
+            query='''
+        SELECT 
+        tag_name,
+        count(tag_name) AS num
+        FROM work_tag_relation
+        JOIN tag ON work_tag_relation.tag_id=tag.tag_id
+        WHERE tag.tag_type_id !=1 AND tag.tag_type_id !=6--取消基本信息的统计与地点统计
+        GROUP BY tag_name
+        ORDER BY num DESC
+        '''
+    logging.debug(f"Executing SQL:\n{query}")
+    with get_connection(DATABASE,True) as conn:
+        cursor = conn.cursor()
+        if scope in (0,1,2):attach_private_db(cursor)
+        cursor.execute(query)
+        tag_dict = dict(cursor.fetchall())
+        if scope in (0,1,2):detach_private_db(cursor)
+    return tag_dict
+
 
 
 #下面的两个实际上可以合并

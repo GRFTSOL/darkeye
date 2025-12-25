@@ -299,7 +299,7 @@ class TagManagement(LazyWidget):
         self.m_color.setMaximumHeight(40)
         self.btn_change=QPushButton("批量改变标签颜色")
 
-        self.btn_mutex=QPushButton("批量标签编成一个互斥组")
+
         self.btn_tag_type=QPushButton("修改标签类型")
 
         color_group=QGroupBox("改多个标签颜色")
@@ -309,7 +309,7 @@ class TagManagement(LazyWidget):
         vlayout1.addWidget(self.btn_change)
 
         vlayout.addWidget(color_group)
-        vlayout.addWidget(self.btn_mutex)
+
 
 
         self.m_group.setEnabled(False)

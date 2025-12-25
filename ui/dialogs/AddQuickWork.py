@@ -1,10 +1,12 @@
 from PySide6.QtWidgets import QPushButton,QLabel,QGridLayout,QDialog,QLineEdit
 from PySide6.QtCore import Slot
 from PySide6.QtGui import QIcon
-from config import ICONS_PATH
+from config import ICONS_PATH,WORKCOVER_PATH
 import logging
 from controller import MessageBoxService
 from core.database.update import update_work_byhand_
+from core.crawler import CrawlerThreadResult
+from core.crawler.download import download_image
 
 class AddQuickWork(QDialog):
     #快速记录作品番号的窗口，能在局外响应
@@ -36,8 +38,8 @@ class AddQuickWork(QDialog):
         serialNumber = self.input_serial_number.text().strip()#去除前后的空格
         from utils.utils import is_valid_serialnumber
         if not is_valid_serialnumber(serialNumber):
-            self.msg.show_warning("警告","请输入正常的番号")
-            return
+            if not self.msg.ask_yes_no("警告","输入的番号格式可能不正确，是否继续添加？"):
+                return
         #检查该番号是否在数据库里
         logging.debug("快速添加番号")
         from core.database.insert import InsertNewWork
@@ -80,16 +82,26 @@ class AddQuickWork(QDialog):
         '''
         if data is None:
             logging.warning("爬danyuwiki产生错误信息")
+            #这里通过missav下载封面
+            from core.database.query import get_workinfo_by_workid
+            logging.info("尝试使用missav的封面下载方式")
+            data=get_workinfo_by_workid(work_id)
+            serial_number=data.get("serial_number").lower()
+            dst_path = WORKCOVER_PATH / image_url#这个是个绝对地址
+            imageurl="https://fourhoi.com/"+serial_number+"/cover-n.jpg"#这个是misav的封面获取方式
+            self.thread3=CrawlerThreadResult(lambda:download_image(imageurl,dst_path))#下载图片放后台线程
+            self.thread3.finished.connect(lambda result:self._on_download_image1(result,work_id,image_url))#现在不需要回调了
+            self.thread3.start()
             return
         #写入封面url,导演，拍摄时间
         update_work_byhand_(work_id,director=data.get("director"),release_date=data.get("release_date"),fcover_url=data.get("cover"))
 
         #下载图片并写入
-        from core.crawler.download import download_image
+
         from core.database.update import update_fanza_cover_url
         from datetime import datetime
-        from config import WORKCOVER_PATH
-        from core.crawler import CrawlerThreadResult
+
+
         from pathlib import Path
         #这个要开全局访问才能下载图片
 
@@ -165,7 +177,30 @@ class AddQuickWork(QDialog):
             update_work_byhand_(work_id,image_url=image_url)#这个要在图片下载后写入,否则会出现无法更改图片后无法提交的bug
         else:
             logging.warning("封面图片下载失败:%s",msg)
+            from core.database.query import get_workinfo_by_workid
+            logging.info("尝试使用missav的封面下载方式")
+            data=get_workinfo_by_workid(work_id)
+            serial_number=data.get("serial_number").lower()
+            dst_path = WORKCOVER_PATH / image_url#这个是个绝对地址
+            imageurl="https://fourhoi.com/"+serial_number+"/cover-n.jpg"#这个是misav的封面获取方式
+            self.thread3=CrawlerThreadResult(lambda:download_image(imageurl,dst_path))#下载图片放后台线程
+            self.thread3.finished.connect(lambda result:self._on_download_image1(result,work_id,image_url))#现在不需要回调了
+            self.thread3.start()
+            
             #不写入数据库
+
+    @Slot(tuple,int,str)
+    def _on_download_image1(self,result:tuple,work_id:int,image_url:str):
+        '''下载图片的结果回调'''
+        success, msg = result
+        if success:
+            logging.info("封面图片下载成功")
+            #写入数据库
+            update_work_byhand_(work_id,image_url=image_url)#这个要在图片下载后写入,否则会出现无法更改图片后无法提交的bug
+        else:
+            logging.warning("封面图片下载失败:%s",msg)
+
+
 
     @Slot(dict, int)
     def _on_javtxt_result(self,data:dict,work_id:int):

@@ -1,3 +1,4 @@
+# 所有的画图的函数
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.cm as cm
@@ -439,3 +440,123 @@ class MplCanvas(FigureCanvas):
         #self.ax.grid(axis='x', linestyle='--', alpha=0.6,fontname='SimHei')
         #self.fig.tight_layout()
         self.draw()
+
+
+    def draw_addTimeDistribution(self):
+        '''作品数量按添加时间的分布
+        横轴时间，纵轴总数量
+        未来加上从0开始，类似github的starhistory那种样子的，包括手工样式
+        '''
+        from datetime import datetime, timedelta
+        #读数据
+        from core.database.query import get_all_work_addtime
+        time_list:list[datetime]=get_all_work_addtime()
+        time_list.sort()
+
+        # 步骤2：按天统计累计数量（取每个月的最后一天作为该月代表点）
+        daily_cumulative = {}  # key: "YYYY-MM-dd", value: 该日结束时的统计量
+
+        cumulative_count = 0
+        for dt in time_list:
+            month_key = datetime.strptime(dt.strftime("%Y-%m-%d"),"%Y-%m-%d")  # 如 "2024-01"
+            cumulative_count += 1
+            daily_cumulative[month_key] = cumulative_count
+
+        # 统计出的结果是不连续的
+
+        # 1. 获取最小和最大日期
+        dates = sorted(daily_cumulative.keys())
+        if not dates:
+            print("无数据")
+            # 退出或处理空情况
+
+        start_date = dates[0]
+        end_date = dates[-1]
+
+        # 2. 生成完整的连续日期序列（包括中间缺失的日子）
+        current_date = start_date
+        continuous_dates:list[datetime] = []
+        while current_date <= end_date:
+            continuous_dates.append(current_date)
+            current_date += timedelta(days=1)
+
+        # 3. 填充累计数量（缺失日期保持前一天的累计值）
+        continuous_counts = []
+        prev_count = 0
+        for d in continuous_dates:
+            if d in daily_cumulative:
+                prev_count = daily_cumulative[d]
+            continuous_counts.append(prev_count)
+
+        #产生连续的数据
+
+        # 4. 准备数据进行平滑处理
+
+        x_data = np.arange(len(continuous_dates))  # 0, 1, 2, ...
+        y_data = np.array(continuous_counts)
+
+        dates = sorted(daily_cumulative.keys())
+
+        x_original = np.array(continuous_dates)
+
+
+        from scipy.interpolate import UnivariateSpline
+
+        # 4. 平滑插值（生成更多点，让曲线圆滑）
+        n_points = len(x_data)
+        spl = UnivariateSpline(x_data, y_data, k=5, s = n_points**2)  # 样条插值，s 控制平滑程度
+
+
+        # 3. 生成密集的点用于绘图（让曲线超级圆滑）
+        x_smooth = np.linspace(0, len(continuous_dates)-1, len(continuous_dates) * 10)  # 每段插值 20 个点
+        y_smooth = spl(x_smooth)
+
+        # 对应的平滑日期（用于横轴）
+        x_smooth_dates = np.interp(x_smooth, np.arange(len(x_original)), 
+                                [d.timestamp() for d in x_original])
+        x_smooth_dates = [datetime.fromtimestamp(ts) for ts in x_smooth_dates]
+
+        # 5. 绘图（平滑曲线，无点）
+        self.fig.clf()
+        self.ax = self.fig.add_subplot(111)
+        self.ax.plot(x_smooth_dates, y_smooth, linewidth=2, color='steelblue')
+        self.ax.set_title("按添加时间统计作品数量分布", fontsize=16)
+        self.ax.set_xlabel("Date", fontsize=14)
+        self.ax.set_ylabel("Nums", fontsize=14)
+        '''
+        days = sorted(daily_cumulative.keys())  # 自动按日期排序
+        
+        x_labels = [day for day in days]
+        y_data = [daily_cumulative[day] for day in days]
+        #self.fig.clf()
+        #self.ax = self.fig.add_subplot(111)
+
+        self.ax.plot(x_labels, y_data, marker=None, linestyle='-',linewidth=1, color='red')
+        '''
+        self.draw()
+
+    def draw_workTagCloud(self,scope:int):
+        '''绘制词云
+        用wordcloud库
+        '''
+        from core.database.query import get_tag_frequence
+        from config import TEMP_PATH
+        from pathlib import Path
+        tag_freq=get_tag_frequence(scope)
+        from wordcloud import WordCloud
+        import matplotlib.pyplot as plt
+
+        wc = WordCloud(
+    font_path='simhei.ttf',  # 中文字体路径，如黑体
+    width=1600,
+    height=900,
+    background_color='white'
+)
+        wc.generate_from_frequencies(tag_freq)
+        self.fig.clf()
+        self.ax = self.fig.add_subplot(111)
+        self.ax.imshow(wc, interpolation='bilinear')
+        self.ax.axis('off')
+        self.draw()
+        file=Path(TEMP_PATH)/"tag_cloud_1600x900.png"
+        wc.to_file(file)# 保存到临时文件

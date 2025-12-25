@@ -43,7 +43,7 @@ class ActorPage(LazyWidget):
         self.btn_reload=IconPushButton("refresh-cw.png")
         #排序选择器
         self.order_combo = QComboBox()
-        self.order_combo.addItems(["添加顺序","添加逆序"])
+        self.order_combo.addItems(["添加顺序","添加逆序","封面优先"])
         self.order_combo.setCurrentText(self.order)
 
 
@@ -170,6 +170,8 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
                 order="ORDER BY actor.create_time \n"
             case "添加逆序":
                 order="ORDER BY actor.create_time DESC\n"
+            case "封面优先":
+                order="ORDER BY CASE WHEN actor.image_url IS NOT NULL AND actor.image_url != '' THEN 0 ELSE 1 END"
 
         if not count:
             query +=f"{order} LIMIT ? OFFSET ?"#最后拼这个

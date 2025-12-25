@@ -90,7 +90,7 @@ class ActressPage(LazyWidget):
         self.btn_reload=IconPushButton("refresh-cw.png")
         #排序选择器
         self.order_combo = QComboBox()
-        self.order_combo.addItems(["年龄顺序", "年龄逆序","添加顺序","添加逆序","身高顺序","身高逆序","罩杯顺序","罩杯逆序"])
+        self.order_combo.addItems(["年龄顺序", "年龄逆序","出道顺序","出道逆序","添加顺序","添加逆序","身高顺序","身高逆序","罩杯顺序","罩杯逆序","腰臀比顺序","腰臀比逆序"])
         self.order_combo.setCurrentText(self.order)
         self.scope_combo = QComboBox()
         self.scope_combo.addItems(["公共库范围","收藏库范围"])
@@ -190,7 +190,7 @@ SELECT
     actress.actress_id
 FROM actress
         """
-        
+
         # 拼withsql
         if self.actress_name:
             withsql=f'''
@@ -221,6 +221,14 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
                 where="WHERE actress.birthday !=''AND actress.birthday is NOT NULL\n"
             case "年龄逆序":
                 where="WHERE actress.birthday !=''AND actress.birthday is NOT NULL\n"
+            case "出道顺序":
+                where="WHERE actress.debut_date !=''AND actress.debut_date is NOT NULL\n"
+            case "出道逆序":
+                where="WHERE actress.debut_date !=''AND actress.debut_date is NOT NULL\n"
+            case "腰臀比顺序":
+                where="WHERE actress.waist IS NOT NULL AND actress.hip IS NOT NULL AND actress.hip !=0\n"
+            case "腰臀比逆序":
+                where="WHERE actress.waist IS NOT NULL AND actress.hip IS NOT NULL AND actress.hip !=0\n"
 
         query+=where#比拼
 
@@ -247,12 +255,20 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
                 order="ORDER BY actress.cup \n"
             case "罩杯逆序":
                 order="ORDER BY actress.cup DESC\n"
+            case "出道顺序":
+                order="ORDER BY actress.debut_date \n"
+            case "出道逆序":
+                order="ORDER BY actress.debut_date DESC\n"
+            case "腰臀比顺序":
+                order="ORDER BY ROUND(actress.waist * 1.0 / NULLIF(actress.hip, 0), 2) \n"
+            case "腰臀比逆序":
+                order="ORDER BY ROUND(actress.waist * 1.0 / NULLIF(actress.hip, 0), 2) DESC\n"
 
         if not count:
             query +=f"{order} LIMIT ? OFFSET ?"#最后拼这个
             params.extend([page_size, offset])
 
-        #logging.debug(f"ActressPage Execute SQL\n{query}")
+        logging.debug(f"ActressPage Execute SQL\n{query}")
         with sqlite3.connect(f"file:{DATABASE}?mode=ro",uri=True) as conn:
             cursor = conn.cursor()
             if self.scope=="收藏库范围": attach_private_db(cursor)
