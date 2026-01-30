@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QPushButton, QHBoxLayout,QVBoxLayout
 from PySide6.QtCore import Slot,QThreadPool
 import logging
 from core.crawler.download import update_title_story_db
-from core.crawler.SearchJavtxt import top_actresses
+from core.crawler.javtxt import top_actresses
 from ui.base import LazyWidget
 from controller import TaskManager
 
@@ -49,7 +49,7 @@ class UpdateManyTabPage(LazyWidget):
     @Slot()
     def searchActressinfo(self):
         #开始后台线程
-        from core.crawler.SearchActressInfo import actress_need_update,SearchActressInfo
+        from core.crawler.minnanoav import actress_need_update,SearchActressInfo
         from core.crawler.Worker import Worker
 
         if actress_need_update():

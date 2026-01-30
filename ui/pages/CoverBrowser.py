@@ -403,8 +403,15 @@ class CoverBrowser(QWidget):
         work = self.works[self.current_index]
         self.info_overlay.serial_number.setText(work["serial_number"])
         self.info_overlay.time.setText(work["release_date"])
-        self.info_overlay.story.setText(work["cn_story"][:150])
-        self.info_overlay.work_name.setText(work["cn_title"][:50])
+
+        if  work["cn_story"] is not None and len(work["cn_story"]) > 150:
+            self.info_overlay.story.setText(work["cn_story"][:150] + "...")
+        else:
+            self.info_overlay.story.setText(work["cn_story"])
+        if  work["cn_title"] is not None and len(work["cn_title"]) > 50:
+            self.info_overlay.work_name.setText(work["cn_title"][:50] + "...")
+        else:
+            self.info_overlay.work_name.setText(work["cn_title"])
 
     def update_actress(self):
         '''更新女优的信息'''
@@ -539,8 +546,11 @@ class CoverTagButton(QPushButton):
         self.clicked.connect(self.emit_with_id)
         
     def emit_with_id(self):
-        from controller.GlobalSignalBus import global_signals
-        global_signals.tag_clicked.emit(self.tag_id)#发送给那些需要重新加载的东西
+        #from controller.GlobalSignalBus import global_signals
+        #global_signals.tag_clicked.emit(self.tag_id)#发送给那些需要重新加载的东西
+        from ui.navigation.router import Router
+        Router.instance().push("mutiwork", tag_id=self.tag_id)
+
 
 # 自定义按钮，带演员id和名字
 class ActressButton(QPushButton):
@@ -570,6 +580,8 @@ class ActressButton(QPushButton):
         """)
 
     def emit_with_id(self):
-        from controller.GlobalSignalBus import global_signals
-        global_signals.actress_clicked.emit(self.actress_id)
+
+        from ui.navigation.router import Router
+        Router.instance().push("single_actress",actress_id=self.actress_id)
+
         #跳转到单个女优的页面

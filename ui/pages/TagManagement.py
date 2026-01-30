@@ -3,7 +3,7 @@ from PySide6.QtWidgets import  QVBoxLayout, QLabel,QWidget,QHBoxLayout,QLineEdit
 from PySide6.QtCore import Qt,QObject,Signal,Property,Slot,SignalInstance
 from PySide6.QtSql import QSqlRelation,QSqlRelationalTableModel,QSqlTableModel,QSqlRelationalDelegate,QSqlQueryModel,QSqlQuery,QSqlDatabase
 
-from ui.widgets.selectors.TagSelector4 import TagSelector4
+from ui.widgets.selectors.TagSelector6 import TagSelector6
 from ..widgets.text.CompleterLineEdit import CompleterLineEdit
 from core.database.query import get_tag_name,get_tag_type_dict,get_unique_tag_type
 from ..basic.ColorPicker import ColorPicker
@@ -195,14 +195,13 @@ class ViewModel(QObject):
         del data["tag_id"]
         from core.database.insert import insert_tag
         from core.database.query import get_tagid_by_keyword
-        success,message=insert_tag(**data)
+        success,message,id=insert_tag(**data)
         if success:
             self.msg.show_info(f"添加新tag成功",f"tag_name: {data["tag_name"]}")
             global_signals.tag_data_changed.emit()#发射标签数据变更信号
             #这里要重新加载新的tag
-            tag_id_list=get_tagid_by_keyword(data["tag_name"],match_hole_word=True)
-            if tag_id_list:
-                tag_id=tag_id_list[0]
+            tag_id=get_tagid_by_keyword(data["tag_name"],match_hole_word=True)
+            if tag_id:
                 self.load_tag_selector.emit([tag_id])#发射要加载的信号
             return True
         else:
@@ -238,6 +237,9 @@ class ViewModel(QObject):
     def find_tag_type_id_by_value(self,target_value):
         """根据值查找第一个对应的键"""
         return next((key for key, value in self.tag_type_map.items() if value == target_value), None)
+    
+
+
 
 
 class TagManagement(LazyWidget):
@@ -249,6 +251,7 @@ class TagManagement(LazyWidget):
         logging.info("----------加载Tag管理界面----------")
         self.model=Model()
         self.vm = ViewModel(self.model,MessageBoxService(self))
+        self.msg=MessageBoxService(self)
 
         #第一列
         self.leftwidget=QWidget()
@@ -304,11 +307,15 @@ class TagManagement(LazyWidget):
 
         color_group=QGroupBox("改多个标签颜色")
         color_group.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        self.btn_redirect=QPushButton("标签重定向(只在选择两个标签生效)")
+        self.btn_redirect.setToolTip("将选择器中第一个标签重定向到第二个标签，此时第一个标签将成为第二个标签的别名")
+        
         vlayout1=QVBoxLayout(color_group)
         vlayout1.addWidget(self.m_color)
         vlayout1.addWidget(self.btn_change)
 
         vlayout.addWidget(color_group)
+        vlayout.addWidget(self.btn_redirect)
 
 
 
@@ -322,8 +329,8 @@ class TagManagement(LazyWidget):
         #leftlayout.addWidget(self.m_group)
 
         #第三列
-        self.tag_selector=TagSelector4(enbale_mutex_check=False)#这个有个问题，复用这个会有组检查
-        self.tag_selector.tag_receive_widget.setFixedWidth(180)
+        self.tag_selector=TagSelector6(enbale_mutex_check=False)#这个有个问题，复用这个会有组检查
+        self.tag_selector.tag_receive_widget.setFixedWidth(116)
         self.tag_selector.panel_fix_width=400
         self.tag_selector.btn_expand.click()
 
@@ -381,6 +388,7 @@ class TagManagement(LazyWidget):
         self.vm.after_delete.connect(self.after_delete)
         self.vm.load_tag_selector.connect(self.tag_selector.load_with_ids)
         self.btn_tag_type.clicked.connect(self.modify_tag_type)
+        self.btn_redirect.clicked.connect(self.redirect_tag_121)
         
     def modify_tag_type(self):
         '''打开一个QDialog'''
@@ -494,3 +502,26 @@ class TagManagement(LazyWidget):
         update_tag_color(ids,color)
         self.tag_selector.reload_tag()
 
+    def redirect_tag_121(self):
+        '''标签重定向,1对1'''
+        ids=self.tag_selector.get_selected_ids()
+        if len(ids)!=2:
+            return
+        from core.database.query import get_taginfo_by_id
+        tag_name_0=get_taginfo_by_id(ids[0]).get("tag_name")
+        tag_name_1=get_taginfo_by_id(ids[1]).get("tag_name")
+        logging.info(f"标签重定向,1对1,{tag_name_0}->>{tag_name_1}")
+
+        ret=self.msg.ask_yes_no("确认操作",f"确认将<{tag_name_0}>重定向到<{tag_name_1}>吗？")
+        if not ret:
+            return
+        
+        from core.database.update import redirect_tag_121
+
+        if redirect_tag_121(ids[0],ids[1]):
+            self.msg.show_info("操作成功","标签重定向成功")
+        else:
+            self.msg.show_warning("操作失败","标签重定向失败")
+        self.tag_selector.load_with_ids([ids[1]])
+        self.tag_selector.reload_tag()
+        

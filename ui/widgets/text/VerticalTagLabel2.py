@@ -81,8 +81,10 @@ class VerticalTagLabel(VLabel):
         #模拟hover
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            from controller.GlobalSignalBus import global_signals
-            global_signals.tag_clicked.emit(self.tag_id)#跳转信号
+            #from controller.GlobalSignalBus import global_signals
+            #global_signals.tag_clicked.emit(self.tag_id)#跳转信号
+            from ui.navigation.router import Router
+            Router.instance().push("mutiwork", tag_id=self.tag_id)
 
         super().mousePressEvent(event)  # 保留默认行为
 
@@ -139,8 +141,11 @@ class VerticalActressLabel(VLabel):
         #模拟hover
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            from controller.GlobalSignalBus import global_signals
-            global_signals.actress_clicked.emit(self._actress_id)
+            #from controller.GlobalSignalBus import global_signals
+            #global_signals.actress_clicked.emit(self._actress_id)
+            # 使用路由替代信号跳转
+            from ui.navigation.router import Router
+            Router.instance().push("single_actress", actress_id=self._actress_id)
         super().mousePressEvent(event)  # 保留默认行为
 
     def enterEvent(self, event):
@@ -170,7 +175,10 @@ class VerticalActorLabel(VLabel):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             from controller.GlobalSignalBus import global_signals
-            global_signals.actor_clicked.emit(self._actor_id)
+            #global_signals.actor_clicked.emit(self._actor_id)
+            # 使用路由替代信号跳转
+            from ui.navigation.router import Router
+            Router.instance().push("actor", actor_id=self._actor_id)
         super().mousePressEvent(event)  # 保留默认行为
 
     def enterEvent(self, event):

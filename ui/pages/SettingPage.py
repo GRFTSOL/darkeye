@@ -44,11 +44,13 @@ class ShortcutSettingRow(QWidget):
         # 1. 获取显示的名称
         name = self.registry.defaults[action_id]["name"]
         self.label = QLabel(name)
+        self.label.setFixedWidth(100)
         
         # 2. 获取当前的快捷键
         current_key = self.registry.get_shortcut(action_id)
         
         self.key_edit = QKeySequenceEdit()
+        self.key_edit.setFixedWidth(150)
         self.key_edit.setKeySequence(QKeySequence(current_key))
         
         # 3. 恢复默认按钮 (可选)
@@ -57,9 +59,9 @@ class ShortcutSettingRow(QWidget):
         self.reset_btn.clicked.connect(self.reset_default)
 
         layout.addWidget(self.label)
-        layout.addStretch()
         layout.addWidget(self.key_edit)
         layout.addWidget(self.reset_btn)
+        layout.addStretch()
 
         self.key_edit.editingFinished.connect(self.apply_change)
 
@@ -280,12 +282,22 @@ class VideoSettingPage(QWidget):
     '''这个是视频相关设置页面'''
     def __init__(self):
         super().__init__()
+
+        self.init_ui()
+        self.pathManagement.load_paths(get_video_path())#加载视频路径
+        self.save.clicked.connect(self.accept)
+        
+    def init_ui(self):
         layout = QVBoxLayout(self)
         self.pathManagement=MultiplePathManagement(label_text="视频文件夹路径管理：")
         self.pathManagement.setMinimumHeight(300)
         layout.addWidget(self.pathManagement)
+
+        self.save=QPushButton("保存")
         
-        self.pathManagement.load_paths(get_video_path())
+        layout.addWidget(self.save)
+        
+        
 
     def accept(self):
         # 保存路径设置

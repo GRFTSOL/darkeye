@@ -103,7 +103,7 @@ def InsertNewWorkByHand(serial_number,director,release_date,story,actress_ids,ac
         conn.close()
     return success
 
-def insert_tag(tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_redirect_tag_id:int,tag_alias:list[dict])->tuple[bool, str]:
+def insert_tag(tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_redirect_tag_id:int,tag_alias:list[dict])->tuple[bool, str,int|None]:
     success=False
     try:
         conn = get_connection(DATABASE,False)
@@ -112,7 +112,7 @@ def insert_tag(tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_red
         new_id = cursor.lastrowid
         conn.commit()
         logging.info(f"新插入的 tag_id 是: {new_id}")
-        return True, "插入成功"
+        return (True, "插入成功",new_id)
     
     except IntegrityError as e:
         if "UNIQUE constraint failed: tag.tag_name" in str(e):
@@ -122,12 +122,12 @@ def insert_tag(tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_red
         else:
             print(f"其他完整性错误: {e}")
         conn.rollback()
-        return False,message
+        return False,message,None
     
     except Exception as e:
         conn.rollback()
         logging.warning(f"插入失败:{e}")
-        return False, str(e) # 将错误信息转换为字符串返回
+        return False, str(e),None # 将错误信息转换为字符串返回
     finally:
         cursor.close()
         conn.close()

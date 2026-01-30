@@ -29,7 +29,7 @@ class LazyScrollArea(QScrollArea):
             waterfall_widget=QWidget()
             self.waterfall_layout = WaterfallLayout(waterfall_widget,column_width=column_width)
             vlayout.setContentsMargins(0,0,0,0)
-            vlayout.addWidget(widget,0, Qt.AlignLeft|Qt.AlignmentFlag.AlignTop)
+            vlayout.addWidget(widget,0, Qt.AlignCenter|Qt.AlignmentFlag.AlignTop)
             #vlayout.addWidget(widget)
             vlayout.addWidget(waterfall_widget,0,Qt.AlignmentFlag.AlignTop)
             '''
@@ -70,7 +70,7 @@ class LazyScrollArea(QScrollArea):
             if widget:
                 widget.setParent(None)
                 widget.deleteLater()  # 确保销毁，异步
-        logging.info("清空所有内容并重置分页")
+        #logging.info("清空所有内容并重置分页")
         self.waterfall_layout.update()
 
         '''
@@ -113,7 +113,7 @@ class LazyScrollArea(QScrollArea):
             for w in widgets:
                 self.waterfall_layout.addWidget(w)
             self.current_page += 1
-        logging.debug(self.waterfall_layout._items.__len__())
+        #logging.debug(self.waterfall_layout._items.__len__())
         self.loading = False
     # 延迟到下一轮事件循环再检查滚动条
         if not self.reached_end:

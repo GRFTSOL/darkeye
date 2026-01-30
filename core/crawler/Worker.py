@@ -7,7 +7,6 @@ import logging
 # 定义信号类（用于线程间通信）
 class WorkerSignals(QObject):
     finished = Signal(object)  # 完成信号，返回结果
-    progress = Signal(int)  # 进度信号
 
 # 定义任务类,线程池用
 class Worker(QRunnable):
@@ -28,9 +27,10 @@ class Worker(QRunnable):
 
     def run(self):
         try:
-            logging.info("开启一个后台线程")
+            #logging.info("开启一个后台线程")
             self.result = self.func(*self.args, **self.kwargs)
             self.signals.finished.emit(self.result)#把爬虫后返回结果传回去
+            #logging.info(f"线程完成任务，信号发射，返回结果{self.result}")
         except Exception as e:
             logging.warning(f"出错误:{e}")
             self.signals.finished.emit(None)

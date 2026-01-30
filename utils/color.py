@@ -4,24 +4,39 @@ def oklch_to_srgb(L, C, H,autopair=True):
     """批量 OKLCH → sRGB (0-255 int)
     #这个转换和官方的没有区别
     """
-    h = np.asarray(H)
-    h_rad = np.radians(h)
+    L = np.asarray(L)
+    C = np.asarray(C)
+    h_rad = np.radians(np.asarray(H))
+
     a = C * np.cos(h_rad)
     b = C * np.sin(h_rad)
 
-    # OKLCH → Oklab
-    l_ = L + 0.3963377774 * a + 0.2158037573 * b
-    m_ = L - 0.1055613458 * a - 0.0638541728 * b
-    s_ = L - 0.0894841775 * a - 1.2914855480 * b
+    # 广播数组以匹配形状
+    L, a, b = np.broadcast_arrays(L, a, b)
+    
+    # 构造 (..., 3) 矩阵
+    lab = np.stack([L, a, b], axis=-1)
 
-    l = l_ ** 3
-    m = m_ ** 3
-    s = s_ ** 3
+    # OKLCH -> LMS (pre-cube)
+    # 矩阵 M1 (转置后用于右乘)
+    M1 = np.array([
+        [1.0, 1.0, 1.0],
+        [0.3963377774, -0.1055613458, -0.0894841775],
+        [0.2158037573, -0.0638541728, -1.2914855480]
+    ])
+    
+    lms_ = lab @ M1
+    lms = lms_ ** 3
 
-    # Oklab → linear sRGB
-    r_lin = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s
-    g_lin = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s
-    b_lin = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+    # LMS -> Linear sRGB
+    # 矩阵 M2 (转置后用于右乘)
+    M2 = np.array([
+        [4.0767416621, -1.2684380046, -0.0041960863],
+        [-3.3077115913, 2.6097574011, -0.7034186147],
+        [0.2309699292, -0.3413193965, 1.7076147010]
+    ])
+    
+    rgb_lin = lms @ M2
 
     # linear → sRGB gamma + clip
     def gamma(x):
@@ -29,10 +44,10 @@ def oklch_to_srgb(L, C, H,autopair=True):
 
     #超出范围的自动匹配最近的颜色
     if autopair:
-        srgb = np.clip(gamma(np.stack([r_lin, g_lin, b_lin], axis=-1)), 0.0, 1.0)
+        srgb = np.clip(gamma(rgb_lin), 0.0, 1.0)
     else:
         # 选择超出范围的变白色
-        srgb_uncapped = gamma(np.stack([r_lin, g_lin, b_lin], axis=-1))
+        srgb_uncapped = gamma(rgb_lin)
         mask1 = np.any(srgb_uncapped > 1.0, axis=-1, keepdims=True)
         mask2 = np.any(srgb_uncapped < 0, axis=-1, keepdims=True)
         mask = mask1 | mask2

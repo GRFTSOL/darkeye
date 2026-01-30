@@ -45,7 +45,7 @@ class ClickableLabel(QLabel):
 
     def searchActressinfo(self,id):
         #开始后台线程
-        from core.crawler.SearchActressInfo import SearchSingleActressInfo
+        from core.crawler.minnanoav import SearchSingleActressInfo
         from core.crawler.Worker import Worker
         worker=Worker(lambda id=id:SearchSingleActressInfo(id,self.text()))#传一个函数名进去
         worker.signals.finished.connect(self.on_result)

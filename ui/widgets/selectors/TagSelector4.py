@@ -204,7 +204,7 @@ class TagSelector4(QWidget):
             self.tag_receive_layout.addWidget(label)
             self.selected_ids.add(label.tag_id)
             self.selection_changed.emit()
-            logging.debug(self.selected_ids)
+            #logging.debug(self.selected_ids)
 
     def restore_to_right(self, label:VerticalTagLabel2):
         '''向右移是将标签放回待选区'''
@@ -215,7 +215,7 @@ class TagSelector4(QWidget):
             self.type_map[label.tag_type].addWidget(label)
             self.selected_ids.remove(label.tag_id)
             self.selection_changed.emit()
-            logging.debug(self.selected_ids)
+            #logging.debug(self.selected_ids)
 
     def load_with_ids(self, ids: list[int]):
         """根据 id 列表同步 UI"""
@@ -301,7 +301,7 @@ class TagSelector4(QWidget):
             # 高亮标签
             label.flash_invert(duration=1000, interval=200) 
 
-    @timeit
+
     def load_tags(self):
         '''加载tag,这个只运行一次，而且是全部加载到右侧的容器里，后面的操作就是实例移来移去
         这个目前非常的消耗时间需要120ms,需要分散加载，看不见的暂时不加载到GUI中
@@ -391,7 +391,6 @@ class TagSelector4(QWidget):
         self.selected_ids.clear()
         self.selection_changed.emit()
 
-    @timeit
     def reload_tag(self):
         '''重新从数据库里加载tag，本来在上面的东西还是移上去
         这个东西目前来说很消耗时间需要150ms,导致了动画的卡顿

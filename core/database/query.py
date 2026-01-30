@@ -344,7 +344,7 @@ WHERE tag_id=?
 
     return dict(zip(column_names, row))
 
-def get_tagid_by_keyword(keyword:str,match_hole_word=False)->list:
+def get_tagid_by_keyword(keyword:str,match_hole_word=False)->list|int|None:
     '''这个递归搜索到所有的没有重定向的tag'''
     query=f"""
     WITH RECURSIVE tag_chain AS (
@@ -371,13 +371,18 @@ WHERE t2.tag_id IS NULL;
         cursor = conn.cursor()
         if match_hole_word:
             cursor.execute(query,(f"{keyword}",))
+            id = cursor.fetchone()
+            if id is None:
+                return None
+            else:
+                return id[0]
         else:
             cursor.execute(query,(f"%{keyword}%",))
-        ids = cursor.fetchall()
-        if ids is None:
-            return None
-        else:
-            return [id[0] for id in ids]
+            ids = cursor.fetchall()
+            if ids is None:
+                return None
+            else:
+                return [id[0] for id in ids]
 
 def exist_minnao_id(actress_id)->int:
     '''查询女优是否存在minnao-av的缓存'''

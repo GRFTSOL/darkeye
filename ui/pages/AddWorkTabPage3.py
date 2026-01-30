@@ -1,5 +1,6 @@
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QLabel,QVBoxLayout,QLineEdit,QTextEdit,QSizePolicy,QPlainTextEdit
+from PySide6.QtWidgets import QPushButton, QHBoxLayout, QLabel,QVBoxLayout,QLineEdit,QTextEdit,QSizePolicy,QPlainTextEdit,QScrollArea, QWidget,QSplitter
 from PySide6.QtCore import Qt,QObject,Signal,Property,SignalInstance,Slot,QThreadPool
+from PySide6.QtGui import QIntValidator
 
 from ui.widgets.CrawlerToolBox import CrawlerToolBox
 import logging,json,asyncio
@@ -19,6 +20,9 @@ from controller.MessageService import MessageBoxService,IMessageService
 
 from core.crawler.Worker import Worker
 from core.crawler.download import download_image
+from ui.navigation.router import Router
+from ui.widgets.text.WikiTextEdit import WikiTextEdit
+from controller.GlobalSignalBus import global_signals
 
 class ButtonState(Enum):
     NORMAL = 1
@@ -31,6 +35,7 @@ class Model():
         self._serial_number:str= ""
         self._director:str = ""
         self._release_date:str = ""
+        self._vlength:int=0
         self._story:str = ""
         self._cn_title:str = ""
         self._cn_story:str = ""
@@ -64,6 +69,7 @@ class ViewModel(QObject):
     director_changed = Signal(str)
     release_date_changed=Signal(str)
     story_changed=Signal(str)
+    vlength_changed=Signal(int)
 
     cn_title_changed = Signal(str)
     cn_story_changed = Signal(str)
@@ -77,6 +83,7 @@ class ViewModel(QObject):
     btn_state_changed=Signal(str,ButtonState)
 
     modify_state_changed = Signal(str, bool) #发出修改什么控件的信号
+    workload=Signal(str)#发送给view使用
 
 
     def __init__(self, model=None,message_service:IMessageService=None):
@@ -106,6 +113,8 @@ class ViewModel(QObject):
     # -------------------- getter / setter --------------------
     def get_serial_number(self)->str: return self.model._serial_number
     def set_serial_number(self, value:str):
+        if not value:
+            value=""
         if self.model._serial_number != value.strip().upper():#这里全部转成纯大写
             self.model._serial_number = value.strip().upper()
             self.serial_number_changed.emit(value)
@@ -115,19 +124,34 @@ class ViewModel(QObject):
 
     def get_director(self)->str: return self.model._director
     def set_director(self, value:str):
+        if not value:
+            value=""
         if self.model._director != value.strip():
             self.model._director = value.strip()
             self.director_changed.emit(value)
 
     def get_release_date(self)->str: return self.model._release_date
     def set_release_date(self, value:str):
+        if not value:
+            value=""
         if self.model._release_date != value.strip():
             self.model._release_date = value.strip()
             self.release_date_changed.emit(value)
             #print("Model updated:", self.model._release_date)
+    
+    def get_vlength(self)->int: return self.model._vlength
+    def set_vlength(self, value:int):
+        if self.model._vlength != value:
+            self.model._vlength = value
+            self.vlength_changed.emit(value)
+            #print("Model updated:", self.model._vlength)
+
+
 
     def get_story(self)->str: return self.model._story
     def set_story(self, value:str):
+        if not value:
+            value=""
         if self.model._story != value.strip():
             self.model._story = value.strip()
             self.story_changed.emit(value)
@@ -135,6 +159,8 @@ class ViewModel(QObject):
 
     def get_cn_title(self)->str: return self.model._cn_title
     def set_cn_title(self, value:str):
+        if not value:
+            value=""
         if self.model._cn_title != value.strip():
             self.model._cn_title = value.strip()
             self.cn_title_changed.emit(value)
@@ -142,6 +168,8 @@ class ViewModel(QObject):
 
     def get_cn_story(self)->str: return self.model._cn_story
     def set_cn_story(self, value:str):
+        if not value:
+            value=""
         if self.model._cn_story != value.strip():
             self.model._cn_story = value.strip()
             self.cn_story_changed.emit(value)
@@ -149,6 +177,8 @@ class ViewModel(QObject):
 
     def get_jp_title(self)->str: return self.model._jp_title
     def set_jp_title(self, value:str):
+        if not value:
+            value=""
         if self.model._jp_title != value.strip():
             self.model._jp_title = value.strip()
             self.jp_title_changed.emit(value)
@@ -156,6 +186,8 @@ class ViewModel(QObject):
 
     def get_jp_story(self)->str: return self.model._jp_story
     def set_jp_story(self, value:str):
+        if not value:
+            value=""
         if self.model._jp_story != value.strip():
             self.model._jp_story = value.strip()
             self.jp_story_changed.emit(value)
@@ -163,6 +195,8 @@ class ViewModel(QObject):
 
     def get_cover(self)->str: return self.model._cover
     def set_cover(self, value:str):
+        if not value:
+            value=""
         if self.model._cover != value:
             logging.debug(f"cover原地址为{self.model._cover}")
             self.model._cover = value
@@ -218,6 +252,7 @@ class ViewModel(QObject):
     director = Property(str, get_director, set_director, notify=director_changed)
     release_date = Property(str, get_release_date, set_release_date, notify=release_date_changed)
     story = Property(str, get_story, set_story, notify=story_changed)
+    vlength = Property(int, get_vlength, set_vlength, notify=vlength_changed)
 
     cn_title = Property(str, get_cn_title, set_cn_title, notify=cn_title_changed)
     cn_story = Property(str, get_cn_story, set_cn_story, notify=cn_story_changed)
@@ -348,7 +383,11 @@ class ViewModel(QObject):
         if self.work_id==None:
             return
         inf=get_workinfo_by_workid(self.work_id)
-        
+
+        #这里加载图，应用ego filter
+        self.workload.emit(f"w{self.work_id}")
+
+
         def replace_nan_with_empty(d: dict):
             for k, v in d.items():
                 if v is None:
@@ -415,57 +454,6 @@ class ViewModel(QObject):
         self.set_actor([])
         self.set_tag([])
 
-#----------------------------------------------------------
-#                    临时保存功能
-#----------------------------------------------------------
-
-    @Slot()
-    def load_previous_state(self):
-        """加载上次填写的信息，也就是临时保存的信息"""
-        logging.info("从settings.ini中加载上次的番号:%s",settings.value("TempWork/serial_number", ""))
-
-        self._cheakable = False#关闭检测
-
-        self.set_serial_number(settings.value("TempWork/serial_number", ""))#在这个设置一瞬间触发清空所有控件的信息
-        self.set_release_date(settings.value("TempWork/time", ""))
-        self.set_director(settings.value("TempWork/director", ""))
-        self.set_story(settings.value("TempWork/story", ""))
-        self.set_cn_title(settings.value("TempWork/cn_title", ""))
-        self.set_cn_story(settings.value("TempWork/cn_story", ""))
-        self.set_jp_title(settings.value("TempWork/jp_title", ""))
-        self.set_jp_story(settings.value("TempWork/jp_story", ""))
-        self.set_cover(settings.value("TempWork/workcover_file",None))
-
-        self.set_actress(load_ini_ids("TempWork/actresslist"))
-        self.set_actor(load_ini_ids("TempWork/actorlist"))
-        self.set_tag(load_ini_ids("TempWork/taglist"))
-
-        self.set_btn_state('add_work',ButtonState.NORMAL)
-        self.set_btn_state('temp_save',ButtonState.NORMAL)
-    
-    @Slot()
-    def save_state(self):
-        '''保存临时信息到settings.ini'''
-        
-        settings.setValue("TempWork/serial_number", self.get_serial_number())
-        settings.setValue("TempWork/time", self.get_release_date())
-        settings.setValue("TempWork/director", self.get_director())
-        settings.setValue("TempWork/story", self.get_story())
-        settings.setValue("TempWork/cn_title", self.get_cn_title())
-        settings.setValue("TempWork/cn_story", self.get_cn_story())
-        settings.setValue("TempWork/jp_title", self.get_jp_title())
-        settings.setValue("TempWork/jp_story", self.get_jp_story())
-        settings.setValue("TempWork/workcover_file",self.get_cover())
-
-        actress_ids = self.get_actress()#ids转成json字符保存
-        settings.setValue("TempWork/actresslist", json.dumps(actress_ids))  # 转为JSON字符串
-        actor_ids = self.get_actor()
-        settings.setValue("TempWork/actorlist", json.dumps(actor_ids))  # 转为JSON字符串
-        tag_ids = self.get_tag()
-        settings.setValue("TempWork/taglist", json.dumps(tag_ids))  # 转为JSON字符串
-        
-        logging.debug("保存作品已填的信息到settings.ini")
-        self.msg.show_info("临时保存","临时保存信息到settings.ini")
 
 #----------------------------------------------------------
 #                    检测有无修改并指示
@@ -525,7 +513,7 @@ class ViewModel(QObject):
             self.set_state(field,(original_value != new_value))
             #print(original_value)
             #print(new_value)
-        logging.info("检测到内容变更，变更字典为%s",self._changed_flags)
+        #logging.info("检测到内容变更，变更字典为%s",self._changed_flags)
         self.update_button_state()
 
     @Slot()
@@ -556,10 +544,9 @@ class ViewModel(QObject):
     @Slot()
     def jump_detail_page(self):
         '''跳转到显示页面'''
-        from controller.GlobalSignalBus import global_signals
         work_id = get_workid_by_serialnumber(self.get_serial_number().strip())
         if work_id:
-            global_signals.work_clicked.emit(work_id)
+            Router.instance().push("work", work_id=work_id)
 
     def appendTags(self,tag_list:list[int]):
         '''添加tag,不重复'''
@@ -602,12 +589,26 @@ class AddWorkTabPage3(LazyWidget):
 
     def _lazy_load(self):
         logging.info("----------加载打开添加/更改作品信息界面----------")
-        #self.work_id=None#内部存一个,整体是work_id驱动的，表像是serial_number
+        
         self.original_work={}#加载后原始的数据，用于检测内容修改
         self.msg=MessageBoxService(self)#弹窗服务
         self.model=Model()
         self.viewmodel = ViewModel(self.model,self.msg)
+        self.init_ui()
+        
+        self.beaute()
+        self.signal_connect()
+        self.viewmodel.setup_change_detection()
+        self.bind_model()
 
+        #设置按钮初始的状态
+        
+
+        self.update_commit_btn("add_work",ButtonState.DISABLED)
+        self.update_commit_btn("load",ButtonState.DISABLED)
+
+
+    def init_ui(self) -> None:
         #第一列控件
         self.crawler_toolbox=CrawlerToolBox()
         self.coverdroplabel=CoverDropWidget()#加载拖动图片控件
@@ -621,13 +622,6 @@ class AddWorkTabPage3(LazyWidget):
         leftleftlayout.addWidget(self.coverdroplabel,alignment=Qt.AlignHCenter)
 
         # 第二列控件
-        self.btn_save_to_ini=QPushButton("临时保存")
-        self.btn_load_from_ini=QPushButton("加载临时保存")
-        self.btn_save_to_ini.setVisible(False)#这个暂时不要了，因为发现没有什么用
-        self.btn_load_from_ini.setVisible(False)
-
-
-
 
         self.label_serial_umber = QLabel("番       号：")
         from core.database.query import get_serial_number
@@ -644,8 +638,9 @@ class AddWorkTabPage3(LazyWidget):
         self.label_director=QLabel("导       演：")
         self.input_director=CompleterLineEdit(getUniqueDirector)
         
-        self.label_story=QLabel("简短剧情：")
-        self.input_story=CompleterLineEdit(get_unique_short_story)
+        self.label_vlength=QLabel("影片长度：")
+        self.input_vlength=QLineEdit()
+        self.input_vlength.setValidator(QIntValidator())
         
         self.btn_add_work = QPushButton()
 
@@ -674,9 +669,6 @@ class AddWorkTabPage3(LazyWidget):
 
         #第二列布局
         left_layout=QVBoxLayout()#左侧总体垂直布局
-        left_small_layout0 = QHBoxLayout()
-        left_small_layout0.addWidget(self.btn_save_to_ini)
-        left_small_layout0.addWidget(self.btn_load_from_ini)
 
         left_small_layout1 = QHBoxLayout()
         left_small_layout1.addWidget(self.label_serial_umber)
@@ -693,10 +685,10 @@ class AddWorkTabPage3(LazyWidget):
         left_small_layout3.addWidget(self.input_director)
 
         left_small_layout4 = QHBoxLayout()
-        left_small_layout4.addWidget(self.label_story)
-        left_small_layout4.addWidget(self.input_story)
+        left_small_layout4.addWidget(self.label_vlength)
+        left_small_layout4.addWidget(self.input_vlength)
 
-        left_layout.addLayout(left_small_layout0)
+
         left_layout.addLayout(left_small_layout1)
         left_layout.addLayout(left_small_layout2)
         left_layout.addLayout(left_small_layout3)
@@ -726,28 +718,51 @@ class AddWorkTabPage3(LazyWidget):
         self.tag_selector.tag_receive_widget.setFixedWidth(116)
         self.tag_selector.btn_expand.click()
 
+        scroll_area=QScrollArea()
+        container=QWidget()#这个是实际里面装东西的
+        container.setObjectName("container")
+        container.setStyleSheet("#container { background-color: white; }")
+        scroll_area.setWidget(container)
+        scroll_area.setWidgetResizable(True)
+        layout=QVBoxLayout(container)
+
         #总体布局，四列组装
-        layout = QHBoxLayout(self)
-        layout.addLayout(leftleftlayout)
-        layout.addLayout(left_layout)
-        layout.addLayout(selector_layout)
-        layout.addWidget(self.tag_selector)
+        toparea=QWidget()
+        toparea.setMinimumHeight(600)
+        hlayout = QHBoxLayout()
+        toparea.setLayout(hlayout)
+        hlayout.addLayout(leftleftlayout)
+        hlayout.addLayout(left_layout)
+        hlayout.addLayout(selector_layout)
+        hlayout.addWidget(self.tag_selector)
 
-        self.beaute()
-        self.signal_connect()
-        self.viewmodel.setup_change_detection()
-        self.bind_model()
+        bottomarea=QSplitter(Qt.Horizontal)
+        from ui.statistics.force_view_multi_processing import ForceViewControlWidget
 
-        #设置按钮初始的状态
+
+
+        self.forceview=ForceViewControlWidget()
+        self.view_session = self.forceview.view.session
         
-        if settings.value("TempWork/serial_number", "")=="":
-            self.update_commit_btn("temp_load",ButtonState.DISABLED)
-        self.update_commit_btn("add_work",ButtonState.DISABLED)
-        self.update_commit_btn("load",ButtonState.DISABLED)
-        self.update_commit_btn("temp_save",ButtonState.DISABLED)
+        self.viewmodel.workload.connect(self.on_set_directview)
+
+        self.forceview.setFixedHeight(600)
+        self.forceview.setMinimumWidth(400)
+        self.input_story=WikiTextEdit()
+        self.input_story.setFixedHeight(600)
+        self.input_story.setMinimumWidth(400)
+        bottomarea.addWidget(self.forceview)
+        bottomarea.addWidget(self.input_story)
+        bottomarea.setStretchFactor(0, 0) # 索引1（右侧）拉伸
+        bottomarea.setStretchFactor(1, 0) # 索引1（右侧）拉伸
+        layout.addWidget(toparea)
+        layout.addWidget(bottomarea)
+
+        main_layout=QHBoxLayout(self)
+        main_layout.addWidget(scroll_area)
 
 
-    def bind_model(self):
+    def bind_model(self) -> None:
         '''双向绑定'''
         self._updating_flags = {}#单独弄一个标记是否在更新，避免绑定循环问题
         # --------- 模型 -> UI ----------
@@ -779,8 +794,7 @@ class AddWorkTabPage3(LazyWidget):
         bindings_map2:dict[str,QLineEdit] = {
             "serial_number": self.input_serial_number,
             "director": self.input_director,
-            "release_date": self.input_time,
-            "story": self.input_story
+            "release_date": self.input_time
         }
         for prop_name,widget in bindings_map2.items():
             self._updating_flags[prop_name] = False
@@ -793,7 +807,8 @@ class AddWorkTabPage3(LazyWidget):
             "cn_title": self.cn_title,
             "cn_story": self.cn_story,
             "jp_title": self.jp_title,
-            "jp_story": self.jp_story
+            "jp_story": self.jp_story,
+            "story": self.input_story
         }
         for prop_name,widget in bindings_map.items():
             self._updating_flags[prop_name] = False
@@ -842,8 +857,7 @@ class AddWorkTabPage3(LazyWidget):
         self.viewmodel.serial_number_changed.connect(self.viewmodel.on_work_selected)#核心
         self.input_serial_number.returnPressed.connect(self.viewmodel._load_from_db)#按enter后查询
 
-        self.btn_save_to_ini.clicked.connect(self.viewmodel.save_state)
-        self.btn_load_from_ini.clicked.connect(self.viewmodel.load_previous_state)
+
         self.btn_load_form_db.clicked.connect(self.viewmodel._load_from_db)
         self.btn_jump_detail.clicked.connect(self.viewmodel.jump_detail_page)
 
@@ -864,196 +878,58 @@ class AddWorkTabPage3(LazyWidget):
         self.crawler_toolbox.btn_get_mgs.clicked.connect(jump_mgs)
         self.crawler_toolbox.btn_get_netflav.clicked.connect(jump_netflav)
         self.crawler_toolbox.btn_get_jinjier.clicked.connect(jump_jinjier)
-        self.crawler_toolbox.btn_get_crawler.clicked.connect(self.crawler)
         self.crawler_toolbox.btn_get_kana.clicked.connect(jump_kana)
         self.crawler_toolbox.btn_get_gana.clicked.connect(jump_gana)
 
         self.btn_add_work.clicked.connect(self.viewmodel.submit)
+        self.crawler_toolbox.btn_get_crawler.clicked.connect(self.crawler2)
+
+        global_signals.gui_update.connect(self.update_gui)
+        global_signals.download_success.connect(self.update_cover)
+
 
 #----------------------------------------------------------
 #          爬虫函数，QCheckBox触发，未MVVM,与UI耦合
 #----------------------------------------------------------
-    @Slot()
-    def crawler(self):
-        '''开启后台线程辅助爬信息,判断哪些要不要爬'''
-        from core.crawler.SearchAvdanyuwiki import SearchInfoDanyukiwi
-        from core.crawler.SearchJavtxt import fetch_javtxt_movie_info
+    def crawler2(self):
+        '''用浏览器插件手动跳转javlibrary'''
+        from core.crawler.CrawlerManager import crawler_manager2
+        crawler_manager2.start_crawl(self.viewmodel.serial_number,True)
 
-        #现在这个有个问题，就是新爬的作品不会把缓存写进去，不过这也不是什么很大的问题，这种网页也只有爬一次的价值，作品的信息不可能变
-        #有一个被勾选了就去爬avdanyukiwi，里面的信息就是拷贝fanza的，而且多了男优信息，但是没有故事标题
-
-        if any(cb.isChecked() for cb in [
-            self.crawler_toolbox.cb_release_date,
-            self.crawler_toolbox.cb_director,
-            self.crawler_toolbox.cb_actress,
-            self.crawler_toolbox.cb_actor,
-            self.crawler_toolbox.cb_cover
-        ]):#这里还要再改一下如果只下载图片，有缓存的话就不要继续爬虫了，直接目标图片地址下载就行了
-            #在爬好之前不要去切换就没有什么关系
-            worker1=Worker(lambda:SearchInfoDanyukiwi(self.input_serial_number.text()))#传一个函数名进去
-            worker1.signals.finished.connect(self._on_danyukiwi_result)
-            QThreadPool.globalInstance().start(worker1)
-
-        #有一个被勾选了就去爬javtxt，里面的故事信息很全面  
-        if any(cb.isChecked() for cb in [
-            self.crawler_toolbox.cb_cn_title,
-            self.crawler_toolbox.cb_cn_story,
-            self.crawler_toolbox.cb_jp_title,
-            self.crawler_toolbox.cb_jp_story
-        ]):
-            worker2=Worker(lambda:fetch_javtxt_movie_info(self.input_serial_number.text()))#传一个函数名进去
-            worker2.signals.finished.connect(self._on_javtxt_result)
-            QThreadPool.globalInstance().start(worker2)
-
-    @Slot(dict)
-    def _on_danyukiwi_result(self,result):
-        '''返回的结果处理'''
-        if result is None:
-            logging.warning("爬danyukiwi产生错误信息")
-            self.msg.show_warning("错误","爬danyukiwi产生错误信息，可能被阻挡了，可能爬虫策略失效，请稍后再试")
-            if self.crawler_toolbox.cb_cover.isChecked():
-                #missav封面下载
-                self.download_image_missav()
-            return
-        data=result
-
-        #按选中的东西更新
-        if self.crawler_toolbox.cb_director.isChecked():
-            self.viewmodel.set_director(data["director"])
+    def update_gui(self,data):
+        '''更新gui'''
         if self.crawler_toolbox.cb_release_date.isChecked():
             self.viewmodel.set_release_date(data["release_date"])
-
-        if self.crawler_toolbox.cb_actor.isChecked():
-            #这里能做的原因是因为男优没有合并相同的
-            actor_ids=[]
-            for actor in data["actor_list"]:
-                #新的男优直接添加
-                id=exist_actor(actor)
-                if id is None:
-                    #添加男优
-                    if InsertNewActor(actor,actor):
-                        logging.info("添加男优成功:%s",actor)
-                        id=exist_actor(actor)
-                        actor_ids.append(id)
-                        self.actorselector.refresh_right_list()#这个刷新好像有点问题
-                        from controller.GlobalSignalBus import global_signals
-                        global_signals.actor_data_changed.emit()
-                else:
-                    actor_ids.append(id)
-            logging.debug("要添加的男优id列表%s",actor_ids)
-            self.viewmodel.set_actor(actor_ids)
-
+        if self.crawler_toolbox.cb_director.isChecked():
+            self.viewmodel.set_director(data["director"])
         if self.crawler_toolbox.cb_actress.isChecked():
-            #先这样简单的处理，如果重复了后面再用合并女优的功能去合并
-            actress_ids=[]
-            for actress in data["actress_list"]:
-                #新的男优直接添加
-                id=exist_actress(actress)
-                if id is None:
-                    #添加男优
-                    if InsertNewActress(actress,actress):
-                        logging.info("添加女优成功:%s",actress)
-                        id=exist_actress(actress)
-                        actress_ids.append(id)
-                        self.actressselector.refresh_right_list()#这个刷新好像有点问题
-                        from controller.GlobalSignalBus import global_signals
-                        global_signals.actress_data_changed.emit()
-                else:
-                    actress_ids.append(id)
-            logging.debug("要添加的女优id列表%s",actress_ids)
-            self.viewmodel.set_actress(actress_ids)
-        
-        if self.crawler_toolbox.cb_cover.isChecked():
-            from core.crawler.download import download_image
-            from core.database.update import update_fanza_cover_url
-
-            #这个要开全局访问才能下载图片
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            dst_name = f"image_{timestamp}.jpg"  # 直接获取后缀
-        
-            TEMP_PATH.mkdir(parents=True, exist_ok=True)#若不存在临时目录，自动创建
-            # 构建目标路径（自动处理跨平台路径分隔符）
-            dst_path = Path(TEMP_PATH) / dst_name#这个是个绝对地址
-            imageurl=data['cover']
-            if imageurl!='':#如果是空的导致运行两次后会崩溃比如LUXU-1788这个下载图片的例子
-                logging.debug(self.viewmodel.work_id)
-                if self.viewmodel.work_id is not None:
-                    update_fanza_cover_url(self.viewmodel.work_id,imageurl)#更新封面的缓存
-                
-                worker=Worker(lambda:download_image(imageurl,dst_path))#下载图片放后台线程
-                worker.signals.finished.connect(lambda result:self._on_download_image_result(result,dst_path))
-                QThreadPool.globalInstance().start(worker)
-            else:
-                self.download_image_missav()
-
-    @Slot(tuple,Path)
-    def _on_download_image_result(self,result:tuple,dst_path:Path):
-        success,message=result
-        if success:
-            self.viewmodel.set_cover(str(dst_path))#UI更新
-        else:
-            #self.msg.show_warning("错误",message)
-            logging.warning("封面图片下载失败:%s",message)
-            self.download_image_missav()
-            
-
-    def download_image_missav(self):
-        logging.info("尝试使用missav的封面下载方式")#这个后面还是要改
-            
-        serial_number=self.viewmodel.serial_number.lower()
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        dst_name = f"image_{timestamp}.jpg"  # 直接获取后缀
-    
-        TEMP_PATH.mkdir(parents=True, exist_ok=True)#若不存在临时目录，自动创建
-        # 构建目标路径（自动处理跨平台路径分隔符）
-        dst_path = Path(TEMP_PATH) / dst_name#这个是个绝对地址
-
-        imageurl="https://fourhoi.com/"+serial_number+"/cover-n.jpg"#这个是misav的封面获取方式
-
-        worker=Worker(lambda:download_image(imageurl,dst_path))#下载图片放后台线程
-        worker.signals.finished.connect(lambda result:self._on_download_image_result1(result,dst_path))
-        QThreadPool.globalInstance().start(worker)
-        
-
-    @Slot(tuple,Path)
-    def _on_download_image_result1(self,result:tuple,dst_path:Path):
-        success,message=result
-        if success:
-            self.viewmodel.set_cover(str(dst_path))#UI更新
-        else:
-            self.msg.show_warning("错误",message)
-
-
-
-    @Slot(dict)
-    def _on_javtxt_result(self,data:dict):
-        '''返回的数据更新到面板上'''
-        if data is None:
-            logging.warning("爬javtxt产生错误信息")
-            self.msg.show_warning("错误","爬javtxt产生错误信息，可能被阻挡了，可能爬虫策略失效，请稍后再试")
-            return
-        if self.crawler_toolbox.cb_cn_title.isChecked():#测试SNIS-495，先这样要加速的时候采用后台线程
-            if data["cn_title"]=="" and data["jp_title"]!="":
-                cn_title=asyncio.run(translate_text(data["jp_title"]))
-            else:
-                cn_title=data["cn_title"]
-            self.viewmodel.set_cn_title(cn_title)
+            self.viewmodel.set_actress(data["actress_list"])
+        if self.crawler_toolbox.cb_actor.isChecked():
+            self.viewmodel.set_actor(data["actor_list"])
+        if self.crawler_toolbox.cb_cn_title.isChecked():
+            self.viewmodel.set_cn_title(data["cn_title"])
         if self.crawler_toolbox.cb_cn_story.isChecked():
-            if data["cn_story"]==""and data["jp_story"]!="":
-                cn_story=asyncio.run(translate_text(data["jp_story"]))
-            else:
-                cn_story=data["cn_story"]
-            self.viewmodel.set_cn_story(cn_story)
+            self.viewmodel.set_cn_story(data["cn_story"])
         if self.crawler_toolbox.cb_jp_title.isChecked():
             self.viewmodel.set_jp_title(data["jp_title"])
-                    #常试性分解tag然后写入
-            from utils.utils import text2tag_id_list
-            tag_id_list=text2tag_id_list(data.get("jp_title"))
-            logging.debug(tag_id_list)
-            if tag_id_list:
-                self.viewmodel.appendTags(tag_id_list)#加载
         if self.crawler_toolbox.cb_jp_story.isChecked():
             self.viewmodel.set_jp_story(data["jp_story"])
+        if self.crawler_toolbox.cb_tag.isChecked():
+            cur_tag_id=self.viewmodel.get_tag()
+            self.viewmodel.set_tag(list(set(cur_tag_id)|set(data["tag_id_list"])))
+
+    def update_cover(self,file_path:str):
+        '''更新封面'''
+        logging.info(f"更新封面:{file_path}")
+        if self.crawler_toolbox.cb_cover.isChecked():
+            self.viewmodel.set_cover(file_path)
+        
+
+    def on_set_directview(self,id:str):
+        from core.graph.graph_filter import EgoFilter
+        self.forceview.view.session.set_filter(EgoFilter(center_id=id, radius=2))
+        self.forceview.view.session.reload()
+        self.forceview.view.nodelayer.center_node_id=id
 
 #----------------------------------------------------------
 #                         UI样式修改
@@ -1120,20 +996,6 @@ class AddWorkTabPage3(LazyWidget):
                     self.btn_load_form_db.setDisabled(False)
                 elif state == ButtonState.DISABLED:
                     self.btn_load_form_db.setDisabled(True)
-            case 'temp_save':
-                if state == ButtonState.NORMAL:
-                    #logging.debug("解锁临时保存按钮")
-                    self.btn_save_to_ini.setDisabled(False)
-                elif state == ButtonState.DISABLED:
-                    #logging.debug("锁定临时保存按钮")
-                    self.btn_save_to_ini.setDisabled(True)
-            case 'temp_load':
-                if state == ButtonState.NORMAL:
-                    #logging.debug("解锁临时保存按钮")
-                    self.btn_load_from_ini.setDisabled(False)
-                elif state == ButtonState.DISABLED:
-                    #logging.debug("锁定临时保存按钮")
-                    self.btn_load_from_ini.setDisabled(True)
     
     @Slot(str, bool)
     def modify_state_change(self,key:str,value:bool):
@@ -1142,9 +1004,10 @@ class AddWorkTabPage3(LazyWidget):
         highlight_list = "QListView { border: 2px solid #FFA500; }"
         highlight_cover = "border: 2px dashed orange; font-size: 16px; padding: 0px;margin: 0px;"
         normal_cover = "border: 2px dashed grey; font-size: 16px; padding: 0px;margin: 0px;"
+        highlight_text2="QTextEdit { border: 2px solid #FFA500; }"
 
         mapping = [
-            ("story", self.input_story, highlight_line, ""),
+            ("story", self.input_story, highlight_text2, ""),
             ("director", self.input_director, highlight_line, ""),
             ("release_date", self.input_time, highlight_line, ""),
             ("cn_title", self.cn_title, highlight_text, ""),

@@ -8,4 +8,3 @@ mkdocs
 mkdocs-material
 mkdocstrings[python]
 opencv[python]
-PySideSix-Frameless-Window

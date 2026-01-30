@@ -751,3 +751,40 @@ def update_actor_name(cursor:Cursor,actor_name:list[dict],actor_id)->bool:
                 "UPDATE actor_name SET name_type = ?, cn = ?, jp = ?, en = ?, kana = ? WHERE actor_name_id = ?",
                 (name_type, name_data['cn'], name_data['jp'], name_data['en'], name_data['kana'], name_data['actor_name_id'])
             )
+def redirect_tag_121(tag_id0,tag_id1):
+    '''标签重定向,1对1
+    tag_id0是需要被删除的标签
+    tag_id1是被指向的标签
+    '''
+    conn=get_connection(DATABASE,False)
+    logging.info("数据库打开成功")
+    cursor=conn.cursor()
+    try:
+        # 1. 更新标签重定向指针
+        cursor.execute("UPDATE tag SET redirect_tag_id=? WHERE tag_id=?",(tag_id1,tag_id0))
+        # 2. 把旧的关联的tag也要重定向
+        cursor.execute("UPDATE tag SET redirect_tag_id=? WHERE redirect_tag_id=?",(tag_id1,tag_id0))
+        # 2. 迁移作品关联 (核心修改)
+        # 将所有关联了旧标签的作品，赋予新标签。如果有冲突(已存在)，则忽略
+        # 2. 先处理冲突：如果作品已经有了新标签，就直接删除旧标签记录（因为不需要合并了）
+        cursor.execute("""
+            DELETE FROM work_tag_relation 
+            WHERE tag_id = ? 
+            AND work_id IN (
+                SELECT work_id FROM work_tag_relation WHERE tag_id = ?
+            )
+        """, (tag_id0, tag_id1))
+
+        # 3. 更新剩余记录：剩下的旧标签记录都可以安全地变更为新标签
+        cursor.execute("UPDATE work_tag_relation SET tag_id = ? WHERE tag_id = ?", (tag_id1, tag_id0))
+        conn.commit()
+        logging.info("更新成功")
+        print("更新成功")
+        return True
+    except Exception as e:
+        conn.rollback()
+        logging.info(f"更新标签数据失败{e}")
+        return False
+    finally:
+        cursor.close()
+        conn.close()

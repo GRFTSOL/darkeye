@@ -134,9 +134,9 @@ class WorkPage(LazyWidget):
         self.lazy_area = LazyScrollArea(column_width=220)
         self.lazy_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         #self.lazy_area.verticalScrollBar().valueChanged.connect(self.handle_scroll)
-
-        self.tagselector=TagSelector4()
-        self.tagselector.tag_receive_widget.setFixedWidth(84)
+        from ui.widgets.selectors.TagSelector5 import TagSelector5
+        self.tagselector=TagSelector5()
+        self.tagselector.left_view.setFixedWidth(84)
         self.tagselector.left_widget.setFixedWidth(108)
         self.hlayout=QHBoxLayout()#细分的layout
         self.hlayout.addWidget(self.tagselector,0)
@@ -248,11 +248,11 @@ class WorkPage(LazyWidget):
         if num is None:
             self.info.setText("没有查询到数据")
         else:
-            logging.debug(f"过滤总数:{num}")
+            #logging.debug(f"过滤总数:{num}")
             self.info.setText("过滤总数:"+str(num))
             
 
-    @timeit
+
     def load_data(self, page_index: int, page_size: int,count:bool=False)->tuple:
         """返回一个页面的 CoverCard 所需要的数据,这个是非常的快的，不消耗时间"""
         offset = page_index * page_size
@@ -434,7 +434,7 @@ HAVING COUNT(DISTINCT wtr2.tag_id) = ?
         if not count:
             query +=f"{order} LIMIT ? OFFSET ?"#最后拼这个
             params.extend([page_size, offset])
-        logging.debug(f"WorkPageExecute SQL\n{query}")
+        #logging.debug(f"WorkPageExecute SQL\n{query}")
         #logging.debug(f"{params}")
 
         with sqlite3.connect(f"file:{DATABASE}?mode=ro",uri=True) as conn:

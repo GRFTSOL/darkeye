@@ -19,5 +19,5 @@ from .CoverBrowser import CoverBrowser
 from .RecycleBinPage import RecycleBinPage
 from .ModifyActressPage import ModifyActressPage
 from .ModifyActorPage import ModifyActorPage
-from .ForceDirectPage import ForceDirectPage
 from .SettingPage import SettingPage
+from .ForceDirectPage import ForceDirectPage

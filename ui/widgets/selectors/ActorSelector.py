@@ -228,7 +228,7 @@ JOIN actor_name ON actor_name.actor_id=a.actor_id
         '''把接收器的部分全部移回去，回到初始状态'''
         self.search_box.setText(None)
         for item in self.receive_actor_items.copy():
-            logging.info(item.text())
+            #logging.info(item.text())
             self.receive_actor_items.remove(item)#危险操作注意
             item_copy=item.clone()
             self.choose_actor_all_items.insert(0,item_copy)

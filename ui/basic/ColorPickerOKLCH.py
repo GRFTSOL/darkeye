@@ -206,7 +206,7 @@ class OKLCHColorWheel(QWidget):
     def __init__(self,L,C,H):
         super().__init__()
         self.setMinimumSize(300, 300)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)# type: ignore[arg-type]
         #初始化
         self.oklchmodel=OKLCH()
         self.vm = ViewModel_Wheel(self.oklchmodel)
@@ -468,7 +468,7 @@ class OKLCHColorWheel(QWidget):
         #print("计算外圈图")
         size = self.outer_radius*2 # 预留足够空间
         image = QImage(size, size, QImage.Format.Format_ARGB32)
-        image.fill(Qt.transparent) # 背景透明
+        image.fill(Qt.transparent) # 背景透明# type: ignore[arg-type]
 
         painter = QPainter(image)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)

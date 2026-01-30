@@ -2,8 +2,15 @@
 import json,logging,os
 from config import USER_SHORTCUT_PATH
 
-
 class ShortcutRegistry:
+    '''
+    快捷键注册中心，单例模式，长周期
+    功能:
+    - 加载和保存用户自定义的快捷键配置
+    - 提供默认快捷键配置
+    - 支持添加、删除、修改快捷键
+    - 支持查询快捷键绑定的操作
+    '''
     _instance = None  # 存储单例引用
 
     def __new__(cls, *args, **kwargs):
@@ -66,3 +73,5 @@ class ShortcutRegistry:
         if action_id in self.user_shortcuts:
             del self.user_shortcuts[action_id]
             self.save_config()
+
+

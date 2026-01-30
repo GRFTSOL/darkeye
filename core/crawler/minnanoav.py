@@ -41,11 +41,10 @@ def analyse(resopnse)->dict:
     '''
     soup = BeautifulSoup(resopnse.text, 'html.parser')
 
-
     meta_tag = soup.find('meta', {'property': 'og:url'})
 
     if meta_tag:
-        url = meta_tag['content']
+        url = meta_tag.get('content', '')
         # 使用正则表达式提取数字
         match = re.search(r'actress(\d+)\.html', url)
         
@@ -72,19 +71,22 @@ def analyse(resopnse)->dict:
 
     full_img_src="https://www.minnano-av.com"+img_src
 
-    section = soup.find('section', class_=['main-column', 'details'])
+    section  = soup.find('section', id='main-section')
+    print(section)
     if section:
         h1 = section.find('h1')
-        jp_name = h1.contents[0].strip()  # <h1> 中最前面的部分是日文名
-        # 提取 <span> 中的文字
-        span_text = h1.find('span').text.strip()
+        if h1:
+            jp_name = h1.contents[0].strip()  # <h1> 中最前面的部分是日文名
+            # 提取 <span> 中的文字
+            span_text = h1.find('span').text.strip()
 
-        # 假名和英文名分开（用斜杠分隔）
-        kana, romaji = [s.strip() for s in span_text.split('/')]
+            # 假名和英文名分开（用斜杠分隔）
+            kana, romaji = [s.strip() for s in span_text.split('/')]
 
-        logging.info("日文名:%s", jp_name)
-        logging.info("假名:%s", kana)
-        logging.info("英文名:%s", romaji)
+            logging.info("日文名:%s", jp_name)
+            logging.info("假名:%s", kana)
+            logging.info("英文名:%s", romaji)
+        logging.warning("未找到姓名")
     else:
         logging.warning("未找到姓名")
 
@@ -108,7 +110,7 @@ def analyse(resopnse)->dict:
                 kana_, romaji_ = [s.strip() for s in mix.split('/')]
             alias={"jp":jp,"kana":kana_,"en":romaji_}
             aliaschain.append(alias)
-        logging.debug(aliaschain)
+        logging.info(aliaschain)
 
     #搜索出生年月
     birth_date=""
@@ -116,6 +118,7 @@ def analyse(resopnse)->dict:
     if label:
         # 找到它后面的第一个 <p> 标签
         birthdate = label.find_next('p')
+        logging.info(birthdate.text)
         match = re.search(r'(\d{4})年(\d{2})月(\d{2})日', birthdate.text)
         if match:
             year, month, day = match.groups()
@@ -280,7 +283,11 @@ def SearchActressInfo()->str:
             id=row['actress_id']
             logging.info("%s搜索女优信息：%s",str(id),name)
             url=url1+name+url2 #合成的url
-            response = requests.get(url, headers=headers)
+            try:
+                response = requests.get(url, headers=headers,timeout=10)
+            except requests.exceptions.RequestException as e:
+                logging.error(f"请求minnano-av {url} 时出错: {e}")
+                continue
 
             if response.status_code == 200:#判断请求成功
                 logging.info("--------------------请求成功--------------------")
@@ -292,7 +299,11 @@ def SearchActressInfo()->str:
                     urlB=choosehtml(response,name)
                     if urlB:
                         url=urlA+urlB
-                        response = requests.get(url, headers=headers)
+                        try:
+                            response = requests.get(url, headers=headers,timeout=10)
+                        except requests.exceptions.RequestException as e:
+                            logging.error(f"请求minnano-av {url} 时出错: {e}")
+                            continue
                         if response.status_code == 200:
                             logging.info("--------------------请求成功--------------------")
                             new_data=analyse(response)
@@ -368,9 +379,22 @@ def SearchSingleActressInfo(actress_id,name:str)->bool:
         url="https://www.minnano-av.com/actress"+str(minnano_url)+".html"
     else:#不存在缓存，或者说就就是新添加的
         url=url1+name+url2 #合成的url
+    logging.info(f"要爬的女优页面url:{url}")
 
-        
+    from config import TEMP_PATH
+    import os
     response = fetch_url(url=url, headers=headers,timeout=10)
+    
+    # 保存 response 到 temp 目录
+    if response and response.content:
+        temp_file = os.path.join(TEMP_PATH, "minnano_debug.html")
+        try:
+            with open(temp_file, "wb") as f:
+                f.write(response.content)
+            logging.info(f"已保存调试 HTML 到: {temp_file}")
+        except Exception as e:
+            logging.error(f"保存调试 HTML 失败: {e}")
+
     if not response:
         logging.warning("--------------------请求失败--------------------")
         return False

@@ -268,7 +268,7 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
             query +=f"{order} LIMIT ? OFFSET ?"#最后拼这个
             params.extend([page_size, offset])
 
-        logging.debug(f"ActressPage Execute SQL\n{query}")
+        #logging.debug(f"ActressPage Execute SQL\n{query}")
         with sqlite3.connect(f"file:{DATABASE}?mode=ro",uri=True) as conn:
             cursor = conn.cursor()
             if self.scope=="收藏库范围": attach_private_db(cursor)

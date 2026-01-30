@@ -117,3 +117,9 @@ class Work:
     def __str__(self) -> str:
         """字符串表示"""
         return f"Work({self.serial_number}: {self.cn_title or self.jp_title})"
+
+
+@dataclass
+class WorkInfo:
+    work: Work
+    studio_name: Optional[str] = None

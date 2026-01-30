@@ -32,7 +32,7 @@ class VerticalTextLayout:
         
     @staticmethod
     def replace_ellipsis(text: str) -> str:
-        """替换标点符号为竖排专用符号
+        """替换标点符号为竖排专用符号，这个还有其他的解决方法
         
         符合中文标点符号用法GB/T 15834-2011
         
@@ -64,8 +64,6 @@ class VerticalTextLayout:
             "》": "\uFE3E",  # 右书名号
             "〈": "\uFE3F",  # 左单书名号
             "〉": "\uFE40",  # 右单书名号
-            "'": "\uFE41",  # 左单引号
-            "'": "\uFE42",  # 右单引号
             "「": "\uFE41",  # 左单引号（替代）
             "」": "\uFE42",  # 右单引号（替代）
             "『": "\uFE43",  # 左双引号
@@ -78,21 +76,23 @@ class VerticalTextLayout:
         return text
 
     def split_text_blocks(self, text: str) -> List[Tuple[str, bool]]:
-        """把字符串分成 [(text, is_english), ...] 这样的块"""
+        """分词逻辑，把字符串分成 [(text, is_english), ...] 这样的块"""
         blocks = []
         buffer = ""
         is_english = None
 
         for ch in text:
-            if re.match(r"[A-Za-z0-9\-()]", ch):
-                # 当前是英文/数字
+            # 使用 ASCII 范围判断，包含空格、数字、英文标点等
+            # 这样 "Hello World." 会被视为一个完整的英文块
+            if ord(ch) < 128:
+                # 当前是英文/数字/ASCII符号
                 if is_english is False:  # 前一个是中文 → 先保存
                     blocks.append((buffer, False))
                     buffer = ""
                 buffer += ch
                 is_english = True
             else:
-                # 当前是中文/标点
+                # 当前是中文/全角标点
                 if is_english is True:  # 前一个是英文 → 先保存
                     blocks.append((buffer, True))
                     buffer = ""
@@ -131,7 +131,11 @@ class VerticalTextLayout:
                 if y + block_w + self.line_spacing > height and height > 0:
                     y = 0
                     x -= self.char_width + self.column_spacing
-                    if x < 0:
+                    # 只要还有哪怕一点点空间能显示出字的一部分（或者为了排版完整性），就不应该 break
+                    # 这里的判断可以宽松一点，比如 x + self.char_width > 0
+                    # 即使 x < 0，如果能显示一部分也是好的，或者交给绘制层的 clip 去处理
+                    # 但为了性能，如果完全不可见了（x + char_width <= 0），再 break
+                    if x + self.char_width <= 0:
                         break
 
                 # 计算文本框和旋转中心
@@ -152,7 +156,8 @@ class VerticalTextLayout:
                     if y + self.char_height > height and height > 0:
                         y = 0
                         x -= self.char_width + self.column_spacing
-                        if x < 0:
+                        # 同上，放宽截断条件
+                        if x + self.char_width <= 0:
                             break
 
                     rect = QRect(x, y, self.char_width, self.char_height)
@@ -207,6 +212,11 @@ class VerticalTextLayout:
 
         # 如果有高度约束，使用约束的高度
         if height > 0:
-            max_height = height
+            # 不要强行设为 height，而是取实际内容高度和限制高度的较小值
+            # 或者是只要内容不超过 height，就用内容高度；如果超过了，用 height（但这已经在布局循环中隐含了）
+            # 这里主要是为了 minimumSizeHint，如果不填满 height，应该返回实际高度
+            # 但如果是 SizeHint，通常返回"最合适的大小"，所以返回 max_height 即可
+            # 只有当需要强制填满时才用 height。通常 layout 不需要强制填满。
+            pass
 
         return QSize(total_width, max_height)

@@ -24,6 +24,8 @@ class CrawlerToolBox(QToolBox):
         self.cb_actress=QCheckBox("女优")
         self.cb_actor=QCheckBox("男优")
         self.btn_get_crawler=IconPushButton("arrow-down-to-line.svg",24,32)
+        #self.btn_cralwer_by_hand=QPushButton("手动爬虫")
+        self.cb_tag=QCheckBox("标签")
 
         self.cb_release_date.setChecked(True)
         self.cb_director.setChecked(True)
@@ -34,6 +36,7 @@ class CrawlerToolBox(QToolBox):
         self.cb_actress.setChecked(True)
         self.cb_actor.setChecked(True)
         self.cb_cover.setChecked(True)
+        self.cb_tag.setChecked(True)
 
         self.btn_get_crawler.setToolTip("主要更新男优，发布日期，导演")
         page1_layout.addWidget(self.cb_release_date, 0, 0)
@@ -48,8 +51,9 @@ class CrawlerToolBox(QToolBox):
         page1_layout.addWidget(self.cb_actress,       1, 2)
         page1_layout.addWidget(self.cb_actor,         2, 2)
 
+        page1_layout.addWidget(self.cb_tag,      3, 0)
         page1_layout.addWidget(self.btn_get_crawler,3,1)
-
+        #page1_layout.addWidget(self.btn_cralwer_by_hand,3,2)
         
 
         # 添加页面2

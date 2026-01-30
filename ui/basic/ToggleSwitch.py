@@ -6,7 +6,7 @@ from PySide6.QtGui import QPainter, QColor, QBrush
 class ToggleSwitch(QWidget):
     toggled = Signal(bool)  # 状态改变信号
 
-    def __init__(self, parent=None, width=50, height=28):
+    def __init__(self, parent=None, width=48, height=24):
         super().__init__(parent)
         self.setFixedSize(width, height)
         self._checked = False

@@ -21,12 +21,13 @@ class CoverDropWidget(QLabel):
     def __init__(self):
         super().__init__()
         self._aspect_ratio = 0.7 # 宽高比 
-        self.setMaximumHeight(500)
+        self.setMaximumHeight(400)
         self.setScaledContents(False)  # 关闭默认拉伸
         self.setAcceptDrops(True)  # 允许拖放
         self.setText("把JAV封面拖进来")
         self.setAlignment(Qt.AlignCenter)
-        self.setStyleSheet("border: 2px dashed gray; font-size: 16px; padding: 0px;margin: 0px;")
+        self.setObjectName("container")
+        self.setStyleSheet("#container{border: 2px dashed gray; font-size: 16px; padding: 0px;margin: 0px;}")
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) 
         self._original_pixmap = None  # 保存原始图像,这个是个QPixmap对象
         self._path=None #这个是核心，这是一个绝对的地址，可以是临时的，可以是正式数据库里的

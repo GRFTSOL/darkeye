@@ -439,7 +439,7 @@ def sort_dict_list_by_keys(data: list[dict], key_order: list[str]) -> list[dict]
 
 
 #视频相关
-@timeit
+
 def find_video(serial_number:str, video_paths:list[Path], video_extensions:list[str]=None)->list[Path]|None:
     '''在指定的视频路径列表中查找对应番号的视频文件
     如果找到则返回Path，否则返回None
@@ -532,9 +532,9 @@ def text2tag_id_list(text:str)->list:
 
         if match:
             for v in (value if isinstance(value,list) else [value]):
-                tag_id_list=get_tagid_by_keyword(v,match_hole_word=True)
-                if tag_id_list:
-                    tag_id_set |= set(tag_id_list)
+                tag_id = get_tagid_by_keyword(v, match_hole_word=True)
+                if tag_id is not None:
+                    tag_id_set.add(tag_id)
 
     return list(tag_id_set)
 

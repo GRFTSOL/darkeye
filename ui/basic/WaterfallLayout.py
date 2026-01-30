@@ -76,5 +76,7 @@ class WaterfallLayout(QLayout):
         parent = self.parentWidget()
         if parent:
             total_h = max(heights) + bottom
-            total_w = column_count * (self.column_width + spacing) - spacing + left + right
-            parent.setMinimumSize(QSize(total_w, total_h))
+            # total_w = column_count * (self.column_width + spacing) - spacing + left + right
+            # 修复：不要设置最小宽度，否则会导致宽度锁定无法变窄
+            # 只设置高度以支持垂直滚动，宽度由外部容器控制
+            parent.setMinimumHeight(total_h)

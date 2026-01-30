@@ -1,7 +1,7 @@
 import requests
 import sqlite3,logging
 from config import DATABASE
-from .SearchJavtxt import fetch_javtxt_movie_info
+from .javtxt import fetch_javtxt_movie_info
 import time
 import random
 from core.database.update import update_titlestory
@@ -10,7 +10,7 @@ def download_image(url, save_path)->tuple[bool,str]:
     '''下载图片'''
     try:
         # 发送 HTTP GET 请求
-        response = requests.get(url, stream=True)
+        response = requests.get(url, stream=True,timeout=10)
         response.raise_for_status()  # 检查请求是否成功
         
         # 以二进制写入模式打开文件

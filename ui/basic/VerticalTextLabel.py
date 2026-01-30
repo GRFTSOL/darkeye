@@ -13,6 +13,9 @@ class VerticalTextLabel(QWidget):
     破折，省略号，连接号位于居中，就是转了90度
     《》〈〉这种也对应转90
     单双引号，括号的的更改
+    排字的规则，包括分词算法
+    避头尾法则
+    动态计算每列的平均字数，使得各列高度尽可能一致。
     '''
     def __init__(self, text="", parent=None):
         super().__init__(parent)
@@ -65,7 +68,7 @@ class VerticalTextLabel(QWidget):
         with QPainter(self) as painter:
             pen = QPen(Qt.red, 2)
             painter.setPen(pen)
-            painter.drawRect(self.rect().adjusted(1, 1, -1, -1))  # 画个红色边框
+            #painter.drawRect(self.rect().adjusted(1, 1, -1, -1))  # 画个红色边框
 
             painter.setRenderHint(QPainter.TextAntialiasing)
             painter.setFont(self._font)
@@ -81,7 +84,13 @@ class VerticalTextLabel(QWidget):
                     painter.rotate(block.rotation)
                     # 计算文本位置，考虑基线
                     text_width = painter.fontMetrics().boundingRect(block.text).width()
-                    painter.drawText(-text_width/2, block.ascent/2, block.text)
+                    
+                    # 垂直居中修正：(ascent - descent) / 2
+                    # 原来的 block.ascent/2 是不准确的
+                    fm = painter.fontMetrics()
+                    baseline_offset = (fm.ascent() - fm.descent()) / 2
+                    
+                    painter.drawText(-text_width/2, baseline_offset, block.text)
                     painter.restore()
                 else:#中日文绘制
                     painter.drawText(block.rect, Qt.AlignCenter, block.text)

@@ -1,8 +1,8 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QToolButton, 
-    QSizePolicy, QScrollArea
+    QWidget, QVBoxLayout, QLabel, QToolButton,
+    QSizePolicy
 )
-from PySide6.QtCore import Qt, QPropertyAnimation, QSize, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIcon
 from pathlib import Path
 import sys
@@ -49,9 +49,9 @@ class CollapsibleSection(QWidget):
         # 内容区域
         self.content = QWidget()
         self.content_layout = QVBoxLayout(self.content)
-        self.content_layout.setContentsMargins(10, 0, 10, 10)
+        self.content_layout.setContentsMargins(10, 10, 10, 10)
         self.content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.content.setMaximumHeight(0)  # 初始收起
+        self.content.setVisible(False)
 
         # 主布局
         layout = QVBoxLayout(self)
@@ -60,26 +60,10 @@ class CollapsibleSection(QWidget):
         layout.addWidget(self.toggle_btn)
         layout.addWidget(self.content)
 
-        # 动画
-        self.animation = QPropertyAnimation(self.content, b"maximumHeight")
-        self.animation.setDuration(300)  # 动画时长 300ms
-
     def toggle_content(self, checked):
-        """展开/收起动画"""
         self._is_expanded = checked
-        
-        # 更新箭头方向
-
-        self.toggle_btn.setIcon(QIcon(str(ICONS_PATH/"arrow-down.svg")) if checked else QIcon(str(ICONS_PATH/"arrow-right.svg")) )
-
-        # 计算内容高度
-        content_height = self.content.sizeHint().height() if checked else 0
-
-        # 开始动画
-        self.animation.setStartValue(self.content.maximumHeight())
-        self.animation.setEndValue(content_height)
-        self.animation.start()
-
+        self.toggle_btn.setIcon(QIcon(str(ICONS_PATH/"arrow-down.svg")) if checked else QIcon(str(ICONS_PATH/"arrow-right.svg")))
+        self.content.setVisible(checked)
         self.toggled.emit(checked)
 
     def addWidget(self, widget):
@@ -95,6 +79,5 @@ class CollapsibleSection(QWidget):
         self.toggle_content(True)
 
     def collapse(self):
-        """强制收起"""
         self.toggle_btn.setChecked(False)
         self.toggle_content(False)

@@ -8,8 +8,8 @@ from utils.image import create_colored_icon,create_colored_icon_vector
 class IconPushButton(QPushButton):
     '''专门的只有icon的PushButton'''
 
-    def __init__(self,iconpath:str="arrow-up.png",iconsize=24,outsize=24,hoverable=True,color="#000000"):
-        super().__init__()
+    def __init__(self,iconpath:str="arrow-up.png",iconsize=24,outsize=24,hoverable=True,color="#000000",parent=None):
+        super().__init__(parent)
         if iconpath.endswith(".svg"):
             qicon=create_colored_icon_vector(str(ICONS_PATH / iconpath),color,iconsize,iconsize)
             self.setIcon(qicon)

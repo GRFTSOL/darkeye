@@ -266,8 +266,23 @@ class WorkInfo(QWidget):
 
     def set_info(self,info:dict):
         '''更新信息'''
-        self.title.setText(info["cn_title"])
-        self.story.setText(info["cn_story"])
+        if info["cn_title"] is not None:
+            if len(info["cn_title"])<=35:
+                titletext=info["cn_title"]
+            else:
+                titletext=info["cn_title"][:35]+"..."
+        else:
+            titletext=""
+        if info["cn_story"] is not None:
+            if len(info["cn_story"])<=120:
+                storytext=info["cn_story"]
+            else:
+                storytext=info["cn_story"][:120]+"..."
+        else:
+            storytext=""
+
+        self.title.setText(titletext)
+        self.story.setText(storytext)
         self.release_date.setTextDynamic(info["release_date"])
         self.serial_number.setTextDynamic(info["serial_number"])
         self.director.setTextDynamic(info["director"])
@@ -301,10 +316,13 @@ class WorkInfo(QWidget):
     @Slot()
     def on_modify_clicked(self):
         '''点击了修改按钮'''
-        from controller.GlobalSignalBus import global_signals
+        #from controller.GlobalSignalBus import global_signals
         if self._work_id is None:
             return
-        global_signals.modify_work_clicked.emit(self.serial_number.text().strip())
+        #global_signals.modify_work_clicked.emit(self.serial_number.text().strip())
+        serial_number=self.serial_number.text().strip()
+        from ui.navigation.router import Router
+        Router.instance().push("work_edit", serial_number=serial_number)
 
     @Slot()
     def show_video_menu(self):

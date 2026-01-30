@@ -77,6 +77,7 @@ class ModernScrollMenu(QMainWindow):
             title_label.setFixedWidth(100)
             title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #333;qproperty-alignment: 'AlignLeft | AlignTop';")
             sec_layout.addWidget(title_label)
+            sec_layout.addSpacing(100)
             sec_layout.addWidget(widget_instance)
             
             self.content_layout.addWidget(section_wrapper)

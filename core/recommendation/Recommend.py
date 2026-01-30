@@ -6,7 +6,6 @@ from config import DATABASE
 def randomRec()->list[dict]:
     '''读数据库的所有的片子，然后随机选7部，返回作品的基本数据的字典列表'''
 
-    
     query='''
     SELECT 
         work_id,serial_number,story,release_date,image_url,cn_title,cn_story 

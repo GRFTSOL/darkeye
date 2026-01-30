@@ -14,6 +14,7 @@ from controller import TaskManager
 from ui.basic import ToggleSwitch,MovableTableView,IconPushButton
 from core.database.query import get_actress_allname
 from ui.widgets import ActressAvatarDropWidget
+from server.bridge import ServerBridge
 
 class Model():
     '''纯放要显示数据的model'''
@@ -65,6 +66,9 @@ class ViewModel(QObject):
         self.model:Model = model
         self.msg:MessageBoxService=message_service
 
+        bridge = ServerBridge()
+        bridge.actressid_received.connect(self.set_minnano_id)
+
     def get_actress_id(self):
         return self.model._actress_id
     def set_actress_id(self,value:int):
@@ -87,7 +91,7 @@ class ViewModel(QObject):
         if self.model._cup != value:
             self.model._cup = value
             self.cup_Changed.emit(value)
-            logging.debug(f"cup changed to {value}")
+            #logging.debug(f"cup changed to {value}")
     cup = Property(str, get_cup, set_cup, notify=cup_Changed)
 
     def get_birthday(self):
@@ -147,7 +151,7 @@ class ViewModel(QObject):
     image_urlA = Property(str, get_image_urlA, set_image_urlA, notify=image_urlA_Changed)
 
     def get_actress_name(self):
-        logging.debug("读取actress_name数据")
+        #logging.debug("读取actress_name数据")
         return self.model._actress_name
     def set_actress_name(self, value:list[dict]):
         logging.debug("设置viewmodel里的actress_name")
@@ -218,7 +222,7 @@ class ViewModel(QObject):
     @Slot()
     def clawer_update(self):
         '''爬虫更新单个女优的数据，是直接更新，而不是写界面后提交'''
-        from core.crawler.SearchActressInfo import SearchSingleActressInfo
+        from core.crawler.minnanoav import SearchSingleActressInfo
         from core.crawler.Worker import Worker
 
         taskmanager=TaskManager.instance()
@@ -228,6 +232,39 @@ class ViewModel(QObject):
         worker=Worker(lambda:SearchSingleActressInfo(self.actress_id,self.actress_name[0]["jp"]))#传一个函数名进去，注意这里
         worker.signals.finished.connect(lambda result:self.on_result(result,self.actress_name[0]["jp"],task))
         QThreadPool.globalInstance().start(worker)
+
+
+    def on_navigate_result(self,result:bool,actressName:str):
+        if result:
+            self.msg.show_info("提示", f"已在浏览器打开搜索: {actressName}")
+        else:
+            self.msg.show_warning("警告", f"无法在浏览器打开搜索: {actressName}")
+
+
+
+
+    @Slot()
+    def clawer_update_hand(self):
+        '''调用浏览器的爬虫，然后在页面上指定是哪个女优，更新网站id后再调用更新'''
+        from core.crawler.Worker import Worker
+        import urllib.parse
+        
+        actress_name = self.actress_name[0]["jp"]
+
+        url = f"https://www.minnano-av.com/search_result.php?search_scope=actress&search_word={urllib.parse.quote(actress_name)}&search= Go"
+        from core.crawler.jump import send_navigate_request
+        worker = Worker(lambda:send_navigate_request(url))
+        worker.signals.finished.connect(lambda result:self.on_navigate_result(result,actress_name))
+        QThreadPool.globalInstance().start(worker)
+
+
+
+    def set_minnano_id(self,value:int):
+        '''将女优的minnano_id直接写入数据库'''
+        from core.database.update import update_actress_minnano_id
+        logging.info(f"设置女优{self.actress_id}的minnano_id为{value}")
+        update_actress_minnano_id(self.actress_id,value)
+
 
     @Slot(bool)
     def on_result(self,result:bool,actressName:str,task):#Qsignal回传信息
@@ -257,9 +294,12 @@ class ViewModel(QObject):
     @Slot()
     def show_actress(self):
         '''跳转到展示单个女优界面'''
-        from controller.GlobalSignalBus import global_signals
+        #from controller.GlobalSignalBus import global_signals
         logging.debug(f"准备跳转展示女优界面{self.get_actress_id()}")
-        global_signals.actress_clicked.emit(self.get_actress_id())
+        #global_signals.actress_clicked.emit(self.get_actress_id())
+        # 使用路由替代信号跳转
+        from ui.navigation.router import Router
+        Router.instance().push("actress", actress_id=self.get_actress_id())
 
 class ModifyActressPage(LazyWidget):
     '''
@@ -307,6 +347,7 @@ class ModifyActressPage(LazyWidget):
         self.need_update=ToggleSwitch(width=40,height=20)
         self.btn_commit=QPushButton("提交修改")
         self.btn_claw_update=QPushButton("爬虫直接更新")
+        self.btn_claw_update_hand=QPushButton("浏览器插件手动选择更新")
         #self.btn_printModel=QPushButton("打印数据")
         self.btn_minnano=QPushButton("minnano-av")
         self.smallwidget=QWidget()#放一些小按钮
@@ -326,6 +367,7 @@ class ModifyActressPage(LazyWidget):
         formlayout.addRow("需要更新",self.need_update)
         formlayout.addRow("",self.btn_commit)
         formlayout.addRow("",self.btn_claw_update)
+        formlayout.addRow("",self.btn_claw_update_hand)
         #formlayout.addRow("",self.btn_printModel)
         formlayout.addRow("",self.btn_minnano)
         formlayout.addRow("",self.smallwidget)
@@ -346,6 +388,7 @@ class ModifyActressPage(LazyWidget):
     
     def signal_connect(self):
         self.btn_claw_update.clicked.connect(self.vm.clawer_update)
+        self.btn_claw_update_hand.clicked.connect(self.vm.clawer_update_hand)
         #self.btn_printModel.clicked.connect(self.vm.print)
         self.btn_commit.clicked.connect(self.vm.submit)
         self.btn_minnano.clicked.connect(self.jump_minnano)

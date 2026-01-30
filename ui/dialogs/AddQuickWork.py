@@ -1,9 +1,13 @@
-from PySide6.QtWidgets import QPushButton,QLabel,QGridLayout,QDialog,QLineEdit
-from PySide6.QtCore import Slot,QThreadPool
+from anyio import sleep
+from PySide6.QtWidgets import (
+    QPushButton, QLabel, QGridLayout, QDialog, QLineEdit,
+    QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
+)
+from PySide6.QtCore import Slot, QThreadPool, Qt
 from PySide6.QtGui import QIcon
-from config import ICONS_PATH,WORKCOVER_PATH
-import logging,asyncio
-from controller import MessageBoxService,TaskManager
+from config import ICONS_PATH, WORKCOVER_PATH
+import logging, asyncio, re
+from controller import MessageBoxService, TaskManager
 from core.database.update import update_work_byhand_
 from core.crawler.download import download_image
 from core.crawler.Worker import Worker
@@ -11,223 +15,142 @@ from utils.utils import translate_text
 
 
 class AddQuickWork(QDialog):
-    #快速记录作品番号的窗口，能在局外响应
+    # 快速记录作品番号的窗口，能在局外响应
     def __init__(self):
         super().__init__()
         logging.info("----------快速记录作品番号窗口----------")
         self.setWindowTitle("快速记录作品番号(W)")
         self.setWindowIcon(QIcon(str(ICONS_PATH / "film.png")))
-        self.setFixedSize(200,100)
-        self.msg=MessageBoxService(self)
-        self._threads = []
+        self.setFixedSize(400, 500)
+        self.msg = MessageBoxService(self)
+
+        self.init_ui()
+
+    def init_ui(self):
+        # 1. 顶部工具栏
+        top_layout = QHBoxLayout()
+        self.btn_add = QPushButton("添加")
+        self.btn_del = QPushButton("删除")
+        self.btn_clean = QPushButton("去后缀")
         
-        self.label_serial_number = QLabel("番号：")
-        self.input_serial_number=QLineEdit()
-        self.input_serial_number.setPlaceholderText("例如：IPX-247")
+        self.btn_add.clicked.connect(self.add_row)
+        self.btn_del.clicked.connect(self.delete_rows)
+        self.btn_clean.clicked.connect(self.clean_suffix)
+        
+        top_layout.addWidget(self.btn_add)
+        top_layout.addWidget(self.btn_del)
+        top_layout.addWidget(self.btn_clean)
 
-
-        self.btn_commit=QPushButton("快速添加")
+        # 2. 中间列表区域
+        self.table = QTableWidget()
+        self.table.setColumnCount(2)
+        self.table.setHorizontalHeaderLabels(["选择", "番号"])
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        
+        # 3. 底部提交按钮
+        self.btn_commit = QPushButton("快速添加")
         self.btn_commit.clicked.connect(self.submit)
-        #self.btn_commit.setMaximumWidth(100)
+        self.btn_commit.setMinimumHeight(40)
 
-        layout=QGridLayout(self)
-        layout.addWidget(self.label_serial_number,0,0)
-        layout.addWidget(self.input_serial_number,0,1)
-        layout.addWidget(self.btn_commit,1,1)
+        # 总体布局
+        main_layout = QVBoxLayout(self)
+        main_layout.addLayout(top_layout)
+        main_layout.addWidget(self.table)
+        main_layout.addWidget(self.btn_commit)
+        
+        # 初始化添加一行
+        self.add_row()
+
+    def add_row(self):
+        """在表格末尾插入一个空行"""
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        
+        # 第一列：复选框
+        chk_item = QTableWidgetItem()
+        chk_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        chk_item.setCheckState(Qt.Checked)
+        self.table.setItem(row, 0, chk_item)
+        
+        # 第二列：文本输入
+        text_item = QTableWidgetItem("")
+        self.table.setItem(row, 1, text_item)
+        
+        # 自动聚焦到新行的文本列
+        self.table.editItem(text_item)
+        self.table.setCurrentItem(text_item)
+
+    def delete_rows(self):
+        """删除选中的行（高亮行）"""
+        # 获取所有选中的范围
+        selected_ranges = self.table.selectedRanges()
+        # 倒序删除，避免索引错乱
+        rows_to_delete = set()
+        for ranges in selected_ranges:
+            for row in range(ranges.topRow(), ranges.bottomRow() + 1):
+                rows_to_delete.add(row)
+        
+        for row in sorted(rows_to_delete, reverse=True):
+            self.table.removeRow(row)
+
+    def clean_suffix(self):
+        """去后缀：处理所有复选框选中的行"""
+        # 常见的需要去除的后缀正则，不区分大小写
+        suffix_pattern = re.compile(r'(-C|-h|_uncensored|ch|pl)$', re.IGNORECASE)
+        
+        for row in range(self.table.rowCount()):
+            chk_item = self.table.item(row, 0)
+            if chk_item and chk_item.checkState() == Qt.Checked:
+                text_item = self.table.item(row, 1)
+                if text_item:
+                    original_text = text_item.text().strip()
+                    # 正则替换
+                    new_text = suffix_pattern.sub('', original_text)
+                    if new_text != original_text:
+                        text_item.setText(new_text)
+
+    def load_serials(self, serial_list):
+        """加载番号列表到表格中"""
+        self.table.setRowCount(0)  # 清空现有行
+        for serial in serial_list:
+            row = self.table.rowCount()
+            self.table.insertRow(row)
+            
+            # 第一列：复选框
+            chk_item = QTableWidgetItem()
+            chk_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            chk_item.setCheckState(Qt.Checked)
+            self.table.setItem(row, 0, chk_item)
+            
+            # 第二列：文本输入
+            text_item = QTableWidgetItem(serial)
+            self.table.setItem(row, 1, text_item)
+
 
     def submit(self):
-        #获得基本数据
-        serialNumber = self.input_serial_number.text().strip()#去除前后的空格
-        from utils.utils import is_valid_serialnumber
-        if not is_valid_serialnumber(serialNumber):
-            if not self.msg.ask_yes_no("警告","输入的番号格式可能不正确，是否继续添加？"):
-                return
-        #检查该番号是否在数据库里
-        logging.debug("快速添加番号")
-        from core.database.insert import InsertNewWork
-        work_id=InsertNewWork(serialNumber)
-        if work_id:
-            self.msg.show_info("成功","录入新作品番号")
-            self.accept()
-            #尝试自动化的写入，能写的就写
-
-            #查找中英文标题信息写入
-            from core.crawler.SearchAvdanyuwiki import SearchInfoDanyukiwi
-            from core.crawler.SearchJavtxt import fetch_javtxt_movie_info
-
-
-            logging.info(f"查询的番号：{self.input_serial_number.text()}")
-            work1=Worker(lambda:fetch_javtxt_movie_info(self.input_serial_number.text()))#传一个函数名进去
-            work1.signals.finished.connect(lambda result:self._on_javtxt_result(result,work_id))
-            QThreadPool.globalInstance().start(work1)
-
-            work2=Worker(lambda:SearchInfoDanyukiwi(self.input_serial_number.text()))#传一个函数名进去
-            work2.signals.finished.connect(lambda result:self._on_danyuwiki_result(result,work_id))
-            QThreadPool.globalInstance().start(work2)
-
-
-        else:#work_id为None表示插入失败
-            self.msg.show_warning("失败","添加新作品失败")
-            self.reject()
-
-
-    @Slot(dict, int)
-    def _on_danyuwiki_result(self,data:dict,work_id:int):
-        '''返回的数据更新到面板上
-            data={
-        "director":director,
-        "release_date":date,
-        "actor_list":actor_list,
-        "actress_list":actress_list,  
-        "cover":img_src
-    }
-        '''
-        if data is None:
-            logging.warning("爬danyuwiki产生错误信息")
-            #这里通过missav下载封面
-            from core.database.query import get_workinfo_by_workid
-            logging.info("尝试使用missav的封面下载方式")
-            data=get_workinfo_by_workid(work_id)
-            serial_number=data.get("serial_number").lower()
-            dst_path = WORKCOVER_PATH / image_url#这个是个绝对地址
-            imageurl="https://fourhoi.com/"+serial_number+"/cover-n.jpg"#这个是misav的封面获取方式
-
-            worker1=Worker(lambda:download_image(imageurl,dst_path))#下载图片放后台线程
-            worker1.signals.finished.connect(lambda result:self._on_download_image1(result,work_id,image_url))#现在不需要回调了
-            QThreadPool.globalInstance().start(worker1)
+        """提交：收集所有复选框选中的番号"""
+        serial_list = []
+        for row in range(self.table.rowCount()):
+            chk_item = self.table.item(row, 0)
+            if chk_item and chk_item.checkState() == Qt.Checked:
+                text_item = self.table.item(row, 1)
+                if text_item:
+                    serial = text_item.text().strip()
+                    if serial:
+                        serial_list.append(serial)
+        
+        if not serial_list:
+            self.msg.show_warning("提示", "没有选中任何有效的番号")
             return
-        #写入封面url,导演，拍摄时间
-        update_work_byhand_(work_id,director=data.get("director"),release_date=data.get("release_date"),fcover_url=data.get("cover"))
 
-        #下载图片并写入
-
-        #这个要开全局访问才能下载图片
-
-        image_url=self.input_serial_number.text().strip().lower().replace('-', '') + 'pl.jpg'#默认的替换规则
-
-        dst_path = WORKCOVER_PATH / image_url#这个是个绝对地址
-        imageurl=data.get("cover")
-
-        worker2=Worker(lambda:download_image(imageurl,dst_path))#下载图片放后台线程
-        worker2.signals.finished.connect(lambda result:self._on_download_image(result,work_id,image_url))#现在不需要回调了
-        QThreadPool.globalInstance().start(worker2)
-
-        #直接写入女优
-        actress_list=data.get("actress_list",[])
-        from core.database.query import exist_actress
-        from core.database.insert import InsertNewActress
-        actress_ids=[]#存放女优id
-        for actress in actress_list:
-            #新的女优直接添加
-            id=exist_actress(actress)
-            if id is None:
-                #添加新女优
-                if InsertNewActress(actress,actress):
-                    logging.info("添加女优成功:%s",actress)
-                    id=exist_actress(actress)
-                    actress_ids.append(id)
-                    from controller.GlobalSignalBus import global_signals
-                    global_signals.actress_data_changed.emit()
-                    #这里要刷新女优选择器
-            else:
-                actress_ids.append(id)
-        update_work_byhand_(work_id,actress_ids=actress_ids)
-
-        #直接写入男优
-        actor_list=data.get("actor_list",[])
-        from core.database.query import exist_actor
-        from core.database.insert import InsertNewActor
-        actor_ids=[]#存放男优id
-        for actor in actor_list:
-            #新的男优直接添加
-            id=exist_actor(actor)
-            if id is None:
-                #添加新男优
-                if InsertNewActor(actor,actor):
-                    logging.info("添加男优成功:%s",actor)
-                    id=exist_actor(actor)
-                    actor_ids.append(id)
-                    #这里要刷新男优选择器，否则会出现无法加载的bug
-                    from controller.GlobalSignalBus import global_signals
-                    global_signals.actor_data_changed.emit()
-            else:
-                actor_ids.append(id)
-        update_work_byhand_(work_id,actor_ids=actor_ids)
-
-        if len(actor_list)==1 and len(actress_list)==1:
-            #目前这个有bug
-            #只有一个男优和一个女优，直接写入1V1的这个标签
-            logging.info("自动写入1V1标签")
-            from core.database.query import get_tagid_by_keyword
-            from core.database.insert import add_tag2work
-            tag_id_list=get_tagid_by_keyword("1V1",match_hole_word=True)
-            logging.debug("1V1标签id:%s",tag_id_list)
-            if add_tag2work(work_id,tag_ids=tag_id_list):
-                logging.info("写入1V1标签成功")
-
-    @Slot(tuple,int,str)
-    def _on_download_image(self,result:tuple,work_id:int,image_url:str):
-        '''下载图片的结果回调
-        这个复杂的回调需要后面修改
-        '''
-        success, msg = result
-        if success:
-            logging.info("封面图片下载成功")
-            #写入数据库
-            update_work_byhand_(work_id,image_url=image_url)#这个要在图片下载后写入,否则会出现无法更改图片后无法提交的bug
-        else:
-            logging.warning("封面图片下载失败:%s",msg)
-            from core.database.query import get_workinfo_by_workid
-            logging.info("尝试使用missav的封面下载方式")
-            data=get_workinfo_by_workid(work_id)
-            serial_number=data.get("serial_number").lower()
-            dst_path = WORKCOVER_PATH / image_url#这个是个绝对地址
-            imageurl="https://fourhoi.com/"+serial_number+"/cover-n.jpg"#这个是misav的封面获取方式
-            worker=Worker(lambda:download_image(imageurl,dst_path))#下载图片放后台线程
-            worker.signals.finished.connect(lambda result:self._on_download_image1(result,work_id,image_url))#现在不需要回调了
-            QThreadPool.globalInstance().start(worker)
-            
-            
-            #不写入数据库
-
-    @Slot(tuple,int,str)
-    def _on_download_image1(self,result:tuple,work_id:int,image_url:str):
-        '''下载图片的结果回调'''
-        success, msg = result
-        if success:
-            logging.info("封面图片下载成功")
-            #写入数据库
-            update_work_byhand_(work_id,image_url=image_url)#这个要在图片下载后写入,否则会出现无法更改图片后无法提交的bug
-        else:
-            logging.warning("封面图片下载失败:%s",msg)
-
-
-
-    @Slot(dict, int)
-    def _on_javtxt_result(self,data:dict,work_id:int):
-        '''返回的数据直写入数据库中'''
-        if data is None:
-            logging.warning("爬javtxt产生错误信息")
-            return
-        #写入中英文标题
-        if data.get("cn_title")=="":#这样会堵，需要放到后台线程，#测试SNIS-495
-            cn_title=asyncio.run(translate_text(data.get("jp_title")))
-        else:
-            cn_title=data.get("cn_title")
-
-        if data.get("cn_story")=="":
-            cn_story=asyncio.run(translate_text(data.get("jp_story")))
-        else:
-            cn_story=data.get("cn_story")
-
-        update_work_byhand_(work_id,cn_title=cn_title,jp_title=data.get("jp_title"),cn_story=cn_story,jp_story=data.get("jp_story"))
-
-        #常试性分解tag然后写入
-        from core.database.insert import add_tag2work
-        from utils.utils import text2tag_id_list
-        tag_id_list=text2tag_id_list(data.get("jp_title"))
-        if tag_id_list:
-            add_tag2work(work_id,tag_ids=tag_id_list)#直写入数据库
+        # 使用全局 CrawlerManager 启动后台任务
+        from core.crawler.CrawlerManager import crawler_manager2
+        crawler_manager2.start_crawl(serial_list)
+        
+        self.msg.show_info("提示", "已转入后台处理，您可以继续其他操作。")
+        self.accept()
 
 
 

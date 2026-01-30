@@ -6,7 +6,15 @@ from config import LOG_FILE
 
 # 创建 logger
 logger = logging.getLogger()#全局唯一
+logger.handlers.clear() # 先清空所有已存在的handler，防止重复输出
 logger.setLevel(logging.DEBUG)  # 可调节 DEBUG/INFO/WARNING/...
+
+# 屏蔽第三方库的debug日志
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("hpack").setLevel(logging.WARNING)
+logging.getLogger("asyncio").setLevel(logging.WARNING)
+logging.getLogger("atrace").setLevel(logging.WARNING)
 
 # 控制台输出
 console_handler = logging.StreamHandler()

@@ -10,6 +10,8 @@ import logging
 from ui.widgets.text.ClickableLabel import ClickableLabel
 from .CoverImage import CoverImage
 from utils.utils import replace_sensitive
+from ui.navigation.router import Router
+
 
 
 class CoverCard(QWidget):
@@ -81,7 +83,8 @@ class CoverCard(QWidget):
 
     def signal_connect(self):
         '''信号转接'''
-        self.image_label.jump_to_modify_work.connect(lambda:global_signals.modify_work_clicked.emit(self.serial_number))
+        self.image_label.jump_to_modify_work.connect(lambda:Router.instance().push("work_edit", serial_number=self.serial_number))
+        
         from controller.GlobalSignalBus import global_signals
         global_signals.green_mode_changed.connect(self._update_green_mode)
         global_signals.work_data_changed.connect(self._update_card)

@@ -104,15 +104,6 @@ class ManagementPage(QWidget):
 
 
 
-        # 事件连接
-        #btn_addAdress.clicked.connect(self.openAddActressDialog)
-        #btn_reNewAdress.clicked.connect(self.searchActressinfo)
-        #btn_addWork.clicked.connect(self.openAddQuickWorkDialog)
-        #btn_addMasturbate.clicked.connect(self.openAddMasturbationDialog)
-        #btn_addSex.clicked.connect(self.openAddMakeLoveDialog)
-        #btn_addGenitalAarousal.clicked.connect(self.openAddSexualArousalDialog)
-        #btn_addActor.clicked.connect(self.openAddActorDialog)
-
 
 
         # 右侧空白拉伸
