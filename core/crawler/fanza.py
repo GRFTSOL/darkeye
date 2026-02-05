@@ -9,7 +9,7 @@ import time
 from bs4 import BeautifulSoup
 
 
-from core.crawler.basic import Request
+
 from core.crawler.Worker import Worker
 from PySide6.QtCore import QThreadPool
 from server.bridge import bridge

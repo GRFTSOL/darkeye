@@ -24,7 +24,7 @@ pyinstaller --clean --noconfirm .\main.spec
 
 #手动删除一些不用的包
 Remove-Item -Path ".\dist\DarkEye\_internal\PySide6\opengl32sw.dll" -Force 
-Remove-Item -Path ".\dist\DarkEye\_internal\PySide6\Qt6OpenGL.dll" -Force 
+#Remove-Item -Path ".\dist\DarkEye\_internal\PySide6\Qt6OpenGL.dll" -Force 
 Remove-Item -Path ".\dist\DarkEye\_internal\PySide6\Qt6Pdf.dll" -Force
 Remove-Item -Path ".\dist\DarkEye\_internal\PySide6\Qt6QmlMeta.dll" -Force 
 Remove-Item -Path ".\dist\DarkEye\_internal\PySide6\Qt6Qml.dll" -Force 
@@ -34,7 +34,7 @@ Remove-Item -Path ".\dist\DarkEye\_internal\PySide6\Qt6Quick.dll" -Force
 Remove-Item -Path ".\dist\DarkEye\_internal\PySide6\Qt6Network.dll" -Force
 Remove-Item -Path ".\dist\DarkEye\_internal\PySide6\Qt6VirtualKeyboard.dll" -Force
 Remove-Item -Path ".\dist\DarkEye\_internal\PySide6\translations" -Force -Recurse
-Remove-Item -Path ".\dist\DarkEye\_internal\cv2" -Force -Recurse
+#Remove-Item -Path ".\dist\DarkEye\_internal\cv2" -Force -Recurse
 Write-Host "Build complete."
 # 3. 记录结束时间
 $endTime = Get-Date

@@ -8,12 +8,13 @@ def load_global_style():
     return style
 
 
-if __name__ == "__main__":
+def _run_main_app():
+    import sys
     # 初始化性能分析器（必须在log_config之前，因为log_config本身也需要时间）
     from core.utils.profiler import get_profiler
     profiler = get_profiler()
     profiler.checkpoint("程序启动")
-    
+
     # 导入日志配置（测量导入时间）
     profiler.measure_import("core.utils.log_config")
     from core.utils import log_config
@@ -21,69 +22,52 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     profiler.checkpoint("日志系统初始化")
 
+    # 启动本地API服务（异步）
+    profiler.measure_import("server")
+    from server import start_server
+    start_server()
+    profiler.checkpoint("API服务器线程启动")
+
+    # 1. 启动 Sim 进程 (耗时操作，尽早启动)
+    profiler.measure_import("core.graph.simulation_process_main")
+    from core.graph.simulation_process_main import get_global_simulation_process
+
+    with profiler.measure_execution("启动Sim进程", sync=True):
+        get_global_simulation_process()
+    profiler.checkpoint("Sim进程启动完成")
+
     # 仅导入必要的 GUI 启动组件（测量导入时间）
     profiler.measure_import("PySide6.QtWidgets")
     profiler.measure_import("PySide6.QtGui")
     from PySide6.QtWidgets import QApplication, QDialog, QSplashScreen
     from PySide6.QtGui import QPixmap
 
-    
     profiler.measure_import("config")
     from config import ICONS_PATH, is_first_lunch, set_first_luch
     profiler.checkpoint("Qt组件导入完成")
 
     # 创建应用和启动画面
     with profiler.measure_execution("创建QApplication", sync=True):
-        import sys
         app = QApplication(sys.argv)
     profiler.checkpoint("创建应用")
 
-    # 启动画面用 PNG 避免 SVG 解析耗时（约省 1s）
+    # 启动画面用 PNG 避免 SVG 解析耗时
     splash_icon = ICONS_PATH / "logo.png"
     if not splash_icon.exists():
         splash_icon = ICONS_PATH / "logo.svg"
     pixmap = QPixmap(str(splash_icon))
     profiler.checkpoint("加载图片")
-    
+
     with profiler.measure_execution("加载启动画面", sync=True):
         splash = QSplashScreen(pixmap)
         splash.setEnabled(False)
         splash.show()
         app.processEvents()
     profiler.checkpoint("启动画面显示")
-    
-    # 首次启动协议对话框
-    if is_first_lunch():
-        profiler.measure_import("ui.dialogs")
-        from ui.dialogs import TermsDialog
-        
-        with profiler.measure_execution("显示首次启动对话框", sync=True):
-            dialog = TermsDialog()
-            if dialog.exec() == QDialog.Accepted:  # type: ignore[arg-type]
-                set_first_luch(False)
-            else:
-                set_first_luch(True)
-                splash.close()
-                sys.exit(0)  # 拒绝则退出
-        profiler.checkpoint("首次启动对话框完成")
 
-    # 1. 启动 Sim 进程 (耗时操作，尽早启动)
-    splash.showMessage("Sim进程启动")
-    profiler.measure_import("core.graph.simulation_process_main")
-    from core.graph.simulation_process_main import get_global_simulation_process
-    
-    with profiler.measure_execution("启动Sim进程", sync=True):
-        get_global_simulation_process()
-    profiler.checkpoint("Sim进程启动完成")
+    # 首次启动协议对话框（已注释）
+    # if is_first_lunch(): ...
 
-    # 启动本地API服务（异步）
-    splash.showMessage("启动本地API服务")
-    profiler.measure_import("server")
-    from server import start_server
-    start_server()
-    profiler.checkpoint("API服务器线程启动")
-
-    
     # 数据库初始化（同步，阻塞主线程）
     splash.showMessage("数据库初始化")
     profiler.measure_import("core.database.init")
@@ -95,14 +79,11 @@ if __name__ == "__main__":
 
     with profiler.measure_execution("数据库初始化（全部）", sync=True):
         with profiler.measure_execution("init_private_db", sync=True):
-            init_private_db()  # 先判断有无私库
-        
+            init_private_db()
         with profiler.measure_execution("check_and_upgrade_private_db", sync=True):
-            check_and_upgrade_private_db()  # 考虑后台执行
-        
+            check_and_upgrade_private_db()
         with profiler.measure_execution("check_and_upgrade_public_db", sync=True):
             check_and_upgrade_public_db()
-        
         with profiler.measure_execution("init_database", sync=True):
             init_database(DATABASE, PRIVATE_DATABASE)
     profiler.checkpoint("数据库初始化完成")
@@ -111,10 +92,10 @@ if __name__ == "__main__":
     splash.showMessage("初始化图...")
     profiler.measure_import("core.graph.graph_manager")
     from core.graph.graph_manager import GraphManager
-    
+
     with profiler.measure_execution("GraphManager导入和实例化", sync=True):
         manager = GraphManager.instance()
-        manager.initialize()  # 这只是启动后台线程，不阻塞
+        manager.initialize()
     profiler.checkpoint("图初始化线程启动完成")
 
     # 样式表加载
@@ -127,10 +108,10 @@ if __name__ == "__main__":
     splash.showMessage("主窗口加载")
     profiler.measure_import("ui.main_window")
     from ui.main_window import MainWindow
-    
+
     with profiler.measure_execution("MainWindow构造", sync=True):
         window = MainWindow()
-    
+
     with profiler.measure_execution("MainWindow显示", sync=True):
         window.show()
         splash.finish(window)
@@ -138,6 +119,17 @@ if __name__ == "__main__":
 
     # 打印性能分析摘要
     profiler.print_summary()
-    
+
     logger.info("--------------------程序启动完成，进入事件循环--------------------")
     sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    # 打包后 multiprocessing 使用 spawn：子进程会重新执行本脚本，必须跳过 GUI 避免无限开窗
+    import multiprocessing
+    multiprocessing.freeze_support()
+    if multiprocessing.current_process().name == "ForceDirectSimulationProcess":
+        # 子进程：仅由 multiprocessing 引导执行 simulation worker，不跑主流程
+        pass
+    else:
+        _run_main_app()

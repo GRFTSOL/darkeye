@@ -16,7 +16,7 @@ a = Analysis(
     pathex=[project_path],
     binaries=[],
     datas=[
-        # 静态资源（icons、封面、演员图、数据库）
+        # 静态资源（icons、封面、演员图、数据库）#这里就只把公共数据库复制过去了
         ('resources/icons', 'resources/icons'),
         ('resources/public/workcovers', 'resources/public/workcovers'),
         ('resources/public/actressimages', 'resources/public/actressimages'),
@@ -82,7 +82,7 @@ a = Analysis(
         'numpy.f2py',
         'numpy.distutils',
         'numpy.doc',
-        'numpy.random',
+        #'numpy.random',
         'numpy.fft',
         'PIL.ImageShow',                                           #精简PIL
         'PIL.ImageTk',
@@ -122,14 +122,14 @@ a = Analysis(
         'pdb',
         'trace',
         # 构建和部署模块
-        'distutils',
+        #'distutils',
         'setuptools',
         'venv',
         'lib2to3',
         # 不常用的数据格式和工具
         'uu',
         'lzma',
-        'bz2',
+        #'bz2',
         'wsgiref',
         'xml.etree.cElementTree',
         # 特定环境的模块
@@ -156,7 +156,7 @@ exe = EXE(
     strip=False,
     upx=True,
     upx_exclude=['Qt6Core.dll', 'Qt6Gui.dll','Qt6Widgets.dll','Qt6Qml.dll','Qt6Quick.dll','Qt6Pdf.dll'],
-    console=False,  # 改为 True 可显示终端日志窗口
+    console=True,  # 改为 True 可显示终端日志窗口
     icon='resources/icons/logo.ico'
 )
 
