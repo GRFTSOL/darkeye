@@ -117,13 +117,13 @@ class WorkInfo(QWidget):
         self.title.setFixedHeight(550)
         self.title.setTextColor("#FFFFFF")
         self.title.setFont(QFont("Microsoft YaHei", 24))
-        self.title.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.title.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
         self.story=VerticalTextLabel()
         self.story.setFixedHeight(550)
         self.story.setTextColor("#FFFFFF")
         self.story.setFont(QFont("Microsoft YaHei", 12))
-        self.story.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.story.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
         self.serial_number_label=VLabel("番号",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         self.serial_number=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
@@ -143,7 +143,7 @@ class WorkInfo(QWidget):
 
         self.actress=QWidget()
         self.label=QWidget()
-        self.label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.actress.setFixedHeight(550)
         self.label.setFixedHeight(550)
         self.actress_layout=VFlowLayout(self.actress,spacing=5)#这个要改
@@ -179,20 +179,29 @@ class WorkInfo(QWidget):
         director_v_layout.addWidget(self.studio)
         director_v_layout.addStretch()
 
-        #最外侧拼装
-        mainlayout=QHBoxLayout(self)
-        mainlayout.setSpacing(5)
-        mainlayout.setContentsMargins(0,0,0,0)
+        # 内容行：所有列打包到一个容器，容器只占内容宽度，避免被拉宽产生列间空隙
+        content_row = QWidget(self)
+        content_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        content_row.setFixedHeight(550)
 
+        row_layout = QHBoxLayout(content_row)
+        row_layout.setSpacing(5)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.addStretch()  # 把整块内容压到右侧
+        row_layout.addLayout(tool_v_layout)
+        row_layout.addWidget(self.label)
+        row_layout.addWidget(self.actress)
+        row_layout.addLayout(director_v_layout)
+        row_layout.addWidget(self.story, 0, Qt.AlignLeft | Qt.AlignTop)
+        row_layout.addLayout(serialnumber_v_layout)
+        row_layout.addWidget(self.title, 0, Qt.AlignLeft | Qt.AlignTop)
+
+        # 最外侧：左侧弹性空间 + 内容行
+        mainlayout = QHBoxLayout(self)
+        mainlayout.setSpacing(0)
+        mainlayout.setContentsMargins(0, 0, 0, 0)
         mainlayout.addStretch()
-
-        mainlayout.addLayout(tool_v_layout)
-        mainlayout.addWidget(self.label)
-        mainlayout.addWidget(self.actress)
-        mainlayout.addLayout(director_v_layout)
-        mainlayout.addWidget(self.story, 0, Qt.AlignLeft|Qt.AlignTop)  # stretch改为0，让它根据内容决定宽度
-        mainlayout.addLayout(serialnumber_v_layout)
-        mainlayout.addWidget(self.title, 0, Qt.AlignLeft|Qt.AlignTop)
+        mainlayout.addWidget(content_row)
         
 
         self.signal_connect()

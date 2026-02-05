@@ -10,7 +10,6 @@ from core.database.query import get_serial_number
 from ui.widgets.text.CompleterLineEdit import CompleterLineEdit
 from controller import ShortcutRegistry
 from controller.ShortcutBindings import setup_mainwindow_actions
-from ui.widgets.Sidebar import Sidebar
 from ui.widgets.Sidebar2 import Sidebar2
 from ui.navigation.router import Router
 from ui.widgets.StatusBarNotification import TaskListWindow, StatusBarNotification

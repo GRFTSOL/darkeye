@@ -104,3 +104,50 @@
 
 # 待优化
 番号补全按需加载或分页
+[作品 1240]  [女优 312]  [代表作 186]  [近30天 +42] 知道数据库的规模
+最近看过的 5～10 部
+最近入库的作品
+最近新增的女优
+
+待处理事项：
+- 12 部作品没有封面
+- 8 部作品未绑定女优
+- 3 位女优没有代表作
+随机推荐一部
+
+首页可配置
+
+
+# 力导向图模拟与显示架构分析与修改建议
+
+## 1. 架构概览
+
+```mermaid
+sequenceDiagram
+  participant View as ForceGraphView
+  participant Controller as ForceGraphController
+  participant Client as SimulationClient
+  participant Pipe as Pipe
+  participant Worker as simulation_process_main
+  participant Sim as Simulation
+
+  View->>Controller: load_graph / 交互
+  Controller->>Controller: 创建 SharedMemory(pos)
+  Controller->>Client: send(cmd, view_id, shm_name, edges, params)
+  Client->>Pipe: send(msg)
+  Worker->>Pipe: recv()
+  Worker->>Worker: PhysicsState.from_compact(shared_pos)
+  Worker->>Sim: tick() 循环
+  Sim->>Sim: 力更新 vel，积分更新 pos（写共享内存）
+  Worker->>Pipe: send(tick / graph_ready)
+  Client->>Client: ReceiverThread recv -> _dispatch_message
+  Client->>Controller: callback(msg)
+  Controller->>View: frame_ready / graph_loaded
+  View->>View: NodeLayer 从 state.pos 读坐标并绘制
+```
+
+
+
+- **主进程**：`simulation_process_main.py` 负责启动子进程并返回 `Pipe` 的一端；`ForceGraphView` + `ForceGraphController` 负责建图、创建共享内存、发命令、收事件并驱动渲染。
+- **子进程**：`simulation_worker.py` 中的 `simulation_process_main(conn)` 循环：收命令（init/load/close/restart/set_*/set_dragging）、维护多 session（每 view_id 一个 `SimContext`）、对活跃 session 调用 `Simulation.tick()`，并通过共享内存更新 `pos`。
+- **共享数据**：仅位置 `pos (N,2) float32` 使用 `shared_memory.SharedMemory`；边与参数通过 Pipe 消息传递，Worker 内用 `PhysicsState`（pos 指向 shm.buf）做力学积分。

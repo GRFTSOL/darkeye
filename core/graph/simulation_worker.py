@@ -165,8 +165,7 @@ def manybody_block_kernel(pos, mass, vel, strength, alpha, cutoff2, block):
                     vel[i, 1] += fy
                     vel[j, 0] -= fx
                     vel[j, 1] -= fy
-                    vel[j, 0] -= fx
-                    vel[j, 1] -= fy
+
 
 def _warmup_manybody_block_kernel():
     pos = np.zeros((4, 2), dtype=np.float32)
@@ -206,7 +205,7 @@ class ManyBodyForce(Force):
                 40000.0,
                 256
             )
-        elif N<10000:#10000以下用并行算法
+        elif N < 10000:
             manybody_parallel_kernel(
                 self.state.pos,
                 self.state.mass,
@@ -215,8 +214,16 @@ class ManyBodyForce(Force):
                 alpha,
                 40000.0
             )
-        else:#四叉树加速
-            pass
+        else:
+            # 临时与 N<10000 相同，待实现 Barnes-Hut 四叉树后再切换
+            manybody_parallel_kernel(
+                self.state.pos,
+                self.state.mass,
+                self.state.vel,
+                self.strength,
+                alpha,
+                40000.0
+            )
 
 # ------------------------------
 # Simulation controller
@@ -400,13 +407,13 @@ def simulation_process_main(conn):
                 sim = Simulation(state)
                 params = msg.get("params", {})
                 many_strength = params.get("many_strength", 10.0)
-                link_k = params.get("link_k", 0.3)
+                link_strength = params.get("link_strength", params.get("link_k", 0.3))
                 link_distance = params.get("link_distance", 20.0)
                 center_strength = params.get("center_strength", 0.5)
 
                 many = ManyBodyForce(strength=many_strength, theta=0.6, mode="brute")
                 sim.add_force("manybody", many)
-                link = LinkForce(k=link_k, distance=link_distance)
+                link = LinkForce(k=link_strength, distance=link_distance)
                 sim.add_force("link", link)
                 center = CenterForce(0.0, 0.0, strength=center_strength)
                 sim.add_force("center", center)
@@ -418,11 +425,12 @@ def simulation_process_main(conn):
                 }
                 
                 ctx = SimContext(sim, shm, forces)
+                ctx.modify = (cmd == "little_load_graph")
                 sessions[view_id] = ctx
 
 
                 sim.start()
-                if cmd=="little_load_graph":
+                if cmd == "little_load_graph":
                     conn.send({"event": "modify_graph", "view_id": view_id})
                 else:
                     conn.send({"event": "graph_ready", "view_id": view_id})

@@ -85,7 +85,7 @@ class ReceiverThread(QThread):
             except (EOFError, OSError, BrokenPipeError):
                 break
             except Exception as e:
-                print(f"ReceiverThread error: {e}")
+                logging.warning("ReceiverThread error: %s", e)
                 time.sleep(0.1)
 
     def stop(self):
@@ -123,20 +123,31 @@ class SimulationClient(QObject):
             del self.listeners[view_id]
 
     def send(self, msg: dict):
+        conn = get_global_simulation_process()
         if self._is_backend_ready:
             try:
-                self.conn.send(msg)
+                conn.send(msg)
             except (BrokenPipeError, OSError):
-                pass
+                self._is_backend_ready = False
+                self._refresh_conn_and_receiver()
         else:
             self._msg_buffer.append(msg)
+
+    def _refresh_conn_and_receiver(self):
+        """进程重启后刷新 conn 并重启接收线程，以便从新管道收 system_ready。"""
+        self.receiver_thread.stop()
+        self.conn = get_global_simulation_process()
+        self.receiver_thread = ReceiverThread(self.conn)
+        self.receiver_thread.message_received.connect(self._dispatch_message)
+        self.receiver_thread.start()
 
     def _dispatch_message(self, msg: dict):
         """主线程槽函数：分发消息给对应的 View"""
         # 优先处理系统级消息
         if msg.get("event") == "system_ready":
-            print("收到后台就绪信号，开始发送缓冲消息...")
+            logging.info("SimulationClient: 收到后台就绪信号，开始发送缓冲消息")
             self._is_backend_ready = True
+            self.conn = get_global_simulation_process()
             for buffered_msg in self._msg_buffer:
                 try:
                     self.conn.send(buffered_msg)
@@ -236,7 +247,7 @@ class ForceGraphController(QObject):
         self._sim_active = False
         self._sim_params = {
             "many_strength": 10000.0,
-            "link_k": 0.3,
+            "link_strength": 0.3,
             "link_distance": 30.0,
             "center_strength": 0.01,
         }
@@ -365,6 +376,7 @@ class ForceGraphController(QObject):
     def shutdown(self):
         self.client.unregister(self.view_id)
         self.client.send({"cmd": "close_view", "view_id": self.view_id})
+        # Worker 同步处理 close_view 后会 close shm；主进程再 unlink，顺序可接受
         if self.state and self.state.shm:
             try: self.state.shm.close(); self.state.shm.unlink()
             except: pass
@@ -413,7 +425,7 @@ class ForceGraphController(QObject):
         if not changes or not self.state or self.state.G is None:
             return
 
-        print(f"Controller received {len(changes)} graph changes.")
+        logging.info(f"Controller received {len(changes)} graph changes.")
         
         # 1. 暂停模拟并同步位置，保留物理状态
         self.pause_simulation()
@@ -467,8 +479,8 @@ class ForceGraphController(QObject):
 
     def set_dragging(self, index, dragging):
         self.client.send({"cmd": "set_dragging", "view_id": self.view_id, "index": int(index), "dragging": dragging})
+        # 不在此处 restart，仅固定/释放节点，避免拖拽时重置 alpha 冷却
         if dragging: self.restart_simulation()
-
 
 class AsyncImageLoader(QObject):
     image_loaded = Signal()
