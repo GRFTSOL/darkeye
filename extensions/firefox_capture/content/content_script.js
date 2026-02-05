@@ -547,6 +547,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (element.dataset.darkeyeProcessed) return;
             
             const id = this.extractId(element);
+            console.log("DarkEye: 提取到ID:", id);
             if (!id) return;
 
             element.dataset.darkeyeProcessed = "true";
@@ -578,6 +579,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
                 if (response && response.results) {
                     Object.entries(response.results).forEach(([id, exists]) => {
+                        console.log("DarkEye:更新UI");
                         this.updateUI(id, exists);
                     });
                 }
@@ -606,7 +608,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 tag.textContent = "+ 收藏";
                 tag.title = "点击采集到本地";
                 
-                // Bind click event for capture
+                
                 tag.onclick = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -620,6 +622,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 element.style.position = 'relative';
             }
             element.appendChild(tag);
+            console.log("DarkEye: 注入标签:", tag);
         }
 
         async captureItem(tag, id, element) {
@@ -711,6 +714,7 @@ if (url.includes("javdb.com")) {
 // 3. 统一的生命周期管理（负责“择时”和“启动”）
 if (activeSniffer) {
     // 复用您现有的加载检查逻辑
+    console.log("DarkEye: 启动嗅探器");
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => activeSniffer.init());
     } else {

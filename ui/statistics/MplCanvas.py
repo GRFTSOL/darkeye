@@ -3,7 +3,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.cm as cm
 import logging
-logging.getLogger("matplotlib.font_manager").setLevel(logging.WARNING)
+
 from matplotlib import rcParams
 rcParams['font.family'] = 'SimHei'        # 设置全局字体为黑体
 rcParams['axes.unicode_minus'] = False    # 解决负号显示为方块的问题

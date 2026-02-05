@@ -2,12 +2,11 @@
 from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel,QSizePolicy,QVBoxLayout,QLineEdit,QComboBox,QScrollArea
 from PySide6.QtCore import Signal,QThreadPool,Slot,Qt,QTimer
 import sqlite3,logging
-from ui.widgets import CompleterLineEdit,CoverCard,TagSelector4
+from ui.widgets import CompleterLineEdit,CoverCard
 from ui.basic import LazyScrollArea,IconPushButton,HorizontalScrollArea,RotateButton,ShakeButton
 from config import DATABASE
 from core.database.query import get_actressname,getUniqueDirector,get_actorname,get_serial_number,get_maker_name
 from core.database.db_utils import attach_private_db,detach_private_db
-from utils.utils import timeit
 from ui.base import LazyWidget
 
 

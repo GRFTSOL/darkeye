@@ -3,15 +3,11 @@ from PySide6.QtWidgets import (
     QPushButton, QLabel, QGridLayout, QDialog, QLineEdit,
     QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
 )
-from PySide6.QtCore import Slot, QThreadPool, Qt
+from PySide6.QtCore import  Qt
 from PySide6.QtGui import QIcon
-from config import ICONS_PATH, WORKCOVER_PATH
+from config import ICONS_PATH
 import logging, asyncio, re
-from controller import MessageBoxService, TaskManager
-from core.database.update import update_work_byhand_
-from core.crawler.download import download_image
-from core.crawler.Worker import Worker
-from utils.utils import translate_text
+from controller import MessageBoxService
 
 
 class AddQuickWork(QDialog):
@@ -127,7 +123,6 @@ class AddQuickWork(QDialog):
             # 第二列：文本输入
             text_item = QTableWidgetItem(serial)
             self.table.setItem(row, 1, text_item)
-
 
     def submit(self):
         """提交：收集所有复选框选中的番号"""

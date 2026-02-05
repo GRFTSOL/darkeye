@@ -12,8 +12,7 @@
 import sys,numba,os
 from pathlib import Path
 import logging
-numba_logger = logging.getLogger('numba')
-numba_logger.setLevel(logging.INFO)  # 或 WARNING
+
 #----------------------------------------------------------
 root_dir = Path(__file__).resolve().parents[2]  # 上两级
 sys.path.insert(0, str(root_dir))

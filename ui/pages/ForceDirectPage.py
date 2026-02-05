@@ -1,20 +1,9 @@
-#个人女优详细的面板
-from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel, QVBoxLayout
-from PySide6.QtGui import QPixmap
-from PySide6.QtCore import Qt, Slot, QThreadPool
-from core.database.query import get_record_count_in_days, get_top_actress_by_masturbation_count
+
+from PySide6.QtWidgets import QLabel, QVBoxLayout
+from PySide6.QtCore import Qt
 import logging
-from ui.widgets import ActressCard
-from ui.basic.Effect import ShadowEffectMixin
 from ui.base import LazyWidget
-import numpy as np
-from controller.GlobalSignalBus import global_signals
-from core.crawler.Worker import Worker
-from ui.statistics.ForceGraphView import ForceViewControlWidget
 
-
-from core.graph.graph import generate_graph,generate_random_graph,generate_similar_graph
-from core.graph.graph_manager import GraphManager
 
 
 class ForceDirectPage(LazyWidget):
@@ -24,6 +13,9 @@ class ForceDirectPage(LazyWidget):
 
     def _lazy_load(self):
         logging.info("----------力导向图界面----------")
+
+        from ui.statistics.ForceGraphView import ForceViewControlWidget
+
 
         mainlayout = QVBoxLayout()
         self.setLayout(mainlayout)

@@ -1,21 +1,17 @@
 
-from PySide6.QtWidgets import QWidget,QVBoxLayout,QTabWidget
-from .PlotTabPage import PlotTabPage
-from .PersonalDataPage import PersonalDataPage
+from PySide6.QtWidgets import QVBoxLayout,QTabWidget
+from ui.base import LazyWidget
 
 
-class StatisticsPage(QWidget):
+class StatisticsPage(LazyWidget):
     def __init__(self):
         super().__init__()
-        '''
-        from ui.statistics.force_view_multi_processing import manybody_block_kernel
-        import numpy as np
-        pos = np.zeros((100, 2), np.float32)
-        mass = np.ones(100, np.float32)
-        vel = np.zeros_like(pos)
-        manybody_block_kernel(pos, mass, vel, 1.0, 1.0, 1e4, 32)
+
+    def _lazy_load(self):
+        # 懒加载导入
+        from .PlotTabPage import PlotTabPage
+        from .PersonalDataPage import PersonalDataPage
         
-        '''
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
         

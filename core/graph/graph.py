@@ -2,8 +2,6 @@
 import math,random
 import networkx as nx
 
-import numpy as np
-from config import ACTRESSIMAGES_PATH,WORKCOVER_PATH
 
 def generate_random_connections(mean: float) -> int:
     """生成符合泊松分布的连接数量（用指数分布近似）"""
@@ -12,6 +10,7 @@ def generate_random_connections(mean: float) -> int:
 
 def generate_random_graph(node_number=200, mean=1)-> nx.Graph:
     """生成随机图"""
+    
     G = nx.Graph()
 
     # 添加节点
@@ -61,7 +60,6 @@ def generate_graph()->nx.Graph:
     cursor.close()
     conn.close()
 
-    print("开始生成图")
     #添加图
     G=nx.Graph()
             # 添加女优节点
@@ -88,7 +86,7 @@ def generate_graph()->nx.Graph:
 
 def generate_similar_graph()->nx.Graph:
     '''计算两两作品间的相似度，产生图，相似度高于阈值的连接'''
-
+    import numpy as np
     from scipy.sparse import lil_matrix
     from sklearn.metrics.pairwise import cosine_similarity
 

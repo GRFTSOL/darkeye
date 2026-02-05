@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QStackedWidget, QWidget
 from PySide6.QtCore import QObject
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable, Union
 from ui.widgets.Sidebar import Sidebar
 
 class Router(QObject):
@@ -27,11 +27,50 @@ class Router(QObject):
             raise Exception("Router has not been initialized yet!")
         return cls._instance
 
-    def register(self, route_name: str, page_widget: QWidget, sidebar_menu_id: Optional[str] = None):
+    def register(self, route_name: str, page_source: Union[QWidget, Callable[[], QWidget]], sidebar_menu_id: Optional[str] = None):
+        """
+        注册路由
+        :param route_name: 路由名称
+        :param page_source: 可以是 QWidget 实例，也可以是返回 QWidget 的工厂函数（用于懒加载）
+        :param sidebar_menu_id: 关联的侧边栏菜单ID
+        """
         self.routes[route_name] = {
-            "page": page_widget,
+            "source": page_source,
+            "instance": None,  # 懒加载时，实例化后会存放在这里
             "menu_id": sidebar_menu_id
         }
+        # 如果传入的是已经实例化的 Widget，直接存入 instance
+        if isinstance(page_source, QWidget):
+            self.routes[route_name]["instance"] = page_source
+            # 确保它已经在 stack 中 (如果外部没有 addWidget)
+            if self.stack.indexOf(page_source) == -1:
+                self.stack.addWidget(page_source)
+
+    def _get_page_instance(self, route_name: str) -> Optional[QWidget]:
+        """获取页面实例，如果是懒加载且未实例化，则执行实例化"""
+        if route_name not in self.routes:
+            return None
+            
+        route_info = self.routes[route_name]
+        if route_info["instance"] is None:
+            # 执行工厂函数
+            logging.info(f"Router: Lazy loading page '{route_name}'...")
+            factory = route_info["source"]
+            if callable(factory):
+                try:
+                    page_widget = factory()
+                    route_info["instance"] = page_widget
+                    self.stack.addWidget(page_widget)
+                except Exception as e:
+                    logging.error(f"Router: Failed to lazy load page '{route_name}': {e}")
+                    import traceback
+                    logging.error(traceback.format_exc())
+                    return None
+            else:
+                logging.error(f"Router: Invalid page source for '{route_name}'")
+                return None
+                
+        return route_info["instance"]
 
     def push(self, route_name: str, **kwargs):
         """
@@ -75,6 +114,12 @@ class Router(QObject):
             logging.info(f"Router: Forward to '{route_name}'")
             self._switch_to_view(route_name)
 
+    def get_current_route(self) -> Optional[str]:
+        """获取当前路由名称"""
+        if self.current_index >= 0 and self.current_index < len(self.history_stack):
+            return self.history_stack[self.current_index]
+        return None
+
     def _switch_to_view(self, route_name: str, **kwargs):
         """
         执行实际的视图切换逻辑（不操作历史栈）
@@ -82,8 +127,12 @@ class Router(QObject):
         if route_name not in self.routes:
             return
 
+        # 获取实例（可能触发懒加载）
+        page = self._get_page_instance(route_name)
+        if page is None:
+            return
+
         route_info = self.routes[route_name]
-        page = route_info["page"]
         menu_id = route_info["menu_id"]
 
         logging.info(f"Router: Switching view to '{route_name}' with params {kwargs}")

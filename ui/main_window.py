@@ -1,17 +1,9 @@
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QToolButton, QFrame, QStyle,QStatusBar,
-)
-from PySide6.QtCore import Qt, QPropertyAnimation, QSize, Signal, QEasingCurve
-
+from PySide6.QtWidgets import QWidget,QStackedWidget,QHBoxLayout, QVBoxLayout,QLabel,QStatusBar,QMainWindow
+from PySide6.QtCore import QTimer,Slot,QThreadPool
+from PySide6.QtGui import QIcon
 import os,psutil,logging
-from PySide6.QtWidgets import QWidget,QStackedWidget,QPushButton,QHBoxLayout, QVBoxLayout,QLineEdit,QLabel,QStatusBar,QMainWindow
-from PySide6.QtCore import Qt,Signal,QTimer,Slot,QSize,QThreadPool,QObject,QEvent,QRect
-from PySide6.QtGui import QIcon,QKeySequence,QShortcut,QPainter,QColor,QAction
+
 from config import ICONS_PATH,APP_VERSION,set_max_window
-from ui.pages import WorkPage,ManagementPage,StatisticsPage,ActressPage,AvPage,SingleActressPage,SingleWorkPage,ModifyActressPage,ActorPage,ModifyActorPage,SettingPage
-from ui.pages import CoverBrowser
-from core.recommendation.Recommend import recommendStart,randomRec
 from ui.basic import IconPushButton,ToggleSwitch,StateToggleButton
 from controller.GlobalSignalBus import global_signals
 from core.database.query import get_serial_number
@@ -23,10 +15,8 @@ from ui.navigation.router import Router
 from ui.widgets.StatusBarNotification import TaskListWindow, StatusBarNotification
 from controller.StatusManager import StatusManager
 from controller.TaskService import TaskManager
-from ui.pages.ForceDirectPage import ForceDirectPage
 from server.bridge import bridge
 
-from core.crawler.CrawlerManager import crawler_manager2
 
 class TopBar(QWidget):
     '''顶栏'''
@@ -76,7 +66,7 @@ class MainWindow(QMainWindow):
 
         #======================整体布局设置==========================
         self.init_ui()
-        self.stackPageConnectMenu()
+        # self.stackPageConnectMenu() # 已在 init_router 中实现
         self.init_router()
 
         self.registry = ShortcutRegistry()
@@ -126,29 +116,108 @@ class MainWindow(QMainWindow):
         '''配置路由'''
         self.router = Router(self.stack, self.sidebar)
         
-        # 注册所有页面及其关联的菜单ID
-        # 格式: register(route_name, page_widget, menu_id)
+        # 1. 定义工厂函数
+        def create_home():
+            from ui.pages.CoverBrowser import CoverBrowser
+            from core.recommendation.Recommend import randomRec
+            return CoverBrowser(randomRec())
+
+        _management_page = None
+        def create_management():
+            nonlocal _management_page
+            if _management_page is None:
+                from ui.pages.ManagementPage import ManagementPage
+                _management_page = ManagementPage()
+            return _management_page
+            
+        def create_statistics():
+            from ui.pages.StatisticsPage import StatisticsPage
+            return StatisticsPage()
+            
+        def create_work():
+            from ui.pages.WorkPage import WorkPage
+            return WorkPage()
+            
+        def create_actress():
+            from ui.pages.ActressPage import ActressPage
+            return ActressPage()
+            
+        def create_actor():
+            from ui.pages.ActorPage import ActorPage
+            return ActorPage()
+            
+        def create_av():
+            from ui.pages.AvPage import AvPage
+            return AvPage()
+            
+        def create_graph():
+            from ui.pages.ForceDirectPage import ForceDirectPage
+            return ForceDirectPage()
+            
+        def create_single_work():
+            from ui.pages.SingleWorkPage import SingleWorkPage
+            return SingleWorkPage()
+            
+        def create_single_actress():
+            from ui.pages.SingleActressPage import SingleActressPage
+            return SingleActressPage()
+            
+        def create_modify_actress():
+            from ui.pages.ModifyActressPage import ModifyActressPage
+            return ModifyActressPage()
+            
+        def create_modify_actor():
+            from ui.pages.ModifyActorPage import ModifyActorPage
+            return ModifyActorPage()
+            
+        def create_setting():
+            from ui.pages.SettingPage import SettingPage
+            return SettingPage()
+
+        # 2. 注册路由 (route_name, factory, menu_id)
+        # 侧边栏主菜单页面
+        self.router.register("home", create_home, "home")
+        self.router.register("database", create_management, "database")
+        self.router.register("chart", create_statistics, "chart")
+        self.router.register("mutiwork", create_work, "work") # 作品列表
+        self.router.register("actress", create_actress, "actress") # 女优列表
+        self.router.register("actor", create_actor, "actor") # 男优列表
+        self.router.register("av", create_av, "av")
+        self.router.register("graph", create_graph, "graph")
         
-        # 1. 侧边栏主菜单页面
-        self.router.register("home", self.page_home, "home")
-        self.router.register("database", self.page_management, "database")
-        self.router.register("chart", self.page_statistics, "chart")
-        self.router.register("mutiwork", self.page_work, "work") # 作品列表
-        self.router.register("actress", self.page_actress, "actress") # 女优列表
-        self.router.register("actor", self.page_actor, "actor") # 男优列表
-        self.router.register("av", self.page_av, "av")
-        self.router.register("graph", self.page_graph, "graph")
+        # 详情页/编辑页/其他页面
+        self.router.register("work", create_single_work, "work") # 作品详情
+        self.router.register("single_actress", create_single_actress, "actress") # 女优详情
+        self.router.register("actress_edit", create_modify_actress, "actress")
+        self.router.register("actor_edit", create_modify_actor, "actor")
+        self.router.register("work_edit", create_management, "database") # 注意：这里如果想跳到管理页的特定tab，router需要特殊处理
+        self.router.register("setting", create_setting, "")
         
-        # 2. 详情页/编辑页/其他页面
-        self.router.register("work", self.page_single_work, "work") # 作品详情，关联到 work 菜单
-        self.router.register("single_actress", self.page_single_actress, "actress") # 女优详情，关联到 actress 菜单
-        self.router.register("actress_edit", self.page_modify_actress, "actress")
-        self.router.register("actor_edit", self.page_modify_actor, "actor")
-        self.router.register("work_edit", self.page_management, "database") # 注意：这里如果想跳到管理页的特定tab，router需要特殊处理
-        self.router.register("setting", self.page_setting, "")
-        
-        # 初始化路由状态（默认进入首页）
-        self.router.push("home")
+        # 3. 建立菜单到路由的映射 (供 Sidebar 点击使用)
+        self._menu_to_route = {
+            "home": "home",
+            "database": "database",
+            "chart": "chart",
+            "work": "mutiwork",
+            "actress": "actress",
+            "actor": "actor",
+            "graph": "graph",
+            "av": "av"
+        }
+        self.sidebar.itemClicked.connect(self._on_sidebar_clicked)
+        '''
+        ### 什么时候有必要手动加单例？
+        判断标准非常简单，只有满足以下 任意一点 时才需要：
+
+    1. 多路由复用 ：像这次一样，你有多个不同的 route_name （如 view 和 edit ），但逻辑上它们应该显示同一个物理页面实例。
+    2. 全局资源独占 ：页面内部持有了必须全局唯一的资源（比如绑定了某个特定的 WebSocket 连接、硬件端口），绝对不允许被实例化两次。
+        '''
+        # 延后到 show 之后再加载首页，主窗口先显示框架，缩短“主窗口显示完成”耗时
+        QTimer.singleShot(0, lambda: self.router.push("home"))
+
+    def _on_sidebar_clicked(self, menu_id: str):
+        if menu_id in self._menu_to_route:
+            self.router.push(self._menu_to_route[menu_id])
 
     def init_status_bar(self) -> QStatusBar:
         status_bar = QStatusBar()
@@ -182,48 +251,7 @@ class MainWindow(QMainWindow):
         self.topbar.QLE.returnPressed.connect(lambda:Router.instance().push("mutiwork", serial_number=self.topbar.QLE.text().strip()))#路由跳转
         bridge.capture_received.connect(self.handle_capture_data)
         
-    def stackPageConnectMenu(self) -> None:
-        '''切换页面设置与菜单的连接'''
-        self.page_home=CoverBrowser(randomRec())
-        self.page_management=ManagementPage()
-        self.page_statistics=StatisticsPage()
-        self.page_work=WorkPage()
-        self.page_actress=ActressPage()
-        self.page_actor=ActorPage()
-        self.page_av=AvPage()
-        self.page_single_actress=SingleActressPage()
-        self.page_single_work=SingleWorkPage()
-        self.page_modify_actress=ModifyActressPage()
-        self.page_modify_actor=ModifyActorPage()
-        self.page_setting=SettingPage()
-        self.page_graph=ForceDirectPage()
-
-        self.stack.addWidget(self.page_home)
-        self.stack.addWidget(self.page_management)
-        self.stack.addWidget(self.page_statistics)
-        self.stack.addWidget(self.page_work)
-        self.stack.addWidget(self.page_actress)
-        self.stack.addWidget(self.page_actor)
-        self.stack.addWidget(self.page_av)
-        self.stack.addWidget(self.page_graph)
-
-        self.stack.addWidget(self.page_single_actress)
-        self.stack.addWidget(self.page_single_work)
-        self.stack.addWidget(self.page_modify_actress)
-        self.stack.addWidget(self.page_modify_actor)
-        self.stack.addWidget(self.page_setting)
-
-        self._menu_to_route = {
-            "home": "home",
-            "database": "database",
-            "chart": "chart",
-            "work": "mutiwork",
-            "actress": "actress",
-            "actor": "actor",
-            "graph":"graph",
-            "av": "av"
-        }
-        self.sidebar.itemClicked.connect(self._on_sidebar_clicked)
+    # stackPageConnectMenu has been removed and integrated into init_router
 
     def closeEvent(self, event) -> None:
         logging.info("--------------------程序关闭--------------------")
@@ -242,17 +270,25 @@ class MainWindow(QMainWindow):
     @Slot()
     def handle_capture(self) -> None:
         logging.debug("触发快捷键C")
-        cur_page=self.stack.currentWidget()
+        cur_route = self.router.get_current_route()
+        cur_page = self.stack.currentWidget()
+        if not cur_page: return
+        
         from utils.utils import capture_full
-        match cur_page:
-            case self.page_home:
-                capture_full(self.page_home)
-            case self.page_work:  
-                capture_full(self.page_work.lazy_area.widget())
-            case self.page_actress:
-                capture_full(self.page_actress.lazy_area.widget())
-            case self.page_single_actress:
-                capture_full(self.page_single_actress.single_actress_info)
+        
+        match cur_route:
+            case "home":
+                capture_full(cur_page)
+            case "mutiwork":  
+                # 需要确认 cur_page 是否有 lazy_area 属性，因为现在是动态加载的
+                if hasattr(cur_page, "lazy_area"):
+                    capture_full(cur_page.lazy_area.widget())
+            case "actress":
+                if hasattr(cur_page, "lazy_area"):
+                    capture_full(cur_page.lazy_area.widget())
+            case "single_actress":
+                if hasattr(cur_page, "single_actress_info"):
+                    capture_full(cur_page.single_actress_info)
 
     @Slot()
     def update_memory(self) -> None:

@@ -15,25 +15,28 @@ class WorkRepository:
     def get_by_id(self, work_id: int) -> Optional[Work]:
         query = """
         SELECT
-            work_id,
-            serial_number,
-            director,
-            story,
-            release_date,
-            image_url,
-            video_url,
-            cn_title,
-            jp_title,
-            cn_story,
-            jp_story,
-            create_time,
-            update_time,
-            is_deleted,
-            javtxt_id,
-            fcover_url,
-            on_dan
-        FROM work
-        WHERE work_id = ?
+            w.work_id,
+            w.serial_number,
+            w.director,
+            w.story,
+            w.release_date,
+            w.image_url,
+            w.video_url,
+            w.cn_title,
+            w.jp_title,
+            w.cn_story,
+            w.jp_story,
+            w.create_time,
+            w.update_time,
+            w.is_deleted,
+            w.javtxt_id,
+            w.fcover_url,
+            w.on_dan,
+            (SELECT GROUP_CONCAT(actress_id) FROM work_actress_relation WHERE work_id = w.work_id) as actress_ids,
+            (SELECT GROUP_CONCAT(actor_id) FROM work_actor_relation WHERE work_id = w.work_id) as actor_ids,
+            (SELECT GROUP_CONCAT(tag_id) FROM work_tag_relation WHERE work_id = w.work_id) as tag_ids
+        FROM work w
+        WHERE w.work_id = ?
         """
         with get_connection(DATABASE, True) as conn:
             cursor = conn.cursor()
@@ -41,32 +44,44 @@ class WorkRepository:
             row = cursor.fetchone()
             if not row:
                 return None
+            
             columns = [d[0] for d in cursor.description]
-        data = dict(zip(columns, row))
+            data = dict(zip(columns, row))
+            
+            # 处理 list 字段
+            for field in ['actress_ids', 'actor_ids', 'tag_ids']:
+                if data.get(field):
+                    data[field] = [int(x) for x in str(data[field]).split(',')]
+                else:
+                    data[field] = []
+                
         return Work.from_dict(data)
 
     def get_by_serial_number(self, serial_number: str) -> Optional[Work]:
         query = """
         SELECT
-            work_id,
-            serial_number,
-            director,
-            story,
-            release_date,
-            image_url,
-            video_url,
-            cn_title,
-            jp_title,
-            cn_story,
-            jp_story,
-            create_time,
-            update_time,
-            is_deleted,
-            javtxt_id,
-            fcover_url,
-            on_dan
-        FROM work
-        WHERE serial_number = ?
+            w.work_id,
+            w.serial_number,
+            w.director,
+            w.story,
+            w.release_date,
+            w.image_url,
+            w.video_url,
+            w.cn_title,
+            w.jp_title,
+            w.cn_story,
+            w.jp_story,
+            w.create_time,
+            w.update_time,
+            w.is_deleted,
+            w.javtxt_id,
+            w.fcover_url,
+            w.on_dan,
+            (SELECT GROUP_CONCAT(actress_id) FROM work_actress_relation WHERE work_id = w.work_id) as actress_ids,
+            (SELECT GROUP_CONCAT(actor_id) FROM work_actor_relation WHERE work_id = w.work_id) as actor_ids,
+            (SELECT GROUP_CONCAT(tag_id) FROM work_tag_relation WHERE work_id = w.work_id) as tag_ids
+        FROM work w
+        WHERE w.serial_number = ?
         """
         with get_connection(DATABASE, True) as conn:
             cursor = conn.cursor()
@@ -74,8 +89,16 @@ class WorkRepository:
             row = cursor.fetchone()
             if not row:
                 return None
+            
             columns = [d[0] for d in cursor.description]
-        data = dict(zip(columns, row))
+            data = dict(zip(columns, row))
+            
+            for field in ['actress_ids', 'actor_ids', 'tag_ids']:
+                if data.get(field):
+                    data[field] = [int(x) for x in str(data[field]).split(',')]
+                else:
+                    data[field] = []
+                
         return Work.from_dict(data)
 
     def create(self, work: Work) -> int:

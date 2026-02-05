@@ -18,7 +18,7 @@ class GraphViewSession(QObject):
         self._filter: GraphFilter = PassThroughFilter()
         self.manager = GraphManager.instance()
         self.manager.graph_diff_signal.connect(self._on_global_diff)
-
+        self.manager.initialization_finished.connect(self.reload)
         
     
     def set_filter(self, new_filter: GraphFilter):

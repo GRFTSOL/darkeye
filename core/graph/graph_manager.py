@@ -1,16 +1,13 @@
-import pytest,sys,os
-from pathlib import Path
-root_dir = Path(__file__).resolve().parents[2]  # 上两级
-sys.path.insert(0, str(root_dir))
+
+
 import logging
 import networkx as nx
-from typing import Optional, List, Dict
+from typing import Optional, Dict
 from threading import Lock
-from PySide6.QtCore import QObject,Signal
+from PySide6.QtCore import QObject, Signal, QTimer
 
-
-from core.database.connection import get_connection
 from config import DATABASE
+from core.database.connection import get_connection
 from core.graph.text_parser import parse_wikilinks
 from core.database.query import get_workid_by_serialnumber
 from core.graph.graph import generate_graph
@@ -72,6 +69,8 @@ class GraphManager(QObject):
     # Payload structure: List[Dict]
     # [{'op': 'add_node', 'id': 'w1', 'attr': {...}}, {'op': 'add_edge', 'u': 'w1', 'v': 'w2', 'attr': {...}}, ...]
     graph_diff_signal = Signal(list)
+    initialization_finished = Signal()
+
     '''
     这里维护总图G，所有节点和边都在G中，
     然后可以输出子图，node的结构为
@@ -92,6 +91,7 @@ class GraphManager(QObject):
             raise RuntimeError("GraphManager is a singleton class, use instance() method instead.")
         self.G: nx.Graph = nx.Graph()
         self._initialized = False
+        self._initializing = False
 
     @classmethod
     def instance(cls) -> 'GraphManager':
@@ -103,37 +103,63 @@ class GraphManager(QObject):
 
     def initialize(self):
         """
-        初始化图：从数据库加载所有作品及其关系，后续只是在程序运行时维护总图关系
+        初始化图：异步启动后台线程加载数据
         """
-        if self._initialized:
-            logging.info("GraphManager already initialized.")
+        if self._initialized or self._initializing:
+            logging.info("GraphManager已经初始化.")
             return
 
-        logging.info("Initializing GraphManager...")
+        logging.info("后台初始化 GraphManager")
+        self._initializing = True
         
-        # 1. 获取基图 (包含 Works, Actresses, 和 Work-Actress 关系)
-        # 基图中的节点ID格式：
-        # 作品: "w{work_id}"
-        # 女优: "a{actress_id}"
-        # 2.从story数据中解析[[xxx]]的引用关系，这种关系是作品之间的连接关系，代表两部作品之间要么是类似的作品，要么是上下部之间的关系。
-        # 3.解析作品tag之间的关系，发现连接
-        # 4.自然语言处理作品的文本，发现连接，后面两步很困难，先不做
-        # 5.图形处理发现作品封面的相似点，发现连接
+        import threading
+        thread = threading.Thread(target=self._initialize_impl, daemon=True)
+        thread.start()
 
+    def _initialize_impl(self):
+        """
+        后台初始化逻辑
+        """
         try:
-            self.G = generate_graph()
-        except Exception as e:
-            logging.error(f"Error generating base graph: {e}")
-            self.G = nx.Graph() # Fallback if generation fails
+            logging.info("开始初始化图")
+            
+            # 1. 获取基图 (包含 Works, Actresses, 和 Work-Actress 关系)
+            # 基图中的节点ID格式：
+            # 作品: "w{work_id}"
+            # 女优: "a{actress_id}"
+            # 2.从story数据中解析[[xxx]]的引用关系，这种关系是作品之间的连接关系，代表两部作品之间要么是类似的作品，要么是上下部之间的关系。
+            # 3.解析作品tag之间的关系，发现连接
+            # 4.自然语言处理作品的文本，发现连接，后面两步很困难，先不做
+            # 5.图形处理发现作品封面的相似点，发现连接
 
-        # 2. 从数据库加载 story 并解析 [[]] 引用，叠加到基图中
-        self._augment_with_story_relations()
-        
-        self._initialized = True
-        from controller.GlobalSignalBus import global_signals
-        # 连接到具体的信号 work_data_changed
-        global_signals.work_data_changed.connect(self.update_recent_changes)
-        logging.info(f"Graph initialized. Nodes: {self.G.number_of_nodes()}, Edges: {self.G.number_of_edges()}")
+            try:
+                self.G = generate_graph()
+            except Exception as e:
+                logging.error(f"Error generating base graph: {e}")
+                self.G = nx.Graph() # Fallback
+
+            # 2. 从数据库加载 story 并解析 [[]] 引用，叠加到基图中
+            self._augment_with_story_relations()
+            
+            self._initialized = True
+            
+            # 连接信号必须在主线程执行，否则会触发 "Cannot create children for a parent
+            # that is in a different thread"。使用 QTimer.singleShot 将 connect 推迟到主线程。
+            def _connect_signals_on_main_thread():
+                from controller.GlobalSignalBus import global_signals
+                global_signals.work_data_changed.connect(self.update_recent_changes)
+            QTimer.singleShot(0, _connect_signals_on_main_thread)
+            
+            logging.info(f"Graph initialized. Nodes: {self.G.number_of_nodes()}, Edges: {self.G.number_of_edges()}")
+            self.initialization_finished.emit()
+            
+        except Exception as e:
+            logging.error(f"GraphManager initialization failed: {e}")
+            # 即使失败也标记为完成，避免死锁等待，或者需要一个 failed 信号
+            self._initialized = True # 标记为已完成（虽然是失败的）以允许后续逻辑继续
+            self.initialization_finished.emit()
+        finally:
+            self._initializing = False
 
     def _augment_with_story_relations(self):
         """
@@ -325,6 +351,10 @@ class GraphManager(QObject):
 
 
 if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    root_dir = Path(__file__).resolve().parents[2]  # 上两级
+    sys.path.insert(0, str(root_dir))
     # 配置日志
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     

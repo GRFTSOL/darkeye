@@ -83,29 +83,6 @@ class CardFlowView(QGraphicsView):
         self.anim = QPropertyAnimation(self, b"offset")
         self.anim.setDuration(500)
         self.anim.setEasingCurve(QEasingCurve.OutBack) # 弹性回弹曲线
-        self.anim.finished.connect(self.normalize_offset) # 动画结束后归一化偏移量
-
-    def normalize_offset(self):
-        """将偏移量归一化到单个周期内，防止数值无限增大"""
-        if not self.cards:
-            return
-            
-        stride = self.card_width + self.spacing
-        total_length = len(self.cards) * stride
-        
-        # 将当前偏移量映射回 [-total_length, 0] 区间（或者其他等效区间）
-        # 保持视觉位置不变，但数值变小
-        normalized_offset = self._current_offset % total_length
-        
-        # 因为我们的布局逻辑是向左偏移为负，为了方便习惯，我们可以保持它是负数区间
-        # 或者其实正负无所谓，只要 update_layout 里的模运算正确即可
-        # 这里的模运算结果是正数 [0, total_length)，我们把它转为对应的负数形式以便理解，或者直接用正数
-        # 实际上 update_layout 里用了 (raw + total/2) % total，所以正负都行。
-        # 为了避免跳变，我们直接设置：
-        self._current_offset = normalized_offset - total_length 
-        
-        # 强制更新一次布局，确保画面一致
-        self.update_layout()
 
     # 定义 offset 属性供动画使用
     def get_offset(self):

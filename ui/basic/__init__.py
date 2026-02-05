@@ -19,7 +19,7 @@ from .ToggleSwitch   import ToggleSwitch
 from .MovableTableView import MovableTableView
 from .EditableTableView import EditableTableView
 from .HorizontalScrollArea import HorizontalScrollArea
-from ..widgets.StatusBarNotification import StatusBarNotification
+
 from .StateToggleButton import StateToggleButton
 from .RotateButton import RotateButton
 from .ShakeButton import ShakeButton
@@ -28,3 +28,6 @@ from .ModernScrollMenu import ModernScrollMenu
 
 from .path.MultiplePathManagement import MultiplePathManagement
 from .path.SinglePathManagement import SinglePathManagement
+
+
+from ..widgets.StatusBarNotification import StatusBarNotification
