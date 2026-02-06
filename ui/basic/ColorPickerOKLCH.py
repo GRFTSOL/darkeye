@@ -704,6 +704,7 @@ class ColorWheelSimple(QWidget):
     def setInitialColor(self,color):
         self.setOKLCH(color)
 
+
 class ColorWheelApp(QWidget):
     def __init__(self):
         super().__init__()

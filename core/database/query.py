@@ -71,6 +71,25 @@ def get_all_work_id()->list[int]:
         rows = cursor.fetchall()
         return [row[0] for row in rows]
 
+def get_work_ids_with_cover(limit:int=30)->list[int]:
+    '''获得有封面的work_id列表，按更新时间逆序取前limit条'''
+    query = '''
+    SELECT
+        work_id
+    FROM
+        work
+    WHERE
+        image_url IS NOT NULL AND image_url != ''
+    ORDER BY
+        update_time DESC
+    LIMIT ?
+    '''
+    with get_connection(DATABASE,True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query,(limit,))
+        rows = cursor.fetchall()
+        return [row[0] for row in rows]
+
 def get_all_work_addtime()->list[datetime]:
     '''获得所有的work添加的时间,返回时间的list'''
     query = '''

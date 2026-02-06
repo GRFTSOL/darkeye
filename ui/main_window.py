@@ -93,6 +93,7 @@ class MainWindow(QMainWindow):
              ("actress", "女优", "venus.svg"), 
              ("actor", "男优", "mars.svg"), 
              ("graph","关系图","share-2.svg"),
+             ("shelf", "书架", "scroll-text.svg"),
              ("av", "暗黑界", "scroll-text.svg"), 
          ]
         self.sidebar = Sidebar2(menu_defs=menu_defs)#侧边栏的按钮在这里改
@@ -122,6 +123,10 @@ class MainWindow(QMainWindow):
             from ui.pages.CoverBrowser import CoverBrowser
             from core.recommendation.Recommend import randomRec
             return CoverBrowser(randomRec())
+
+        def create_dashboard():
+            from ui.pages.DashboardPage import DashboardPage
+            return DashboardPage()
 
         _management_page = None
         def create_management():
@@ -155,6 +160,10 @@ class MainWindow(QMainWindow):
             from ui.pages.ForceDirectPage import ForceDirectPage
             return ForceDirectPage()
             
+        def create_shelf_demo():
+            from ui.pages.ShelfDemoPage import ShelfDemoPage
+            return ShelfDemoPage()
+            
         def create_single_work():
             from ui.pages.SingleWorkPage import SingleWorkPage
             return SingleWorkPage()
@@ -177,7 +186,9 @@ class MainWindow(QMainWindow):
 
         # 2. 注册路由 (route_name, factory, menu_id)
         # 侧边栏主菜单页面
-        self.router.register("home", create_home, "home")
+        # 保留旧首页作为隐藏入口，新的 Dashboard 绑定到侧边栏的“首页”按钮
+        self.router.register("home", create_home, None)
+        self.router.register("dashboard", create_dashboard, "home")
         self.router.register("database", create_management, "database")
         self.router.register("chart", create_statistics, "chart")
         self.router.register("mutiwork", create_work, "work") # 作品列表
@@ -187,6 +198,7 @@ class MainWindow(QMainWindow):
         self.router.register("graph", create_graph, "graph")
         
         # 详情页/编辑页/其他页面
+        self.router.register("shelf_demo", create_shelf_demo, None)
         self.router.register("work", create_single_work, "work") # 作品详情
         self.router.register("single_actress", create_single_actress, "actress") # 女优详情
         self.router.register("actress_edit", create_modify_actress, "actress")
@@ -196,13 +208,14 @@ class MainWindow(QMainWindow):
         
         # 3. 建立菜单到路由的映射 (供 Sidebar 点击使用)
         self._menu_to_route = {
-            "home": "home",
+            "home": "dashboard",
             "database": "database",
             "chart": "chart",
             "work": "mutiwork",
             "actress": "actress",
             "actor": "actor",
             "graph": "graph",
+            "shelf": "shelf_demo",
             "av": "av"
         }
         self.sidebar.itemClicked.connect(self._on_sidebar_clicked)
@@ -214,7 +227,7 @@ class MainWindow(QMainWindow):
     2. 全局资源独占 ：页面内部持有了必须全局唯一的资源（比如绑定了某个特定的 WebSocket 连接、硬件端口），绝对不允许被实例化两次。
         '''
         # 延后到 show 之后再加载首页，主窗口先显示框架，缩短“主窗口显示完成”耗时
-        QTimer.singleShot(0, lambda: self.router.push("home"))
+        QTimer.singleShot(0, lambda: self.router.push("dashboard"))
 
     def _on_sidebar_clicked(self, menu_id: str):
         if menu_id in self._menu_to_route:

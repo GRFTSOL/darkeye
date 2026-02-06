@@ -9,7 +9,7 @@ from PySide6.QtCore import QObject, Signal, QTimer
 from config import DATABASE
 from core.database.connection import get_connection
 from core.graph.text_parser import parse_wikilinks
-from core.database.query import get_workid_by_serialnumber
+from core.database.query import get_workid_by_serialnumber, findActressFromWorkID
 from core.graph.graph import generate_graph
 
 '''
@@ -256,22 +256,20 @@ class GraphManager(QObject):
 
     def update_recent_changes(self, limit: int = 3):
         """
-        增量更新：获取最近更新的 limit 条作品，重建它们的引用关系
-        通常在用户修改了作品信息（如 Story）后调用，实际上当添加新的作品时用这个也生效
+        增量更新：获取最近更新的 limit 条作品，重建引用关系与女优-作品关系
+        通常在用户修改了作品信息（如 Story）或添加新作品后调用
         """
         if not self._initialized:
             self.initialize()
             return
-        changes=[]
 
         query = """
         SELECT work_id, serial_number, story
         FROM work
-        WHERE story IS NOT NULL AND story != ''
         ORDER BY update_time DESC
         LIMIT ?
         """
-        rows=[]
+        rows = []
         try:
             with get_connection(DATABASE, True) as conn:
                 cursor = conn.cursor()
@@ -281,66 +279,106 @@ class GraphManager(QObject):
                 return
         except Exception as e:
             logging.error(f"Error updating recent changes: {e}")
+            return
 
+        serial_map = self._get_all_serial_number_map()
+        changes = []
 
+        logging.info(f"更新图根据最近 {len(rows)} 条作品的关系")
 
-        logging.info(f"更新图根据最近 {len(rows)} 三条作品的关系")
-            
-        changes = [] # 记录变更操作
-        
-        with self._lock: # 确保线程安全
+        with self._lock:
             for row in rows:
                 source_work_id = row[0]
                 source_serial = row[1]
                 story = row[2]
                 source_node_id = f"w{source_work_id}"
 
-                # 1. 节点检查与创建
+                # 1. 作品节点检查与创建
                 if not self.G.has_node(source_node_id):
                     self.G.add_node(source_node_id, label=source_serial, group='work')
                     logging.debug(f"添加新节点: {source_node_id}")
                     changes.append({
-                        'op': 'add_node', 
-                        'id': source_node_id, 
+                        'op': 'add_node',
+                        'id': source_node_id,
                         'attr': {'label': source_serial, 'group': 'work'}
                     })
 
-                # 2. 清理旧的引用边 (type='reference')
-                if self.G.has_node(source_node_id):
+                # 2. 引用边 (type='reference')：仅当有 story 时处理
+                if story:
                     out_edges = list(self.G.edges(source_node_id, data=True))
                     for u, v, data in out_edges:
                         if data.get('type') == 'reference':
                             self.G.remove_edge(u, v)
                             changes.append({'op': 'remove_edge', 'u': u, 'v': v})
-                            logging.debug(f"删除边: {u} -> {v}")
+                            logging.debug(f"删除引用边: {u} -> {v}")
 
-                # 3. 解析故事并添加新边
-                links = parse_wikilinks(story)
-                for target_serial, alias in links:
-                    target_work_id = get_workid_by_serialnumber(target_serial)
-                    
-                    if target_work_id:
-                        target_node_id = f"w{target_work_id}"
-                        
-                        if not self.G.has_node(target_node_id):
-                            self.G.add_node(target_node_id, label=target_serial, group='work')
-                            changes.append({
-                                'op': 'add_node', 
-                                'id': target_node_id, 
-                                'attr': {'label': target_serial, 'group': 'work'}
-                            })
-                            logging.debug(f"添加新节点: {target_node_id}")
-                        
-                        if source_node_id != target_node_id:
-                            if not self.G.has_edge(source_node_id, target_node_id):
+                    links = parse_wikilinks(story)
+                    for target_serial, alias in links:
+                        target_work_id = serial_map.get(target_serial)
+                        if target_work_id is None:
+                            target_work_id = get_workid_by_serialnumber(target_serial)
+
+                        if target_work_id:
+                            target_node_id = f"w{target_work_id}"
+
+                            if not self.G.has_node(target_node_id):
+                                self.G.add_node(target_node_id, label=target_serial, group='work')
+                                changes.append({
+                                    'op': 'add_node',
+                                    'id': target_node_id,
+                                    'attr': {'label': target_serial, 'group': 'work'}
+                                })
+                                logging.debug(f"添加新节点: {target_node_id}")
+
+                            if source_node_id != target_node_id and not self.G.has_edge(source_node_id, target_node_id):
                                 self.G.add_edge(source_node_id, target_node_id, type='reference')
                                 changes.append({
-                                    'op': 'add_edge', 
-                                    'u': source_node_id, 
-                                    'v': target_node_id, 
+                                    'op': 'add_edge',
+                                    'u': source_node_id,
+                                    'v': target_node_id,
                                     'attr': {'type': 'reference'}
                                 })
-                                logging.debug(f"更新边: {source_serial} -> {target_serial}")
+                                logging.debug(f"更新引用边: {source_serial} -> {target_serial}")
+
+                # 3. 女优-作品边：按 DB 同步
+                actress_list = findActressFromWorkID(source_work_id)
+                if actress_list is None:
+                    actress_list = []
+
+                work_edges = list(self.G.edges(source_node_id, data=True))
+                for u, v, data in work_edges:
+                    other = v if u == source_node_id else u
+                    if other.startswith('a'):
+                        self.G.remove_edge(u, v)
+                        changes.append({'op': 'remove_edge', 'u': u, 'v': v})
+                        logging.debug(f"删除女优边: {u} -> {v}")
+
+                for item in actress_list:
+                    aid = item.get('actress_id')
+                    name = item.get('actress_name') or ''
+                    actress_node_id = f"a{aid}"
+                    if not self.G.has_node(actress_node_id):
+                        self.G.add_node(
+                            actress_node_id,
+                            label=name,
+                            group='actress',
+                            color='#ff99cc'
+                        )
+                        changes.append({
+                            'op': 'add_node',
+                            'id': actress_node_id,
+                            'attr': {'label': name, 'group': 'actress', 'color': '#ff99cc'}
+                        })
+                        logging.debug(f"添加新女优节点: {actress_node_id}")
+                    if not self.G.has_edge(actress_node_id, source_node_id):
+                        self.G.add_edge(actress_node_id, source_node_id)
+                        changes.append({
+                            'op': 'add_edge',
+                            'u': actress_node_id,
+                            'v': source_node_id,
+                            'attr': {}
+                        })
+                        logging.debug(f"添加女优边: {actress_node_id} -> {source_node_id}")
 
         if changes:
             logging.info(f"图更新完成，共 {len(changes)} 个变更操作")
