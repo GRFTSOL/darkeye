@@ -21,6 +21,7 @@ from PySide6.QtCore import Qt
 from design import ThemeManager, ThemeId, get_builtin_icon
 from design.icon import BUILTIN_ICONS
 from ui.components import Button, IconPushButton, Label, Input, StateToggleButton, ToggleSwitch
+from ui.basic.FlowLayout import FlowLayout
 
 # 所有内置图标名（来自 resources/icons 内联）
 BUILTIN_ICON_NAMES = tuple(BUILTIN_ICONS.keys())
@@ -77,10 +78,8 @@ def main():
 
     layout.addWidget(Label("内置图标（来自 resources/icons 内联，颜色随主题）"))
     icon_size = 24
-    cols = 10
     icon_container = QWidget()
-    icon_grid = QGridLayout(icon_container)
-    icon_grid.setSpacing(4)
+    icon_flow = FlowLayout(icon_container, margin=0, spacing=4)
     icon_buttons: list[tuple[str, Button]] = []
 
     def refresh_icon_colors():
@@ -90,7 +89,6 @@ def main():
             btn.setIconSize(btn.iconSize())
 
     for i, name in enumerate(BUILTIN_ICON_NAMES):
-        row, col = i // cols, i % cols
         btn = Button(
             icon=get_builtin_icon(name, size=icon_size, color=theme_mgr.tokens().color_icon),
             icon_size=icon_size,
@@ -98,7 +96,7 @@ def main():
         btn.setToolTip(name)
         btn.setFixedSize(40, 40)
         icon_buttons.append((name, btn))
-        icon_grid.addWidget(btn, row, col)
+        icon_flow.addWidget(btn)
     scroll = QScrollArea()
     scroll.setWidget(icon_container)
     scroll.setWidgetResizable(True)
