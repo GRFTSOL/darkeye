@@ -203,6 +203,38 @@ class ActressName:
 
 
 @dataclass
+class WorkActressRelation:
+    """作品-女优关系模型，对应表 work_actress_relation。
+
+    表示某部作品中某位女优的出演信息，除关联 work_id/actress_id 外，
+    可携带角色（job）、年龄段（age）、人设（married）、状态（state）等属性。
+    """
+
+    work_id: Optional[int] = None
+    actress_id: Optional[int] = None
+    work_actress_relation_id: Optional[int] = None
+    job: Optional[str] = None   # 角色/职业，如职员、上司
+    age: Optional[str] = None   # 年龄段，如年轻
+    married: Optional[str] = None  # 人设，如人妻、女友
+    state: Optional[str] = None   # 状态，如主动
+
+    def to_dict(self) -> dict:
+        return {
+            "work_actress_relation_id": self.work_actress_relation_id,
+            "work_id": self.work_id,
+            "actress_id": self.actress_id,
+            "job": self.job,
+            "age": self.age,
+            "married": self.married,
+            "state": self.state,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "WorkActressRelation":
+        return cls(**data)
+
+
+@dataclass
 class Actor:
     """男优模型，对应表 actor"""
 
