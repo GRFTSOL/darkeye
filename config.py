@@ -88,8 +88,10 @@ def get_video_path()->list[Path]:
     这里返回的是Path列表
     '''
     key = "Paths/Videos"
-    path_value=settings.value(key)
-    path_list = [Path(p) for p in path_value.split(",")]
+    path_value = settings.value(key, "")
+    if not path_value:
+        return []
+    path_list = [Path(p) for p in str(path_value).split(",") if p.strip()]
     return path_list
 
 def update_video_path(new_paths:list[Path]):
