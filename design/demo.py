@@ -7,22 +7,23 @@ _root = Path(__file__).resolve().parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QFrame
+from PySide6.QtWidgets import (
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QScrollArea,
+    QGridLayout,
+    QFrame,
+)
 from PySide6.QtCore import Qt
 
 from design import ThemeManager, ThemeId, get_builtin_icon
+from design.icon import BUILTIN_ICONS
 from ui.components import Button, Label, Input
 
-BUILTIN_ICON_NAMES = (
-    "close",
-    "check",
-    "arrow_up",
-    "arrow_down",
-    "arrow_left",
-    "arrow_right",
-    "plus",
-    "minus",
-)
+# 所有内置图标名（来自 resources/icons 内联）
+BUILTIN_ICON_NAMES = tuple(BUILTIN_ICONS.keys())
 
 
 def main():
@@ -48,20 +49,43 @@ def main():
     btn_row.addWidget(Button("主要按钮", variant="primary"))
     layout.addLayout(btn_row)
 
-    layout.addWidget(Label("内置图标"))
-    icon_row = QHBoxLayout()
-    for name in BUILTIN_ICON_NAMES:
-        btn = Button(icon=get_builtin_icon(name, size=20), icon_size=20)
+    layout.addWidget(Label("内置图标（来自 resources/icons 内联，颜色随主题）"))
+    icon_size = 24
+    cols = 10
+    icon_container = QWidget()
+    icon_grid = QGridLayout(icon_container)
+    icon_grid.setSpacing(4)
+    icon_buttons: list[tuple[str, Button]] = []
+
+    def refresh_icon_colors():
+        color = theme_mgr.tokens().color_icon
+        for name, btn in icon_buttons:
+            btn.setIcon(get_builtin_icon(name, size=icon_size, color=color))
+            btn.setIconSize(btn.iconSize())
+
+    for i, name in enumerate(BUILTIN_ICON_NAMES):
+        row, col = i // cols, i % cols
+        btn = Button(
+            icon=get_builtin_icon(name, size=icon_size, color=theme_mgr.tokens().color_icon),
+            icon_size=icon_size,
+        )
         btn.setToolTip(name)
-        btn.setMinimumWidth(40)
-        icon_row.addWidget(btn)
-    layout.addLayout(icon_row)
+        btn.setFixedSize(40, 40)
+        icon_buttons.append((name, btn))
+        icon_grid.addWidget(btn, row, col)
+    scroll = QScrollArea()
+    scroll.setWidget(icon_container)
+    scroll.setWidgetResizable(True)
+    scroll.setFrameShape(QFrame.Shape.NoFrame)
+    scroll.setMaximumHeight(220)
+    layout.addWidget(scroll)
 
     def update_theme_buttons():
         for tid, btn in theme_buttons.items():
             btn.setProperty("variant", "primary" if theme_mgr.current() == tid else "default")
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+        refresh_icon_colors()
 
     def make_theme_switch(theme_id: ThemeId, label: str):
         def on_click():
