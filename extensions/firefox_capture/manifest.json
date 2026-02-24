@@ -3,25 +3,18 @@
   "name": "DarkEye Capture",
   "version": "1.1",
   "description": "Capture page content for DarkEye",
-  "permissions": [
-    "activeTab",
-    "tabs",
-    "http://127.0.0.1/*",
-    "http://localhost/*"
-  ],
-  "background": {
-    "scripts": ["background.js"]
-  },
+  "permissions": ["activeTab", "tabs", "http://127.0.0.1/*", "http://localhost/*"],
+  "background": {"scripts": ["background.js"]},
   "browser_action": {
     "default_icon": "icons/logo.png",
     "default_title": "Capture Page",
     "default_popup": "popup/popup.html"
   },
   "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content/content_script.js"],
-      "css": ["content/style.css"]
-    }
+    {"matches": ["*://javdb.com/*", "*://www.javdb.com/*", "*://www.javlibrary.com/*"], "js": ["content/popup_capture.js"]},
+    {"matches": ["*://www.javlibrary.com/*"], "js": ["content/sites/javlibrary.js"]},
+    {"matches": ["*://*.dmm.co.jp/*"], "js": ["content/sites/fanza.js"]},
+    {"matches": ["*://www.minnano-av.com/*"], "js": ["content/sites/minnano.js"]},
+    {"matches": ["*://javdb.com/*", "*://www.javdb.com/*", "*://www.javlibrary.com/*"], "js": ["content/sites/sniffer.js"], "css": ["content/style.css"]}
   ]
 }
