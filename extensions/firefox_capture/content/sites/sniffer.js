@@ -1,6 +1,7 @@
-// 作品番号探测器：JavDB / JavLibrary 列表页「已收录 / + 收藏」标签
+// 作品番号探测器：JavDB / JavLibrary / JavTxt 列表页「已收录 / + 收藏」标签
 (function() {
-    if (!window.location.href.startsWith("https://javdb.com") && !window.location.href.startsWith("https://www.javlibrary.com")) {
+    const href = window.location.href;
+    if (!href.includes("javdb.com") && !href.includes("javlibrary.com") && !href.includes("javtxt.com")) {
         return;
     }
 
@@ -13,6 +14,11 @@
     class SiteSniffer {
         constructor() {
             this.observer = null;
+        }
+
+        /** 标签位置：'top-left' | 'bottom-right'，子类可覆盖 */
+        getTagPosition() {
+            return 'top-left';
         }
 
         init() {
@@ -94,7 +100,7 @@
             const { element } = item;
 
             const tag = document.createElement("div");
-            tag.className = "darkeye-tag";
+            tag.className = "darkeye-tag darkeye-tag--" + this.getTagPosition();
             if (exists) {
                 tag.classList.add("exists");
                 tag.textContent = "已收录";
@@ -114,6 +120,16 @@
                 element.style.position = 'relative';
             }
             element.appendChild(tag);
+            // 若容器是 <a>（如 javtxt 的 a.work），在冒泡阶段拦截，只拦跳转、不拦标签自身的点击
+            if (element.tagName === 'A' && !element.dataset.darkeyeClickBound) {
+                element.dataset.darkeyeClickBound = '1';
+                element.addEventListener('click', (e) => {
+                    if (e.target.closest('.darkeye-tag')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }, false);
+            }
             console.log("DarkEye: 注入标签:", tag);
         }
 
@@ -182,12 +198,32 @@
         }
     }
 
+    class JavTxtSniffer extends SiteSniffer {
+        constructor() {
+            super();
+            this.itemSelector = "a.work";
+        }
+        getTagPosition() {
+            return 'bottom-right';
+        }
+        extractId(element) {
+            const workIdEl = element.querySelector(".work-id");
+            if (!workIdEl) return null;
+            // 番号在 .work-id 内，后面可能有 .work-actress 等，取第一个空白前的 token（如 SNOS-079）
+            const raw = workIdEl.textContent.trim();
+            const first = raw.split(/\s+/)[0];
+            return first || null;
+        }
+    }
+
     let activeSniffer = null;
     const url = window.location.href;
     if (url.includes("javdb.com")) {
         activeSniffer = new JavDBSniffer();
     } else if (url.includes("javlibrary.com")) {
         activeSniffer = new JavLibrarySniffer();
+    } else if (url.includes("javtxt.com")) {
+        activeSniffer = new JavTxtSniffer();
     }
 
     if (activeSniffer) {
