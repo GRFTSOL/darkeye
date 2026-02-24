@@ -40,6 +40,7 @@ function connectSSE() {
   }
 }
 const pendingCrawlers = new Map();
+let crawlerWindowId = null; // 专用爬虫窗口 ID
 
 function handleCommand(data) {//处理服务器发送来的命令
   if (data.type === "navigate") {
@@ -61,26 +62,51 @@ function handleCommand(data) {//处理服务器发送来的命令
   if (data.type==="crawler"){
     const web = data.web;
     const serial_number = data.serial_number;
+    // 爬虫统一在专用窗口后台打开，不影响当前浏览窗口
+    const addPendingInNewWindow = (url, type) => {
+      // 如果已有专用爬虫窗口，则在该窗口中新建后台标签页
+      if (crawlerWindowId !== null) {
+        browser.tabs.create({ windowId: crawlerWindowId, url: url, active: false })
+          .then((tab) => {
+            pendingCrawlers.set(tab.id, { type, serial: serial_number });
+          })
+          .catch((err) => {
+            console.error("DarkEye: 爬虫窗口可能已被关闭，重新创建", err);
+            crawlerWindowId = null;
+            addPendingInNewWindow(url, type);
+          });
+        return;
+      }
+
+      // 没有专用窗口时，新建一个尽量不抢前台、最小化的窗口，先固定一个百度搜索页
+      const crawlerHomeUrl = "https://www.baidu.com";
+      browser.windows.create({ url: crawlerHomeUrl, type: "normal", focused: false, state: "minimized" })
+        .then((win) => {
+          crawlerWindowId = win.id;
+          // 在该窗口中新建真正用于爬虫的后台标签页
+          return browser.tabs.create({ windowId: win.id, url: url, active: false });
+        })
+        .then((tab) => {
+          if (tab && tab.id !== undefined) {
+            pendingCrawlers.set(tab.id, { type, serial: serial_number });
+          }
+        })
+        .catch((err) => {
+          console.error("DarkEye: 创建爬虫窗口失败", err);
+        });
+    };
     if (web==="javlib"){//开始执行对javlibrary的爬虫,第一步就是跳转
-      url="https://www.javlibrary.com/cn/vl_searchbyid.php?keyword="+String(serial_number);
-      browser.tabs.create({ url: url ,active:true}).then((tab) => {
-          pendingCrawlers.set(tab.id, { type: "javlib", serial: serial_number });
-      });
+      const url = "https://www.javlibrary.com/cn/vl_searchbyid.php?keyword="+String(serial_number);
+      addPendingInNewWindow(url, "javlib");
     }
     if (web==="javdb"){//开始执行对javdb的爬虫,第一步就是跳转
-      url="https://www.javdb.com/search?keyword="+String(serial_number);
-      browser.tabs.create({ url: url }).then((tab) => {
-          pendingCrawlers.set(tab.id, { type: "javdb", serial: serial_number });
-      });
+      const url = "https://www.javdb.com/search?keyword="+String(serial_number);
+      addPendingInNewWindow(url, "javdb");
     }
     if (web==="fanza"){//开始执行对fanza的爬虫,第一步就是跳转
-      url="https://www.dmm.co.jp/mono/-/search/=/searchstr="+String(serial_number);
-      
-      browser.tabs.create({ url: url }).then((tab) => {
-          pendingCrawlers.set(tab.id, { type: "fanza", serial: serial_number });
-      }); 
+      const url = "https://www.dmm.co.jp/mono/-/search/=/searchstr="+String(serial_number);
+      addPendingInNewWindow(url, "fanza");
     }
-    
   }
 }
 
@@ -104,6 +130,13 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // 注意：如果我们采用 Content Script 自动接力模式，这里可能不需要删除，每次刷新时判断有无任务，有就处理，直接任务全部结束
     // 为了防止多次触发，通常还是删除，依赖页面内的 sessionStorage 自动接力
     pendingCrawlers.delete(tabId); 
+  }
+});
+
+// 如果专用爬虫窗口被用户关闭，清理其 ID
+browser.windows.onRemoved.addListener((windowId) => {
+  if (windowId === crawlerWindowId) {
+    crawlerWindowId = null;
   }
 });
 // Initial connect
