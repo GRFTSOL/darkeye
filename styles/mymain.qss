@@ -52,6 +52,16 @@ QPushButton#DesignButton[variant="primary"]:disabled {
     border-color: {{color_border}};
 }
 
+/* ----- StateToggleButton (objectName=DesignStateToggleButton) ----- */
+QPushButton#DesignStateToggleButton {
+    border: none;
+    background: transparent;
+    border-radius: {{radius_md}};
+}
+QPushButton#DesignStateToggleButton:hover {
+    background-color: {{color_bg_input}};
+}
+
 /* ----- Label (objectName=DesignLabel) ----- */
 QLabel#DesignLabel {
     color: {{color_text}};
@@ -83,4 +93,76 @@ QLineEdit#DesignInput:disabled {
 QLineEdit#DesignInput::placeholder {
     color: {{color_text_placeholder}};
     font-style: italic;
+}
+
+/* ----- ScrollBar (现代样式 + 颜色令牌，两端圆形胶囊) ----- */
+QScrollBar:vertical {
+    background-color: {{color_bg_page}};
+    width: 10px;
+    margin: 0;
+    border: none;
+    border-radius: 5px;  /* 轨道上下两端为半圆（宽度 10px 取半即 5px） */
+}
+
+QScrollBar::handle:vertical {
+    background-color: {{color_border}};
+    border-radius: 4px;  /* 滑块可见宽约 8px，取半得两端半圆 */
+    min-height: 30px;
+    margin: 2px 1px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: {{color_primary}};
+}
+
+QScrollBar::handle:vertical:pressed {
+    background-color: {{color_primary_hover}};
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+    background: none;
+    border: none;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+/* 水平滚动条（两端圆形） */
+QScrollBar:horizontal {
+    background-color: {{color_bg_page}};
+    height: 10px;
+    margin: 0;
+    border: none;
+    border-radius: 5px;  /* 轨道左右两端为半圆 */
+}
+
+QScrollBar::handle:horizontal {
+    background-color: {{color_border}};
+    border-radius: 4px;  /* 滑块可见高约 8px，取半得两端半圆 */
+    min-width: 30px;
+    margin: 1px 2px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: {{color_primary}};
+}
+
+QScrollBar::handle:horizontal:pressed {
+    background-color: {{color_primary_hover}};
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0;
+    background: none;
+    border: none;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: none;
 }

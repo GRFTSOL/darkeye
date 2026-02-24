@@ -20,7 +20,7 @@ from PySide6.QtCore import Qt
 
 from design import ThemeManager, ThemeId, get_builtin_icon
 from design.icon import BUILTIN_ICONS
-from ui.components import Button, Label, Input
+from ui.components import Button, Label, Input, StateToggleButton
 
 # 所有内置图标名（来自 resources/icons 内联）
 BUILTIN_ICON_NAMES = tuple(BUILTIN_ICONS.keys())
@@ -39,7 +39,6 @@ def main():
 
     layout.addWidget(Label("设计系统组件 Demo"))
     layout.addWidget(Input())
-    layout.addWidget(Input())
     input_placeholder = Input()
     input_placeholder.setPlaceholderText("占位符示例")
     layout.addWidget(input_placeholder)
@@ -48,6 +47,13 @@ def main():
     btn_row.addWidget(Button("默认按钮"))
     btn_row.addWidget(Button("主要按钮", variant="primary"))
     layout.addLayout(btn_row)
+
+    layout.addWidget(Label("状态切换按钮（令牌驱动，随主题变色）"))
+    toggle_row = QHBoxLayout()
+    toggle_row.addWidget(StateToggleButton(theme_manager=theme_mgr))
+    toggle_row.addWidget(StateToggleButton(state1_icon="eye", state2_icon="eye_off", theme_manager=theme_mgr))
+    toggle_row.addWidget(StateToggleButton(state1_icon="chevron_down", state2_icon="chevron_up", theme_manager=theme_mgr))
+    layout.addLayout(toggle_row)
 
     layout.addWidget(Label("内置图标（来自 resources/icons 内联，颜色随主题）"))
     icon_size = 24
