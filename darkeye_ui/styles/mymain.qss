@@ -110,6 +110,34 @@ QLineEdit#DesignInput::placeholder {
     font-style: italic;
 }
 
+/* ----- TextEdit (objectName=DesignTextEdit) ----- */
+QTextEdit#DesignTextEdit {
+    background-color: {{color_bg}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    padding: 6px 8px;
+    font-size: {{font_size_base}};
+    color: {{color_text}};
+    font-family: {{font_family_base}};
+    selection-background-color: {{color_primary}};
+}
+
+QTextEdit#DesignTextEdit:focus {
+    border: {{border_width}} solid {{color_border_focus}};
+    background-color: {{color_bg_input}};
+}
+
+QTextEdit#DesignTextEdit:disabled {
+    background-color: {{color_bg_input}};
+    color: {{color_text_disabled}};
+    border: {{border_width}} solid {{color_border}};
+}
+
+QTextEdit#DesignTextEdit::placeholder {
+    color: {{color_text_placeholder}};
+    font-style: italic;
+}
+
 /* ----- ScrollBar (现代样式 + 颜色令牌，两端圆形胶囊) ----- */
 QScrollBar:vertical {
     background-color: {{color_bg_page}};

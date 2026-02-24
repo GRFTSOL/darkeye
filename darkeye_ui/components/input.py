@@ -1,5 +1,5 @@
-# ui/components/input.py - 设计系统单行输入，样式由 mymain.qss + 令牌驱动
-from PySide6.QtWidgets import QLineEdit
+# ui/components/input.py - 设计系统单行/多行输入，样式由 mymain.qss + 令牌驱动
+from PySide6.QtWidgets import QLineEdit, QTextEdit
 
 
 class Input(QLineEdit):
@@ -8,3 +8,11 @@ class Input(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("DesignInput")
+
+
+class TextEdit(QTextEdit):
+    """可复用多行文本框，通过 objectName=DesignTextEdit 由 QSS 驱动样式。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("DesignTextEdit")

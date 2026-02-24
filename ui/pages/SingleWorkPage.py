@@ -4,10 +4,11 @@ from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor,QFont
 from PySide6.QtCore import Qt, QPointF,Signal,Slot
 import logging
 
-from ui.basic import VerticalTextLabel,VLabel,VFlowLayout,HeartLabel,IconPushButton
+from ui.basic import VLabel,VFlowLayout,HeartLabel,IconPushButton
 from config import WORKCOVER_PATH,ICONS_PATH
 from ui.widgets.text.VerticalTagLabel2 import VerticalActressLabel,VerticalTagLabel,VerticalActorLabel
 from ui.base import LazyWidget
+from darkeye_ui.components.vertical_text_label import VerticalTextLabel
 
 #渐变层纯绘图层
 class GradientOverlay(QWidget):

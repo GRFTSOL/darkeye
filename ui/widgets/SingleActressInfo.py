@@ -4,9 +4,10 @@ from PySide6.QtCore import Qt,Slot
 from PySide6.QtGui import QPainter,QPen
 from ui.statistics import RadarChartWidget
 import logging
-from ui.basic import HeartLabel,OctImage
+from ui.basic import HeartLabel
 from ui.widgets import ClickableLabel
 from ui.widgets.image.ActressAvatar import ActressAvatar
+from darkeye_ui.components.oct_image import OctImage
 
 class SingleActressInfo(QWidget):
     '''单女优的信息数据显示'''

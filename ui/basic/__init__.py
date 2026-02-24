@@ -1,14 +1,14 @@
 '''
 这个包里主要都是基础控件，可拿到其他项目里用，只有基础的东西,就是封装好的小组件，项目独有的放到widget里
 '''
-from .VerticalTextLabel import VerticalTextLabel
-from .ColorPicker import ColorPicker
+
+
 from darkeye_ui.layouts import WaterfallLayout
 from darkeye_ui.layouts import FlowLayout
 from .HeartRatingWidget import HeartRatingWidget
 from .VLabel import VLabel
 from .LazyScrollArea import LazyScrollArea
-from .OctImage import OctImage
+
 from .HeartLabel import HeartLabel
 from .Effect import ShadowEffectMixin
 from darkeye_ui.layouts import VFlowLayout

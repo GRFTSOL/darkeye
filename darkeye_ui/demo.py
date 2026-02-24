@@ -18,15 +18,18 @@ from PySide6.QtWidgets import (
     QComboBox,
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 
 from darkeye_ui.design import ThemeManager, ThemeId, get_builtin_icon
 from darkeye_ui.design.icon import BUILTIN_ICONS
 from darkeye_ui.components import (
     Button,
+    ColorPicker,
     IconPushButton,
     Input,
     Label,
     StateToggleButton,
+    TextEdit,
     ToggleSwitch,
     VerticalTextLabel,
 )
@@ -53,6 +56,12 @@ def main():
     input_placeholder.setPlaceholderText("占位符示例")
     layout.addWidget(input_placeholder)
 
+    layout.addWidget(Label("多行文本框 TextEdit"))
+    text_edit = TextEdit()
+    text_edit.setPlaceholderText("多行输入示例…")
+    text_edit.setMinimumHeight(80)
+    layout.addWidget(text_edit)
+
     btn_row = QHBoxLayout()
     btn_row.addWidget(Button("默认按钮"))
     btn_row.addWidget(Button("主要按钮", variant="primary"))
@@ -76,6 +85,16 @@ def main():
     switch_row.addWidget(switch_checked)
     switch_row.addWidget(Label("默认开"))
     layout.addLayout(switch_row)
+
+    layout.addWidget(Label("颜色选择器 ColorPicker（点击弹出色轮）"))
+    color_row = QHBoxLayout()
+    picker_default = ColorPicker()
+    picker_default.colorChanged.connect(lambda c: print("颜色已更改:", c))
+    color_row.addWidget(picker_default)
+    picker_pink = ColorPicker(QColor("#FF4081"))
+    picker_pink.colorChanged.connect(lambda c: print("颜色已更改:", c))
+    color_row.addWidget(picker_pink)
+    layout.addLayout(color_row)
 
     layout.addWidget(Label("图标按钮（令牌驱动，随主题变色）"))
     icon_btn_row = QHBoxLayout()

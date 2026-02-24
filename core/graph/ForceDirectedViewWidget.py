@@ -21,7 +21,8 @@ from cpp_bindings.forced_direct_view.PyForceView import ForceViewOpenGL
 from core.graph.graph_session import GraphViewSession
 from core.graph.graph_filter import PassThroughFilter, EgoFilter
 from core.graph.ForceViewSettingsPanel import ForceViewSettingsPanel
-from ui.basic import IconPushButton,StateToggleButton
+from ui.basic import IconPushButton
+from darkeye_ui.components.state_toggle_button import StateToggleButton
 from core.graph.ImageOverlayWidget import ImageOverlayWidget
 
 class ForceDirectedViewWidget(QWidget):
@@ -67,8 +68,9 @@ class ForceDirectedViewWidget(QWidget):
 
 
         #self.settings_button = IconPushButton(iconpath="settings.svg", iconsize=24,outsize=32,color="#5C5C5C", parent=self)
-        self.settings_button=StateToggleButton(state1_icon="settings.svg",state1_color="#5C5C5C",state2_icon="x.svg",state2_color="#5C5C5C",iconsize=24,outsize=32,hoverable=True,parent=self)
-
+        #self.settings_button=StateToggleButton(state1_icon="settings.svg",state1_color="#5C5C5C",state2_icon="x.svg",state2_color="#5C5C5C",iconsize=24,outsize=32,hoverable=True,parent=self)
+        self.settings_button=StateToggleButton(state1_icon="settings",state2_icon="x",icon_size=24,out_size=32,hoverable=True,parent=self)
+        
         self.panel = ForceViewSettingsPanel(self)
 
         self.settings_button.raise_()

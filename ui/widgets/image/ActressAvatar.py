@@ -2,7 +2,8 @@
 from PySide6.QtGui import QMouseEvent
 from PySide6.QtCore import Qt,Signal,QTimer
 import logging
-from ui.basic import OctImage 
+
+from darkeye_ui.components.oct_image import OctImage
 
 class ActressAvatar(OctImage):
     '''正八边形的头像框，加上发射跳转信号的功能'''

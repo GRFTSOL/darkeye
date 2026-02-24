@@ -44,7 +44,7 @@ from core.graph.simulation_process_main import get_global_simulation_process
 from core.graph.graph import generate_graph,generate_random_graph,generate_similar_graph
 from core.graph.graph_session import GraphViewSession
 from ui.basic.Collapse import CollapsibleSection
-
+from darkeye_ui.components.icon_push_button import IconPushButton
 
 def timeit(func):
     """装饰器：打印函数执行耗时"""
@@ -1651,8 +1651,8 @@ class ForceViewControlWidget(QWidget):
         self.view = ForceView(parent=self.container)
         self.container_layout.addWidget(self.view)
 
-        from ui.basic import IconPushButton
-        self.settings_button = IconPushButton(iconpath="settings.svg",color="#5C5C5C",parent=self)
+        
+        self.settings_button = IconPushButton(icon_name="settings",parent=self)
 
         self.panel = QWidget(self)
 

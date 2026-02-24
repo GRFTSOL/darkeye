@@ -6,7 +6,7 @@ from PySide6.QtSql import QSqlRelation,QSqlRelationalTableModel,QSqlTableModel,Q
 from ui.widgets.selectors.TagSelector5 import TagSelector5
 from ..widgets.text.CompleterLineEdit import CompleterLineEdit
 from core.database.query import get_tag_name,get_tag_type_dict,get_unique_tag_type
-from ..basic.ColorPicker import ColorPicker
+from darkeye_ui.components.color_picker import ColorPicker
 import logging
 from ui.base import LazyWidget
 from controller.MessageService import MessageBoxService,IMessageService
