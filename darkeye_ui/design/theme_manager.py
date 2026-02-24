@@ -36,6 +36,11 @@ class ThemeManager(QObject):
     def current(self) -> ThemeId:
         return self._current
 
+    def set_current(self, theme_id: ThemeId) -> None:
+        """仅更新当前主题 ID 并发出信号，不修改 QApplication 样式表。"""
+        self._current = theme_id
+        self.themeChanged.emit(theme_id)
+
     def tokens(self) -> ThemeTokens:
         return self._tokens_map[self._current]
 

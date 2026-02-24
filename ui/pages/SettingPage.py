@@ -17,6 +17,16 @@ import logging
 from config import BASE_DIR,DATABASE,INI_FILE,ICONS_PATH,PRIVATE_DATABASE,DATABASE_BACKUP_PATH,PRIVATE_DATABASE_BACKUP_PATH
 from controller.ShortcutRegistry import ShortcutRegistry
 from pathlib import Path
+from app_context import get_theme_manager
+from main import apply_theme
+from darkeye_ui.design import ThemeId
+
+# 主题下拉选项与 ThemeId 顺序一致
+THEME_OPTIONS = [
+    (ThemeId.LIGHT, "浅色"),
+    (ThemeId.DARK, "深色"),
+    (ThemeId.RED, "红色"),
+]
 
 class CommonPage(QWidget):
     def __init__(self):
@@ -24,12 +34,28 @@ class CommonPage(QWidget):
         main_layout = QFormLayout(self)
         self.textchoose=QComboBox()
         self.textsizechoose=QComboBox()
+        self.theme_choose = QComboBox()
+        for _, label in THEME_OPTIONS:
+            self.theme_choose.addItem(label)
+        theme_mgr = get_theme_manager()
+        if theme_mgr is not None:
+            try:
+                idx = next(i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid == theme_mgr.current())
+                self.theme_choose.setCurrentIndex(idx)
+            except StopIteration:
+                pass
+        self.theme_choose.currentIndexChanged.connect(self._on_theme_changed)
         self.GPU=QCheckBox("开启GPU加速")
         self.anim=QCheckBox("禁用动画效果")
+        main_layout.addRow("主题", self.theme_choose)
         main_layout.addRow("字体选择",self.textchoose)
         main_layout.addRow("字号选择",self.textsizechoose)
         main_layout.addRow(self.GPU)
         main_layout.addRow(self.anim)
+
+    def _on_theme_changed(self, index: int):
+        if 0 <= index < len(THEME_OPTIONS):
+            apply_theme(THEME_OPTIONS[index][0])
 
 
 class ShortcutSettingRow(QWidget):

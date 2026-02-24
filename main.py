@@ -1,11 +1,68 @@
+# ========== darkeye_ui 组件库使用说明 ==========
+# 1. 主题管理器：在任意页面通过 app_context.get_theme_manager() 获取，传给需要 theme_manager 的组件。
+# 2. 示例（在某个 QWidget 页面内）：
+#    from app_context import get_theme_manager
+#    from darkeye_ui import Button, Label, ToggleSwitch, StateToggleButton, IconPushButton
+#    theme_mgr = get_theme_manager()
+#    btn = Button("确定", theme_manager=theme_mgr)
+#    switch = ToggleSwitch(theme_manager=theme_mgr)
+# 3. 布局与图标：from darkeye_ui import FlowLayout, get_builtin_icon
+# 4. 主题切换：theme_mgr.set_theme(app, ThemeId.LIGHT/DARK/RED)，然后可重新合并样式或仅刷新依赖 token 的组件。
 
 
 def load_global_style():
-    """加载全局样式表"""
+    """加载全局样式表（项目 main.qss）"""
     from pathlib import Path
     from config import QSS_PATH
-    style = Path(QSS_PATH/"main.qss").read_text(encoding="utf-8")
+    style = Path(QSS_PATH / "main.qss").read_text(encoding="utf-8")
     return style
+
+
+def load_app_stylesheet(app):
+    """加载合并样式：项目 main.qss + darkeye_ui 组件库样式（mymain.qss + 当前主题 token）。并设置全局 ThemeManager。"""
+    from pathlib import Path
+    from darkeye_ui.design import ThemeManager, ThemeId
+    from darkeye_ui.design.loader import load_stylesheet
+    from app_context import set_theme_manager
+
+    main_css = load_global_style()
+    theme_mgr = ThemeManager()
+    # 先设定当前主题（用于 tokens），再合并样式：主样式在前，组件库样式在后以便覆盖
+    theme_mgr.set_theme(app, ThemeId.LIGHT)
+    set_theme_manager(theme_mgr)
+
+    darkeye_qss_path = Path(__file__).resolve().parent / "darkeye_ui" / "styles" / "mymain.qss"
+    if darkeye_qss_path.exists():
+        darkeye_css = load_stylesheet(darkeye_qss_path, theme_mgr.tokens())
+        app.setStyleSheet(main_css + "\n/* --- darkeye_ui 组件库 --- */\n" + darkeye_css)
+    else:
+        app.setStyleSheet(main_css)
+
+
+def apply_theme(theme_id):
+    """根据主题 ID 重新应用全局样式（main.qss + darkeye_ui mymain.qss），供设置页主题切换调用。"""
+    from pathlib import Path
+    from PySide6.QtWidgets import QApplication
+    from app_context import get_theme_manager
+    from darkeye_ui.design import ThemeId
+
+    app = QApplication.instance()
+    if app is None:
+        return
+    theme_mgr = get_theme_manager()
+    if theme_mgr is None:
+        return
+    if isinstance(theme_id, str):
+        theme_id = ThemeId(theme_id)
+    theme_mgr.set_current(theme_id)
+    main_css = load_global_style()
+    darkeye_qss_path = Path(__file__).resolve().parent / "darkeye_ui" / "styles" / "mymain.qss"
+    if darkeye_qss_path.exists():
+        from darkeye_ui.design.loader import load_stylesheet
+        darkeye_css = load_stylesheet(darkeye_qss_path, theme_mgr.tokens())
+        app.setStyleSheet(main_css + "\n/* --- darkeye_ui 组件库 --- */\n" + darkeye_css)
+    else:
+        app.setStyleSheet(main_css)
 
 def _run_main_app():
     
@@ -121,12 +178,11 @@ def _run_main_app():
         manager.initialize()
     profiler.checkpoint("图初始化线程启动完成")
 
-    # 样式表加载
-
+    # 样式表加载（项目 main.qss + darkeye_ui 组件库样式，并注册 ThemeManager）
     if show_splash and splash is not None:
         splash.showMessage("样式表加载")
     with profiler.measure_execution("加载样式表", sync=True):
-        app.setStyleSheet(load_global_style())
+        load_app_stylesheet(app)
     profiler.checkpoint("样式表加载完成")
 
     # 主窗口加载（可能是最重的操作）
