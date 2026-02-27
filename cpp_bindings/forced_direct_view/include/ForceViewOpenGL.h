@@ -83,6 +83,7 @@ public:
     void setArrowScale(float f);
     void setArrowEnabled(bool enabled);
     void setNeighborDepth(int depth);  // 1-5*** End Patch】} ***!
+    void setBackgroundColor(const QColor& color);
 
     // ======================== Misc ========================
     void setDragging(int nodeId, bool dragging);
@@ -249,6 +250,7 @@ private:
 
     int m_neighborDepth = 2;  // 邻居深度，1-5
 
+    QColor m_backgroundColor = QColor(255, 255, 255);
     QColor m_edgeColor      = QColor("#D5D5D5");
     QColor m_edgeDimColor   = QColor("#F7F7F7");
     QColor m_baseColor      = QColor("#5C5C5C");
