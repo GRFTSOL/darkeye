@@ -1,4 +1,4 @@
-﻿# ForceViewOpenGL MSDF 文字渲染接入计划（FreeType + msdfgen）
+# ForceViewOpenGL MSDF 文字渲染接入计划（FreeType + msdfgen）
 
 ## 1. 目标与范围
 - 目标：将 `ForceViewOpenGL` 的文字渲染从 `QPainter + QStaticText` 迁移为纯 OpenGL 的 MSDF 文本渲染。
@@ -31,9 +31,13 @@
 - 在初始化时创建字体图集与文本渲染器。
 - 在每帧根据分组/缩放/hover 状态提交文本绘制命令。
 
+**设计决策（补充）**：
+- `MsdfTextRenderer` 由 `ForceViewOpenGL` 独立持有，与 `GraphRenderer`（m_renderer）并列，不并入 GraphRenderer。GraphRenderer 继续专注节点/边渲染。
+
 ## 4. 技术方案细节
 ### 4.1 Font Atlas 生成（FreeType + msdfgen）
 - 使用 FreeType 加载字体文件（默认可先沿用 `Microsoft YaHei` 对应 ttf 路径，后续可配置化）。
+- 字体路径建议：优先通过 `QFontDatabase::font()` 或 `QStandardPaths` 获取系统字体，避免硬编码；Phase 1 可先硬编码，Phase 4 或更早改为配置化。
 - 通过 msdfgen `loadGlyph` 获取轮廓，`edgeColoring` 后调用 `generateMSDF` 生成 3 通道 MSDF。
 - 将多个 glyph 打包进单张 atlas（初始可单页，后续支持分页）。
 - 保存 glyph 数据：
@@ -65,6 +69,7 @@
   - 基于 `fwidth` 与 `pxRange` 求平滑宽度
   - `alpha = smoothstep(...)`
 - 混合：保持当前 premultiplied alpha 流程（`GL_ONE, GL_ONE_MINUS_SRC_ALPHA`）。
+- MSDF 片元着色器中的 `fwidth` 导数需注意高 DPI 下的表现，保持与 GraphRenderer 的坐标系一致。
 
 ## 5. 与现有逻辑对齐
 保留并复用现有行为：
@@ -79,7 +84,7 @@
 
 ## 6. CMake 接入计划
 - 在根 `CMakeLists.txt` 添加：
-  - `add_subdirectory(3rdparty/freetype)`
+  - `add_subdirectory(3rdparty/freetype)`（必须先于 msdfgen，使 `Freetype::Freetype` 存在）
   - `add_subdirectory(3rdparty/msdfgen)`
 - `forceviewlib` 追加链接：
   - `freetype`
@@ -88,11 +93,24 @@
 - 视 include 结构补充 `target_include_directories`。
 - 若 Windows 下字体路径硬编码，后续改为可配置（避免环境耦合）。
 
+**msdfgen 子工程配置（补充）**：
+- msdfgen 默认 `MSDFGEN_USE_VCPKG=ON`，会依赖 vcpkg 及 tinyxml2、PNG、Skia 等。作为子工程引入时建议显式关闭并精简：
+  ```cmake
+  set(MSDFGEN_USE_VCPKG OFF CACHE BOOL "" FORCE)
+  set(MSDFGEN_CORE_ONLY OFF)
+  set(MSDFGEN_BUILD_STANDALONE OFF)
+  set(MSDFGEN_USE_SKIA OFF)
+  # 若仅需 FreeType 扩展，可设置 MSDFGEN_DISABLE_SVG、MSDFGEN_DISABLE_PNG
+  add_subdirectory(3rdparty/freetype)
+  add_subdirectory(3rdparty/msdfgen)
+  ```
+
 ## 7. 分阶段实施
 ### Phase 1（最小可用）
 - 接入 FreeType/msdfgen。
 - 构建单字体、有限字符集 atlas。
 - 在 `paintGL` 中替换普通标签绘制（无 hover 放大）。
+- 引入基础 `LabelLayoutCache` 框架（按 label 内容 hash 缓存），便于 Phase 3 扩展增量更新与 LRU，避免 Phase 2 每帧重建全部顶点。
 
 ### Phase 2（行为对齐）
 - 接入 `groupBase/groupDim/groupHover`。
@@ -110,7 +128,8 @@
 
 ## 8. 风险与规避
 - 复杂脚本文本（阿拉伯等）需要 HarfBuzz shaping；首版不覆盖。
-- CJK 大字符集可能导致 atlas 膨胀；采用按需增量加载。
+- CJK 大字符集可能导致 atlas 膨胀；采用按需增量加载。CJK 的 glyph 预热策略应尽早明确（例如按 label 出现频率或可见性）。
+- msdfgen-ext 可选依赖：`MSDFGEN_DISABLE_SVG`、`MSDFGEN_DISABLE_PNG` 可减少依赖；若仅需 FreeType，应精简配置。
 - 渲染一致性需验证：
   - 小字号边缘
   - 高缩放下清晰度
@@ -121,7 +140,9 @@
 - 与当前版本视觉行为一致：显示阈值、分组透明度、hover 放大。
 - 大图场景下帧率不低于当前实现，或有可量化改善。
 - 不再依赖 `QPainter` 进行文本绘制。
+- （补充）目标平台（Win/Linux/macOS）上构建通过，MSDF 路径可正常运行并成功替换 QPainter 文本。
 
 ## 10. 本次任务边界说明
 - 本文档仅为实施计划落地，不包含代码改动。
 - 下一步如开始实现，将按 Phase 1 → Phase 2 顺序提交最小可验证变更。
+- 建议：实现 Phase 1 前先落实 CMake 与依赖配置（见第 6 节），明确 `MsdfTextRenderer` 归属（见第 3 节），再按阶段推进。
