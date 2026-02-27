@@ -1,11 +1,15 @@
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel,QVBoxLayout,QLineEdit,QListView
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QLineEdit,QListView
 from PySide6.QtGui import QStandardItemModel,QStandardItem
 from PySide6.QtCore import Qt,QItemSelection,Signal,Slot
 import sqlite3,logging
 
 from config import DATABASE
 from controller.MessageService import MessageBoxService
-from ui.basic import IconPushButton
+
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.icon_push_button import IconPushButton
+from darkeye_ui.components.token_list_view import TokenListView
 
 class ActressSelector(QWidget):
     selection_changed=Signal()#下方被选择的列表改变了
@@ -30,18 +34,18 @@ class ActressSelector(QWidget):
 
         # 右侧搜索框和视图和按钮
 
-        self.search_box = QLineEdit()
+        self.search_box = LineEdit()
         self.search_box.setPlaceholderText("搜索中文名或日文名")
         self.search_box.setClearButtonEnabled(True)
         self.search_box.textChanged.connect(self.filter_choose_actress_items)
 
-        self.choose_actress_view = QListView()
+        self.choose_actress_view = TokenListView()
         self.choose_actress_view.setModel(self.choose_actress_model)
 
-        self.label_actress=QLabel("参演女优")
+        self.label_actress=Label("参演女优")
         self.label_actress.setAlignment(Qt.AlignCenter)
 
-        self.receive_actress_view = QListView()
+        self.receive_actress_view = TokenListView()
         self.receive_actress_view.setModel(self.receive_actress_model)
         
         # 连接选中信号
@@ -53,11 +57,11 @@ class ActressSelector(QWidget):
         )
 
         # 按钮
-        self.btn_to_left = IconPushButton("arrow-down.svg")
+        self.btn_to_left = IconPushButton(icon_name="arrow_down")
         self.btn_to_left.setToolTip("选择参演女优")
-        self.btn_to_right = IconPushButton("arrow-up.svg")
+        self.btn_to_right = IconPushButton(icon_name="arrow_up")
         self.btn_to_right.setToolTip("移除参演女优")
-        self.btn_add_actress=IconPushButton("circle-plus.svg")
+        self.btn_add_actress=IconPushButton(icon_name="circle_plus")
         self.btn_add_actress.setToolTip("添加女优并选择")
 
         self.btn_to_left.clicked.connect(self.move_to_left)

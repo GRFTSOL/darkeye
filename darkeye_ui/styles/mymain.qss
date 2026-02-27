@@ -31,6 +31,28 @@ QPushButton#DesignButton:disabled {
     border-color: {{color_border}};
 }
 
+QPushButton#DesignButton:checked {
+    background-color: {{color_primary}};
+    color: {{color_text}};
+    border-color: {{color_primary}};
+}
+
+QPushButton#DesignButton:checked:hover {
+    background-color: {{color_primary_hover}};
+    border-color: {{color_primary_hover}};
+}
+
+QPushButton#DesignButton:checked:pressed {
+    background-color: {{color_primary_hover}};
+    border-color: {{color_primary_hover}};
+}
+
+QPushButton#DesignButton:checked:disabled {
+    background-color: {{color_border}};
+    color: {{color_text_disabled}};
+    border-color: {{color_border}};
+}
+
 QPushButton#DesignButton[variant="primary"] {
     background-color: {{color_primary}};
     color: {{color_bg}};
@@ -62,6 +84,13 @@ QPushButton#DesignStateToggleButton {
 QPushButton#DesignStateToggleButton:hover {
     background-color: {{color_bg_input}};
 }
+QPushButton#DesignStateToggleButton:checked {
+    background-color: {{color_primary}};
+    color: {{color_text}};
+}
+QPushButton#DesignStateToggleButton:checked:hover {
+    background-color: {{color_primary_hover}};
+}
 
 /* ----- IconPushButton (objectName=DesignIconPushButton) ----- */
 QPushButton#DesignIconPushButton {
@@ -71,6 +100,13 @@ QPushButton#DesignIconPushButton {
 }
 QPushButton#DesignIconPushButton:hover {
     background-color: {{color_bg_input}};
+}
+QPushButton#DesignIconPushButton:checked {
+    background-color: {{color_primary}};
+    color: {{color_text}};
+}
+QPushButton#DesignIconPushButton:checked:hover {
+    background-color: {{color_primary_hover}};
 }
 
 /* ----- Label (objectName=DesignLabel) ----- */
@@ -110,6 +146,32 @@ QLineEdit#DesignInput::placeholder {
     font-style: italic;
 }
 
+/* ----- CompleterLineEdit 弹出框 (objectName=DesignCompleterPopup) ----- */
+/* 使用直角避免 Windows 下圆角+透明导致的背景变黑；背景由令牌 color_bg 驱动 */
+QAbstractItemView#DesignCompleterPopup {
+    background-color: {{color_bg}};
+    color: {{color_text}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: 0;
+    padding: 4px;
+    selection-background-color: {{color_primary}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+}
+
+QAbstractItemView#DesignCompleterPopup::item {
+    padding: 4px 8px;
+}
+
+QAbstractItemView#DesignCompleterPopup::item:selected {
+    background-color: {{color_primary}};
+    color: {{color_text_inverse}};
+}
+
+QAbstractItemView#DesignCompleterPopup::item:hover {
+    background-color: {{color_bg_input}};
+}
+
 /* ----- TextEdit (objectName=DesignTextEdit) ----- */
 QTextEdit#DesignTextEdit {
     background-color: {{color_bg}};
@@ -136,6 +198,304 @@ QTextEdit#DesignTextEdit:disabled {
 QTextEdit#DesignTextEdit::placeholder {
     color: {{color_text_placeholder}};
     font-style: italic;
+}
+
+/* ----- PlainTextEdit (objectName=DesignPlainTextEdit) ----- */
+QPlainTextEdit#DesignPlainTextEdit {
+    background-color: {{color_bg}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    padding: 6px 8px;
+    font-size: {{font_size_base}};
+    color: {{color_text}};
+    font-family: {{font_family_base}};
+    selection-background-color: {{color_primary}};
+}
+
+QPlainTextEdit#DesignPlainTextEdit:focus {
+    border: {{border_width}} solid {{color_border_focus}};
+    background-color: {{color_bg_input}};
+}
+
+QPlainTextEdit#DesignPlainTextEdit:disabled {
+    background-color: {{color_bg_input}};
+    color: {{color_text_disabled}};
+    border: {{border_width}} solid {{color_border}};
+}
+
+QPlainTextEdit#DesignPlainTextEdit::placeholder {
+    color: {{color_text_placeholder}};
+    font-style: italic;
+}
+
+/* ----- ComboBox (objectName=DesignComboBox) ----- */
+QComboBox#DesignComboBox {
+    background-color: {{color_bg}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    padding: 4px 8px;
+    padding-right: 24px;
+    font-size: {{font_size_base}};
+    color: {{color_text}};
+    min-height: 1.2em;
+    selection-background-color: {{color_primary}};
+}
+
+QComboBox#DesignComboBox:hover {
+    border-color: {{color_primary}};
+    background-color: {{color_bg_input}};
+}
+
+QComboBox#DesignComboBox:focus {
+    border: {{border_width}} solid {{color_border_focus}};
+    background-color: {{color_bg_input}};
+}
+
+QComboBox#DesignComboBox:disabled {
+    background-color: {{color_bg_input}};
+    color: {{color_text_disabled}};
+    border: {{border_width}} solid {{color_border}};
+}
+
+QComboBox#DesignComboBox::drop-down {
+    border: none;
+    width: 20px;
+    background: transparent;
+}
+
+QComboBox#DesignComboBox::down-arrow {
+    width: 16px;
+    height: 16px;
+    image: url({{chevron_down_arrow_path}});
+}
+
+/* ComboBox 弹出列表：独立窗口内，须用 objectName 选择器（见 combo_box.py view().setObjectName） */
+QAbstractItemView#DesignComboBoxPopup {
+    background-color: {{color_bg}};
+    color: {{color_text}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    padding: 4px;
+    selection-background-color: {{color_primary}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+}
+
+QAbstractItemView#DesignComboBoxPopup::item {
+    padding: 4px 8px;
+    color: {{color_text}};
+}
+
+QAbstractItemView#DesignComboBoxPopup::item:selected {
+    background-color: {{color_primary}};
+    color: {{color_text_inverse}};
+}
+
+QAbstractItemView#DesignComboBoxPopup::item:hover:!selected {
+    background-color: {{color_bg_input}};
+}
+
+/* 保留原选择器以兼容部分平台 */
+QComboBox#DesignComboBox QAbstractItemView {
+    background-color: {{color_bg}};
+    color: {{color_text}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    padding: 4px;
+    selection-background-color: {{color_primary}};
+}
+
+/* ----- TokenListView (objectName=DesignListView) ----- */
+QListView#DesignListView {
+    background-color: {{color_bg}};
+    color: {{color_text}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    padding: 4px;
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+    selection-background-color: {{color_primary}};
+}
+
+QListView#DesignListView:focus {
+    border: {{border_width}} solid {{color_border_focus}};
+    background-color: {{color_bg_input}};
+}
+
+QListView#DesignListView::item {
+    padding: 6px 8px;
+    color: {{color_text}};
+}
+
+QListView#DesignListView::item:selected {
+    background-color: {{color_primary}};
+    color: {{color_text_inverse}};
+}
+
+QListView#DesignListView::item:hover:!selected {
+    background-color: {{color_bg_input}};
+    color: {{color_text}};
+}
+
+QListView#DesignListView:disabled {
+    background-color: {{color_bg_input}};
+    color: {{color_text_disabled}};
+    border-color: {{color_border}};
+}
+
+/* ----- TokenTableView (objectName=DesignTableView) ----- */
+QTableView#DesignTableView {
+    background-color: {{color_bg}};
+    color: {{color_text}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    gridline-color: {{color_border}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+    selection-background-color: {{color_primary}};
+    selection-color: {{color_text_inverse}};
+}
+
+/* 表头（行/列标题），跟随令牌颜色 */
+QTableView#DesignTableView QHeaderView::section {
+    background-color: {{color_bg_page}};
+    color: {{color_text}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+    border: 0px;
+    border-bottom: 1px solid {{color_border}};
+    padding: 4px 6px;
+}
+
+/* 水平表头（列标题）使用更高对比度背景，突出与内容区差异 */
+QTableView#DesignTableView QHeaderView::section:horizontal {
+    background-color: {{color_bg_input}};
+    font-weight: bold;
+}
+
+/* 垂直表头（行号/序号列），使用与内容区明显不同的底色 */
+QTableView#DesignTableView QHeaderView::section:vertical {
+    background-color: {{color_bg_page}};
+    color: {{color_text_placeholder}};
+    border-right: 1px solid {{color_border}};
+}
+
+/* 左上角格子（行/列交汇处），与表头一致 */
+QTableView#DesignTableView QTableCornerButton::section {
+    background-color: {{color_bg_page}};
+    color: {{color_text}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+    border: 0px;
+    border-right: 1px solid {{color_border}};
+    border-bottom: 1px solid {{color_border}};
+}
+
+/* 表格中间的内容区域，使用交替行区分 */
+QTableView#DesignTableView::item {
+    background-color: {{color_bg}};
+    padding: 4px 6px;
+    border: 0px;
+}
+
+QTableView#DesignTableView::item:alternate {
+    background-color: {{color_bg_input}};
+}
+
+QTableView#DesignTableView::item:selected {
+    background-color: {{color_primary}};
+    color: {{color_text_inverse}};
+}
+
+QTableView#DesignTableView::item:hover:!selected {
+    background-color: {{color_bg_input}};
+    color: {{color_text}};
+}
+
+QTableView#DesignTableView:disabled {
+    background-color: {{color_bg_input}};
+    color: {{color_text_disabled}};
+    border-color: {{color_border}};
+}
+
+/* ----- TokenRadioButton (objectName=DesignRadioButton) ----- */
+QRadioButton#DesignRadioButton {
+    color: {{color_text}};
+    font-size: {{font_size_base}};
+    font-family: {{font_family_base}};
+    spacing: 8px;
+}
+
+QRadioButton#DesignRadioButton::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    border: {{border_width}} solid {{color_border}};
+    background-color: {{color_bg}};
+}
+
+QRadioButton#DesignRadioButton::indicator:hover {
+    border-color: {{color_primary}};
+    background-color: {{color_bg_input}};
+}
+
+QRadioButton#DesignRadioButton::indicator:checked {
+    border-color: {{color_primary}};
+    background-color: {{color_primary}};
+}
+
+QRadioButton#DesignRadioButton::indicator:checked:hover {
+    border-color: {{color_primary_hover}};
+    background-color: {{color_primary_hover}};
+}
+
+QRadioButton#DesignRadioButton:disabled {
+    color: {{color_text_disabled}};
+}
+
+QRadioButton#DesignRadioButton::indicator:disabled {
+    border-color: {{color_border}};
+    background-color: {{color_bg_input}};
+}
+
+/* ----- TokenCheckBox (objectName=DesignCheckBox) ----- */
+QCheckBox#DesignCheckBox {
+    color: {{color_text}};
+    font-size: {{font_size_base}};
+    font-family: {{font_family_base}};
+    spacing: 8px;
+}
+
+QCheckBox#DesignCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: {{border_width}} solid {{color_border}};
+    background-color: {{color_bg}};
+}
+
+QCheckBox#DesignCheckBox::indicator:hover {
+    border-color: {{color_primary}};
+    background-color: {{color_bg_input}};
+}
+
+QCheckBox#DesignCheckBox::indicator:checked {
+    border-color: {{color_primary}};
+    background-color: {{color_primary}};
+}
+
+QCheckBox#DesignCheckBox::indicator:checked:hover {
+    border-color: {{color_primary_hover}};
+    background-color: {{color_primary_hover}};
+}
+
+QCheckBox#DesignCheckBox:disabled {
+    color: {{color_text_disabled}};
+}
+
+QCheckBox#DesignCheckBox::indicator:disabled {
+    border-color: {{color_border}};
+    background-color: {{color_bg_input}};
 }
 
 /* ----- ScrollBar (现代样式 + 颜色令牌，两端圆形胶囊) ----- */
@@ -208,4 +568,59 @@ QScrollBar::sub-line:horizontal {
 QScrollBar::add-page:horizontal,
 QScrollBar::sub-page:horizontal {
     background: none;
+}
+
+/* ----- TokenTabWidget (objectName=DesignTabWidget) ----- */
+/* TabBar：透明背景、无边框 */
+QTabWidget#DesignTabWidget QTabBar {
+    background-color: transparent;
+    border: none;
+}
+
+QTabWidget#DesignTabWidget QTabBar::tab {
+    background-color: transparent;
+    color: {{color_text_placeholder}};
+    padding: 5px 0px;
+    margin-right: 20px;
+    font-size: {{font_size_base}};
+    font-family: {{font_family_base}};
+    border: none;
+}
+
+QTabWidget#DesignTabWidget QTabBar::tab:hover {
+    color: {{color_text}};
+}
+
+QTabWidget#DesignTabWidget QTabBar::tab:selected {
+    color: {{color_text}};
+    font-weight: bold;
+    border-bottom: {{border_width}} solid {{color_primary}};
+}
+
+QTabWidget#DesignTabWidget::pane {
+    border: none;
+    top: -1px;
+}
+
+/* ----- TokenGroupBox (objectName=DesignGroupBox) ----- */
+QGroupBox#DesignGroupBox {
+    background-color: {{color_bg}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    margin-top: 20px; /* 为标题预留更充足的空间，避免文字被裁剪 */
+    padding: 8px 8px 8px 8px;
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+    color: {{color_text}};
+}
+
+QGroupBox#DesignGroupBox::title {
+    subcontrol-origin: margin;
+    left: 12px;
+    top: 0px; /* 不再上移，保证标题完整显示在控件内部 */
+    padding: 0 4px;
+    background-color: {{color_bg_page}};
+    color: {{color_text}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
 }

@@ -19,29 +19,29 @@ def load_global_style():
 
 
 def load_app_stylesheet(app):
-    """加载合并样式：项目 main.qss + darkeye_ui 组件库样式（mymain.qss + 当前主题 token）。并设置全局 ThemeManager。"""
-    from pathlib import Path
+    """仅通过 ThemeManager 应用 darkeye_ui 组件库样式（mymain.qss + 当前主题 token），并设置全局 ThemeManager。
+
+    注意：全局样式现在完全由 ThemeManager.set_theme 控制，以避免重复加载 QSS 时丢失
+    像下拉箭头这类依赖扩展令牌（如 chevron_down_arrow_path）的样式。
+    """
     from darkeye_ui.design import ThemeManager, ThemeId
-    from darkeye_ui.design.loader import load_stylesheet
     from app_context import set_theme_manager
 
-    main_css = load_global_style()
     theme_mgr = ThemeManager()
-    # 先设定当前主题（用于 tokens），再合并样式：主样式在前，组件库样式在后以便覆盖
-    theme_mgr.set_theme(app, ThemeId.LIGHT)
+    from config import get_theme_id
+    try:
+        initial_theme = ThemeId[get_theme_id()]
+    except (KeyError, TypeError):
+        initial_theme = ThemeId.LIGHT
+    theme_mgr.set_theme(app, initial_theme)
     set_theme_manager(theme_mgr)
-
-    darkeye_qss_path = Path(__file__).resolve().parent / "darkeye_ui" / "styles" / "mymain.qss"
-    if darkeye_qss_path.exists():
-        darkeye_css = load_stylesheet(darkeye_qss_path, theme_mgr.tokens())
-        app.setStyleSheet(main_css + "\n/* --- darkeye_ui 组件库 --- */\n" + darkeye_css)
-    else:
-        app.setStyleSheet(main_css)
 
 
 def apply_theme(theme_id):
-    """根据主题 ID 重新应用全局样式（main.qss + darkeye_ui mymain.qss），供设置页主题切换调用。"""
-    from pathlib import Path
+    """根据主题 ID 重新应用 darkeye_ui 主题样式，供设置页主题切换调用。
+
+    统一通过 ThemeManager.set_theme 处理，以保证像下拉箭头这类依赖扩展令牌的样式完整生效。
+    """
     from PySide6.QtWidgets import QApplication
     from app_context import get_theme_manager
     from darkeye_ui.design import ThemeId
@@ -54,15 +54,7 @@ def apply_theme(theme_id):
         return
     if isinstance(theme_id, str):
         theme_id = ThemeId(theme_id)
-    theme_mgr.set_current(theme_id)
-    main_css = load_global_style()
-    darkeye_qss_path = Path(__file__).resolve().parent / "darkeye_ui" / "styles" / "mymain.qss"
-    if darkeye_qss_path.exists():
-        from darkeye_ui.design.loader import load_stylesheet
-        darkeye_css = load_stylesheet(darkeye_qss_path, theme_mgr.tokens())
-        app.setStyleSheet(main_css + "\n/* --- darkeye_ui 组件库 --- */\n" + darkeye_css)
-    else:
-        app.setStyleSheet(main_css)
+    theme_mgr.set_theme(app, theme_id)
 
 def _run_main_app():
     

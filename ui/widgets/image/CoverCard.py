@@ -1,7 +1,7 @@
 
 #用于展示封面一半的图片+标题+番号
 
-from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout
 from PySide6.QtGui import QPainter,QColor,QPainterPath
 from PySide6.QtCore import Qt,Signal,Slot
 from config import WORKCOVER_PATH
@@ -11,7 +11,7 @@ from ui.widgets.text.ClickableLabel import ClickableLabel
 from .CoverImage import CoverImage
 from utils.utils import replace_sensitive
 from ui.navigation.router import Router
-
+from darkeye_ui.components.label import Label
 
 
 class CoverCard(QWidget):
@@ -32,7 +32,7 @@ class CoverCard(QWidget):
         #logging.debug(f"卡片的绿色模式{green_mode}")
         self.image_label = CoverImage(self._path,self._work_id,standard,green_mode)
         
-        self.title_label = QLabel(title)
+        self.title_label = Label(title)
 
         if green_mode:#新创造的修改
             self.title_label.setText(replace_sensitive(title))
@@ -42,8 +42,6 @@ class CoverCard(QWidget):
                 font-size: 14px;           /* 字号 */
                 font-family: 'Microsoft YaHei';      /* 字体 */
                 font-weight: bold;         /* 粗体，可选 normal、bold、100-900 */
-                color: grey;
-                background-color: rgba(0, 0, 0, 0);
             }
         """)
         self.serial_number=serial_number
@@ -62,8 +60,6 @@ class CoverCard(QWidget):
                 font-size: 16px;           /* 字号 */
                 font-family: 'Microsoft YaHei';      /* 字体 */
                 font-weight: bold;         /* 粗体，可选 normal、bold、100-900 */
-                color: black;
-                background-color: rgba(0, 0, 0, 0);
             }
         """)
 

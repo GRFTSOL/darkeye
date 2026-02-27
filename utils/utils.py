@@ -10,6 +10,8 @@ import asyncio
 import random
 import threading
 from collections import OrderedDict
+import sqlite3
+from config import DATABASE
 
 #番号相关
 def is_valid_serialnumber(code: str) -> bool:
@@ -459,6 +461,34 @@ def export_view_to_csv(tableView: QTableView, csv_file_path: str):
 
     except Exception as e:
         QMessageBox.critical(tableView, "导出错误", f"导出失败，发生错误：\n{e}")
+        return False
+
+
+def export_sql_to_csv(sql: str, csv_file_path: str, db_path: str | Path = DATABASE) -> bool:
+    """
+    使用 sqlite3 执行给定 SQL，将结果完整导出为 CSV。
+    不依赖 Qt 的模型/视图，只根据 SQL 查询数据库。
+    """
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cur = conn.cursor()
+        cur.execute(sql)
+
+        # 获取列名
+        headers = [d[0] for d in (cur.description or [])]
+
+        with open(csv_file_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if headers:
+                writer.writerow(headers)
+            for row in cur.fetchall():
+                writer.writerow(row)
+
+        conn.close()
+        logging.info("export_sql_to_csv 成功写入: %s", csv_file_path)
+        return True
+    except Exception as e:
+        logging.exception("export_sql_to_csv 失败: %s", e)
         return False
 
 from PySide6.QtGui import QImage, QPixmap

@@ -27,6 +27,13 @@ class ToggleSwitch(QWidget):
         self.setObjectName("DesignToggleSwitch")
         self.setFixedSize(width, height)
         self._checked = False
+        # 未传入时尝试从应用上下文获取全局 ThemeManager，使主题切换时颜色能更新
+        if theme_manager is None:
+            try:
+                from app_context import get_theme_manager
+                theme_manager = get_theme_manager()
+            except Exception:
+                pass
         self._theme_manager = theme_manager
 
         # 动画用属性

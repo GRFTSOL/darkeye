@@ -4,11 +4,14 @@ from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor,QFont
 from PySide6.QtCore import Qt, QPointF,Signal,Slot
 import logging
 
-from ui.basic import VLabel,VFlowLayout,HeartLabel,IconPushButton
+from ui.basic import VLabel,IconPushButton
+from darkeye_ui.layouts import VFlowLayout
+from darkeye_ui.components.heart_label import HeartLabel
 from config import WORKCOVER_PATH,ICONS_PATH
 from ui.widgets.text.VerticalTagLabel2 import VerticalActressLabel,VerticalTagLabel,VerticalActorLabel
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
 from darkeye_ui.components.vertical_text_label import VerticalTextLabel
+from darkeye_ui.components.transparent_widget import TransparentWidget
 
 #渐变层纯绘图层
 class GradientOverlay(QWidget):
@@ -102,7 +105,7 @@ class Cover(QLabel):
         self.update_background_image()
 
 
-class WorkInfo(QWidget):
+class WorkInfo(TransparentWidget):
     def __init__(self,parent=None):
         super().__init__(parent)
         from controller.MessageService import MessageBoxService
@@ -138,8 +141,8 @@ class WorkInfo(QWidget):
         self.studio=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
         self.label_tag=VLabel("作品标签",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
 
-        self.actress=QWidget()
-        self.label=QWidget()
+        self.actress = TransparentWidget(self)
+        self.label = TransparentWidget(self)
         self.label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.actress.setFixedHeight(550)
         self.label.setFixedHeight(550)
@@ -176,8 +179,8 @@ class WorkInfo(QWidget):
         director_v_layout.addWidget(self.studio)
         director_v_layout.addStretch()
 
-        # 内容行：所有列打包到一个容器，容器只占内容宽度，避免被拉宽产生列间空隙
-        content_row = QWidget(self)
+        # 内容行：所有列打包到一个容器，容器只占内容宽度，避免被拉宽产生列间空隙（透明容器）
+        content_row = TransparentWidget(self)
         content_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         content_row.setFixedHeight(550)
 
@@ -375,6 +378,9 @@ class SingleWork(QWidget):
 
     def __init__(self):
         super().__init__()
+        # 父层不填充背景，WorkInfo 的透明才能透出下面的 Cover / GradientOverlay
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAutoFillBackground(False)
 
         self._h=self.height()
         #背景图片层

@@ -18,6 +18,7 @@ uvicorn[standard]
 googletrans
 PySide6-QtAds==4.5.0#这个很重要，这个绑定要求shiboken6==6.10.1
 pytest
+wordcloud
 
 # Documentation
 mkdocs

@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QLabel,QSizePolicy,QFileDialog,QMenu
+from PySide6.QtWidgets import QSizePolicy,QFileDialog,QMenu
 from PySide6.QtGui import QPixmap,QImage, QDragEnterEvent, QDropEvent,QMouseEvent,QAction
 from PySide6.QtCore import Qt,Signal,QRect,Slot
 import shutil,logging,os,subprocess
@@ -7,14 +7,15 @@ from pathlib import Path
 
 from config import ACTRESSIMAGES_PATH,TEMP_PATH,ACTORIMAGES_PATH
 from controller.MessageService import MessageBoxService
+from darkeye_ui.components.label import Label
 
 def is_temp_path(path: str | Path) -> bool:
     """判断路径是否是临时路径（检查路径中包含'temp'）"""
     path_obj = Path(path) if isinstance(path, str) else path
     return "temp" in path_obj.parts  # 检查路径各部分是否包含'temp'
 
-class ActressAvatarDropWidget(QLabel):
-    '''可拖动式添加封面的QLabel'''
+class ActressAvatarDropWidget(Label):
+    '''可拖动式添加封面的Label'''
     
     cover_changed=Signal()
     def __init__(self,type="actress"):
@@ -33,7 +34,7 @@ class ActressAvatarDropWidget(QLabel):
         self.setText(self.show_text)
         self.setAlignment(Qt.AlignCenter)
         self.setStyleSheet("""
-        QLabel {
+        Label {
             border: 2px dashed gray;
             font-size: 16px;
             padding: 0px;
@@ -165,7 +166,7 @@ class ActressAvatarDropWidget(QLabel):
             Qt.TransformationMode.SmoothTransformation
         )
         
-        # 4. 将最终的 QPixmap 设置到 QLabel 上
+        # 4. 将最终的 QPixmap 设置到 Label 上
         self.setPixmap(scaled_pixmap)
 
     

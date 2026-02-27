@@ -36,6 +36,13 @@ class IconPushButton(QPushButton):
         self._icon_size = icon_size
         self._out_size = out_size
         self._hoverable = hoverable
+        # 未传入时尝试从应用上下文获取全局 ThemeManager，使主题切换时图标能更新
+        if theme_manager is None:
+            try:
+                from app_context import get_theme_manager
+                theme_manager = get_theme_manager()
+            except Exception:
+                pass
         self._theme_manager = theme_manager
 
         self.setIconSize(QSize(icon_size, icon_size))

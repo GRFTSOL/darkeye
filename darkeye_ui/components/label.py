@@ -2,13 +2,15 @@
 from typing import Optional
 
 from PySide6.QtWidgets import QLabel
-
+from PySide6.QtCore import Qt
 
 class Label(QLabel):
     """可复用标签，通过 objectName=DesignLabel 由 QSS 驱动样式。"""
 
     def __init__(self, text: str = "", tone: Optional[str] = None, parent=None):
         super().__init__(text, parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAutoFillBackground(False)
         self.setObjectName("DesignLabel")
         if tone is not None:
             self.setProperty("tone", tone)

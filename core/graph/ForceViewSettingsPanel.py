@@ -3,16 +3,17 @@ Force-directed view settings panel: UI and signals/slots only.
 Parent connects panel signals to view/session.
 """
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QCheckBox, QLabel,
+    QWidget, QVBoxLayout, QPushButton, QHBoxLayout, QCheckBox,
     QFormLayout, QRadioButton, QSlider, QScrollArea, QSizePolicy
 )
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QColorDialog
 from PySide6.QtCore import Qt, Signal, QSize
 
-from ui.basic import ToggleSwitch
-from ui.basic.Collapse import CollapsibleSection
 
+from darkeye_ui.components.toggle_switch import ToggleSwitch
+from ui.basic.Collapse import CollapsibleSection
+from darkeye_ui.components.label import Label
 
 class ClickableSlider(QSlider):
     """A slider that can be clicked to jump to a position."""
@@ -155,8 +156,8 @@ class ForceViewSettingsPanel(QScrollArea):
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
 
         # Status labels
-        self.label_cal = QLabel()
-        self.label_paint = QLabel()
+        self.label_cal = Label()
+        self.label_paint = Label()
 
         # --- Effect Section ---
         effect_section = CollapsibleSection("效果", self)
@@ -183,10 +184,10 @@ class ForceViewSettingsPanel(QScrollArea):
         self.link_length.setMaximum(80)
         self.link_length.setValue(40)
 
-        effect_form.addRow("斥力强度", self.many_body_strength)
-        effect_form.addRow("中心力强度", self.center_strength)
-        effect_form.addRow("连接力强度", self.link_strength)
-        effect_form.addRow("连接距离", self.link_length)
+        effect_form.addRow(Label("斥力强度"), self.many_body_strength)
+        effect_form.addRow(Label("中心力强度"), self.center_strength)
+        effect_form.addRow(Label("连接力强度"), self.link_strength)
+        effect_form.addRow(Label("连接距离"), self.link_length)
 
         # Graph type radio buttons
         self.radio_graph_all = QRadioButton("总图", self)
@@ -242,14 +243,14 @@ class ForceViewSettingsPanel(QScrollArea):
         self.show_coordinate_sys = QCheckBox("显示坐标轴", self)
         self.show_coordinate_sys.setChecked(False)
 
-        display_form.addRow("显示箭头", self.show_arrow)
-        display_form.addRow("箭头大小", self.arrow_size)
-        display_form.addRow("显示图片", self.show_image)
-        display_form.addRow("文字渐隐", self.text_fade_threshold)
-        display_form.addRow("节点大小", self.node_size)
-        display_form.addRow("连线宽度", self.link_width)
-        display_form.addRow("邻居深度", self.neighbor_depth)
-        display_form.addRow("图邻居深度", self.graph_neighbor_depth)
+        display_form.addRow(Label("显示箭头"), self.show_arrow)
+        display_form.addRow(Label("箭头大小"), self.arrow_size)
+        display_form.addRow(Label("显示图片"), self.show_image)
+        display_form.addRow(Label("文字渐隐"), self.text_fade_threshold)
+        display_form.addRow(Label("节点大小"), self.node_size)
+        display_form.addRow(Label("连线宽度"), self.link_width)
+        display_form.addRow(Label("邻居深度"), self.neighbor_depth)
+        display_form.addRow(Label("图邻居深度"), self.graph_neighbor_depth)
 
         # 节点颜色（按类型覆盖）
         color_emit = lambda g, c: self.nodeColorGroupChanged.emit(g, c)
@@ -258,16 +259,16 @@ class ForceViewSettingsPanel(QScrollArea):
         self.color_center = _make_color_button(QColor("#FFD700"), "center", self, color_emit)
         self.color_default = _make_color_button(QColor("#5C5C5C"), "default", self, color_emit)
         color_row = QHBoxLayout()
-        color_row.addWidget(QLabel("女优"))
+        color_row.addWidget(Label("女优"))
         color_row.addWidget(self.color_actress)
-        color_row.addWidget(QLabel("作品"))
+        color_row.addWidget(Label("作品"))
         color_row.addWidget(self.color_work)
         color_row.addStretch()
         display_form.addRow("节点颜色", color_row)
         color_row2 = QHBoxLayout()
-        color_row2.addWidget(QLabel("中心"))
+        color_row2.addWidget(Label("中心"))
         color_row2.addWidget(self.color_center)
-        color_row2.addWidget(QLabel("默认"))
+        color_row2.addWidget(Label("默认"))
         color_row2.addWidget(self.color_default)
         color_row2.addStretch()
         display_form.addRow("", color_row2)
@@ -278,9 +279,9 @@ class ForceViewSettingsPanel(QScrollArea):
         test_section = CollapsibleSection("测试", self)
 
         # Status labels
-        self.label_scale = QLabel()
-        self.label_fps = QLabel()
-        self.label_alpha = QLabel()
+        self.label_scale = Label()
+        self.label_fps = Label()
+        self.label_alpha = Label()
         graph_type_layout = QHBoxLayout()
         graph_type_layout.addWidget(self.radio_graph_all)
         graph_type_layout.addWidget(self.radio_graph_favorite)
@@ -307,12 +308,12 @@ class ForceViewSettingsPanel(QScrollArea):
         test_section.addWidget(self.btn_remove_edge)
 
         form_layout = QFormLayout()
-        form_layout.addRow("图类型", graph_type_layout)
-        form_layout.addRow("tick消耗", self.label_cal)
-        form_layout.addRow("paint消耗", self.label_paint)
-        form_layout.addRow("当前缩放", self.label_scale)
-        form_layout.addRow("当前帧率", self.label_fps)
-        form_layout.addRow("当前模拟热度", self.label_alpha)
+        form_layout.addRow(Label("图类型"), graph_type_layout)
+        form_layout.addRow(Label("tick消耗"), self.label_cal)
+        form_layout.addRow(Label("paint消耗"), self.label_paint)
+        form_layout.addRow(Label("当前缩放"), self.label_scale)
+        form_layout.addRow(Label("当前帧率"), self.label_fps)
+        form_layout.addRow(Label("当前模拟热度"), self.label_alpha)
         test_section.addLayout(form_layout)
 
         # Create content container

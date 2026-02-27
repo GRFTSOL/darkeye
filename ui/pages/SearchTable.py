@@ -5,7 +5,11 @@ import logging
 
 from config import BASE_DIR,DATABASE,INI_FILE
 from ui.basic import ModelSearch
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.token_table_view import TokenTableView
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.combo_box import ComboBox
 
 class SearchTable(LazyWidget):
     def __init__(self, parent=None):
@@ -31,10 +35,10 @@ class SearchTable(LazyWidget):
         # 创建模型
         self.model = QSqlQueryModel(self)
 
-        # 创建带有数据库连接的查询
-        query_sql = "SELECT * FROM v_work_all_info"
+        # 创建带有数据库连接的查询（同时保存 SQL，供导出使用）
+        self.query_sql = "SELECT * FROM v_work_all_info"
         self.query = QSqlQuery(db_public)  # 使用指定的数据库连接
-        self.query.prepare(query_sql)
+        self.query.prepare(self.query_sql)
         
         # 执行查询并设置到模型
         if not self.query.exec():
@@ -57,18 +61,18 @@ class SearchTable(LazyWidget):
         self.searchWidget.set_model_view(self.model,self.view)#搜索框连接功能
 
     def init_ui(self):
-        self.view = QTableView()
+        self.view = TokenTableView()
         # 按钮
-        self.btn_refresh=QPushButton("刷新数据")
-        export_csv_button = QPushButton("导出为 CSV")
+        self.btn_refresh=Button("刷新数据")
+        export_csv_button = Button("导出为 CSV")
         export_csv_button.clicked.connect(self.export_to_csv)
         # 布局
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.btn_refresh)
         button_layout.addWidget(export_csv_button)
 
-        self.serial_number=QLineEdit()
-        self.studio=QComboBox()
+        self.serial_number=LineEdit()
+        self.studio=ComboBox()
 
         self.searchWidget=ModelSearch()
 
@@ -94,14 +98,25 @@ class SearchTable(LazyWidget):
 
     @Slot()
     def export_to_csv(self):
-        # 弹出文件对话框，让用户选择保存位置
-        from utils.utils import export_view_to_csv
+        """封装为：传入 SQL，用 sqlite 查询并写入 CSV。"""
+        from utils.utils import export_sql_to_csv
+
+        # 1. 选择保存路径
         file_path, _ = QFileDialog.getSaveFileName(self, "保存为 CSV 文件", "", "CSV Files (*.csv)")
-        
-        if file_path:
-            # 确保文件名以 .csv 结尾
-            if not file_path.endswith('.csv'):
-                file_path += '.csv'
-            
-            # 调用导出函数
-            export_view_to_csv(self.view, file_path)
+        if not file_path:
+            return
+
+        # 确保文件名以 .csv 结尾
+        if not file_path.endswith('.csv'):
+            file_path += '.csv'
+
+        # 2. 使用 config 中的公共数据库文件，配合当前页面的基础 SQL 导出
+        base_sql = getattr(self, "query_sql", "SELECT * FROM v_work_all_info")
+
+        from config import DATABASE
+        ok = export_sql_to_csv(base_sql, file_path, DATABASE)
+
+        if ok:
+            QMessageBox.information(self, "导出成功", f"已根据 SQL 导出所有数据到：\n{file_path}\n用 Excel 打开时请使用 UTF-8 导入，否则会出现乱码。")
+        else:
+            QMessageBox.critical(self, "导出失败", "导出过程中发生错误，请查看日志。")

@@ -4,10 +4,11 @@ from PySide6.QtSql import QSqlRelationalTableModel
 from PySide6.QtCore import Qt,Slot,QSize,Signal
 from PySide6.QtGui import QIcon,QKeyEvent
 from config import ICONS_PATH
-from ui.basic.IconPushButton import IconPushButton
 
-
-class MyLineEdit(QLineEdit):
+from darkeye_ui.components.icon_push_button import IconPushButton
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.label import Label
+class MyLineEdit(LineEdit):
     # 自定义信号
     shiftReturnPressed = Signal()
     returnPressedEx = Signal()  # 和普通 Enter 区分开的版本
@@ -40,18 +41,18 @@ class ModelSearch(QWidget):
         self.search_input.setFixedWidth(200)
         self.search_input.setPlaceholderText("搜索")
 
-        self.btn_prev=IconPushButton("arrow-up.svg")
+        self.btn_prev=IconPushButton(icon_name="arrow_up")
         self.btn_prev.setWhatsThis("向前搜索")
         self.btn_prev.setToolTip("向前搜索(Shift+Enter)")
 
-        self.btn_next=IconPushButton("arrow-down.svg")
+        self.btn_next=IconPushButton(icon_name="arrow_down")
         self.btn_next.setWhatsThis("向后搜索")
         self.btn_next.setToolTip("向后搜索(Enter)")
 
         self.btn_prev.setEnabled(False)
         self.btn_next.setEnabled(False)
 
-        self.result_label = QLabel("无搜索结果")
+        self.result_label = Label("无搜索结果")
         self.result_label.setFixedWidth(70)
 
         searchlayout.addWidget(self.search_input)

@@ -1,10 +1,11 @@
-from PySide6.QtWidgets import QPushButton,QLabel,QDialog,QLineEdit,QGridLayout
+from PySide6.QtWidgets import QPushButton,QDialog,QLineEdit,QGridLayout
 from PySide6.QtCore import Signal
 from core.database.insert import InsertNewActress
 from config import ICONS_PATH
 from PySide6.QtGui import QIcon
 from core.crawler.jump import jump_minnanoav
 from controller.MessageService import MessageBoxService
+from darkeye_ui.components.label import Label
 
 class AddActressDialog(QDialog):
     #添加新女优的输入对画框
@@ -16,10 +17,10 @@ class AddActressDialog(QDialog):
         self.resize(300, 150)
         self.msg=MessageBoxService(self)
 
-        self.label1 = QLabel("女优中文名：")
+        self.label1 = Label("女优中文名：")
         self.input1 = QLineEdit()
 
-        self.label2 = QLabel("女优日文名：")
+        self.label2 = Label("女优日文名：")
         self.input2 = QLineEdit()
 
         btn_commit = QPushButton("添加")

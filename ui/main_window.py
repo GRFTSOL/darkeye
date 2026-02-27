@@ -128,9 +128,9 @@ class MainWindow(QMainWindow):
             from ui.pages.ForceDirectPage import ForceDirectPage
             return ForceDirectPage()
             
-        def create_shelf_demo():
-            from ui.pages.ShelfDemoPage import ShelfDemoPage
-            return ShelfDemoPage()
+        def create_shelf():
+            from ui.widgets.ShelfWidget import ShelfWidget
+            return ShelfWidget()
 
         def create_workspace_demo():
             from ui.pages.WorkspaceDemoPage import WorkspaceDemoPage
@@ -170,7 +170,7 @@ class MainWindow(QMainWindow):
         self.router.register("graph", create_graph, "graph")
         
         # 详情页/编辑页/其他页面
-        self.router.register("shelf_demo", create_shelf_demo, None)
+        self.router.register("shelf", create_shelf, "shelf")
         self.router.register("workspace_demo", create_workspace_demo, None)
         self.router.register("work", create_single_work, "work") # 作品详情
         self.router.register("single_actress", create_single_actress, "actress") # 女优详情
@@ -188,7 +188,7 @@ class MainWindow(QMainWindow):
             "actress": "actress",
             "actor": "actor",
             "graph": "graph",
-            "shelf": "shelf_demo",
+            "shelf": "shelf",
             "av": "av",
             "setting": "setting"
         }

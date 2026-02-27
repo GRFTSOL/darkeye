@@ -4,9 +4,14 @@ from PySide6.QtCore import Qt, Signal, QRect, Slot
 import shutil, logging, os, subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional
 
 from config import WORKCOVER_PATH, TEMP_PATH
 from controller.MessageService import MessageBoxService
+
+if TYPE_CHECKING:
+    from darkeye_ui.design.theme_manager import ThemeManager
+    from darkeye_ui.design.tokens import ThemeTokens
 
 
 def is_temp_path(path: str | Path) -> bool:
@@ -15,24 +20,55 @@ def is_temp_path(path: str | Path) -> bool:
     return "temp" in path_obj.parts  # 检查路径各部分是否包含'temp'
 
 
+def _container_qss_from_tokens(t: "ThemeTokens") -> str:
+    """根据设计令牌生成 #container 的 QSS，文字与边框颜色由令牌控制。"""
+    return (
+        f"#container {{"
+        f"border: {t.border_width} dashed {t.color_border};"
+        f"color: {t.color_text};"
+        f"font-family: {t.font_family_base};"
+        f"font-size: {t.font_size_base};"
+        f"padding: 0px;"
+        f"margin: 0px;"
+        f"}}"
+    )
+
+
 class _CoverDropLabel(QLabel):
-    """内部可拖放封面 QLabel，保持原有显示与拖放逻辑。"""
+    """内部可拖放封面 QLabel，保持原有显示与拖放逻辑；文字与边框颜色由设计令牌控制。"""
 
     cover_changed = Signal()
 
-    def __init__(self):
+    def __init__(self, theme_manager: Optional["ThemeManager"] = None):
         super().__init__()
         self._aspect_ratio = 0.7  # 宽高比
         self.setScaledContents(False)
         self.setAcceptDrops(True)
-        self.setText("把JAV封面拖进来")
+        self.setText("把封面拖进来或点击选择本地图片")
         self.setAlignment(Qt.AlignCenter)
         self.setObjectName("container")
-        self.setStyleSheet("#container{border: 2px dashed gray; font-size: 16px; padding: 0px;margin: 0px;}")
+        if theme_manager is None:
+            try:
+                from app_context import get_theme_manager
+                theme_manager = get_theme_manager()
+            except Exception:
+                theme_manager = None
+        self._theme_manager = theme_manager
+        self._apply_token_styles()
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._apply_token_styles)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self._original_pixmap = None
         self._path = None
         self.msg = MessageBoxService(self)
+
+    def _apply_token_styles(self) -> None:
+        """根据当前主题令牌刷新 #container 的边框与文字样式。"""
+        if self._theme_manager is not None:
+            t = self._theme_manager.tokens()
+            self.setStyleSheet(_container_qss_from_tokens(t))
+        else:
+            self.setStyleSheet("#container{border: 2px dashed gray; font-size: 16px; padding: 0px;margin: 0px;}")
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
@@ -213,14 +249,14 @@ class _CoverDropLabel(QLabel):
 
 
 class CoverDropWidget(QWidget):
-    """可拖动式添加封面的控件，在父容器内按宽高比占满并居中，不产生滚动条。"""
+    """可拖动式添加封面的控件，在父容器内按宽高比占满并居中，不产生滚动条。文字与边框由设计令牌控制。"""
 
     cover_changed = Signal()
 
-    def __init__(self, aspect_ratio: float = 0.7):
+    def __init__(self, aspect_ratio: float = 0.7, theme_manager: Optional["ThemeManager"] = None):
         super().__init__()
         self._aspect_ratio = aspect_ratio
-        self._inner = _CoverDropLabel()
+        self._inner = _CoverDropLabel(theme_manager=theme_manager)
         self._inner._aspect_ratio = aspect_ratio
         self._inner.setParent(self)
         self._inner.cover_changed.connect(self.cover_changed.emit)

@@ -7,7 +7,7 @@ from ui.basic import LazyScrollArea
 from ui.widgets import SingleActressInfo
 from ui.widgets import CoverCard
 from config import DATABASE
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
 
 class SingleActressPage(LazyWidget):
     def __init__(self):

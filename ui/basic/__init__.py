@@ -3,19 +3,16 @@
 '''
 
 
-from darkeye_ui.layouts import WaterfallLayout
-from darkeye_ui.layouts import FlowLayout
-from .HeartRatingWidget import HeartRatingWidget
+
+
+
+
 from .VLabel import VLabel
 from .LazyScrollArea import LazyScrollArea
-
-from .HeartLabel import HeartLabel
 from .Effect import ShadowEffectMixin
-from darkeye_ui.layouts import VFlowLayout
-
 from .ModelSearch import ModelSearch
 from .IconPushButton import IconPushButton
-from .ToggleSwitch   import ToggleSwitch
+
 from .MovableTableView import MovableTableView
 from .EditableTableView import EditableTableView
 from .HorizontalScrollArea import HorizontalScrollArea

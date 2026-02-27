@@ -1,7 +1,7 @@
 
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
 
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QLabel,QVBoxLayout,QTextEdit,QDialog,QFileDialog,QGridLayout,QWidget,QTreeWidget, QTreeWidgetItem,QStackedWidget,QFormLayout,QKeySequenceEdit,QCheckBox,QLineEdit,QComboBox,QRadioButton
+from PySide6.QtWidgets import QPushButton, QHBoxLayout,QVBoxLayout,QTextEdit,QDialog,QFileDialog,QGridLayout,QWidget,QTreeWidget, QTreeWidgetItem,QStackedWidget,QFormLayout,QKeySequenceEdit,QCheckBox,QLineEdit,QComboBox,QRadioButton
 from PySide6.QtGui import QIcon,QKeySequence
 from PySide6.QtCore import Slot,Qt
 import logging
@@ -15,11 +15,13 @@ from config import APP_VERSION
 
 import logging
 from config import BASE_DIR,DATABASE,INI_FILE,ICONS_PATH,PRIVATE_DATABASE,DATABASE_BACKUP_PATH,PRIVATE_DATABASE_BACKUP_PATH
+from config import get_theme_id, set_theme_id
 from controller.ShortcutRegistry import ShortcutRegistry
 from pathlib import Path
 from app_context import get_theme_manager
 from main import apply_theme
 from darkeye_ui.design import ThemeId
+from darkeye_ui.components.label import Label
 
 # 主题下拉选项与 ThemeId 顺序一致
 THEME_OPTIONS = [
@@ -37,13 +39,18 @@ class CommonPage(QWidget):
         self.theme_choose = QComboBox()
         for _, label in THEME_OPTIONS:
             self.theme_choose.addItem(label)
-        theme_mgr = get_theme_manager()
-        if theme_mgr is not None:
-            try:
-                idx = next(i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid == theme_mgr.current())
-                self.theme_choose.setCurrentIndex(idx)
-            except StopIteration:
-                pass
+        saved_theme = get_theme_id()
+        try:
+            idx = next(i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid.name == saved_theme)
+            self.theme_choose.setCurrentIndex(idx)
+        except StopIteration:
+            theme_mgr = get_theme_manager()
+            if theme_mgr is not None:
+                try:
+                    idx = next(i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid == theme_mgr.current())
+                    self.theme_choose.setCurrentIndex(idx)
+                except StopIteration:
+                    pass
         self.theme_choose.currentIndexChanged.connect(self._on_theme_changed)
         self.GPU=QCheckBox("开启GPU加速")
         self.anim=QCheckBox("禁用动画效果")
@@ -55,7 +62,9 @@ class CommonPage(QWidget):
 
     def _on_theme_changed(self, index: int):
         if 0 <= index < len(THEME_OPTIONS):
-            apply_theme(THEME_OPTIONS[index][0])
+            theme_id = THEME_OPTIONS[index][0]
+            set_theme_id(theme_id)
+            apply_theme(theme_id)
 
 
 class ShortcutSettingRow(QWidget):
@@ -69,7 +78,7 @@ class ShortcutSettingRow(QWidget):
         
         # 1. 获取显示的名称
         name = self.registry.defaults[action_id]["name"]
-        self.label = QLabel(name)
+        self.label = Label(name)
         self.label.setFixedWidth(100)
         
         # 2. 获取当前的快捷键
@@ -118,13 +127,13 @@ class ShortCutSettingPage(QWidget):
             main_layout.addWidget(row)
 
         main_layout.addStretch()
-        main_layout.addWidget(QLabel("<small>配置将自动保存到 shortcuts_config.json</small>"))
+        main_layout.addWidget(Label("<small>配置将自动保存到 shortcuts_config.json</small>"))
 
 class ClawerSettingPage(QWidget):
     def __init__(self):
         super().__init__()
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("<h3>爬虫相关设置</h3>"))
+        layout.addWidget(Label("<h3>爬虫相关设置</h3>"))
 
 class DBSettingPage(QWidget):
     '''这个是数据库相关设置页面'''
@@ -132,9 +141,9 @@ class DBSettingPage(QWidget):
         super().__init__()
         
         self.msg=MessageBoxService(self)
-        path_label=QLabel(f"软件的工作文件夹{str(BASE_DIR)}")
-        path_label2=QLabel(f"软件的公共数据库文件位置{str(DATABASE)}")
-        path_label3=QLabel(f"ini文件的位置{INI_FILE}")
+        path_label=Label(f"软件的工作文件夹{str(BASE_DIR)}")
+        path_label2=Label(f"软件的公共数据库文件位置{str(DATABASE)}")
+        path_label3=Label(f"ini文件的位置{INI_FILE}")
 
         self.btn_vacuum=QPushButton("数据库清理碎片")#包括清理两个数据库
         self.btn_cover_check=QPushButton("图片数据一致性检查")
@@ -277,7 +286,7 @@ class FirstPage(QWidget):
         form_layout = QFormLayout()
 
 
-        githubLabel = QLabel()
+        githubLabel = Label()
         githubLabel.setText(
             '<a href="https://github.com/de4321/darkeye">https://github.com/de4321/darkeye</a>'
         )
@@ -285,7 +294,7 @@ class FirstPage(QWidget):
         githubLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
         githubLabel.setOpenExternalLinks(True)   # 关键
 
-        layout1.addWidget(QLabel(f"当前版本{APP_VERSION}"))
+        layout1.addWidget(Label(f"当前版本{APP_VERSION}"))
         layout1.addWidget(QPushButton("检查更新"))
         layout1.addWidget(QPushButton("意见反馈"))
         layout1.addWidget(QPushButton("版本记录"))
@@ -293,11 +302,11 @@ class FirstPage(QWidget):
         layout2.addWidget(QRadioButton("自动更新"))
         layout2.addWidget(QRadioButton("有新版本时提醒我"))
 
-        layout3.addWidget(QLabel("下载移动客户端"))
+        layout3.addWidget(Label("下载移动客户端"))
         layout3.addWidget(QPushButton("Android版"))
 
 
-        form_layout.addRow(QLabel("GitHub地址"),githubLabel)
+        form_layout.addRow(Label("GitHub地址"),githubLabel)
         layout.addLayout(layout1)
         layout.addLayout(layout2)
         layout.addLayout(layout3)

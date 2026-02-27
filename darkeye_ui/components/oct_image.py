@@ -9,7 +9,7 @@ import math
 
 
 def _set_shadow_on_widget(widget: QLabel, blur_radius=10, x_offset=0, y_offset=2, color=None):
-    """为控件设置投影，仅依赖 PySide6，不依赖 ui.basic。"""
+    """为控件设置投影，仅依赖 PySide6"""
     from PySide6.QtWidgets import QGraphicsDropShadowEffect
     if color is None:
         color = QColor(0, 0, 0, 80)
@@ -76,14 +76,14 @@ class OctImage(QLabel):
 
     def _show_image_async(self):
         if not self._path or not self._path.exists():
-            self.setText("无封面")
+            self.setText("无图片")
             return
         runnable = ImageLoaderRunnable(self._path, self.size(), self.image_ready)
         QThreadPool.globalInstance().start(runnable)
 
     def _set_pixmap(self, img: QImage):
         if img.isNull():
-            self.setText("无封面")
+            self.setText("无图片")
             return
         d = self._d
         c = d / (2 + math.sqrt(2))
@@ -100,7 +100,7 @@ class OctImage(QLabel):
         """更新图片并重绘。"""
         if image_path is None or image_path == "":
             self._path = None
-            self.setText("无封面")
+            self.setText("无图片")
             self.clearMask()
             return
         p = Path(image_path)

@@ -1,12 +1,13 @@
-from PySide6.QtWidgets import QPushButton, QHBoxLayout,QLabel,QVBoxLayout,QDialog,QDateTimeEdit,QTextEdit,QGridLayout,QSizePolicy
+from PySide6.QtWidgets import QPushButton, QHBoxLayout,QVBoxLayout,QDialog,QDateTimeEdit,QTextEdit,QGridLayout,QSizePolicy
 from PySide6.QtCore import Qt,QDateTime,QTime,Slot
 
-from ui.basic import HeartRatingWidget
+from darkeye_ui.components import HeartRatingWidget
 from core.database.query import get_unique_tools_from_masturbation,get_workid_by_serialnumber
 import logging
 from config import ICONS_PATH
 from PySide6.QtGui import QIcon
 from controller.MessageService import MessageBoxService
+from darkeye_ui.components.label import Label
 
 class AddMasturbationDialog(QDialog):
     def __init__(self):
@@ -16,22 +17,22 @@ class AddMasturbationDialog(QDialog):
         self.resize(300, 300)
         self.msg=MessageBoxService(self)#消息服务
 
-        self.label_serial_number=QLabel("番号")
+        self.label_serial_number=Label("番号")
         from core.database.query import get_serial_number
         from ui.widgets import CompleterLineEdit
         self.input_serial_number=CompleterLineEdit(get_serial_number)
 
-        self.label_rating=QLabel("评分")
+        self.label_rating=Label("评分")
         self.input_rating=HeartRatingWidget()
 
-        self.label_tool=QLabel("使用工具")
+        self.label_tool=Label("使用工具")
         self.input_tool=CompleterLineEdit(get_unique_tools_from_masturbation)#设置撸管工具的读取
         self.input_tool.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Preferred)
 
-        self.label_comment=QLabel("事后评价")
+        self.label_comment=Label("事后评价")
         self.input_comment=QTextEdit()
 
-        self.label_time=QLabel("时间")
+        self.label_time=Label("时间")
         self.datetime_edit = QDateTimeEdit(self)
         self.datetime_edit.setDisplayFormat("yy-MM-dd HH:mm")  # 设置显示格式
         self.datetime_edit.setDateTime(QDateTime.currentDateTime())  # 设置初始时间

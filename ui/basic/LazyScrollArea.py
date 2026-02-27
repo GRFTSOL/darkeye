@@ -3,7 +3,7 @@ from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import QScrollBar
 import logging
 
-from ui.basic import WaterfallLayout
+from darkeye_ui.layouts import WaterfallLayout
 from controller.MessageService import MessageBoxService
 
 # 延迟检查滚动条时的最大重试次数，避免无限递归

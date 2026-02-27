@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QLabel
 from PySide6.QtGui import QPainter, QFontMetrics, QFont, QPainterPath, QColor
-from PySide6.QtCore import QSize,QTimer,QDateTime
+from PySide6.QtCore import QSize,QTimer,QDateTime,Qt
 import logging
 
 class VLabel(QLabel):
@@ -11,6 +11,8 @@ class VLabel(QLabel):
 
         self.setWordWrap(False)
         self.setMouseTracking(True) # 允许追踪鼠标移动，不然只有按键才触发鼠标事件
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAutoFillBackground(False)
         self._hovered=False#带悬浮文字变色的功能
         self.chinese_font = QFont("KaiTi", 12)
         self.chinese_font.setBold(True)

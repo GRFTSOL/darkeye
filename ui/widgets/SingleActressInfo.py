@@ -1,13 +1,15 @@
 
-from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel,QVBoxLayout,QGridLayout,QSizePolicy
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QGridLayout,QSizePolicy
 from PySide6.QtCore import Qt,Slot
 from PySide6.QtGui import QPainter,QPen
 from ui.statistics import RadarChartWidget
 import logging
-from ui.basic import HeartLabel
+from darkeye_ui.components.heart_label import HeartLabel
 from ui.widgets import ClickableLabel
 from ui.widgets.image.ActressAvatar import ActressAvatar
 from darkeye_ui.components.oct_image import OctImage
+from config import ACTRESSIMAGES_PATH
+from darkeye_ui.components.label import Label
 
 class SingleActressInfo(QWidget):
     '''单女优的信息数据显示'''
@@ -35,10 +37,10 @@ class SingleActressInfo(QWidget):
         self.name_widget_layout.addWidget(self.heart,alignment=Qt.AlignBottom)
         self.name_widget_layout.addStretch()
 
-        self.birthday=QLabel("xxxx年xx月xx日")
-        self.debutday=QLabel("xxxx年xx月xx日")
-        label_birthday=QLabel("生日")
-        label_debutday=QLabel("出道日期")
+        self.birthday=Label("xxxx年xx月xx日")
+        self.debutday=Label("xxxx年xx月xx日")
+        label_birthday=Label("生日")
+        label_debutday=Label("出道日期")
         #试一下的是动态信息，包括曾用名，等等
 
         #self.pic=OctImage()#这个没有跳转到编辑界面的功能
@@ -80,7 +82,7 @@ class SingleActressInfo(QWidget):
         painter.drawRect(rect)
 
     def beaute(self):
-        '''对控件美化'''
+        '''对控件美化。ClickableLabel 颜色由主题 Label#DesignLabel 控制，此处只设字体，避免写死 color 以随主题变色。'''
         #self.name_widget.setStyleSheet("background-color:#FFFFFF ;")
 
         self.cn_name.setStyleSheet("""
@@ -89,23 +91,18 @@ class SingleActressInfo(QWidget):
 """)
         self.jp_name.setStyleSheet("""
         font-size:16px;
-        color: #333333; /* 深灰色 */
 """)
         self.en_name.setStyleSheet("""
         font-size:16px;
-        color: #333333; /* 深灰色 */
 """)
         self.kana_name.setStyleSheet("""
         font-size:16px;
-        color: #333333; /* 深灰色 */
 """)
         self.birthday.setStyleSheet("""
         font-size:16px;
-        color: #333333; /* 深灰色 */
 """)
         self.debutday.setStyleSheet("""
         font-size:16px;
-        color: #333333; /* 深灰色 */
 """)
 
     def update(self,actress_id):
@@ -140,9 +137,13 @@ class SingleActressInfo(QWidget):
         else:
             self.heart.set_statue(False)
 
-        #更新头像
-        self.pic.update_image(actress["image_urlA"])
-        self.pic._actress_id=actress_id
+        #更新头像（image_urlA 为相对路径，需拼上 ACTRESSIMAGES_PATH 才能正确加载）
+        image_url_a = actress.get("image_urlA")
+        if image_url_a:
+            self.pic.update_image(str(ACTRESSIMAGES_PATH / image_url_a))
+        else:
+            self.pic.update_image(None)
+        self.pic._actress_id = actress_id
         #更新动态的别名
         chain=self.calc_chain(actress_id)
         chain.pop()
@@ -155,8 +156,8 @@ class SingleActressInfo(QWidget):
                 widget.deleteLater()  # 删除控件
         if chain:
             for name in chain:
-                label=QLabel(name)
-                label_alias=QLabel("别名")
+                label=Label(name)
+                label_alias=Label("别名")
                 self.dyna_layout.addWidget(label_alias)
                 self.dyna_layout.addWidget(label)
 

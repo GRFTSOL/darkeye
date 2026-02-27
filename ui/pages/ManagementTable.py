@@ -5,7 +5,12 @@ import logging
 
 from config import BASE_DIR,DATABASE,INI_FILE
 from ui.basic import ModelSearch
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.token_table_view import TokenTableView
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.combo_box import ComboBox
+from darkeye_ui.components.label import Label
 
 class ManagementTable(LazyWidget):
     """综合管理表格的页面"""
@@ -40,22 +45,22 @@ class ManagementTable(LazyWidget):
         self.searchWidget.set_model_view(self.model,self.view)#搜索框连接功能
 
     def init_ui(self):
-        self.view = QTableView()
-        self.tableCombo=QComboBox()
+        self.view = TokenTableView()
+        self.tableCombo=ComboBox()
         self.tableCombo.addItems(["label","love_making","masturbation","sexual_arousal"])
         self.tableCombo.currentTextChanged.connect(self.on_table_changed)
 
         # 按钮
-        self.btn_add = QPushButton("新增行")
-        self.btn_delete = QPushButton("删除行")
-        self.btn_save = QPushButton("保存修改")
-        self.btn_revert = QPushButton("撤销修改")
-        self.btn_refresh=QPushButton("刷新数据")
-        self.export_csv_button = QPushButton("导出为 CSV")
+        self.btn_add = Button("新增行")
+        self.btn_delete = Button("删除行")
+        self.btn_save = Button("保存修改")
+        self.btn_revert = Button("撤销修改")
+        self.btn_refresh=Button("刷新数据")
+        self.export_csv_button = Button("导出为 CSV")
 
         # 布局
         button_layout = QHBoxLayout()
-        button_layout.addWidget(QLabel("选择表:"))
+        button_layout.addWidget(Label("选择表:"))
         button_layout.addWidget(self.tableCombo)
         button_layout.addWidget(self.btn_add)
         button_layout.addWidget(self.btn_delete)
@@ -65,8 +70,8 @@ class ManagementTable(LazyWidget):
         button_layout.addWidget(self.export_csv_button)
         button_layout.addStretch()
 
-        self.serial_number=QLineEdit()
-        self.studio=QComboBox()
+        self.serial_number=LineEdit()
+        self.studio=ComboBox()
 
         self.searchWidget=ModelSearch()
 

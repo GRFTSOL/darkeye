@@ -1,10 +1,15 @@
-from PySide6.QtWidgets import QWidget,QHBoxLayout,QLabel
+# 爱心打分控件（1–5 颗心），用于评分场景
+
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel
 from PySide6.QtCore import Qt, Signal
 
-class HeartLabel(QLabel):
+
+class _RatingHeartLabel(QLabel):
+    """单颗心（用于打分条内的 1–5 颗心），与 HeartLabel（喜欢/不喜欢）不同。"""
 
     clicked = Signal(int)
-    def __init__(self, index, parent=None):
+
+    def __init__(self, index: int, parent=None):
         super().__init__(parent)
         self.index = index
         self.setText("🤍")
@@ -32,7 +37,8 @@ class HeartLabel(QLabel):
 
 
 class HeartRatingWidget(QWidget):
-    '''爱心打分控件'''
+    """爱心打分控件（1–5 颗心）。"""
+
     rating_changed = Signal(int)
 
     def __init__(self, parent=None):
@@ -43,22 +49,21 @@ class HeartRatingWidget(QWidget):
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)  # 去掉控件之间的空隙
+        layout.setSpacing(0)
         self.hearts = []
         for i in range(1, 6):
-            heart = HeartLabel(i, self)
+            heart = _RatingHeartLabel(i, self)
             heart.clicked.connect(self.emit_rating)
             self.hearts.append(heart)
             layout.addWidget(heart)
 
-    def get_rating(self):
+    def get_rating(self) -> int:
         return self.rating
-    
-    def emit_rating(self, value):
+
+    def emit_rating(self, value: int) -> None:
         self.rating_changed.emit(value)
 
-    def update_hearts(self):
+    def update_hearts(self) -> None:
         active = self.hover_index if self.hover_index != -1 else self.rating
         for heart in self.hearts:
             heart.setText("❤️" if heart.index <= active else "🤍")
-

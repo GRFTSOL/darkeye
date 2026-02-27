@@ -3,8 +3,8 @@ from PySide6.QtCore import Slot,QThreadPool
 import logging
 from core.crawler.download import update_title_story_db
 from core.crawler.javtxt import top_actresses
-from ui.base import LazyWidget
-
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.button import Button
 
 
 class UpdateManyTabPage(LazyWidget):
@@ -15,12 +15,12 @@ class UpdateManyTabPage(LazyWidget):
         logging.info("----------加载批量更新窗口----------")
 
         #self.btn_search_actor=QPushButton("批量更新男优")
-        self.btn_search_story=QPushButton("批量更新所有的故事")
+        self.btn_search_story=Button("批量更新所有的故事")
         self.btn_search_story.setEnabled(False)
-        self.btn_search_actress=QPushButton("更新热门女优")
+        self.btn_search_actress=Button("更新热门女优")
         self.btn_search_actress.setToolTip("更新javatext热门女优前50")
 
-        self.btn_update_needactress=QPushButton("更新标记需要更新的女优数据")
+        self.btn_update_needactress=Button("更新标记需要更新的女优数据")
         self.btn_update_needactress.setToolTip("把所有被标记为需要更新的女优一个一个进行数据更新")
 
         #self.btn_search_actor.clicked.connect(update_actor_db)

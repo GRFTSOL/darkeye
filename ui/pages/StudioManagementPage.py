@@ -1,11 +1,16 @@
-from PySide6.QtWidgets import QTableView, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,QAbstractItemView,QDataWidgetMapper,QFormLayout,QLineEdit,QComboBox,QLabel,QSplitter
+from PySide6.QtWidgets import QTableView, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,QAbstractItemView,QDataWidgetMapper,QFormLayout,QLineEdit,QComboBox,QSplitter
 from PySide6.QtCore import Slot,Qt
 from PySide6.QtSql import QSqlRelation,QSqlRelationalTableModel,QSqlRelationalDelegate,QSqlQueryModel,QSqlTableModel,QSqlDatabase
 import logging
 
 from config import BASE_DIR,DATABASE,INI_FILE
 from ui.basic import ModelSearch
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.token_table_view import TokenTableView
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.combo_box import ComboBox
 
 class StudioManagementPage(LazyWidget):
     #StudioManagementPage
@@ -99,10 +104,10 @@ class StudioManagementPage(LazyWidget):
         self.view2.installEventFilter(self)
 
     def init_ui(self):
-        self.view1 = QTableView()
-        self.view2 =QTableView()
+        self.view1 = TokenTableView()
+        self.view2 = TokenTableView()
 
-        self.status_label=QLabel("")
+        self.status_label=Label("")
         # 表格区域 - 使用分割器
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.view1)
@@ -110,11 +115,11 @@ class StudioManagementPage(LazyWidget):
         splitter.setMinimumHeight(400)
 
         # 按钮
-        self.btn_add = QPushButton("新增行")
-        self.btn_delete = QPushButton("删除行")
-        self.btn_save = QPushButton("保存修改")
-        self.btn_revert = QPushButton("撤销修改")
-        self.btn_refresh=QPushButton("读数据库数据")
+        self.btn_add = Button("新增行")
+        self.btn_delete = Button("删除行")
+        self.btn_save = Button("保存修改")
+        self.btn_revert = Button("撤销修改")
+        self.btn_refresh=Button("读数据库数据")
 
         # 布局
         button_layout = QHBoxLayout()
@@ -125,20 +130,21 @@ class StudioManagementPage(LazyWidget):
         button_layout.addWidget(self.btn_refresh)
         button_layout.addWidget(self.status_label)
 
-        self.serial_number=QLineEdit()
-        self.studio=QComboBox()
+        self.serial_number=LineEdit()
+        self.studio=ComboBox()
 
         formlayout1=QFormLayout()
-        formlayout1.addRow("番号前缀",self.serial_number)
-        formlayout1.addRow("制作商",self.studio)
+        formlayout1.addRow(Label("番号前缀"),self.serial_number)
+        formlayout1.addRow(Label("制作商"),self.studio)
 
-        self.cn_name=QLineEdit()
-        self.jp_name=QLineEdit()
-        self.alias=QLineEdit()
+        self.cn_name=LineEdit()
+        self.jp_name=LineEdit()
+        self.alias=LineEdit()
         formlayout2=QFormLayout()
-        formlayout2.addRow("中文名",self.cn_name)
-        formlayout2.addRow("日文名",self.jp_name)
-        formlayout2.addRow("别名",self.alias)
+        formlayout2.addRow(Label("中文名"),self.cn_name)
+        formlayout2.addRow(Label("日文名"),self.jp_name)
+        formlayout2.addRow(Label("别名"),self.alias)
+
 
         self.searchWidget=ModelSearch()
         hlayout=QHBoxLayout()

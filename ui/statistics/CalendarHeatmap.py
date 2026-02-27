@@ -1,17 +1,34 @@
+from typing import TYPE_CHECKING, Optional
+
 from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import QPainter, QColor, QPen
-from PySide6.QtCore import Qt, QRectF, QDate,QSize
+from PySide6.QtCore import Qt, QRectF, QDate, QSize
+
+from darkeye_ui.design.tokens import ThemeTokens, LIGHT_TOKENS
+
+if TYPE_CHECKING:
+    from darkeye_ui.design.theme_manager import ThemeManager
 
 
 class CalendarHeatmap(QWidget):
-    '''日历热力图仿github那种'''
-    def __init__(self, year=2025, data=None, parent=None):
+    '''日历热力图仿github那种，背景、边框、文字颜色由设计令牌驱动，随主题切换。'''
+    def __init__(self, year=2025, data=None, parent=None, theme_manager: Optional["ThemeManager"] = None):
         super().__init__(parent)
-        self.setFixedSize(750,155)
+        self.setFixedSize(750, 155)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.year = year
         # data: dict of QDate -> bool (是否撸管)
         self.data = data or {}
+
+        if theme_manager is None:
+            try:
+                from app_context import get_theme_manager
+                theme_manager = get_theme_manager()
+            except Exception:
+                pass
+        self._theme_manager = theme_manager
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._on_theme_changed)
         
         self.cell_width = 10
         self.cell_height = 10
@@ -20,7 +37,15 @@ class CalendarHeatmap(QWidget):
         self.margin_top = 40
         self.margin_left = 40
         self._compute_basic()
-        
+
+    def _tokens(self) -> ThemeTokens:
+        if self._theme_manager is not None:
+            return self._theme_manager.tokens()
+        return LIGHT_TOKENS
+
+    def _on_theme_changed(self) -> None:
+        self.update()
+
     def _compute_basic(self):
         # 计算该年第一天和最后一天
         self.first_date = QDate(self.year, 1, 1)
@@ -60,25 +85,25 @@ class CalendarHeatmap(QWidget):
                 col += 1
             current = current.addDays(1)
     
-    def paintEvent(self, event): 
+    def paintEvent(self, event):
+        t = self._tokens()
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.fillRect(self.rect(), QColor("white"))
-        
+        painter.fillRect(self.rect(), QColor(t.color_bg))
+
         # ===== 绘制外框 =====
         margin = 10  # 外边距
         border_radius = 12  # 圆角半径
         border_rect = self.rect().adjusted(
             margin, margin, -margin, -margin
         )
-        pen = QPen(QColor(100, 100, 100), 2)  # 灰色边框，线宽2
+        pen = QPen(QColor(t.color_border), 2)
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
         painter.drawRoundedRect(border_rect, border_radius, border_radius)
 
-
         # 画星期文字
-        painter.setPen(Qt.black)
+        painter.setPen(QColor(t.color_text))
         font = painter.font()
         font.setBold(True)
         painter.setFont(font)
@@ -122,10 +147,11 @@ class CalendarHeatmap(QWidget):
         painter.end()
     
     def _draw_month_labels(self, painter):
+        t = self._tokens()
         font = painter.font()
         font.setBold(True)
         painter.setFont(font)
-        painter.setPen(Qt.black)
+        painter.setPen(QColor(t.color_text))
         
         current_month = 1
         first_col_of_month = None

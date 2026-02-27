@@ -1,9 +1,10 @@
-from PySide6.QtWidgets import (QApplication, QMainWindow, QTableView, QVBoxLayout, 
-                               QHBoxLayout, QWidget, QPushButton, QAbstractItemView)
+from PySide6.QtWidgets import (QVBoxLayout, 
+                               QHBoxLayout, QWidget,QAbstractItemView)
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex,Signal,Slot
 from core.database.query import get_actress_allname
 import logging
 from ui.basic import IconPushButton
+from darkeye_ui.components.token_table_view import TokenTableView
 
 class MovableTableModel(QAbstractTableModel):
     data_updated=Signal(list)
@@ -133,7 +134,7 @@ class MovableTableView(QWidget):
         self.setFixedWidth(550)
         # 创建模型和视图
         self.model = MovableTableModel()
-        self.tableView = QTableView()
+        self.tableView = TokenTableView()
         self.tableView.setModel(self.model)
         self.tableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.tableView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)

@@ -81,6 +81,22 @@ class VerticalTabBar(QTabBar):
                 # 绘制标签背景
                 painter.drawControl(QStyle.CE_TabBarTabShape, opt)
                 
+                # 文字颜色：优先使用令牌通过 dynamic property 传入的颜色，否则用 palette
+                text_color = None
+                if opt.state & QStyle.State_Selected:
+                    text_color = self.property("tabTextColorSelected")
+                if text_color is None or not text_color:
+                    text_color = self.property("tabTextColor")
+                if text_color is not None and text_color:
+                    try:
+                        c = QColor(str(text_color))
+                        if c.isValid():
+                            painter.setPen(c)
+                    except Exception:
+                        painter.setPen(self.palette().color(self.foregroundRole()))
+                else:
+                    painter.setPen(self.palette().color(self.foregroundRole()))
+                
                 # 设置字体和对齐方式
                 painter.setFont(self.font())
                 painter.setRenderHint(QPainter.TextAntialiasing)

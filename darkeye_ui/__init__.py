@@ -5,8 +5,10 @@ darkeye_ui - 可复用的设计系统与组件库
 - 设计系统：ThemeManager, ThemeId, tokens, 图标工具
 - 组件：Button, IconPushButton, Label, Input, StateToggleButton, ToggleSwitch
 - 布局：FlowLayout, WaterfallLayout, VFlowLayout, VerticalTextLayout
+- 基类：LazyWidget
 """
 
+from .base import LazyWidget
 from .design import (  # type: ignore[F401]
     ThemeTokens,
     ThemeId,
@@ -26,7 +28,7 @@ from .components import (  # type: ignore[F401]
     Button,
     IconPushButton,
     Label,
-    Input,
+    LineEdit,
     StateToggleButton,
     ToggleSwitch,
 )
@@ -39,6 +41,8 @@ from .layouts import (  # type: ignore[F401]
 )
 
 __all__ = [
+    # base
+    "LazyWidget",
     # design
     "ThemeTokens",
     "ThemeId",

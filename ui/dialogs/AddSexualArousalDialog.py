@@ -6,6 +6,7 @@ from PySide6.QtGui import QIcon
 from config import ICONS_PATH
 from core.database.insert import insert_sexual_arousal_record
 from controller.MessageService import MessageBoxService
+from darkeye_ui.components.label import Label
 
 class AddSexualArousalDialog(QDialog):
     def __init__(self):
@@ -16,10 +17,10 @@ class AddSexualArousalDialog(QDialog):
         self.msg=MessageBoxService(self)
 
         #设置评价的控件
-        label_comment=QLabel("事后评价")
+        label_comment=Label("事后评价")
         self.input_comment=QTextEdit()
 
-        label_time=QLabel("时间")
+        label_time=Label("时间")
         self.datetime_edit = QDateTimeEdit(self)
         self.datetime_edit.setDisplayFormat("yy-MM-dd HH:mm")  # 设置显示格式
         six_am_today = QDateTime.currentDateTime()

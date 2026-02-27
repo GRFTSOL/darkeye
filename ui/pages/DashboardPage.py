@@ -2,7 +2,6 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QLabel,
     QPushButton,
     QListWidget,
     QListWidgetItem,
@@ -12,7 +11,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from ui.navigation.router import Router
-
+from darkeye_ui.components.label import Label
 
 class DashboardPage(QWidget):
     """
@@ -67,7 +66,7 @@ class DashboardPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        title = QLabel("数据库概览")
+        title = Label("数据库概览")
         title.setObjectName("dashboard_section_title")
         layout.addWidget(title)
 
@@ -92,11 +91,11 @@ class DashboardPage(QWidget):
         v.setContentsMargins(12, 8, 12, 8)
         v.setSpacing(4)
 
-        value_label = QLabel(value)
+        value_label = Label(value)
         value_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         value_label.setStyleSheet("font-size: 20px; font-weight: bold;")
 
-        desc_label = QLabel(label)
+        desc_label = Label(label)
         desc_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         desc_label.setStyleSheet("color: gray;")
 
@@ -114,7 +113,7 @@ class DashboardPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        title = QLabel("最近行为")
+        title = Label("最近行为")
         title.setObjectName("dashboard_section_title")
         layout.addWidget(title)
 
@@ -127,7 +126,7 @@ class DashboardPage(QWidget):
         recent_view_layout.setContentsMargins(0, 0, 0, 0)
         recent_view_layout.setSpacing(4)
 
-        recent_view_title = QLabel("最近观看 / 最近标记")
+        recent_view_title = Label("最近观看 / 最近标记")
         recent_view_layout.addWidget(recent_view_title)
 
         self.recent_view_list = QListWidget()
@@ -140,7 +139,7 @@ class DashboardPage(QWidget):
         recent_new_layout.setContentsMargins(0, 0, 0, 0)
         recent_new_layout.setSpacing(4)
 
-        recent_new_title = QLabel("最近新增")
+        recent_new_title = Label("最近新增")
         recent_new_layout.addWidget(recent_new_title)
 
         self.recent_added_list = QListWidget()
@@ -176,7 +175,7 @@ class DashboardPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        title = QLabel("偏好统计 / Top 榜（基础版）")
+        title = Label("偏好统计 / Top 榜（基础版）")
         title.setObjectName("dashboard_section_title")
         layout.addWidget(title)
 
@@ -206,7 +205,7 @@ class DashboardPage(QWidget):
         v = QVBoxLayout(w)
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(4)
-        v.addWidget(QLabel(title))
+        v.addWidget(Label(title))
         v.addWidget(list_widget)
         return w
 
@@ -219,7 +218,7 @@ class DashboardPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        title = QLabel("待处理事项")
+        title = Label("待处理事项")
         title.setObjectName("dashboard_section_title")
         layout.addWidget(title)
 
@@ -246,7 +245,7 @@ class DashboardPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        title = QLabel("快捷操作")
+        title = Label("快捷操作")
         title.setObjectName("dashboard_section_title")
         layout.addWidget(title)
 

@@ -1,5 +1,5 @@
 
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QLabel,QVBoxLayout,QLineEdit,QTextEdit,QSizePolicy,QFormLayout,QSpinBox,QComboBox,QWidget,QSlider
+from PySide6.QtWidgets import QPushButton, QHBoxLayout,QVBoxLayout,QLineEdit,QTextEdit,QSizePolicy,QFormLayout,QSpinBox,QComboBox,QWidget,QSlider
 from PySide6.QtCore import Qt,QObject,Signal,Property,Signal,Slot
 
 
@@ -8,9 +8,9 @@ from pathlib import Path
 from enum import Enum
 
 from config import settings,WORKCOVER_PATH
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
 from controller.MessageService import MessageBoxService,IMessageService
-from ui.basic import ToggleSwitch,MovableTableView,IconPushButton
+from ui.basic import MovableTableView,IconPushButton
 from core.database.query import get_actor_allname
 from ui.widgets import ActressAvatarDropWidget
 

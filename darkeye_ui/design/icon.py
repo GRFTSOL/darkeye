@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Union
 
-from PySide6.QtCore import QByteArray
+from PySide6.QtCore import QByteArray, QSize
 from PySide6.QtGui import QIcon, QImage, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
@@ -68,6 +68,10 @@ SVG_PLUS='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox
 SVG_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 SVG_MINUS = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>'
 
+SVG_ARROW_UP='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>'
+SVG_ARROW_DOWN='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>'
+SVG_ARROW_LEFT='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>'
+SVG_ARROW_RIGHT='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>'
 
 # love-off / love-on：固定配色，保留原样（非 currentColor）
 SVG_LOVE_OFF = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="m9.268 2.994a8.476 8.476 0 0 0-5.256 2.451 8.476 8.476 0 0 0 0 11.99l11.99 11.99 11.99-11.99a8.476 8.476 0 0 0 0-11.99 8.476 8.476 0 0 0-11.99 0.001953 8.476 8.476 0 0 0-6.734-2.453zm0.8496 1.99c0.3742 0.004111 0.7479 0.03777 1.115 0.1172 1.95 0.2866 3.333 1.769 4.77 2.975 0.579-0.4938 1.158-0.9882 1.736-1.482 2.325-2.155 6.262-2.135 8.566 0.04297 2.612 2.16 2.886 6.457 0.6406 8.979-3.607 3.699-7.302 7.315-10.94 10.98l-9.947-9.947c-1.617-1.419-2.715-3.536-2.48-5.723 0.1633-2.909 2.554-5.447 5.422-5.879 0.3716-0.04244 0.7469-0.06856 1.121-0.06445z" fill="#ccc"/></svg>'
@@ -84,6 +88,10 @@ BUILTIN_ICONS = {
     "chevron_down": SVG_CHEVRON_DOWN,
     "chevron_left": SVG_CHEVRON_LEFT,
     "chevron_right": SVG_CHEVRON_RIGHT,
+    "arrow_up": SVG_ARROW_UP,
+    "arrow_down": SVG_ARROW_DOWN,
+    "arrow_left": SVG_ARROW_LEFT,
+    "arrow_right": SVG_ARROW_RIGHT,
     "settings": SVG_SETTINGS,
     "bell": SVG_BELL,
     "bell_ring": SVG_BELL_RING,
@@ -209,3 +217,20 @@ def get_builtin_icon(
     if svg is None:
         return QIcon()
     return svg_to_icon(svg, size=size, color=color)
+
+
+def render_svg_to_file(
+    svg_source: Union[str, Path],
+    file_path: Union[str, Path],
+    size: Union[int, tuple] = 24,
+    color: Union[str, None] = None,
+) -> str:
+    """将 SVG 渲染为 PNG 写入 file_path，返回用于 QSS url() 的路径（正斜杠）。"""
+    path = Path(file_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    w, h = _normalize_size(size)
+    icon = svg_to_icon(svg_source, size=size, color=color)
+    pix = icon.pixmap(QSize(w, h))
+    if not pix.isNull():
+        pix.save(str(path), "PNG")
+    return path.as_posix()

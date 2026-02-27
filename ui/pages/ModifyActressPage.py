@@ -8,13 +8,14 @@ from pathlib import Path
 from enum import Enum
 
 from config import settings,WORKCOVER_PATH
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
 from controller.MessageService import MessageBoxService,IMessageService
 
-from ui.basic import ToggleSwitch,MovableTableView,IconPushButton
+from ui.basic import MovableTableView,IconPushButton
 from core.database.query import get_actress_allname
 from ui.widgets import ActressAvatarDropWidget
 from server.bridge import ServerBridge
+from darkeye_ui.components.toggle_switch import ToggleSwitch
 
 class Model():
     '''纯放要显示数据的model'''

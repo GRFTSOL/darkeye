@@ -1,16 +1,23 @@
 #个人隐私的面板
 
-from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel,QVBoxLayout
+from typing import TYPE_CHECKING, Optional
+
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout
 from PySide6.QtGui import QPixmap, QPainter, QPainterPath, QBrush, QColor, QPen
 from PySide6.QtCore import Qt,Slot, QThreadPool, QRunnable, Signal, QObject
 from core.database.query import get_record_count_in_days,get_top_actress_by_masturbation_count
 import logging
 from ui.widgets import ActressCard
 from ui.basic.Effect import ShadowEffectMixin
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
 from ui.statistics import SwitchHeapMap
 from controller.GlobalSignalBus import global_signals
+from darkeye_ui.components.transparent_widget import TransparentWidget
+from darkeye_ui.components.label import Label
+from darkeye_ui.design.tokens import ThemeTokens, LIGHT_TOKENS
 
+if TYPE_CHECKING:
+    from darkeye_ui.design.theme_manager import ThemeManager
 
 class DatabaseQueryWorker(QRunnable):
     """数据库查询工作线程"""
@@ -76,21 +83,46 @@ class PersonalDataPage(LazyWidget):
 
 
 class OctagonCard(QWidget, ShadowEffectMixin):
-    """通用八边形卡片外框，子类只负责填充内容。"""
+    """通用八边形卡片外框，子类只负责填充内容。背景与描边由设计令牌驱动，随主题切换。"""
 
-    def __init__(self, object_name: str, margins: tuple[int, int, int, int] = (0, 0, 0, 0)) -> None:
+    def __init__(
+        self,
+        object_name: str,
+        margins: tuple[int, int, int, int] = (0, 0, 0, 0),
+        theme_manager: Optional["ThemeManager"] = None,
+    ) -> None:
         super().__init__()
         self.setFixedSize(170, 250)
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setObjectName(object_name)
         self.set_shadow()
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAutoFillBackground(False)
+
+        if theme_manager is None:
+            try:
+                from app_context import get_theme_manager
+                theme_manager = get_theme_manager()
+            except Exception:
+                pass
+        self._theme_manager = theme_manager
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._on_theme_changed)
 
         # 提供给子类使用的主布局
         self.mainlayout = QVBoxLayout(self)
         self.mainlayout.setContentsMargins(*margins)
 
+    def _tokens(self) -> ThemeTokens:
+        if self._theme_manager is not None:
+            return self._theme_manager.tokens()
+        return LIGHT_TOKENS
+
+    def _on_theme_changed(self) -> None:
+        self.update()
+
     def paintEvent(self, event):  # type: ignore[override]
-        """绘制八边形背景，替代圆角矩形。"""
+        """绘制八边形背景，替代圆角矩形。背景与描边由设计令牌驱动。"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
 
@@ -111,9 +143,10 @@ class OctagonCard(QWidget, ShadowEffectMixin):
         path.lineTo(x, y + chamfer)
         path.closeSubpath()
 
-        # 统一为白色卡片背景，描边略淡
-        painter.setPen(QPen(QColor("#E0E0E0"), 1))
-        painter.setBrush(QBrush(QColor("#FFFFFF")))
+        # 背景与描边由设计令牌驱动，随主题切换
+        t = self._tokens()
+        painter.setPen(QPen(QColor(t.color_border), 1))
+        painter.setBrush(QBrush(QColor(t.color_bg)))
         painter.drawPath(path)
 
 
@@ -124,10 +157,10 @@ class WorkSaleCycle(OctagonCard):
         self.thread_pool = QThreadPool.globalInstance()
 
         mainlayout = self.mainlayout
-        label1=QLabel(f"收藏作品中未观看去化周期")
+        label1=Label(f"收藏作品中未观看去化周期")
         label1.setAlignment(Qt.AlignCenter)
 
-        self.label2=QLabel("加载中...")
+        self.label2=Label("加载中...")
         self.label2.setAlignment(Qt.AlignCenter)
         self.label2.setStyleSheet("font-size: 30pt; color: #999999;")
 
@@ -184,19 +217,19 @@ class MostLikeActress(OctagonCard):
         self.thread_pool = QThreadPool.globalInstance()
         self.current_worker = None
 
-        label1=QLabel(f"过去{beforeday}天最喜欢的女优")
+        label1=Label(f"过去{beforeday}天最喜欢的女优")
 
         # 先显示占位UI
         self.placeholder_widget = QWidget()
         placeholder_layout = QVBoxLayout(self.placeholder_widget)
-        self.placeholder_label = QLabel("加载中...")
+        self.placeholder_label = Label("加载中...")
         self.placeholder_label.setAlignment(Qt.AlignCenter)
         self.placeholder_label.setStyleSheet("font-size: 14px; color: #999999;")
         placeholder_layout.addWidget(self.placeholder_label)
         self.placeholder_widget.setLayout(placeholder_layout)
 
         # 存储最终的女优卡片容器
-        self.actress_card_container = QWidget()
+        self.actress_card_container = TransparentWidget()
         self.actress_card_container_layout = QVBoxLayout(self.actress_card_container)
         self.actress_card_container_layout.setContentsMargins(0, 0, 0, 0)
         self.actress_card_container.setLayout(self.actress_card_container_layout)
@@ -245,7 +278,7 @@ class MostLikeActress(OctagonCard):
         # 显示加载占位符
         self.placeholder_widget = QWidget()
         placeholder_layout = QVBoxLayout(self.placeholder_widget)
-        self.placeholder_label = QLabel("加载中...")
+        self.placeholder_label = Label("加载中...")
         self.placeholder_label.setAlignment(Qt.AlignCenter)
         self.placeholder_label.setStyleSheet("font-size: 14px; color: #999999;")
         placeholder_layout.addWidget(self.placeholder_label)

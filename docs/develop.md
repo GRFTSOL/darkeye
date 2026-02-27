@@ -137,7 +137,7 @@
 ## 4. 路线图与里程碑 (Roadmap)
 
 ### Phase 1: 策展人更新 (The Curator Update) - *Current Focus*
-- [ ] **无限卡片流首页**：当前首页为 `CoverBrowser` + 随机推荐，仪表盘为 `DashboardPage`；书架有 `ShelfDemoPage` / `ShelfWidget` / `ShelfVirtualizedView`，可继续向高性能水平滚动卡片流演进。
+- [ ] **无限卡片流首页**：当前首页为 `CoverBrowser` + 随机推荐，仪表盘为 `DashboardPage`；书架直接使用 `ShelfWidget` / `ShelfVirtualizedView`，可继续向高性能水平滚动卡片流演进。
 - [ ] **CJK 竖排 UI**：在卡片详情和部分标题中实现竖排排版。
 - [ ] **Inbox 模式重构**：改造手动录入流程，引入“待处理”队列；插件抓取数据经 ServerBridge 由主窗口处理。
 
