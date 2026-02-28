@@ -4,6 +4,7 @@ from PySide6.QtCore import Signal,Qt
 from config import ICONS_PATH
 from PySide6.QtGui import QIcon
 from controller.ShortcutRegistry import ShortcutRegistry
+from darkeye_ui.components.label import Label
 
 class HelpPage(QWidget):
     #帮助窗口
@@ -26,5 +27,5 @@ class HelpPage(QWidget):
 
         mainlayout=QFormLayout(self)
         for data in datas:
-            mainlayout.addRow(data["shortcut"],QLabel(data["text"]))
+            mainlayout.addRow(Label(data["shortcut"]),Label(data["text"]))
         mainlayout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)  

@@ -1,15 +1,14 @@
 from anyio import sleep
 from PySide6.QtWidgets import (
-    QPushButton, QLabel, QGridLayout, QDialog, QLineEdit,
-    QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView
+    QDialog,QVBoxLayout, QHBoxLayout, QTableWidgetItem, QHeaderView, QAbstractItemView
 )
 from PySide6.QtCore import  Qt
 from PySide6.QtGui import QIcon
 from config import ICONS_PATH
-import logging, asyncio, re
+import logging, re
 from controller.MessageService import MessageBoxService
-
-
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.token_table_widget import TokenTableWidget
 class AddQuickWork(QDialog):
     # 快速记录作品番号的窗口，能在局外响应
     def __init__(self):
@@ -25,9 +24,9 @@ class AddQuickWork(QDialog):
     def init_ui(self):
         # 1. 顶部工具栏
         top_layout = QHBoxLayout()
-        self.btn_add = QPushButton("添加")
-        self.btn_del = QPushButton("删除")
-        self.btn_clean = QPushButton("去后缀")
+        self.btn_add = Button("添加")
+        self.btn_del = Button("删除")
+        self.btn_clean = Button("去后缀")
         
         self.btn_add.clicked.connect(self.add_row)
         self.btn_del.clicked.connect(self.delete_rows)
@@ -38,7 +37,7 @@ class AddQuickWork(QDialog):
         top_layout.addWidget(self.btn_clean)
 
         # 2. 中间列表区域
-        self.table = QTableWidget()
+        self.table = TokenTableWidget()
         self.table.setColumnCount(2)
         self.table.setHorizontalHeaderLabels(["选择", "番号"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
@@ -46,7 +45,7 @@ class AddQuickWork(QDialog):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         
         # 3. 底部提交按钮
-        self.btn_commit = QPushButton("快速添加")
+        self.btn_commit = Button("快速添加")
         self.btn_commit.clicked.connect(self.submit)
         self.btn_commit.setMinimumHeight(40)
 

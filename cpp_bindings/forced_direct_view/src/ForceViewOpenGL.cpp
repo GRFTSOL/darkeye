@@ -1081,6 +1081,8 @@ void ForceViewOpenGL::resizeGL(int w, int h)
 void ForceViewOpenGL::paintGL()
 {
     if (!m_glReady || !m_physicsState) {
+        glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
+                    m_backgroundColor.blueF(), m_backgroundColor.alphaF());
         glClear(GL_COLOR_BUFFER_BIT);
         return;
     }

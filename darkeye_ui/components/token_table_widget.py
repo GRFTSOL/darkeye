@@ -1,3 +1,4 @@
+# darkeye_ui/components/token_table_widget.py - 设计系统表格控件，样式由 mymain.qss + 令牌驱动
 from typing import Optional, TYPE_CHECKING
 
 from PySide6.QtCore import QModelIndex
@@ -6,7 +7,7 @@ from PySide6.QtWidgets import (
     QStyle,
     QStyleOptionViewItem,
     QStyledItemDelegate,
-    QTableView,
+    QTableWidget,
     QWidget,
 )
 
@@ -43,11 +44,12 @@ class _TableEditorDelegate(QStyledItemDelegate):
         editor.setGeometry(rect)
 
 
-class TokenTableView(QTableView):
-    """令牌驱动 TableView。
+class TokenTableWidget(QTableWidget):
+    """令牌驱动 TableWidget。
 
-    - 通过 objectName=DesignTableView，使样式由 QSS 中的 {{token}} 驱动
+    - 通过 objectName=DesignTableWidget，使样式由 QSS 中的 {{token}} 驱动
     - 可选接入 ThemeManager，在主题切换时自动刷新样式
+    - 与 TokenTableView 共享同一套 QSS 规则，保证视觉一致
     """
 
     def __init__(
@@ -56,7 +58,7 @@ class TokenTableView(QTableView):
         theme_manager: Optional["ThemeManager"] = None,
     ) -> None:
         super().__init__(parent)
-        self.setObjectName("DesignTableView")
+        self.setObjectName("DesignTableWidget")
         self.setItemDelegate(_TableEditorDelegate(margin=0, parent=self))
 
         self._theme_manager = theme_manager
@@ -68,4 +70,3 @@ class TokenTableView(QTableView):
         style = self.style()
         style.unpolish(self)
         style.polish(self)
-

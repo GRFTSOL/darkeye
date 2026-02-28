@@ -32,7 +32,6 @@ class SignalTagView(QWidget):
         self.setStyleSheet("""
             #SignalTagView {
                 border-radius: 12px;
-                background-color: white;
                 border: 3px dashed #cccccc;
             }
         """)
@@ -260,7 +259,7 @@ class TagManagement(LazyWidget):
         self.leftwidget.setMaximumWidth(400)
         leftlayout=QVBoxLayout(self.leftwidget)
 
-        #self.tag_show=SignalTagView()
+
         self.tag_liveshow=SignalTagView()
 
         self.taglabel=None#默认的展示的

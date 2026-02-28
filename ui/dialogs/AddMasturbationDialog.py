@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QPushButton, QHBoxLayout,QVBoxLayout,QDialog,QDateTimeEdit,QTextEdit,QGridLayout,QSizePolicy
+from PySide6.QtWidgets import QDialog,QGridLayout,QSizePolicy
 from PySide6.QtCore import Qt,QDateTime,QTime,Slot
 
 from darkeye_ui.components import HeartRatingWidget
@@ -8,6 +8,9 @@ from config import ICONS_PATH
 from PySide6.QtGui import QIcon
 from controller.MessageService import MessageBoxService
 from darkeye_ui.components.label import Label
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.input import TextEdit
+from darkeye_ui.components import TokenDateTimeEdit
 
 class AddMasturbationDialog(QDialog):
     def __init__(self):
@@ -30,10 +33,10 @@ class AddMasturbationDialog(QDialog):
         self.input_tool.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Preferred)
 
         self.label_comment=Label("事后评价")
-        self.input_comment=QTextEdit()
+        self.input_comment=TextEdit()
 
         self.label_time=Label("时间")
-        self.datetime_edit = QDateTimeEdit(self)
+        self.datetime_edit = TokenDateTimeEdit(self)
         self.datetime_edit.setDisplayFormat("yy-MM-dd HH:mm")  # 设置显示格式
         self.datetime_edit.setDateTime(QDateTime.currentDateTime())  # 设置初始时间
         self.datetime_edit.setCalendarPopup(True)  # 启用日历下拉
@@ -42,7 +45,7 @@ class AddMasturbationDialog(QDialog):
         self.datetime_edit.setTimeSpec(Qt.LocalTime)
 
         #提交按钮
-        self.btn_commit=QPushButton("提交记录")
+        self.btn_commit=Button("提交记录")
         self.btn_commit.clicked.connect(self.commit)
 
         #分布

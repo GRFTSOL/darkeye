@@ -1,7 +1,7 @@
 
 from darkeye_ui import LazyWidget
 
-from PySide6.QtWidgets import QPushButton, QHBoxLayout,QVBoxLayout,QTextEdit,QDialog,QFileDialog,QGridLayout,QWidget,QTreeWidget, QTreeWidgetItem,QStackedWidget,QFormLayout,QKeySequenceEdit,QCheckBox,QLineEdit,QComboBox,QRadioButton
+from PySide6.QtWidgets import  QHBoxLayout,QVBoxLayout,QFileDialog,QGridLayout,QWidget,QFormLayout
 from PySide6.QtGui import QIcon,QKeySequence
 from PySide6.QtCore import Slot,Qt
 import logging
@@ -22,14 +22,18 @@ from app_context import get_theme_manager
 from main import apply_theme
 from darkeye_ui.design import ThemeId
 from darkeye_ui.components.label import Label
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.token_radio_button import TokenRadioButton
+from darkeye_ui.components.combo_box import ComboBox
+from darkeye_ui.components.token_key_sequence_edit import TokenKeySequenceEdit
 
 # 主题下拉选项与 ThemeId 顺序一致
 THEME_OPTIONS = [
-    (ThemeId.LIGHT, "浅色"),
-    (ThemeId.DARK, "深色"),
+    (ThemeId.LIGHT, "亮色主题"),
+    (ThemeId.DARK, "暗色主题"),
     (ThemeId.RED, "红色"),
-    (ThemeId.GREEN, "绿色"),
     (ThemeId.YELLOW, "黄色"),
+    (ThemeId.GREEN, "绿色"),
     (ThemeId.BLUE, "蓝色"),
     (ThemeId.PURPLE, "紫色"),
 ]
@@ -38,9 +42,9 @@ class CommonPage(QWidget):
     def __init__(self):
         super().__init__()
         main_layout = QFormLayout(self)
-        self.textchoose=QComboBox()
-        self.textsizechoose=QComboBox()
-        self.theme_choose = QComboBox()
+        self.textchoose=ComboBox()
+        self.textsizechoose=ComboBox()
+        self.theme_choose = ComboBox()
         for _, label in THEME_OPTIONS:
             self.theme_choose.addItem(label)
         saved_theme = get_theme_id()
@@ -56,13 +60,11 @@ class CommonPage(QWidget):
                 except StopIteration:
                     pass
         self.theme_choose.currentIndexChanged.connect(self._on_theme_changed)
-        self.GPU=QCheckBox("开启GPU加速")
-        self.anim=QCheckBox("禁用动画效果")
-        main_layout.addRow("主题", self.theme_choose)
-        main_layout.addRow("字体选择",self.textchoose)
-        main_layout.addRow("字号选择",self.textsizechoose)
-        main_layout.addRow(self.GPU)
-        main_layout.addRow(self.anim)
+
+        main_layout.addRow(Label("主题"), self.theme_choose)
+        #main_layout.addRow("字体选择",self.textchoose)
+        #main_layout.addRow("字号选择",self.textsizechoose)
+
 
     def _on_theme_changed(self, index: int):
         if 0 <= index < len(THEME_OPTIONS):
@@ -88,12 +90,12 @@ class ShortcutSettingRow(QWidget):
         # 2. 获取当前的快捷键
         current_key = self.registry.get_shortcut(action_id)
         
-        self.key_edit = QKeySequenceEdit()
+        self.key_edit = TokenKeySequenceEdit()
         self.key_edit.setFixedWidth(150)
         self.key_edit.setKeySequence(QKeySequence(current_key))
         
         # 3. 恢复默认按钮 (可选)
-        self.reset_btn = QPushButton("恢复")
+        self.reset_btn = Button("恢复")
         self.reset_btn.setFixedWidth(50)
         self.reset_btn.clicked.connect(self.reset_default)
 
@@ -149,31 +151,31 @@ class DBSettingPage(QWidget):
         path_label2=Label(f"软件的公共数据库文件位置{str(DATABASE)}")
         path_label3=Label(f"ini文件的位置{INI_FILE}")
 
-        self.btn_vacuum=QPushButton("数据库清理碎片")#包括清理两个数据库
-        self.btn_cover_check=QPushButton("图片数据一致性检查")
+        self.btn_vacuum=Button("数据库清理碎片")#包括清理两个数据库
+        self.btn_cover_check=Button("图片数据一致性检查")
 
-        self.btn_commit=QPushButton("保存设置")
+        self.btn_commit=Button("保存设置")
         self.btn_commit.setVisible(False)
         
-        self.btn_backupDB = QPushButton()
+        self.btn_backupDB = Button()
         self.btn_backupDB.setText("备份公共数据库")
         self.btn_backupDB.setToolTip("将现有的数据库打上时间戳备份")
         self.btn_backupDB.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
 
 
-        self.btn_restoreDB = QPushButton()
+        self.btn_restoreDB = Button()
         self.btn_restoreDB.setText("还原公共数据库")
         self.btn_restoreDB.setToolTip("在备份的数据库里选择一个数据还原，覆盖现有的数据库")
         self.btn_restoreDB.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
 
 
-        self.btn_backupDB2 = QPushButton()
+        self.btn_backupDB2 = Button()
         self.btn_backupDB2.setText("备份私有数据库")
         self.btn_backupDB2.setToolTip("将现有的数据库打上时间戳备份")
         self.btn_backupDB2.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
 
 
-        self.btn_restoreDB2 = QPushButton()
+        self.btn_restoreDB2 = Button()
         self.btn_restoreDB2.setText("还原私有数据库")
         self.btn_restoreDB2.setToolTip("在备份的数据库里选择一个数据还原，覆盖现有的数据库")
         self.btn_restoreDB2.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
@@ -279,8 +281,8 @@ class DBSettingPage(QWidget):
         except Exception as e:
             self.msg.show_critical(self,"备份失败",f"{str(e)}")
 
-class FirstPage(QWidget):
-    '''这个是首页'''
+class LastPage(QWidget):
+    '''这个是尾页'''
     def __init__(self):
         super().__init__()
         layout = QVBoxLayout(self)
@@ -299,15 +301,15 @@ class FirstPage(QWidget):
         githubLabel.setOpenExternalLinks(True)   # 关键
 
         layout1.addWidget(Label(f"当前版本{APP_VERSION}"))
-        layout1.addWidget(QPushButton("检查更新"))
-        layout1.addWidget(QPushButton("意见反馈"))
-        layout1.addWidget(QPushButton("版本记录"))
+        layout1.addWidget(Button("检查更新"))
+        layout1.addWidget(Button("意见反馈"))
+        layout1.addWidget(Button("版本记录"))
 
-        layout2.addWidget(QRadioButton("自动更新"))
-        layout2.addWidget(QRadioButton("有新版本时提醒我"))
+        layout2.addWidget(TokenRadioButton("自动更新"))
+        layout2.addWidget(TokenRadioButton("有新版本时提醒我"))
 
         layout3.addWidget(Label("下载移动客户端"))
-        layout3.addWidget(QPushButton("Android版"))
+        layout3.addWidget(Button("Android版"))
 
 
         form_layout.addRow(Label("GitHub地址"),githubLabel)
@@ -315,7 +317,6 @@ class FirstPage(QWidget):
         layout.addLayout(layout2)
         layout.addLayout(layout3)
         layout.addLayout(form_layout)
-
 
 class VideoSettingPage(QWidget):
     '''这个是视频相关设置页面'''
@@ -332,7 +333,7 @@ class VideoSettingPage(QWidget):
         self.pathManagement.setMinimumHeight(300)
         layout.addWidget(self.pathManagement)
 
-        self.save=QPushButton("保存")
+        self.save=Button("保存")
         
         layout.addWidget(self.save)
         
@@ -356,7 +357,7 @@ class SettingPage(LazyWidget):
         page_video = VideoSettingPage()
         page_clawer = ClawerSettingPage()
         page_db = DBSettingPage()
-        page_first = FirstPage()
+        page_first = LastPage()
         page_short_cut=ShortCutSettingPage()
         page_common=CommonPage()
 

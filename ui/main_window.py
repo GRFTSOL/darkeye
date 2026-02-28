@@ -54,23 +54,23 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0) 
         
-        menu_defs = [
-            ("forward", "前进到下一页", "chevron-up.svg"),
-            ("back", "返回上一页", "chevron-down.svg"),
-             ("home", "首页", "house.svg"), 
-             ("database", "管理", "database.svg"), 
-             ("work", "作品", "film.svg"), 
-             ("chart", "统计", "chart-line.svg"), 
-             ("actress", "女优", "venus.svg"), 
-             ("actor", "男优", "mars.svg"), 
-             ("graph","关系图","share-2.svg"),
-             ("shelf", "书架", "library-big.svg"),
-             ("av", "暗黑界", "scroll-text.svg"), 
-             ("setting", "设置", "settings.svg"),
-             ("help", "帮助", "circle-question-mark.svg"),
-             ("bell", "通知", "bell.svg"),
-             ("green_mode","绿色模式", "sprout.svg"),
-         ]
+        menu_defs = [  # 内置图标名或 .svg 外部文件
+            ("forward", "前进到下一页", "chevron_up"),
+            ("back", "返回上一页", "chevron_down"),
+            ("home", "首页", "house"),
+            ("database", "管理", "database"),
+            ("work", "作品", "film"),
+            ("chart", "统计", "chart_line"),
+            ("actress", "女优", "venus"),
+            ("actor", "男优", "mars"),
+            ("graph", "关系图", "share_2"),
+            ("shelf", "书架", "library_big"),
+            ("av", "暗黑界", "scroll_text"),
+            ("setting", "设置", "settings"),
+            ("help", "帮助", "circle_question_mark"),
+            ("bell", "通知", "bell"),
+            ("green_mode", "绿色模式", "sprout"),
+        ]
         self.sidebar = Sidebar2(menu_defs=menu_defs)#侧边栏的按钮在这里改
 
         self.stack = QStackedWidget()
@@ -155,6 +155,10 @@ class MainWindow(QMainWindow):
         def create_setting():
             from ui.pages.SettingPage import SettingPage
             return SettingPage()
+        
+        def create_help():
+            from ui.pages.HelpPage import HelpPage
+            return HelpPage()
 
         # 2. 注册路由 (route_name, factory, menu_id)
         # 侧边栏主菜单页面
@@ -178,6 +182,7 @@ class MainWindow(QMainWindow):
         self.router.register("actor_edit", create_modify_actor, "actor")
         self.router.register("work_edit", create_management, "database") # 注意：这里如果想跳到管理页的特定tab，router需要特殊处理
         self.router.register("setting", create_setting, "setting")
+        self.router.register("help",create_help,"help")
         
         # 3. 建立菜单到路由的映射 (供 Sidebar 点击使用)
         self._menu_to_route = {
@@ -190,7 +195,8 @@ class MainWindow(QMainWindow):
             "graph": "graph",
             "shelf": "shelf",
             "av": "av",
-            "setting": "setting"
+            "setting": "setting",
+            "help": "help"
         }
         self.sidebar.itemClicked.connect(self._on_sidebar_clicked)
         
