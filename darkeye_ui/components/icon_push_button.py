@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 class IconPushButton(QPushButton):
     """仅图标的按钮：图标与样式由设计令牌驱动，支持主题切换时刷新。
     可通过 icon_name 使用内置图标，或通过 icon_path 指定外部 SVG 文件路径。
+    inverted=True 时使用 color_text_inverse 显示图标，适用于深色背景上的浅色图标。
     """
 
     def __init__(
@@ -24,6 +25,7 @@ class IconPushButton(QPushButton):
         icon_size: int = 24,
         out_size: int = 32,
         hoverable: bool = True,
+        inverted: bool = False,
         theme_manager: Optional["ThemeManager"] = None,
         parent=None,
     ):
@@ -36,6 +38,7 @@ class IconPushButton(QPushButton):
         self._icon_size = icon_size
         self._out_size = out_size
         self._hoverable = hoverable
+        self._inverted = inverted
         # 未传入时尝试从应用上下文获取全局 ThemeManager，使主题切换时图标能更新
         if theme_manager is None:
             try:
@@ -59,7 +62,7 @@ class IconPushButton(QPushButton):
 
     def _refresh_icon(self) -> None:
         t = self._tokens()
-        color = t.color_icon
+        color = t.color_text_inverse if self._inverted else t.color_icon
         if self._icon_path is not None:
             self.setIcon(
                 svg_to_icon(self._icon_path, size=self._icon_size, color=color)

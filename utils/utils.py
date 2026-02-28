@@ -50,6 +50,24 @@ def convert_special_serialnumber(serial_number:str)->str:
     converted_code = lower_code.replace('-', '')
     return converted_code
 
+
+def extract_serial_from_string(text: str) -> str | None:
+    """从字符串中提取首个番号，支持 IPX-247 或 IPX247 格式，返回标准格式（如 IPX-247）"""
+    if not text or not text.strip():
+        return None
+    text = text.strip().upper()
+    # 优先匹配带横线的标准格式
+    m = re.search(r'[A-Z]{2,6}-\d{1,5}', text)
+    if m:
+        return m.group(0)
+    # 匹配无横线格式，如 IPX247
+    m = re.search(r'[A-Z]{2,6}\d{1,5}', text)
+    if m:
+        s = m.group(0)
+        return re.sub(r'^([A-Z]+)(\d+)$', r'\1-\2', s)
+    return None
+
+
 #图片相关
 def AlternativeQPixmap(image_path):
     #临时的代替方法，什么时候QImage能直接加载jpg图片这个就不用了
@@ -565,7 +583,36 @@ def sort_dict_list_by_keys(data: list[dict], key_order: list[str]) -> list[dict]
     return ordered_data
 
 
+
+
 #视频相关
+def get_video_names_from_paths(video_paths: list[Path], video_extensions: list[str] = None) -> list[str]:
+    '''获取指定路径下所有视频文件的番号列表。
+    对每个视频文件提取番号（如 IPX-247），返回去重后的列表。
+    '''
+    if video_extensions is None:
+        video_extensions = [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".rmvb", ".ts"]
+
+    result: set[str] = set()
+
+    for folder in video_paths:
+        try:
+            for root, dirs, files in os.walk(folder):
+                for file in files:
+                    file_path = Path(root) / file
+                    if file_path.is_file() and file_path.suffix.lower() in video_extensions:
+                        name = file_path.stem  # 去除后缀
+                        name = re.sub(r'\[.*?\]', '', name)  # 去除 [] 及其中的内容
+                        serial = extract_serial_from_string(name)
+                        if serial:
+                            result.add(serial)
+                        else:
+                            logging.warning(f"无法提取番号: {name}")
+        except PermissionError:
+            print(f"  无权限访问：{folder}")
+
+    return list(result)
+
 
 def find_video(serial_number:str, video_paths:list[Path], video_extensions:list[str]=None)->list[Path]|None:
     '''在指定的视频路径列表中查找对应番号的视频文件
@@ -608,6 +655,7 @@ def find_video(serial_number:str, video_paths:list[Path], video_extensions:list[
     else:
         print("搜索完成！")
         return find_video_path
+
 
 def play_video_with_default_player(self):
     '''打开指定的地址选择一个文件，开始用默认的播放器播放视频'''

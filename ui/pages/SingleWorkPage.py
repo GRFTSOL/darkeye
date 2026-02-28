@@ -4,7 +4,7 @@ from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor,QFont
 from PySide6.QtCore import Qt, QPointF,Signal,Slot
 import logging
 
-from ui.basic import VLabel,IconPushButton
+from ui.basic import VLabel
 from darkeye_ui.layouts import VFlowLayout
 from darkeye_ui.components.heart_label import HeartLabel
 from config import WORKCOVER_PATH,ICONS_PATH
@@ -12,7 +12,7 @@ from ui.widgets.text.VerticalTagLabel2 import VerticalActressLabel,VerticalTagLa
 from darkeye_ui import LazyWidget
 from darkeye_ui.components.vertical_text_label import VerticalTextLabel
 from darkeye_ui.components.transparent_widget import TransparentWidget
-
+from darkeye_ui.components.icon_push_button import IconPushButton
 #渐变层纯绘图层
 class GradientOverlay(QWidget):
     #上面的渐变层
@@ -153,9 +153,9 @@ class WorkInfo(TransparentWidget):
         self.label_layout.addWidget(self.label_tag)
 
         self.heart=HeartLabel()
-        self.trash=IconPushButton("trash-2.svg",24,24,True,color="#FFFFFF")
-        self.modify=IconPushButton("square-pen.svg",24,24,True,color="#FFFFFF")
-        self.watch=IconPushButton("tv.svg",24,24,True,color="#FFFFFF")
+        self.trash=IconPushButton(icon_name="trash_2",icon_size=24,out_size=32,hoverable=True,inverted=True)
+        self.modify=IconPushButton(icon_name="square_pen",icon_size=24,out_size=32,hoverable=True,inverted=True)
+        self.watch=IconPushButton(icon_name="tv",icon_size=24,out_size=32,hoverable=True,inverted=True)
         
         tool_v_layout=QVBoxLayout()
         tool_v_layout.addWidget(self.heart,0,Qt.AlignCenter)
