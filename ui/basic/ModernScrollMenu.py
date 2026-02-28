@@ -1,22 +1,36 @@
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QButtonGroup,
+from typing import TYPE_CHECKING, Optional
+
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QButtonGroup,
                              QHBoxLayout, QPushButton, QScrollArea, QFrame, QLabel)
 from PySide6.QtCore import QPropertyAnimation, QEasingCurve, Qt
 
-class ModernScrollMenu(QMainWindow):
-    def __init__(self, content_dict):
+if TYPE_CHECKING:
+    from darkeye_ui.design.theme_manager import ThemeManager
+
+from darkeye_ui.design.tokens import LIGHT_TOKENS, ThemeTokens
+
+
+class ModernScrollMenu(QWidget):
+    def __init__(self, content_dict, theme_manager: Optional["ThemeManager"] = None):
         super().__init__()
-        self.resize(700, 800)
-        self.setStyleSheet("background-color: #FFFFFF;")
-        
-        # 【新增】：用于存储 标题 -> 按钮 的映射，方便反向查找
-        self.nav_buttons = {} 
-        # 【新增】：用于存储 内容区块 -> 对应按钮 的映射，用于滚动判断
+        if theme_manager is None:
+            try:
+                from app_context import get_theme_manager
+                theme_manager = get_theme_manager()
+            except Exception:
+                theme_manager = None
+        self._theme_manager = theme_manager
+
+        # 用于存储 标题 -> 按钮 的映射，方便反向查找
+        self.nav_buttons = {}
+        # 用于存储 内容区块 -> 对应按钮 的映射，用于滚动判断
         self.section_widgets = []
+        # 用于主题切换时更新样式的子控件引用
+        self._title_labels: list[QLabel] = []
+        self._separators: list[QFrame] = []
 
         # 主布局
-        main_widget = QWidget()
-        self.setCentralWidget(main_widget)
-        main_layout = QVBoxLayout(main_widget)
+        main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
@@ -24,19 +38,13 @@ class ModernScrollMenu(QMainWindow):
         self.nav_container = QWidget()
         self.btn_layout = QHBoxLayout(self.nav_container)
         self.btn_layout.setContentsMargins(20, 10, 20, 0)
-        
+
         self.btn_group = QButtonGroup(self)
-        self.btn_group.setExclusive(True) 
-        self.nav_container.setStyleSheet("""
-            QPushButton {
-                border: none; background-color: transparent; color: #888888;
-                padding: 10px 15px; font-size: 15px; border-bottom: 2px solid transparent; 
-                border-radius:0px;
-            }
-            QPushButton:hover { color: #444444; }
-            QPushButton:checked { color: #000000; font-weight: bold; border-bottom: 2px solid #000000; }
-        """)
+        self.btn_group.setExclusive(True)
         main_layout.addWidget(self.nav_container)
+
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._apply_token_styles)
 
         # --- 2. 滚动区域 ---
         self.scroll = QScrollArea()
@@ -50,6 +58,7 @@ class ModernScrollMenu(QMainWindow):
 
         # --- 3. 构建内容 ---
         self.build_from_dict(content_dict)
+        self._apply_token_styles()  # 构建内容后再应用一次，以样式化标题与分隔线
         self.btn_layout.addStretch()
 
         # 【核心新增】：连接滚动条信号
@@ -75,7 +84,7 @@ class ModernScrollMenu(QMainWindow):
             
             title_label = QLabel(title_text)
             title_label.setFixedWidth(100)
-            title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #333;qproperty-alignment: 'AlignLeft | AlignTop';")
+            self._title_labels.append(title_label)
             sec_layout.addWidget(title_label)
             sec_layout.addSpacing(100)
             sec_layout.addWidget(widget_instance)
@@ -94,23 +103,39 @@ class ModernScrollMenu(QMainWindow):
 
     def create_separator(self):
         line = QFrame()
-        line.setStyleSheet("background-color: #F5F5F5; min-height: 1px; max-height: 1px; margin: 10px 0px;")
+        self._separators.append(line)
         return line
 
-    def scroll_to_widget(self, widget, btn):
-        """点击按钮跳转"""
-        self.is_animating = True # 标记动画开始，暂时停止滚动监听
-        bar = self.scroll.verticalScrollBar()
-        target_y = widget.pos().y()
-        
-        self.anim = QPropertyAnimation(bar, b"value")
-        self.anim.setDuration(400)
-        self.anim.setEndValue(target_y)
-        self.anim.setEasingCurve(QEasingCurve.OutCubic)
-        
-        # 动画结束后恢复监听
-        self.anim.finished.connect(lambda: self.set_animating_false())
-        self.anim.start()
+    def _tokens(self) -> ThemeTokens:
+        if self._theme_manager is not None:
+            return self._theme_manager.tokens()
+        return LIGHT_TOKENS
+
+    def _apply_token_styles(self) -> None:
+        """根据当前主题令牌应用样式。"""
+        t = self._tokens()
+        self.setStyleSheet(f"background-color: {t.color_bg};")
+
+        self.nav_container.setStyleSheet(f"""
+            QPushButton {{
+                border: none; background-color: transparent; color: {t.color_text_placeholder};
+                padding: 10px 15px; font-size: 15px; border-bottom: {t.border_width} solid transparent;
+                border-radius: 0px;
+            }}
+            QPushButton:hover {{ color: {t.color_text}; }}
+            QPushButton:checked {{ color: {t.color_primary}; font-weight: bold; border-bottom: {t.border_width} solid {t.color_primary}; }}
+        """)
+
+        for lbl in self._title_labels:
+            lbl.setStyleSheet(
+                f"font-size: 18px; font-weight: bold; color: {t.color_text}; "
+                "qproperty-alignment: 'AlignLeft | AlignTop';"
+            )
+
+        for sep in self._separators:
+            sep.setStyleSheet(
+                f"background-color: {t.color_bg_page}; min-height: 1px; max-height: 1px; margin: 10px 0px;"
+            )
 
     def set_animating_false(self):
         self.is_animating = False
@@ -140,7 +165,8 @@ class ModernScrollMenu(QMainWindow):
             current_active_btn.blockSignals(False)
 
     def scroll_to_widget(self, widget, btn):
-        self.is_animating = True 
+        """点击按钮跳转"""
+        self.is_animating = True
         bar = self.scroll.verticalScrollBar()
         # 偏移 2 像素避免边界判断问题
         target_y = widget.pos().y()

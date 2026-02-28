@@ -1,6 +1,6 @@
 
-from PySide6.QtWidgets import QPushButton, QHBoxLayout,QVBoxLayout,QLineEdit,QTextEdit,QSizePolicy,QFormLayout,QSpinBox,QComboBox,QWidget,QSlider
-from PySide6.QtCore import Qt,QObject,Signal,Property,Signal,Slot
+from PySide6.QtWidgets import QHBoxLayout,QVBoxLayout,QFormLayout,QWidget
+from PySide6.QtCore import Qt,QObject,Signal,Property,Slot
 
 
 import logging,json,asyncio
@@ -10,8 +10,12 @@ from enum import Enum
 from config import settings,WORKCOVER_PATH
 from darkeye_ui import LazyWidget
 from controller.MessageService import MessageBoxService,IMessageService
-from ui.basic import MovableTableView,IconPushButton
+from ui.basic import MovableTableView
 from core.database.query import get_actor_allname
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.icon_push_button import IconPushButton
+from darkeye_ui.components.token_spin_box import TokenSpinBox
 from ui.widgets import ActressAvatarDropWidget
 
 
@@ -181,20 +185,11 @@ class ModifyActorPage(LazyWidget):
         self.moveable_name=MovableTableView()
         self.avatar=ActressAvatarDropWidget("actor")
 
-        self.handsomeSlider = QSlider(Qt.Horizontal)  # 水平滑动条
-        self.handsomeSlider.setRange(0, 2)            # 设置范围 0～2
-        self.handsomeSlider.setTickPosition(QSlider.TicksBelow)  # 显示刻度线
-        self.handsomeSlider.setTickInterval(1)        # 每次一格
-        self.handsomeSlider.setSingleStep(1)          # 每次移动步长为1
-        self.handsomeSlider.setValue(0)
+        self.input_handsome=TokenSpinBox()
+        self.input_handsome.setRange(0, 2)
 
-        self.fatSilder = QSlider(Qt.Horizontal)  # 水平滑动条
-        self.fatSilder.setRange(0, 2)            # 设置范围 0～2
-        self.fatSilder.setTickPosition(QSlider.TicksBelow)  # 显示刻度线
-        self.fatSilder.setTickInterval(1)        # 每次一格
-        self.fatSilder.setSingleStep(1)          # 每次移动步长为1
-        self.fatSilder.setValue(0)       
-
+        self.input_fat=TokenSpinBox()
+        self.input_fat.setRange(0, 2)
 
         self.basic=QWidget()
         self.basic.setFixedWidth(300)
@@ -203,19 +198,12 @@ class ModifyActorPage(LazyWidget):
         formlayout=QFormLayout()
         vlayout.addLayout(formlayout)
 
-        
+        self.btn_commit=Button("提交修改")
+        self.btn_delete=IconPushButton(icon_name="trash_2")
 
-        self.btn_commit=QPushButton("提交修改")
-
-        #self.btn_printModel=QPushButton("打印数据")
-
-        self.btn_delete=IconPushButton("trash-2.svg")
-        
-
-        formlayout.addRow("颜值",self.handsomeSlider)
-        formlayout.addRow("胖瘦",self.fatSilder)
+        formlayout.addRow(Label("颜值"),self.input_handsome)
+        formlayout.addRow(Label("胖瘦"),self.input_fat)
         formlayout.addRow("",self.btn_commit)
-        #formlayout.addRow("",self.btn_printModel)
         formlayout.addRow("",self.btn_delete)
 
         
@@ -243,11 +231,11 @@ class ModifyActorPage(LazyWidget):
         '''双向绑定'''
         #实际上下面都会有循环绑定的问题，后面需要改
 
-        self.handsomeSlider.valueChanged.connect(self.vm.set_handsome)
-        self.vm.handsome_Changed.connect(self.handsomeSlider.setValue)
+        self.input_handsome.valueChanged.connect(self.vm.set_handsome)
+        self.vm.handsome_Changed.connect(self.input_handsome.setValue)
 
-        self.fatSilder.valueChanged.connect(self.vm.set_fat)
-        self.vm.fat_Changed.connect(self.fatSilder.setValue)
+        self.input_fat.valueChanged.connect(self.vm.set_fat)
+        self.vm.fat_Changed.connect(self.input_fat.setValue)
 
 
         #tablemodel与viewmodel的绑定

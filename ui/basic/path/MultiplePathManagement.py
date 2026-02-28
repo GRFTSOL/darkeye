@@ -8,6 +8,9 @@ from PySide6.QtCore import Qt, QSize,QEvent,Slot
 from PySide6.QtGui import QMouseEvent
 from pathlib import Path
 import logging
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.token_table_widget import TokenTableWidget
 
 class ButtonDelegate(QStyledItemDelegate):
     def __init__(self, main_window, parent=None):
@@ -74,10 +77,10 @@ class MultiplePathManagement(QWidget):
         
         # 按钮区
         btn_layout = QHBoxLayout()
-        self.add_btn = QPushButton("添加视频地址")
-        self.del_btn = QPushButton("删除所选地址")
+        self.add_btn = Button("添加地址")
+        self.del_btn = Button("删除地址")
         #self.print_btn = QPushButton("打印所选地址")
-        btn_layout.addWidget(QLabel(label_text))
+        btn_layout.addWidget(Label(label_text))
         btn_layout.addWidget(self.add_btn)
         btn_layout.addWidget(self.del_btn)
         btn_layout.addStretch()
@@ -85,7 +88,7 @@ class MultiplePathManagement(QWidget):
         layout.addLayout(btn_layout)
 
         # 表格设置
-        self.table = QTableWidget()
+        self.table = TokenTableWidget()
         self.table.setColumnCount(2)
         self.table.setHorizontalHeaderLabels(["路径（双击输入或选按钮）", "操作"])
         self.table.horizontalHeader().setStretchLastSection(True)

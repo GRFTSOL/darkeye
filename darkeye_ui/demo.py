@@ -14,17 +14,19 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QScrollArea,
     QGridLayout,
+    QFormLayout,
     QFrame,
     QButtonGroup,
     QGroupBox,
 )
-from PySide6.QtCore import Qt, QStringListModel
+from PySide6.QtCore import Qt, QStringListModel, QDateTime, QTime
 from PySide6.QtGui import QColor
 
 from darkeye_ui.design import ThemeManager, ThemeId, get_builtin_icon
 from darkeye_ui.design.icon import BUILTIN_ICONS
 from darkeye_ui.components import (
     Button,
+    ClickableSlider,
     ColorPicker,
     ComboBox,
     IconPushButton,
@@ -36,6 +38,8 @@ from darkeye_ui.components import (
     TokenListView,
     TokenRadioButton,
     TokenCheckBox,
+    TokenDateTimeEdit,
+    TokenSpinBox,
     TokenTabWidget,
     TokenGroupBox,
     VerticalTextLabel,
@@ -145,6 +149,47 @@ def main():
     cb_row.addWidget(cb3)
     left.addLayout(cb_row)
 
+    left.addWidget(Label("令牌驱动 DateTimeEdit（随主题变色）"))
+    dt_edit = TokenDateTimeEdit(left_col)
+    dt_edit.setDisplayFormat("yy-MM-dd HH:mm")
+    dt_edit.setDateTime(QDateTime.currentDateTime())
+    dt_edit.setCalendarPopup(True)
+    dt_edit.setMinimumTime(QTime(0, 0))
+    dt_edit.setMaximumTime(QTime(23, 59))
+    dt_edit.dateTimeChanged.connect(lambda dt: print("日期时间:", dt.toString("yyyy-MM-dd HH:mm")))
+    left.addWidget(dt_edit)
+
+    left.addWidget(Label("令牌驱动 SpinBox（随主题变色）"))
+    spin_section = QWidget()
+    spin_layout = QFormLayout(spin_section)
+    for label_text, min_val, max_val, default in [
+        ("数量", 0, 999, 10),
+        ("透明度", 0, 100, 80),
+    ]:
+        sb = TokenSpinBox(spin_section)
+        sb.setMinimum(min_val)
+        sb.setMaximum(max_val)
+        sb.setValue(default)
+        sb.valueChanged.connect(lambda v, n=label_text: print(f"{n}: {v}"))
+        spin_layout.addRow(Label(label_text), sb)
+    left.addWidget(spin_section)
+
+    left.addWidget(Label("令牌驱动 ClickableSlider（可点击跳转，随主题变色）"))
+    slider_section = QWidget()
+    slider_layout = QFormLayout(slider_section)
+    for label_text, min_val, max_val, default in [
+        ("音量", 0, 100, 60),
+        ("亮度", 0, 100, 80),
+        ("对比度", 0, 100, 50),
+    ]:
+        s = ClickableSlider(Qt.Orientation.Horizontal, slider_section, theme_manager=theme_mgr)
+        s.setMinimum(min_val)
+        s.setMaximum(max_val)
+        s.setValue(default)
+        s.valueChanged.connect(lambda v, n=label_text: print(f"{n}: {v}"))
+        slider_layout.addRow(Label(label_text), s)
+    left.addWidget(slider_section)
+
     left.addWidget(Label("令牌驱动 TabWidget（随主题变色）"))
     tab_widget = TokenTabWidget(left_col, theme_manager=theme_mgr)
     tab_widget.addTab(Label("第一个标签页内容"), "概览")
@@ -171,6 +216,14 @@ def main():
     picker_pink = ColorPicker(QColor("#FF4081"))
     picker_pink.colorChanged.connect(lambda c: print("颜色已更改:", c))
     color_row.addWidget(picker_pink)
+    # 矩形但不显示文字
+    picker_no_text = ColorPicker(QColor("#4CAF50"), show_text=False)
+    picker_no_text.colorChanged.connect(lambda c: print("颜色已更改:", c))
+    color_row.addWidget(picker_no_text)
+    # 圆形（无文字）
+    picker_circle = ColorPicker(QColor("#2196F3"), shape=ColorPicker.ShapeCircle)
+    picker_circle.colorChanged.connect(lambda c: print("颜色已更改:", c))
+    color_row.addWidget(picker_circle)
     left.addLayout(color_row)
 
     # 主题切换（左列底部）
@@ -178,6 +231,10 @@ def main():
         (ThemeId.LIGHT, "浅色"),
         (ThemeId.DARK, "深色"),
         (ThemeId.RED, "红色"),
+        (ThemeId.GREEN, "绿色"),
+        (ThemeId.YELLOW, "黄色"),
+        (ThemeId.BLUE, "蓝色"),
+        (ThemeId.PURPLE, "紫色"),
     ]
     theme_combo = ComboBox()
     for _tid, label in theme_options:

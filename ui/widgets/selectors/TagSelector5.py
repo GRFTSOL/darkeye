@@ -540,9 +540,10 @@ class TagSelector5(QWidget):
         if self._theme_manager is not None:
             self._theme_manager.themeChanged.connect(self._apply_left_view_styles)
 
-        # 2. 标题 Item (使用 TagGraphicsItem 模拟，ID=-1)
-        self.title_item = TagGraphicsItem(-1, "作品标签", "TITLE", "#000000", "", "")
-        self.title_item.border_color = QColor("#000000")
+        # 2. 标题 Item (使用 TagGraphicsItem 模拟，ID=-1)，颜色由令牌控制
+        title_bg, title_border = self._get_title_item_token_colors()
+        self.title_item = TagGraphicsItem(-1, "作品标签", "TITLE", title_bg, "", "")
+        self.title_item.border_color = QColor(title_border)
         self.title_item.setAcceptHoverEvents(False) # 标题不响应悬停
         self.title_item.setCursor(Qt.ArrowCursor)
         
@@ -592,11 +593,25 @@ class TagSelector5(QWidget):
                 }
             """)
 
+    def _get_title_item_token_colors(self) -> tuple[str, str]:
+        """从设计令牌获取标题项的背景色和边框色。"""
+        if self._theme_manager is not None:
+            t = self._theme_manager.tokens()
+            return (t.color_text, t.color_border)
+        return ("#333333", "#ccc")
+
     def _apply_left_view_styles(self) -> None:
         """根据当前主题令牌刷新左侧和右侧所有 View 的样式。"""
         # 左侧 View
         if hasattr(self, "left_view") and self.left_view is not None:
             self._apply_view_style(self.left_view)
+        # 标题 Item 颜色（随主题更新）
+        if hasattr(self, "title_item") and self.title_item is not None:
+            title_bg, title_border = self._get_title_item_token_colors()
+            self.title_item.bg_color = QColor(title_bg)
+            self.title_item.text_color = get_text_color_from_background(self.title_item.bg_color)
+            self.title_item.border_color = QColor(title_border)
+            self.title_item.update()
         # 右侧所有 Tab 中的 View
         for view in getattr(self, "views_map", {}).values():
             if view is not None:

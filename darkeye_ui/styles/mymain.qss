@@ -228,6 +228,201 @@ QPlainTextEdit#DesignPlainTextEdit::placeholder {
     font-style: italic;
 }
 
+/* ----- TokenSpinBox (objectName=DesignSpinBox) ----- */
+QSpinBox#DesignSpinBox {
+    background-color: {{color_bg}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    padding: 4px 8px;
+    padding-right: 24px;
+    font-size: {{font_size_base}};
+    color: {{color_text}};
+    min-height: 1.2em;
+    selection-background-color: {{color_primary}};
+}
+
+QSpinBox#DesignSpinBox:hover {
+    border-color: {{color_primary}};
+    background-color: {{color_bg_input}};
+}
+
+QSpinBox#DesignSpinBox:focus {
+    border: {{border_width}} solid {{color_border_focus}};
+    background-color: {{color_bg_input}};
+}
+
+QSpinBox#DesignSpinBox:disabled {
+    background-color: {{color_bg_input}};
+    color: {{color_text_disabled}};
+    border: {{border_width}} solid {{color_border}};
+}
+
+QSpinBox#DesignSpinBox::up-button,
+QSpinBox#DesignSpinBox::down-button {
+    subcontrol-origin: border;
+    width: 20px;
+    border-left: {{border_width}} solid {{color_border}};
+    background-color: {{color_bg_input}};
+}
+
+QSpinBox#DesignSpinBox::up-button {
+    subcontrol-position: top right;
+    border-top-right-radius: {{radius_md}};
+}
+
+QSpinBox#DesignSpinBox::down-button {
+    subcontrol-position: bottom right;
+    border-bottom-right-radius: {{radius_md}};
+}
+
+QSpinBox#DesignSpinBox::up-button:hover,
+QSpinBox#DesignSpinBox::down-button:hover {
+    background-color: {{color_primary}};
+    border-left-color: {{color_primary}};
+}
+
+QSpinBox#DesignSpinBox::up-button:pressed,
+QSpinBox#DesignSpinBox::down-button:pressed {
+    background-color: {{color_primary_hover}};
+}
+
+QSpinBox#DesignSpinBox::up-arrow {
+    width: 12px;
+    height: 12px;
+    image: url({{spinbox_up_arrow_path}});
+}
+
+QSpinBox#DesignSpinBox::down-arrow {
+    width: 12px;
+    height: 12px;
+    image: url({{spinbox_down_arrow_path}});
+}
+
+
+/* ----- TokenDateTimeEdit (objectName=DesignDateTimeEdit) ----- */
+QDateTimeEdit#DesignDateTimeEdit {
+    background-color: {{color_bg}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    padding: 4px 8px;
+    padding-right: 24px;
+    font-size: {{font_size_base}};
+    color: {{color_text}};
+    min-height: 1.2em;
+    selection-background-color: {{color_primary}};
+}
+
+QDateTimeEdit#DesignDateTimeEdit:hover {
+    border-color: {{color_primary}};
+    background-color: {{color_bg_input}};
+}
+
+QDateTimeEdit#DesignDateTimeEdit:focus {
+    border: {{border_width}} solid {{color_border_focus}};
+    background-color: {{color_bg_input}};
+}
+
+QDateTimeEdit#DesignDateTimeEdit:disabled {
+    background-color: {{color_bg_input}};
+    color: {{color_text_disabled}};
+    border: {{border_width}} solid {{color_border}};
+}
+
+/* 日历下拉按钮 / 上下箭头按钮 */
+QDateTimeEdit#DesignDateTimeEdit::drop-down,
+QDateTimeEdit#DesignDateTimeEdit::up-button,
+QDateTimeEdit#DesignDateTimeEdit::down-button {
+    subcontrol-origin: border;
+    width: 20px;
+    border-left: {{border_width}} solid {{color_border}};
+    background-color: {{color_bg_input}};
+}
+
+QDateTimeEdit#DesignDateTimeEdit::drop-down {
+    subcontrol-position: top right;
+    border-top-right-radius: {{radius_md}};
+    border-bottom-right-radius: {{radius_md}};
+}
+
+QDateTimeEdit#DesignDateTimeEdit::up-button {
+    subcontrol-position: top right;
+    border-top-right-radius: {{radius_md}};
+}
+
+QDateTimeEdit#DesignDateTimeEdit::down-button {
+    subcontrol-position: bottom right;
+    border-bottom-right-radius: {{radius_md}};
+}
+
+QDateTimeEdit#DesignDateTimeEdit::drop-down:hover,
+QDateTimeEdit#DesignDateTimeEdit::up-button:hover,
+QDateTimeEdit#DesignDateTimeEdit::down-button:hover {
+    background-color: {{color_primary}};
+    border-left-color: {{color_primary}};
+}
+
+QDateTimeEdit#DesignDateTimeEdit::drop-down:pressed,
+QDateTimeEdit#DesignDateTimeEdit::up-button:pressed,
+QDateTimeEdit#DesignDateTimeEdit::down-button:pressed {
+    background-color: {{color_primary_hover}};
+}
+
+QDateTimeEdit#DesignDateTimeEdit::down-arrow {
+    width: 16px;
+    height: 16px;
+    image: url({{chevron_down_arrow_path}});
+}
+
+QDateTimeEdit#DesignDateTimeEdit::up-arrow {
+    width: 12px;
+    height: 12px;
+    image: url({{spinbox_up_arrow_path}});
+}
+
+/* ----- TokenKeySequenceEdit (objectName=DesignKeySequenceEdit) ----- */
+/* QKeySequenceEdit 内部使用 QLineEdit 显示内容，需样式化子控件；TokenKeySequenceEdit 会设置其 objectName=DesignKeySequenceEditLineEdit */
+QKeySequenceEdit#DesignKeySequenceEdit {
+    background-color: transparent;
+    border: none;
+}
+
+QKeySequenceEdit#DesignKeySequenceEdit QLineEdit,
+QLineEdit#DesignKeySequenceEditLineEdit {
+    background-color: {{color_bg}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    padding: 4px 8px;
+    font-size: {{font_size_base}};
+    color: {{color_text}};
+    min-height: 1.2em;
+    selection-background-color: {{color_primary}};
+}
+
+QKeySequenceEdit#DesignKeySequenceEdit QLineEdit:hover,
+QLineEdit#DesignKeySequenceEditLineEdit:hover {
+    border-color: {{color_primary}};
+    background-color: {{color_bg_input}};
+}
+
+QKeySequenceEdit#DesignKeySequenceEdit QLineEdit:focus,
+QLineEdit#DesignKeySequenceEditLineEdit:focus {
+    border: {{border_width}} solid {{color_border_focus}};
+    background-color: {{color_bg_input}};
+}
+
+QKeySequenceEdit#DesignKeySequenceEdit QLineEdit:disabled,
+QLineEdit#DesignKeySequenceEditLineEdit:disabled {
+    background-color: {{color_bg_input}};
+    color: {{color_text_disabled}};
+    border: {{border_width}} solid {{color_border}};
+}
+
+QKeySequenceEdit#DesignKeySequenceEdit QLineEdit::placeholder,
+QLineEdit#DesignKeySequenceEditLineEdit::placeholder {
+    color: {{color_text_placeholder}};
+    font-style: italic;
+}
+
 /* ----- ComboBox (objectName=DesignComboBox) ----- */
 QComboBox#DesignComboBox {
     background-color: {{color_bg}};
@@ -343,8 +538,9 @@ QListView#DesignListView:disabled {
     border-color: {{color_border}};
 }
 
-/* ----- TokenTableView (objectName=DesignTableView) ----- */
-QTableView#DesignTableView {
+/* ----- TokenTableView (objectName=DesignTableView) / TokenTableWidget (objectName=DesignTableWidget) ----- */
+QTableView#DesignTableView,
+QTableWidget#DesignTableWidget {
     background-color: {{color_bg}};
     color: {{color_text}};
     border: {{border_width}} solid {{color_border}};
@@ -357,7 +553,8 @@ QTableView#DesignTableView {
 }
 
 /* 表头（行/列标题），跟随令牌颜色 */
-QTableView#DesignTableView QHeaderView::section {
+QTableView#DesignTableView QHeaderView::section,
+QTableWidget#DesignTableWidget QHeaderView::section {
     background-color: {{color_bg_page}};
     color: {{color_text}};
     font-family: {{font_family_base}};
@@ -368,20 +565,23 @@ QTableView#DesignTableView QHeaderView::section {
 }
 
 /* 水平表头（列标题）使用更高对比度背景，突出与内容区差异 */
-QTableView#DesignTableView QHeaderView::section:horizontal {
+QTableView#DesignTableView QHeaderView::section:horizontal,
+QTableWidget#DesignTableWidget QHeaderView::section:horizontal {
     background-color: {{color_bg_input}};
     font-weight: bold;
 }
 
 /* 垂直表头（行号/序号列），使用与内容区明显不同的底色 */
-QTableView#DesignTableView QHeaderView::section:vertical {
+QTableView#DesignTableView QHeaderView::section:vertical,
+QTableWidget#DesignTableWidget QHeaderView::section:vertical {
     background-color: {{color_bg_page}};
     color: {{color_text_placeholder}};
     border-right: 1px solid {{color_border}};
 }
 
 /* 左上角格子（行/列交汇处），与表头一致 */
-QTableView#DesignTableView QTableCornerButton::section {
+QTableView#DesignTableView QTableCornerButton::section,
+QTableWidget#DesignTableWidget QTableCornerButton::section {
     background-color: {{color_bg_page}};
     color: {{color_text}};
     font-family: {{font_family_base}};
@@ -392,30 +592,54 @@ QTableView#DesignTableView QTableCornerButton::section {
 }
 
 /* 表格中间的内容区域，使用交替行区分 */
-QTableView#DesignTableView::item {
+QTableView#DesignTableView::item,
+QTableWidget#DesignTableWidget::item {
     background-color: {{color_bg}};
     padding: 4px 6px;
     border: 0px;
 }
 
-QTableView#DesignTableView::item:alternate {
+QTableView#DesignTableView::item:alternate,
+QTableWidget#DesignTableWidget::item:alternate {
     background-color: {{color_bg_input}};
 }
 
-QTableView#DesignTableView::item:selected {
+QTableView#DesignTableView::item:selected,
+QTableWidget#DesignTableWidget::item:selected {
     background-color: {{color_primary}};
     color: {{color_text_inverse}};
 }
 
-QTableView#DesignTableView::item:hover:!selected {
+QTableView#DesignTableView::item:hover:!selected,
+QTableWidget#DesignTableWidget::item:hover:!selected {
     background-color: {{color_bg_input}};
     color: {{color_text}};
 }
 
-QTableView#DesignTableView:disabled {
+QTableView#DesignTableView:disabled,
+QTableWidget#DesignTableWidget:disabled {
     background-color: {{color_bg_input}};
     color: {{color_text_disabled}};
     border-color: {{color_border}};
+}
+
+/* 表格单元格编辑时弹出的 QLineEdit，padding 与 ::item 一致(4px 6px)以保证文字位置与正常显示对齐 */
+QTableView#DesignTableView QLineEdit,
+QTableWidget#DesignTableWidget QLineEdit {
+    background-color: {{color_bg}};
+    color: {{color_text}};
+    border: {{border_width}} solid {{color_border_focus}};
+    border-radius: {{radius_md}};
+    padding: 4px 6px;
+    font-size: {{font_size_base}};
+    font-family: {{font_family_base}};
+    selection-background-color: {{color_primary}};
+}
+
+QTableView#DesignTableView QLineEdit:focus,
+QTableWidget#DesignTableWidget QLineEdit:focus {
+    background-color: {{color_bg_input}};
+    border-color: {{color_border_focus}};
 }
 
 /* ----- TokenRadioButton (objectName=DesignRadioButton) ----- */

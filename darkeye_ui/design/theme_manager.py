@@ -6,9 +6,23 @@ import tempfile
 
 from PySide6.QtCore import QObject, Signal
 
-from .icon import SVG_ARROW_DOWN, render_svg_to_file
+from .icon import (
+    SVG_ARROW_DOWN,
+    SVG_CHEVRON_DOWN,
+    SVG_CHEVRON_UP,
+    render_svg_to_file,
+)
 from .loader import load_stylesheet
-from .tokens import DARK_TOKENS, LIGHT_TOKENS, RED_TOKENS, ThemeTokens
+from .tokens import (
+    BLUE_TOKENS,
+    DARK_TOKENS,
+    GREEN_TOKENS,
+    LIGHT_TOKENS,
+    PURPLE_TOKENS,
+    RED_TOKENS,
+    ThemeTokens,
+    YELLOW_TOKENS,
+)
 
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QApplication
@@ -18,6 +32,10 @@ class ThemeId(Enum):
     LIGHT = "light"
     DARK = "dark"
     RED = "red"
+    GREEN = "green"
+    YELLOW = "yellow"
+    BLUE = "blue"
+    PURPLE = "purple"
 
 
 class ThemeManager(QObject):
@@ -33,6 +51,10 @@ class ThemeManager(QObject):
             ThemeId.LIGHT: LIGHT_TOKENS,
             ThemeId.DARK: DARK_TOKENS,
             ThemeId.RED: RED_TOKENS,
+            ThemeId.GREEN: GREEN_TOKENS,
+            ThemeId.YELLOW: YELLOW_TOKENS,
+            ThemeId.BLUE: BLUE_TOKENS,
+            ThemeId.PURPLE: PURPLE_TOKENS,
         }
 
     def current(self) -> ThemeId:
@@ -52,7 +74,7 @@ class ThemeManager(QObject):
         base_dir = Path(__file__).resolve().parent.parent  # darkeye_ui 根目录
         template_path = base_dir / "styles" / self._qss_filename
         tokens = self.tokens()
-        # 将内联 SVG 下拉箭头渲染为临时图供 QSS url() 使用
+        # 将内联 SVG 渲染为临时图供 QSS url() 使用
         cache_dir = Path(tempfile.gettempdir()) / "darkeye_ui"
         chevron_path = cache_dir / f"chevron_down_{theme_id.value}.png"
         chevron_path_str = render_svg_to_file(
@@ -61,7 +83,24 @@ class ThemeManager(QObject):
             size=16,
             color=tokens.color_icon,
         )
-        tokens_dict = {**tokens.to_dict(), "chevron_down_arrow_path": chevron_path_str}
+        spinbox_up_path = render_svg_to_file(
+            SVG_CHEVRON_UP,
+            cache_dir / f"spinbox_chevron_up_{theme_id.value}.png",
+            size=12,
+            color=tokens.color_icon,
+        )
+        spinbox_down_path = render_svg_to_file(
+            SVG_CHEVRON_DOWN,
+            cache_dir / f"spinbox_chevron_down_{theme_id.value}.png",
+            size=12,
+            color=tokens.color_icon,
+        )
+        tokens_dict = {
+            **tokens.to_dict(),
+            "chevron_down_arrow_path": chevron_path_str,
+            "spinbox_up_arrow_path": spinbox_up_path,
+            "spinbox_down_arrow_path": spinbox_down_path,
+        }
         qss = load_stylesheet(template_path, tokens_dict)
         app.setStyleSheet(qss)
         self.themeChanged.emit(theme_id)
