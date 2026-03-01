@@ -8,7 +8,7 @@ import logging
 from config import ICONS_PATH
 from controller.MessageService import MessageBoxService
 from pathlib import Path
-from ui.basic import ModernScrollMenu
+from darkeye_ui.components import ModernScrollMenu
 from ui.basic import MultiplePathManagement
 from config import get_video_path
 from config import APP_VERSION

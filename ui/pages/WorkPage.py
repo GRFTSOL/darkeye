@@ -3,7 +3,8 @@ from PySide6.QtWidgets import QHBoxLayout, QWidget,QSizePolicy,QVBoxLayout,QLine
 from PySide6.QtCore import Signal,QThreadPool,Slot,Qt,QTimer
 import sqlite3,logging
 from ui.widgets import CompleterLineEdit,CoverCard
-from ui.basic import LazyScrollArea,HorizontalScrollArea
+from darkeye_ui.components import LazyScrollArea
+from ui.basic import HorizontalScrollArea
 from config import DATABASE
 from core.database.query import get_actressname,getUniqueDirector,get_actorname,get_serial_number,get_maker_name
 from core.database.db_utils import attach_private_db,detach_private_db

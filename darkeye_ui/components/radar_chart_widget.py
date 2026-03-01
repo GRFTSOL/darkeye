@@ -1,61 +1,86 @@
-import sys
 import math
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QGraphicsView, QGraphicsScene, QGraphicsTextItem, QGraphicsPolygonItem, QGraphicsLineItem,QFrame
-from PySide6.QtGui import QPen, QBrush, QColor, QPolygonF, QPainter,QFont
+from typing import TYPE_CHECKING, Optional
+
 from PySide6.QtCore import Qt, QPointF
+from PySide6.QtGui import QBrush, QColor, QPen, QPolygonF, QPainter
+from PySide6.QtWidgets import QFrame, QGraphicsLineItem, QGraphicsPolygonItem, QGraphicsScene, QGraphicsTextItem, QGraphicsView
+
+from darkeye_ui.design.tokens import LIGHT_TOKENS, ThemeTokens
+
+if TYPE_CHECKING:
+    from darkeye_ui.design.theme_manager import ThemeManager
+
 
 class RadarChartWidget(QGraphicsView):
-    '''这个自绘的，似乎会更加的自由的简单的一点
-    传进来的值一定是[0,1]归一化后的数据
-    categories:这个是标签列表
-    values:这个是归一化后的列表
-    show_values:这个是原始列表，可能会有""
-    '''
-    def __init__(self, categories=None, values=None,show_values=None, num_layers=5, parent=None):
+    """自绘雷达图，网格、轴线、数据区颜色由设计令牌驱动，支持主题切换。
+    传进来的值一定是[0,1]归一化后的数据。
+    categories: 标签列表
+    values: 归一化后的列表
+    show_values: 原始列表，可能会有""
+    """
+    def __init__(
+        self,
+        categories=None,
+        values=None,
+        show_values=None,
+        num_layers=5,
+        theme_manager: Optional["ThemeManager"] = None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.categories = categories
         self.values = values
+        self.show_values = show_values if show_values is not None else values
 
-        if show_values is None:
-            self.show_values=values
-        else:
-            self.show_values=show_values
+        if theme_manager is None:
+            try:
+                from app_context import get_theme_manager
+                theme_manager = get_theme_manager()
+            except Exception:
+                pass
+        self._theme_manager = theme_manager
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._on_theme_changed)
 
         self.setFrameStyle(QFrame.NoFrame)
         self.num_layers = num_layers
         self.max_value = 1
 
-        # 创建场景和视图
         self.myscene = QGraphicsScene(self)
         self.setScene(self.myscene)
         self.setRenderHints(QPainter.Antialiasing)
-
-        # 设置背景透明
         self.setStyleSheet("background: transparent; border: none;")
         self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
-        
-        # 设置场景背景透明
         self.myscene.setBackgroundBrush(QBrush(Qt.transparent))
-        # 设置视口属性
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)#关闭滚轮
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         self.center_x, self.center_y = 100, 100
         self.max_radius = 80
-        self.angle_offset = math.pi / 2  # 第一条轴朝上
+        self.angle_offset = math.pi / 2
 
-        self.pen_grid = QPen(QColor("gray"), 1)
-        self.pen_axis = QPen(QColor("gray"), 1)
-        self.pen_data = QPen(QColor("blue"), 2)
-        self.brush_data = QBrush(QColor(0, 100, 255, 100))
+        self._apply_token_colors()
 
-        # 创建字体对象
-        '''
-        self.categories_font = QFont()
-        self.categories_font.setPointSize(10)  # 设置字体大小
-        self.categories_font.setBold(True)     # 设置粗体
-        self.categories_font.setFamily("SimHei")  # 设置字体家族
-        '''
+    def _tokens(self) -> ThemeTokens:
+        if self._theme_manager is not None:
+            return self._theme_manager.tokens()
+        return LIGHT_TOKENS
+
+    def _apply_token_colors(self) -> None:
+        t = self._tokens()
+        self.pen_grid = QPen(QColor(t.color_border), 1)
+        self.pen_axis = QPen(QColor(t.color_border), 1)
+        self.pen_data = QPen(QColor(t.color_primary), 2)
+        c = QColor(t.color_primary)
+        c.setAlpha(100)
+        self.brush_data = QBrush(c)
+        self._color_label = t.color_text
+        self._color_data_label = t.color_primary
+
+    def _on_theme_changed(self) -> None:
+        self._apply_token_colors()
+        if self.categories and self.values is not None:
+            self.update_chart()
 
 
     def draw_grid(self):
@@ -86,19 +111,15 @@ class RadarChartWidget(QGraphicsView):
             self.myscene.addItem(line)
 
     def draw_labels(self):
-        '''绘制类型标签'''
         num_categories = len(self.categories)
         for i, label in enumerate(self.categories):
             angle = -2 * math.pi * i / num_categories + self.angle_offset
             x = self.center_x + (self.max_radius + 20) * math.cos(angle)
             y = self.center_y - (self.max_radius + 20) * math.sin(angle)
             text_item = QGraphicsTextItem(label)
-            # 设置字体
-            #text_item.setFont(self.categories_font)
-            # 设置文本颜色
-            #text_item.setDefaultTextColor(QColor("darkblue"))
-            text_item.setPos(x - text_item.boundingRect().width()/2,
-                             y - text_item.boundingRect().height()/2)
+            text_item.setDefaultTextColor(QColor(getattr(self, "_color_label", "#333333")))
+            text_item.setPos(x - text_item.boundingRect().width() / 2,
+                             y - text_item.boundingRect().height() / 2)
             self.myscene.addItem(text_item)
 
     def draw_data(self):
@@ -111,12 +132,11 @@ class RadarChartWidget(QGraphicsView):
             y = self.center_y - radius * math.sin(angle)
             points.append(QPointF(x, y))
 
-            # 数据标签
             label_text = QGraphicsTextItem(str(self.show_values[i]))
-            label_text.setPos(x + 10 * math.cos(angle) - label_text.boundingRect().width()/2,
-                              y - 10 * math.sin(angle) - label_text.boundingRect().height()/2)
+            label_text.setPos(x + 10 * math.cos(angle) - label_text.boundingRect().width() / 2,
+                              y - 10 * math.sin(angle) - label_text.boundingRect().height() / 2)
             self.myscene.addItem(label_text)
-            label_text.setDefaultTextColor(QColor("red"))
+            label_text.setDefaultTextColor(QColor(getattr(self, "_color_data_label", "#00aaff")))
 
         points.append(points[0])  # 闭合
         polygon = QPolygonF(points)
@@ -124,7 +144,7 @@ class RadarChartWidget(QGraphicsView):
         poly_item.setPen(self.pen_data)
         poly_item.setBrush(self.brush_data)
         self.myscene.addItem(poly_item)
-    
+
     def update_chart(self, categories=None, values=None, show_values=None):
         """更新数据并重绘"""
         if categories is not None:

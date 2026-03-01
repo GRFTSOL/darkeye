@@ -3,7 +3,7 @@
 from PySide6.QtWidgets import QWidget,QVBoxLayout,QSizePolicy
 from PySide6.QtCore import Qt,Slot,Signal
 import logging,sqlite3
-from ui.basic import LazyScrollArea
+from darkeye_ui.components import LazyScrollArea
 from ui.widgets import SingleActressInfo
 from ui.widgets import CoverCard
 from config import DATABASE

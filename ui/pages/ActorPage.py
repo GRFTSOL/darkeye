@@ -7,7 +7,7 @@ from config import DATABASE
 from core.database.query import get_actorname
 from core.database.db_utils import attach_private_db,detach_private_db
 from ui.widgets import ActorCard,CompleterLineEdit
-from ui.basic import LazyScrollArea
+from darkeye_ui.components import LazyScrollArea
 from darkeye_ui import LazyWidget
 from utils.utils import timeit
 from darkeye_ui.components.label import Label

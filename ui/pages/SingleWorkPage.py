@@ -4,7 +4,7 @@ from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor,QFont
 from PySide6.QtCore import Qt, QPointF,Signal,Slot
 import logging
 
-from ui.basic import VLabel
+from darkeye_ui.components import TokenVLabel
 from darkeye_ui.layouts import VFlowLayout
 from darkeye_ui.components.heart_label import HeartLabel
 from config import WORKCOVER_PATH,ICONS_PATH
@@ -126,21 +126,21 @@ class WorkInfo(TransparentWidget):
         self.story.setFont(QFont("Microsoft YaHei", 12))
         self.story.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
-        self.serial_number_label=VLabel("番号",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.serial_number=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.serial_number_label=TokenVLabel("番号",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.serial_number=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         #self.serial_number.setTextColor("#FFFFFF")
 
-        self.release_date_label=VLabel("发行日期",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.release_date=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.release_date_label=TokenVLabel("发行日期",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.release_date=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         #self.release_date.setTextColor("#FFFFFF")
 
         #这些东西都要动态添加，有些是空的就会有大问题
-        self.director_label=VLabel("导演",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.director=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
+        self.director_label=TokenVLabel("导演",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.director=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
 
-        self.studio_label=VLabel("制作商",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.studio=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
-        self.label_tag=VLabel("作品标签",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.studio_label=TokenVLabel("制作商",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.studio=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
+        self.label_tag=TokenVLabel("作品标签",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
 
         self.actress = TransparentWidget(self)
         self.label = TransparentWidget(self)
@@ -234,7 +234,7 @@ class WorkInfo(TransparentWidget):
             #self.actress.deleteLater()
             return
 
-        label_actress=VLabel("女优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        label_actress=TokenVLabel("女优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         self.actress_layout.addWidget(label_actress)
         # 2. 动态创建按钮并添加女优列表
         for actress in actress_list:
@@ -248,7 +248,7 @@ class WorkInfo(TransparentWidget):
         if actor_list is None:
             return
         #添加男优的标签
-        label_actor=VLabel("男优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        label_actor=TokenVLabel("男优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         self.actress_layout.addWidget(label_actor)
 
         for actor in actor_list:

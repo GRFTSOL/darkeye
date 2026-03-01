@@ -16,7 +16,7 @@ from config import ICONS_PATH
 from core.database.query import getTags, get_tagid_by_keyword
 
 from controller.MessageService import MessageBoxService
-from ui.widgets.VerticalTabBar import VerticalTabBar
+from darkeye_ui.components import TokenVerticalTabBar
 from ui.base import SearchLineBase
 from controller.GlobalSignalBus import global_signals
 from utils.utils import timeit, get_text_color_from_background, get_hover_color_from_background
@@ -439,7 +439,7 @@ class FloatingPanel(QWidget):
         
         self.tag_emit_tabwidget = QTabWidget()
         self.tag_emit_tabwidget.setTabPosition(QTabWidget.West)
-        self.tag_emit_tabwidget.setTabBar(VerticalTabBar())
+        self.tag_emit_tabwidget.setTabBar(TokenVerticalTabBar())
 
         self.mainlayout.addWidget(self.searchLine)
         self.mainlayout.addWidget(self.tag_emit_tabwidget)
@@ -515,6 +515,8 @@ class TagSelector5(QWidget):
         # 初始化逻辑
         self.load_tags()
         self.beatutetoolbox()
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._apply_tabwidget_styles)
         self.signal_connect()
 
         self.panel_visible = False

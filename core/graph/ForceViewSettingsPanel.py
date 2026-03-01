@@ -17,7 +17,7 @@ from darkeye_ui.components.clickable_slider import ClickableSlider
 from darkeye_ui.components.label import Label
 from darkeye_ui.components.toggle_switch import ToggleSwitch
 from darkeye_ui.design.tokens import LIGHT_TOKENS, ThemeTokens
-from ui.basic.Collapse import CollapsibleSection
+from darkeye_ui.components import TokenCollapsibleSection
 from darkeye_ui.components.button import Button
 from darkeye_ui.components.token_radio_button import TokenRadioButton
 from darkeye_ui.components.token_check_box import TokenCheckBox
@@ -137,7 +137,7 @@ class ForceViewSettingsPanel(QScrollArea):
         self.label_paint = Label()
 
         # --- Effect Section ---
-        effect_section = CollapsibleSection("效果", self)
+        effect_section = TokenCollapsibleSection("效果", self._theme_manager, self)
         effect_form = QFormLayout()
 
         # Physics parameters
@@ -180,7 +180,7 @@ class ForceViewSettingsPanel(QScrollArea):
         effect_section.addLayout(effect_form)
 
         # --- Display Section ---
-        display_section = CollapsibleSection("显示", self)
+        display_section = TokenCollapsibleSection("显示", self._theme_manager, self)
         display_form = QFormLayout()
 
         self.show_image = ToggleSwitch(width=48, height=24)
@@ -273,7 +273,7 @@ class ForceViewSettingsPanel(QScrollArea):
         display_section.addLayout(display_form)
 
         # --- Test Section ---
-        test_section = CollapsibleSection("测试", self)
+        test_section = TokenCollapsibleSection("测试", self._theme_manager, self)
 
         # Status labels
         self.label_scale = Label()
@@ -459,10 +459,10 @@ class ForceViewSettingsPanel(QScrollArea):
             f"    border: 1px solid {border}; "
             f"    border-radius: {radius};"
             f"}}"
-            f"CollapsibleSection {{"
+            f"TokenCollapsibleSection {{"
             f"    background-color: {bg};"
             f"}}"
-            f"CollapsibleSection QWidget {{"
+            f"TokenCollapsibleSection QWidget {{"
             f"    background-color: {bg};"
             f"}}"
         )

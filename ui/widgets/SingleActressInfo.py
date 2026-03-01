@@ -2,7 +2,7 @@
 from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QGridLayout,QSizePolicy
 from PySide6.QtCore import Qt,Slot
 from PySide6.QtGui import QPainter,QPen
-from ui.statistics import RadarChartWidget
+from darkeye_ui.components import RadarChartWidget
 import logging
 from darkeye_ui.components.heart_label import HeartLabel
 from ui.widgets import ClickableLabel

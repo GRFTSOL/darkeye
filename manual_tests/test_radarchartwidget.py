@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphic
 from PySide6.QtGui import QBrush, QPen, QColor
 from PySide6.QtCore import Qt
 
-from ui.statistics import RadarChartWidget
+from darkeye_ui.components import RadarChartWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):

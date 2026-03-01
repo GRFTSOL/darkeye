@@ -26,6 +26,13 @@ from .token_group_box import TokenGroupBox
 from .token_table_widget import TokenTableWidget
 from .transparent_widget import TransparentWidget
 from .vertical_text_label import VerticalTextLabel
+from .token_v_label import TokenVLabel
+from .token_collapsible_section import TokenCollapsibleSection
+from .token_vertical_tab_bar import TokenVerticalTabBar
+from .modern_scroll_menu import ModernScrollMenu
+from .calendar_heatmap import CalendarHeatmap
+from .lazy_scroll_area import LazyScrollArea
+from .radar_chart_widget import RadarChartWidget
 
 __all__ = [
     "Button",
@@ -57,4 +64,11 @@ __all__ = [
     "TokenTableWidget",
     "TransparentWidget",
     "VerticalTextLabel",
+    "TokenVLabel",
+    "TokenCollapsibleSection",
+    "TokenVerticalTabBar",
+    "ModernScrollMenu",
+    "CalendarHeatmap",
+    "LazyScrollArea",
+    "RadarChartWidget",
 ]

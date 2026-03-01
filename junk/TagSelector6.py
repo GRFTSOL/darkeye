@@ -6,10 +6,10 @@ import logging
 
 from config import ICONS_PATH
 from core.database.query import getTags
-from ui.basic import WaterfallLayout,VLabel
+from darkeye_ui.layouts import WaterfallLayout
+from darkeye_ui.components import TokenVLabel, TokenVerticalTabBar
 from ui.widgets.text.VerticalTagLabel2 import VerticalTagLabel2
 from controller.MessageService import MessageBoxService
-from ui.widgets.VerticalTabBar import VerticalTabBar
 from ui.base import SearchLineBase
 from controller.GlobalSignalBus import global_signals
 from utils.utils import timeit
@@ -39,7 +39,7 @@ class FloatingPanel(QWidget):
         self.tag_emit_tabwidget = QTabWidget()
         self.tag_emit_tabwidget.setTabPosition(QTabWidget.West)
         # 设置自定义的垂直标签栏
-        self.tag_emit_tabwidget.setTabBar(VerticalTabBar())
+        self.tag_emit_tabwidget.setTabBar(TokenVerticalTabBar())
 
         self.mainlayout.addWidget(self.searchLine)
         self.mainlayout.addWidget(self.tag_emit_tabwidget)
@@ -108,7 +108,7 @@ class TagSelector6(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setWidget(self.tag_receive_widget)
 
-        self.vlabel=VLabel("作品标签",background_color="#00000000",border_color="#000000")
+        self.vlabel = TokenVLabel("作品标签", background_color="#00000000", border_color="#000000")
         self.tag_receive_layout.addWidget(self.vlabel)
         
         self.btn_clear=ShakeButton(icon_name="brush_cleaning",icon_size=24,out_size=24)
