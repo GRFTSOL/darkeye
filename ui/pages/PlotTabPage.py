@@ -1,10 +1,13 @@
 
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel,QSizePolicy,QVBoxLayout,QRadioButton,QGroupBox,QSplitter
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QSizePolicy,QVBoxLayout,QSplitter
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from PySide6.QtCore import Slot
 from ui.statistics.MplCanvas import MplCanvas
 import logging
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.token_radio_button import TokenRadioButton
+from darkeye_ui.components.token_group_box import TokenGroupBox
 
 class PlotTabPage(LazyWidget):
     def __init__(self):
@@ -17,29 +20,29 @@ class PlotTabPage(LazyWidget):
         self.canvas = MplCanvas(self)
         self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # 让 canvas 尽量填充
 
-        self.btn_ageDistribution = QPushButton("作品拍摄时女优年龄分布直方图")
-        self.btn_workReleaseYearDistribution = QPushButton("作品发行年份分布直方图")
-        self.btn_actressDebutYearDistribution = QPushButton("女优出道年份分布直方图")
-        self.btn_heightDistribution = QPushButton("女优身高分布直方图")
-        self.btn_BWH_Distribution = QPushButton("女优身材3D分布图")
-        self.btn_cupDistribution = QPushButton("女优罩杯分布饼图")
-        self.btn_directorStat = QPushButton("导演统计柱状图")
-        self.btn_makerStat = QPushButton("制作商统计柱状图")
-        self.btn_mostLikeActress= QPushButton("最喜欢的女优柱状图")
-        self.btn_ActressBodyHWratio= QPushButton("女优身材腰臀比气泡图")
+        self.btn_ageDistribution = Button("作品拍摄时女优年龄分布直方图")
+        self.btn_workReleaseYearDistribution = Button("作品发行年份分布直方图")
+        self.btn_actressDebutYearDistribution = Button("女优出道年份分布直方图")
+        self.btn_heightDistribution = Button("女优身高分布直方图")
+        self.btn_BWH_Distribution = Button("女优身材3D分布图")
+        self.btn_cupDistribution = Button("女优罩杯分布饼图")
+        self.btn_directorStat = Button("导演统计柱状图")
+        self.btn_makerStat = Button("制作商统计柱状图")
+        self.btn_mostLikeActress= Button("最喜欢的女优柱状图")
+        self.btn_ActressBodyHWratio= Button("女优身材腰臀比气泡图")
 
-        self.btn_actress_debutage_distribution= QPushButton("女优出道年龄分布直方图")
-        self.btn_TagWordClould=QPushButton("Tag词云生成")
+        self.btn_actress_debutage_distribution= Button("女优出道年龄分布直方图")
+        self.btn_TagWordClould=Button("Tag词云生成")
 
-        btn_YearReport=QPushButton("撸管年回忆录")
+        btn_YearReport=Button("撸管年回忆录")
         btn_YearReport.setEnabled(False)
-        self.btn_addTimeDistribution=QPushButton("按添加时间统计作品数")
+        self.btn_addTimeDistribution=Button("按添加时间统计作品数")
         
-        radio_group = QGroupBox("选择统计范围")
-        self.rbtn_public=QRadioButton("公共数据库")
-        self.rbtn_collect = QRadioButton("收藏库内")
-        self.rbtn_singlwork = QRadioButton("撸过")
-        self.rbtn_plane = QRadioButton("撸过加权")
+        radio_group = TokenGroupBox("选择统计范围")
+        self.rbtn_public=TokenRadioButton("公共数据库")
+        self.rbtn_collect = TokenRadioButton("收藏库内")
+        self.rbtn_singlwork = TokenRadioButton("撸过")
+        self.rbtn_plane = TokenRadioButton("撸过加权")
         self.rbtn_singlwork.setChecked(True)
 
         group_layout=QVBoxLayout(radio_group)
@@ -47,7 +50,7 @@ class PlotTabPage(LazyWidget):
         group_layout.addWidget(self.rbtn_collect)
         group_layout.addWidget(self.rbtn_singlwork)
         group_layout.addWidget(self.rbtn_plane)
-        radio_group.setFixedHeight(125)
+        #radio_group.setFixedHeight(125)
 
         # 创建水平分隔器
         left_widget=QWidget()
@@ -80,7 +83,7 @@ class PlotTabPage(LazyWidget):
         canvas_layout.addWidget(NavigationToolbar(self.canvas, self))
         canvas_layout.addWidget(self.canvas)
 
-        statistics_group=QGroupBox("多样化统计")
+        statistics_group=TokenGroupBox("多样化统计")
         statistics_group_layout=QVBoxLayout(statistics_group)
         statistics_group_layout.setContentsMargins(5,0,5,0)
         statistics_group_layout.addWidget(radio_group)

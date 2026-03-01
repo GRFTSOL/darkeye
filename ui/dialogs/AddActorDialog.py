@@ -1,11 +1,14 @@
 
-from PySide6.QtWidgets import QPushButton,QLabel,QDialog,QLineEdit,QGridLayout
+from PySide6.QtWidgets import QDialog, QGridLayout
 from PySide6.QtCore import Signal
 from core.database.insert import InsertNewActor
 from config import ICONS_PATH
 from PySide6.QtGui import QIcon
 from core.crawler.jump import jump_avdanyuwiki
 from controller.MessageService import MessageBoxService
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.button import Button
 
 class AddActorDialog(QDialog):
     #添加新男优的输入对画框
@@ -17,15 +20,15 @@ class AddActorDialog(QDialog):
         self.resize(300, 150)
         self.msg=MessageBoxService(self)
 
-        self.label1 = QLabel("男优中文名：")
-        self.input1 = QLineEdit()
-        self.label2 = QLabel("男优日文名：")
-        self.input2 = QLineEdit()
+        self.label1 = Label("男优中文名：")
+        self.input1 = LineEdit()
+        self.label2 = Label("男优日文名：")
+        self.input2 = LineEdit()
 
-        btn_commit = QPushButton("添加")
+        btn_commit = Button("添加", variant="primary")
         btn_commit.clicked.connect(self.submit)
 
-        btn_search = QPushButton("日文名搜索")
+        btn_search = Button("日文名搜索")
         btn_search.clicked.connect(lambda:jump_avdanyuwiki(self.input2.text()))
 
         layout = QGridLayout(self)

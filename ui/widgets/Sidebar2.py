@@ -1,126 +1,24 @@
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QPainter, QPainterPath, QPen, QBrush, QColor, QImage, QPixmap
-from PySide6.QtSvg import QSvgRenderer
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QAbstractButton
+from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
+from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from config import ICONS_PATH
+from app_context import get_theme_manager
+from darkeye_ui.components import ChamferButton
+from darkeye_ui.design.icon import BUILTIN_ICONS
 
 
-class OctagonButton(QAbstractButton):
+def _resolve_icon(icon_name: str | None):
+    """将 menu_defs 的 icon_name 解析为 ChamferButton 的 icon_name / icon_path。
+    .svg 结尾的：从 config 取 ICONS_PATH 拼成完整路径；否则尝试按 builtin 键匹配。
     """
-    八边形菜单按钮
-    - 只保留图标（可选）+ 内部绘制
-    - hover 时高亮
-    - 支持选中状态
-    - 使用 tooltip 显示文本提示
-    """
-
-    def __init__(self, menu_id: str, text: str, icon_name: str | None = None, parent: QWidget | None = None):
-        super().__init__(parent)
-        self.menu_id = menu_id
-        self._text = text
-        self._icon_path: str | None = None
-        if icon_name:
-            self._icon_path = str(ICONS_PATH / icon_name)
-
-        # 显示提示文本
-        self.setToolTip(text)
-
-        # 统一按钮尺寸（接近正方形）
-        self.setFixedSize(40, 40)
-
-        # 状态
-        self._is_selected = False
-        self._is_hovered = False
-
-        # 开启鼠标跟踪以便 hover 效果
-        self.setMouseTracking(True)
-
-    # --------- 状态 API ---------
-    def set_selected(self, selected: bool) -> None:
-        if self._is_selected != selected:
-            self._is_selected = selected
-            self.update()
-
-    def is_selected(self) -> bool:
-        return self._is_selected
-
-    # --------- 事件处理 ---------
-    def enterEvent(self, event) -> None:  # type: ignore[override]
-        self._is_hovered = True
-        self.update()
-        super().enterEvent(event)
-
-    def leaveEvent(self, event) -> None:  # type: ignore[override]
-        self._is_hovered = False
-        self.update()
-        super().leaveEvent(event)
-
-    #def mousePressEvent(self, event) -> None:  # type: ignore[override]
-    #    if event.button() == Qt.MouseButton.LeftButton:
-    #        self.clicked.emit()
-    #   super().mousePressEvent(event)
-
-    # --------- 绘制八边形 ---------
-    def paintEvent(self, event) -> None:  # type: ignore[override]
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing, True)
-
-        rect = self.rect()
-        w = rect.width()
-        h = rect.height()
-        x = rect.x()
-        y = rect.y()
-
-        # 通过“切角”生成近似规则八边形
-        dx = w * 0.22
-        dy = h * 0.22
-
-        path = QPainterPath()
-        path.moveTo(x + dx, y)
-        path.lineTo(x + w - dx, y)
-        path.lineTo(x + w, y + dy)
-        path.lineTo(x + w, y + h - dy)
-        path.lineTo(x + w - dx, y + h)
-        path.lineTo(x + dx, y + h)
-        path.lineTo(x, y + h - dy)
-        path.lineTo(x, y + dy)
-        path.closeSubpath()
-
-        # 颜色根据状态变化
-        if self._is_selected:
-            fill_color = QColor("#F5FFA0")  # 选中高亮
-            border_color = QColor("#FFFFFF")
-        elif self._is_hovered:
-            fill_color = QColor("#F5FFA0")  # hover 高亮
-            border_color = QColor("#FFFFFF")
-        else:
-            fill_color = QColor("#FFFFFF")  # 普通
-            border_color = QColor("#FFFFFF")
-
-
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        painter.setPen(Qt.NoPen) 
-        painter.setBrush(QBrush(fill_color))
-        painter.drawPath(path)
-
-        # 在八边形内部绘制图标（若有），直接从 SVG 渲染到 QImage 再转为 QPixmap
-        if self._icon_path is not None:
-            icon_size = int(min(w, h) * 0.55)
-
-            image = QImage(icon_size, icon_size, QImage.Format_ARGB32_Premultiplied)
-            image.fill(Qt.GlobalColor.transparent)
-
-            renderer = QSvgRenderer(self._icon_path)
-            svg_painter = QPainter(image)
-            renderer.render(svg_painter)
-            svg_painter.end()
-
-            pix = QPixmap.fromImage(image)
-            ix = x + (w - icon_size) / 2
-            iy = y + (h - icon_size) / 2
-            painter.drawPixmap(int(ix), int(iy), pix)
+    if not icon_name:
+        return None, None
+    if icon_name.endswith(".svg"):
+        return None, ICONS_PATH / icon_name
+    if icon_name in BUILTIN_ICONS:
+        return icon_name, None
+    return None, ICONS_PATH / icon_name
 
 
 class Sidebar2(QWidget):
@@ -144,7 +42,7 @@ class Sidebar2(QWidget):
         else:
             self.menu_defs = menu_defs
 
-        self._buttons: dict[str, OctagonButton] = {}
+        self._buttons: dict[str, ChamferButton] = {}
         self._current_id: str | None = None
 
         # 背景：用 paintEvent 绘制八边形（直倒角），不用圆角
@@ -160,7 +58,16 @@ class Sidebar2(QWidget):
 
         layout.addStretch(1)
         for mid, text, icon_name in self.menu_defs:
-            btn = OctagonButton(mid, text, icon_name, self)
+            iname, ipath = _resolve_icon(icon_name)
+            btn = ChamferButton(
+                text=text,
+                icon_name=iname,
+                icon_path=ipath,
+                out_size=40,
+                chamfer_ratio=0.5,
+                menu_id=mid,
+                parent=self,
+            )
             btn.clicked.connect(lambda _=False, m=mid: self._on_button_clicked(m))
             layout.addWidget(btn, alignment=Qt.AlignmentFlag.AlignHCenter)
             self._buttons[mid] = btn
@@ -172,6 +79,11 @@ class Sidebar2(QWidget):
             if first_id in self._buttons:
                 self._current_id = first_id
                 self._buttons[first_id].set_selected(True)
+
+        # 令牌驱动：背景色随主题切换
+        theme_mgr = get_theme_manager()
+        if theme_mgr is not None:
+            theme_mgr.themeChanged.connect(self.update)
 
     def paintEvent(self, event) -> None:  # type: ignore[override]
         """绘制侧边栏整体背景为八边形（直倒角），上下留白 20px，左右各 5px。"""
@@ -195,9 +107,17 @@ class Sidebar2(QWidget):
         path.lineTo(x, y + chamfer)
         path.closeSubpath()
 
-        painter.setPen(QPen(QColor("#D4ECD7"), 1))
-        painter.setBrush(QBrush(QColor("#D4ECD7")))
+        # 背景色由令牌控制（color_bg_input 用于侧边栏等次级面板）
+        color_str = "#D4ECD7"  # 回退默认
+        theme_mgr = get_theme_manager()
+        if theme_mgr is not None:
+            tokens = theme_mgr.tokens()
+            color_str = getattr(tokens, "color_bg_input", color_str)
+        c = QColor(color_str)
+        painter.setPen(QPen(c, 1))
+        painter.setBrush(QBrush(c))
         painter.drawPath(path)
+        painter.end()
 
     # --------- 兼容接口 ---------
     def _on_button_clicked(self, menu_id: str) -> None:

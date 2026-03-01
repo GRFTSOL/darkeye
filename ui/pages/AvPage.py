@@ -1,9 +1,10 @@
 
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel,QVBoxLayout
+from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget,QVBoxLayout
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
 
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.label import Label
 
 class AvPage(LazyWidget):
     def __init__(self):
@@ -15,8 +16,8 @@ class AvPage(LazyWidget):
 
         #mainlayout.addSpacing(70)
 
-        self.label = QLabel("AV知识科普页面")
+        self.label = Label("AV知识科普页面")
         self.label.setAlignment(Qt.AlignCenter)
-        self.label.setStyleSheet(f"background-color: grey; color: white; font-size: 28px;")
+        self.label.setStyleSheet(f"font-size: 28px;")
         mainlayout.addWidget(self.label)
 

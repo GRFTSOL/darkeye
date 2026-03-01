@@ -88,8 +88,10 @@ def get_video_path()->list[Path]:
     这里返回的是Path列表
     '''
     key = "Paths/Videos"
-    path_value=settings.value(key)
-    path_list = [Path(p) for p in path_value.split(",")]
+    path_value = settings.value(key, "")
+    if not path_value:
+        return []
+    path_list = [Path(p) for p in str(path_value).split(",") if p.strip()]
     return path_list
 
 def update_video_path(new_paths:list[Path]):
@@ -142,3 +144,17 @@ def is_first_lunch()->bool:
 def set_first_luch(value:bool):
     '''设置启动值'''
     settings.setValue("window/first_lunch", value)
+
+
+def get_theme_id() -> str:
+    '''从 .ini 读取主题 ID（ThemeId 的 name，如 LIGHT/DARK/RED），默认 LIGHT'''
+    return settings.value("App/Theme", "LIGHT", type=str)
+
+
+def set_theme_id(theme_id) -> None:
+    '''将主题 ID 写入 .ini，支持 ThemeId 或 str'''
+    from darkeye_ui.design import ThemeId
+    if isinstance(theme_id, ThemeId):
+        theme_id = theme_id.name
+    settings.setValue("App/Theme", theme_id)
+    settings.sync()

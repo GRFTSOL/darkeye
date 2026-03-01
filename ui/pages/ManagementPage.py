@@ -1,8 +1,8 @@
-from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QToolButton,QFileDialog,QLabel,QSizePolicy,QTabWidget
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QToolButton,QSizePolicy
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt,Slot,QThreadPool
 from pathlib import Path
-from config import ICONS_PATH,DATABASE,DATABASE_BACKUP_PATH,PRIVATE_DATABASE,PRIVATE_DATABASE_BACKUP_PATH
+from config import ICONS_PATH
 from ui.pages.TagManagement import TagManagement
 from ui.pages.SearchTable import SearchTable
 from .AddWorkTabPage3 import AddWorkTabPage3
@@ -12,6 +12,7 @@ from controller.MessageService import MessageBoxService
 from .StudioManagementPage import StudioManagementPage
 from .ManagementTable import ManagementTable
 from .RecycleBinPage import RecycleBinPage
+from darkeye_ui.components.token_tab_widget import TokenTabWidget
 
 class ManagementPage(QWidget):
     '''管理面板，里面嵌套了其他很多的功能'''
@@ -30,7 +31,7 @@ class ManagementPage(QWidget):
 
         # 主内容区域
         #tabwidget
-        self.tab_widget=QTabWidget()
+        self.tab_widget=TokenTabWidget()
         #self.tab_widget.setMovable(True)
         self.worktab=AddWorkTabPage3()
         self.searchtable=SearchTable()

@@ -2,30 +2,62 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QLabel,
-    QPushButton,
     QListWidget,
     QListWidgetItem,
     QSizePolicy,
     QFrame,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThreadPool, QRunnable, QObject, Signal, Slot
 
-from ui.navigation.router import Router
+from darkeye_ui.components.label import Label
+from controller.GlobalSignalBus import global_signals
+from core.database.query import get_dashboard_stats
+
+
+# 统计卡片 label -> get_dashboard_stats 返回的键
+_STAT_CARD_KEYS = [
+    ("作品总数", "work_count"),
+    ("女优总数", "actress_count"),
+    ("男优总数", "actor_count"),
+    ("Tag总数", "tag_count"),
+    ("近30天新增作品", "recent_30_days"),
+    ("收藏作品总数", "favorite_work_count"),
+    ("收藏女优总数", "favorite_actress_count"),
+]
+
+
+class _WorkerSignals(QObject):
+    finished = Signal(object)
+
+
+class _DatabaseQueryWorker(QRunnable):
+    def __init__(self, query_func, *args, **kwargs):
+        super().__init__()
+        self.query_func = query_func
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = _WorkerSignals()
+
+    def run(self):
+        try:
+            result = self.query_func(*self.args, **self.kwargs)
+            self.signals.finished.emit(result)
+        except Exception as e:
+            import logging
+            logging.error(f"Dashboard 数据库查询失败: {e}")
+            self.signals.finished.emit(None)
 
 
 class DashboardPage(QWidget):
     """
     首页 Dashboard
 
-    结构按信息密度从粗到细划分为 5 个区域：
+    结构按信息密度从粗到细划分为 3 个区域：
     1. 顶部统计卡片
     2. 最近行为
-    3. 偏好 / Top 榜
-    4. 待处理 / 异常提醒
-    5. 快捷入口
+    3. 待处理 / 异常提醒
 
-    当前版本先搭好布局和交互骨架，数据后续通过 query.py 补充。
+    数据库概览通过 get_dashboard_stats 异步加载，并监听全局信号自动刷新。
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -43,20 +75,23 @@ class DashboardPage(QWidget):
         self.recent_container = self._build_recent_section()
         main_layout.addWidget(self.recent_container)
 
-        # ③ 偏好 / Top 榜
-        self.preferences_container = self._build_preferences_section()
-        main_layout.addWidget(self.preferences_container)
-
-        # ④ 待处理提醒
+        # ③ 待处理提醒
         self.pending_container = self._build_pending_section()
         main_layout.addWidget(self.pending_container)
 
-        # ⑤ 快捷入口
-        self.shortcuts_container = self._build_shortcuts_section()
-        main_layout.addWidget(self.shortcuts_container)
-
         # 占满剩余空间
         main_layout.addStretch()
+
+        # 连接全局信号，数据变更时刷新统计
+        global_signals.work_data_changed.connect(self._refresh_stats)
+        global_signals.actress_data_changed.connect(self._refresh_stats)
+        global_signals.actor_data_changed.connect(self._refresh_stats)
+        global_signals.tag_data_changed.connect(self._refresh_stats)
+        global_signals.like_work_changed.connect(self._refresh_stats)
+        global_signals.like_actress_changed.connect(self._refresh_stats)
+
+        # 初始异步加载
+        self._refresh_stats()
 
     # --------------------------------------
     # ① 顶部统计卡片
@@ -67,23 +102,24 @@ class DashboardPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        title = QLabel("数据库概览")
+        title = Label("数据库概览")
         title.setObjectName("dashboard_section_title")
         layout.addWidget(title)
 
         cards_row = QHBoxLayout()
         cards_row.setSpacing(8)
 
-        # 先用占位数据，后续用 query.py 填充真实数值
-        for label_text in ["作品总数", "女优总数", "代表作数量", "近30天新增作品"]:
-            card = self._create_stat_card(label_text, "--")
+        self._stat_value_labels: dict[str, Label] = {}
+        for label_text, key in _STAT_CARD_KEYS:
+            card, value_label = self._create_stat_card(label_text, "--")
             cards_row.addWidget(card)
+            self._stat_value_labels[key] = value_label
 
         cards_row.addStretch()
         layout.addLayout(cards_row)
         return container
 
-    def _create_stat_card(self, label: str, value: str) -> QWidget:
+    def _create_stat_card(self, label: str, value: str) -> tuple[QWidget, Label]:
         card = QFrame()
         card.setFrameShape(QFrame.StyledPanel)
         card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
@@ -92,18 +128,32 @@ class DashboardPage(QWidget):
         v.setContentsMargins(12, 8, 12, 8)
         v.setSpacing(4)
 
-        value_label = QLabel(value)
+        value_label = Label(value)
         value_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         value_label.setStyleSheet("font-size: 20px; font-weight: bold;")
 
-        desc_label = QLabel(label)
+        desc_label = Label(label)
         desc_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         desc_label.setStyleSheet("color: gray;")
 
         v.addWidget(value_label)
         v.addWidget(desc_label)
 
-        return card
+        return card, value_label
+
+    @Slot()
+    def _refresh_stats(self) -> None:
+        worker = _DatabaseQueryWorker(get_dashboard_stats)
+        worker.signals.finished.connect(self._on_stats_loaded)
+        QThreadPool.globalInstance().start(worker)
+
+    @Slot(object)
+    def _on_stats_loaded(self, data: dict | None) -> None:
+        if data is None:
+            return
+        for key, value_label in self._stat_value_labels.items():
+            val = data.get(key, "--")
+            value_label.setText(str(val))
 
     # --------------------------------------
     # ② 最近行为
@@ -114,7 +164,7 @@ class DashboardPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        title = QLabel("最近行为")
+        title = Label("最近行为")
         title.setObjectName("dashboard_section_title")
         layout.addWidget(title)
 
@@ -127,7 +177,7 @@ class DashboardPage(QWidget):
         recent_view_layout.setContentsMargins(0, 0, 0, 0)
         recent_view_layout.setSpacing(4)
 
-        recent_view_title = QLabel("最近观看 / 最近标记")
+        recent_view_title = Label("最近观看 / 最近标记")
         recent_view_layout.addWidget(recent_view_title)
 
         self.recent_view_list = QListWidget()
@@ -140,7 +190,7 @@ class DashboardPage(QWidget):
         recent_new_layout.setContentsMargins(0, 0, 0, 0)
         recent_new_layout.setSpacing(4)
 
-        recent_new_title = QLabel("最近新增")
+        recent_new_title = Label("最近新增")
         recent_new_layout.addWidget(recent_new_title)
 
         self.recent_added_list = QListWidget()
@@ -168,50 +218,7 @@ class DashboardPage(QWidget):
         return container
 
     # --------------------------------------
-    # ③ 偏好 / Top 榜
-    # --------------------------------------
-    def _build_preferences_section(self) -> QWidget:
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-
-        title = QLabel("偏好统计 / Top 榜（基础版）")
-        title.setObjectName("dashboard_section_title")
-        layout.addWidget(title)
-
-        row = QHBoxLayout()
-        row.setSpacing(16)
-
-        self.top_actress_list = QListWidget()
-        self.top_studio_list = QListWidget()
-
-        self.top_actress_list.setMaximumHeight(160)
-        self.top_studio_list.setMaximumHeight(160)
-
-        row.addWidget(self._wrap_list_with_title(self.top_actress_list, "出现次数最多的女优 Top 5"), 1)
-        row.addWidget(self._wrap_list_with_title(self.top_studio_list, "出现次数最多的厂牌 Top 5"), 1)
-
-        layout.addLayout(row)
-
-        # 占位数据
-        for i in range(1, 4):
-            QListWidgetItem(f"（占位）女优 Top {i}", self.top_actress_list)
-            QListWidgetItem(f"（占位）厂牌 Top {i}", self.top_studio_list)
-
-        return container
-
-    def _wrap_list_with_title(self, list_widget: QListWidget, title: str) -> QWidget:
-        w = QWidget()
-        v = QVBoxLayout(w)
-        v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(4)
-        v.addWidget(QLabel(title))
-        v.addWidget(list_widget)
-        return w
-
-    # --------------------------------------
-    # ④ 待处理 / 异常提醒
+    # ③ 待处理 / 异常提醒
     # --------------------------------------
     def _build_pending_section(self) -> QWidget:
         container = QWidget()
@@ -219,7 +226,7 @@ class DashboardPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        title = QLabel("待处理事项")
+        title = Label("待处理事项")
         title.setObjectName("dashboard_section_title")
         layout.addWidget(title)
 
@@ -231,71 +238,7 @@ class DashboardPage(QWidget):
         for text in [
             "（占位）12 部作品没有封面",
             "（占位）8 部作品未绑定女优",
-            "（占位）3 位女优没有代表作",
         ]:
             QListWidgetItem(text, self.pending_list)
 
         return container
-
-    # --------------------------------------
-    # ⑤ 快捷入口
-    # --------------------------------------
-    def _build_shortcuts_section(self) -> QWidget:
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
-
-        title = QLabel("快捷操作")
-        title.setObjectName("dashboard_section_title")
-        layout.addWidget(title)
-
-        row = QHBoxLayout()
-        row.setSpacing(8)
-
-        def add_button(text: str, callback) -> None:
-            btn = QPushButton(text)
-            btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-            btn.clicked.connect(callback)
-            row.addWidget(btn)
-
-        add_button("新增作品", self._goto_add_work)
-        add_button("新增女优", self._goto_add_actress)
-        add_button("打开统计页", self._goto_statistics)
-        add_button("作品高级搜索", self._goto_works)
-        add_button("随机推荐一部", self._goto_random_recommend)
-
-        row.addStretch()
-        layout.addLayout(row)
-
-        return container
-
-    # --------------------------------------
-    # 快捷操作路由
-    # --------------------------------------
-    def _goto_add_work(self) -> None:
-        # 这里暂时跳到管理页的作品 Tab，具体 tab 切换由 ManagementPage 处理
-        Router.instance().push("database")
-
-    def _goto_add_actress(self) -> None:
-        Router.instance().push("actress")
-
-    def _goto_statistics(self) -> None:
-        Router.instance().push("chart")
-
-    def _goto_works(self) -> None:
-        Router.instance().push("mutiwork")
-
-    def _goto_random_recommend(self) -> None:
-        # 先复用原首页逻辑：随机推荐 + 作品列表
-        from ui.pages.CoverBrowser import CoverBrowser
-        from core.recommendation.Recommend import randomRec
-
-        # 直接用 CoverBrowser 打开一次随机推荐页面
-        # 更精细的“单一作品推荐”可以后续改为跳 SingleWorkPage
-        browser = CoverBrowser(randomRec())
-        browser.setWindowModality(Qt.ApplicationModal)
-        browser.setWindowTitle("随机推荐")
-        browser.resize(800, 600)
-        browser.show()
-

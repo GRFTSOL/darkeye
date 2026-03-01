@@ -1,15 +1,19 @@
 
-from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel,QSizePolicy,QVBoxLayout,QLineEdit,QComboBox,QScrollArea
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QSizePolicy,QVBoxLayout,QLineEdit,QComboBox,QScrollArea
 from PySide6.QtCore import Signal,QThreadPool,Slot,Qt,QTimer
 import sqlite3,logging
 from ui.widgets import CompleterLineEdit,CoverCard
-from ui.basic import LazyScrollArea,IconPushButton,HorizontalScrollArea,RotateButton,ShakeButton
+from darkeye_ui.components import LazyScrollArea
+from ui.basic import HorizontalScrollArea
 from config import DATABASE
 from core.database.query import get_actressname,getUniqueDirector,get_actorname,get_serial_number,get_maker_name
 from core.database.db_utils import attach_private_db,detach_private_db
-from ui.base import LazyWidget
-
-
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.rotate_button import RotateButton
+from darkeye_ui.components.shake_button import ShakeButton
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.combo_box import ComboBox
 class WorkPage(LazyWidget):
     '''主要是展示作品的页面，包括筛选的装置，比如标签筛选，包括滚动加载'''
     def __init__(self):
@@ -65,8 +69,8 @@ class WorkPage(LazyWidget):
     }
 """)
         
-        self.story_input = QLineEdit()
-        self.title_input=QLineEdit()
+        self.story_input = LineEdit()
+        self.title_input=LineEdit()
         self.serial_number_input=CompleterLineEdit(get_serial_number)
         self.actress_input = CompleterLineEdit(get_actressname)
         self.director_input = CompleterLineEdit(getUniqueDirector)
@@ -81,42 +85,42 @@ class WorkPage(LazyWidget):
         self.actor_input.setFixedWidth(120)
         self.maker_input.setFixedWidth(150)
 
-        filterlayout.addWidget(QLabel("番号："))
+        filterlayout.addWidget(Label("番号："))
         filterlayout.addWidget(self.serial_number_input)
-        filterlayout.addWidget(QLabel("女优"))
+        filterlayout.addWidget(Label("女优"))
         filterlayout.addWidget(self.actress_input)
-        filterlayout.addWidget(QLabel("标题包含："))
+        filterlayout.addWidget(Label("标题包含："))
         filterlayout.addWidget(self.title_input)
-        filterlayout.addWidget(QLabel("简短故事包含："))
+        filterlayout.addWidget(Label("简短故事包含："))
         filterlayout.addWidget(self.story_input)
-        filterlayout.addWidget(QLabel("导演"))
+        filterlayout.addWidget(Label("导演"))
         filterlayout.addWidget(self.director_input)
-        filterlayout.addWidget(QLabel("男优"))
+        filterlayout.addWidget(Label("男优"))
         filterlayout.addWidget(self.actor_input)
-        filterlayout.addWidget(QLabel("片商"))
+        filterlayout.addWidget(Label("片商"))
         filterlayout.addWidget(self.maker_input)
 
 
 
-        self.info=QLabel()#用来显示信息
+        self.info=Label()#用来显示信息
         self.info.setFixedWidth(100)
 
         #self.filter_btn =IconPushButton("search.svg")
-        self.btn_reload=RotateButton("refresh-cw.svg")
-        self.btn_eraser=ShakeButton("eraser.svg")
+        self.btn_reload=RotateButton(icon_name="refresh_cw",icon_size=24,out_size=24)
+        self.btn_eraser=ShakeButton(icon_name="eraser",icon_size=24,out_size=24)
 
         #排序选择器
-        self.order_combo = QComboBox()
+        self.order_combo = ComboBox()
         self.order_combo.addItems(["添加逆序","添加顺序","更新时间顺序","更新时间逆序","发布时间逆序", "发布时间顺序", "拍摄年龄顺序","拍摄年龄逆序"])
         self.order_combo.setCurrentText(self.order)
 
 
-        self.scope_combo = QComboBox()
+        self.scope_combo = ComboBox()
         self.scope_combo.addItems(["公共库范围","收藏库范围","收藏未观看","已撸过"])
         self.scope_combo.setCurrentText(self.scope)
 
         self.filter_widget = QWidget()
-        self.filter_widget.setFixedHeight(26)
+        self.filter_widget.setFixedHeight(32)
         self.filter_layout = QHBoxLayout(self.filter_widget)  # 直接传入 widget
         self.filter_layout.setContentsMargins(10, 0, 10,0)
 
@@ -144,7 +148,7 @@ class WorkPage(LazyWidget):
         #总体布局
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
-        #mainlayout.addWidget(self.spacer_widget)
+
         mainlayout.addWidget(self.filter_widget)
         mainlayout.addLayout(self.hlayout)
 

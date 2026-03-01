@@ -13,6 +13,7 @@ class GlobalSignalBus(QObject):
     sexarousal_changed=Signal() #晨勃记录变更信号
     green_mode_changed=Signal(bool) #绿色模式切换信号，参数是当前状态
     like_work_changed=Signal()#喜欢作品的信号修改
+    like_actress_changed=Signal()#喜欢的女优更改信号
 
     status_msg_changed = Signal(str)  # 通知状态栏文字变更信号
     download_success=Signal(str)#图片下载成功信号，参数是文件路径

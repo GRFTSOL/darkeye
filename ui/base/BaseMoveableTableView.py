@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex,Signal,Slot
 import logging
 from ui.basic import IconPushButton
 from .BaseMoveableTableModel import BaseMoveableTableModel
+from darkeye_ui.components.token_table_view import TokenTableView
 
 class BaseMovableTableView(QWidget):
     '''这个东西要抽象出通用的东西，而不是现在这个耦合非常的严重的'''
@@ -14,7 +15,7 @@ class BaseMovableTableView(QWidget):
         #self.setFixedWidth(550)
         # 创建模型和视图
         self.model:BaseMoveableTableModel = model_class()
-        self.tableView = QTableView()
+        self.tableView = TokenTableView()
         self.tableView.setModel(self.model)
         self.tableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.tableView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)

@@ -10,6 +10,8 @@ import asyncio
 import random
 import threading
 from collections import OrderedDict
+import sqlite3
+from config import DATABASE
 
 #番号相关
 def is_valid_serialnumber(code: str) -> bool:
@@ -47,6 +49,24 @@ def convert_special_serialnumber(serial_number:str)->str:
     # 删除 - 
     converted_code = lower_code.replace('-', '')
     return converted_code
+
+
+def extract_serial_from_string(text: str) -> str | None:
+    """从字符串中提取首个番号，支持 IPX-247 或 IPX247 格式，返回标准格式（如 IPX-247）"""
+    if not text or not text.strip():
+        return None
+    text = text.strip().upper()
+    # 优先匹配带横线的标准格式
+    m = re.search(r'[A-Z]{2,6}-\d{1,5}', text)
+    if m:
+        return m.group(0)
+    # 匹配无横线格式，如 IPX247
+    m = re.search(r'[A-Z]{2,6}\d{1,5}', text)
+    if m:
+        s = m.group(0)
+        return re.sub(r'^([A-Z]+)(\d+)$', r'\1-\2', s)
+    return None
+
 
 #图片相关
 def AlternativeQPixmap(image_path):
@@ -461,6 +481,34 @@ def export_view_to_csv(tableView: QTableView, csv_file_path: str):
         QMessageBox.critical(tableView, "导出错误", f"导出失败，发生错误：\n{e}")
         return False
 
+
+def export_sql_to_csv(sql: str, csv_file_path: str, db_path: str | Path = DATABASE) -> bool:
+    """
+    使用 sqlite3 执行给定 SQL，将结果完整导出为 CSV。
+    不依赖 Qt 的模型/视图，只根据 SQL 查询数据库。
+    """
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cur = conn.cursor()
+        cur.execute(sql)
+
+        # 获取列名
+        headers = [d[0] for d in (cur.description or [])]
+
+        with open(csv_file_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if headers:
+                writer.writerow(headers)
+            for row in cur.fetchall():
+                writer.writerow(row)
+
+        conn.close()
+        logging.info("export_sql_to_csv 成功写入: %s", csv_file_path)
+        return True
+    except Exception as e:
+        logging.exception("export_sql_to_csv 失败: %s", e)
+        return False
+
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtCore import Qt
 
@@ -535,7 +583,36 @@ def sort_dict_list_by_keys(data: list[dict], key_order: list[str]) -> list[dict]
     return ordered_data
 
 
+
+
 #视频相关
+def get_video_names_from_paths(video_paths: list[Path], video_extensions: list[str] = None) -> list[str]:
+    '''获取指定路径下所有视频文件的番号列表。
+    对每个视频文件提取番号（如 IPX-247），返回去重后的列表。
+    '''
+    if video_extensions is None:
+        video_extensions = [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".rmvb", ".ts"]
+
+    result: set[str] = set()
+
+    for folder in video_paths:
+        try:
+            for root, dirs, files in os.walk(folder):
+                for file in files:
+                    file_path = Path(root) / file
+                    if file_path.is_file() and file_path.suffix.lower() in video_extensions:
+                        name = file_path.stem  # 去除后缀
+                        name = re.sub(r'\[.*?\]', '', name)  # 去除 [] 及其中的内容
+                        serial = extract_serial_from_string(name)
+                        if serial:
+                            result.add(serial)
+                        else:
+                            logging.warning(f"无法提取番号: {name}")
+        except PermissionError:
+            print(f"  无权限访问：{folder}")
+
+    return list(result)
+
 
 def find_video(serial_number:str, video_paths:list[Path], video_extensions:list[str]=None)->list[Path]|None:
     '''在指定的视频路径列表中查找对应番号的视频文件
@@ -578,6 +655,7 @@ def find_video(serial_number:str, video_paths:list[Path], video_extensions:list[
     else:
         print("搜索完成！")
         return find_video_path
+
 
 def play_video_with_default_player(self):
     '''打开指定的地址选择一个文件，开始用默认的播放器播放视频'''

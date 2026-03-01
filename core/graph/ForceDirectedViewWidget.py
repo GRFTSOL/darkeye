@@ -10,7 +10,7 @@ sys.path.insert(0, str(root_dir))
 import networkx as nx
 from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
 from PySide6.QtGui import QColor
-from PySide6.QtCore import QSize, QTimer, QEvent
+from PySide6.QtCore import QSize, QTimer, QEvent, Slot
 import PySide6
 
 qt_bin = Path(PySide6.__file__).resolve().parent
@@ -21,7 +21,8 @@ from cpp_bindings.forced_direct_view.PyForceView import ForceViewOpenGL
 from core.graph.graph_session import GraphViewSession
 from core.graph.graph_filter import PassThroughFilter, EgoFilter
 from core.graph.ForceViewSettingsPanel import ForceViewSettingsPanel
-from ui.basic import IconPushButton,StateToggleButton
+from ui.basic import IconPushButton
+from darkeye_ui.components.state_toggle_button import StateToggleButton
 from core.graph.ImageOverlayWidget import ImageOverlayWidget
 
 class ForceDirectedViewWidget(QWidget):
@@ -34,6 +35,14 @@ class ForceDirectedViewWidget(QWidget):
         # 节点颜色覆盖：{"actress"|"work"|"center"|"default" -> QColor or None}
         self._color_overrides: dict[str, QColor | None] = {}
         self._center_id: str | None = None
+
+        # 主题管理器（用于令牌驱动视图背景色）
+        self._theme_manager = None
+        try:
+            from app_context import get_theme_manager
+            self._theme_manager = get_theme_manager()
+        except ImportError:
+            pass
 
         self.init_ui()
         self.signal_connect()
@@ -67,8 +76,9 @@ class ForceDirectedViewWidget(QWidget):
 
 
         #self.settings_button = IconPushButton(iconpath="settings.svg", iconsize=24,outsize=32,color="#5C5C5C", parent=self)
-        self.settings_button=StateToggleButton(state1_icon="settings.svg",state1_color="#5C5C5C",state2_icon="x.svg",state2_color="#5C5C5C",iconsize=24,outsize=32,hoverable=True,parent=self)
-
+        #self.settings_button=StateToggleButton(state1_icon="settings.svg",state1_color="#5C5C5C",state2_icon="x.svg",state2_color="#5C5C5C",iconsize=24,outsize=32,hoverable=True,parent=self)
+        self.settings_button=StateToggleButton(state1_icon="settings",state2_icon="x",icon_size=24,out_size=32,hoverable=True,parent=self)
+        
         self.panel = ForceViewSettingsPanel(self)
 
         self.settings_button.raise_()
@@ -115,6 +125,10 @@ class ForceDirectedViewWidget(QWidget):
             lambda: QTimer.singleShot(0, self._update_panel_geometry)
         )
 
+        # 令牌驱动：视图背景色随主题切换
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._apply_background_from_tokens)
+            self._apply_background_from_tokens()
 
         # View -> panel (update labels)
         self.view.fpsUpdated.connect(self.panel.setFps)
@@ -122,6 +136,17 @@ class ForceDirectedViewWidget(QWidget):
         self.view.paintTimeUpdated.connect(self.panel.setPaintTime)
         self.view.scaleChanged.connect(self.panel.setScale)
         self.view.alphaUpdated.connect(self.panel.setAlpha)
+
+    @Slot()
+    def _apply_background_from_tokens(self) -> None:
+        """根据当前主题令牌设置 OpenGL 视图背景色（color_bg_page 表示页面背景）。"""
+        if self._theme_manager is None:
+            return
+        tokens = self._theme_manager.tokens()
+        color_str = getattr(tokens, "color_bg_page", None) or getattr(tokens, "color_bg", "#ffffff")
+        c = QColor(color_str)
+        if c.isValid():
+            self.view.setBackgroundColor(c)
 
     def setGraphNeighborDepth(self, depth: int):
         '''设置图邻居深度,用于这个中心过滤模式下的深度切换'''

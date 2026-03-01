@@ -1,6 +1,6 @@
 
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QPushButton, QHBoxLayout, QWidget, QLabel,QGraphicsOpacityEffect,QSizePolicy,QVBoxLayout
+    QApplication, QMainWindow, QPushButton, QHBoxLayout, QWidget,QGraphicsOpacityEffect,QSizePolicy,QVBoxLayout
 )
 
 class HomePage(QWidget):

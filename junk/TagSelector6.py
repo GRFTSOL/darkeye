@@ -6,13 +6,16 @@ import logging
 
 from config import ICONS_PATH
 from core.database.query import getTags
-from ui.basic import WaterfallLayout,VLabel,IconPushButton,RotateButton,ShakeButton
+from darkeye_ui.layouts import WaterfallLayout
+from darkeye_ui.components import TokenVLabel, TokenVerticalTabBar
 from ui.widgets.text.VerticalTagLabel2 import VerticalTagLabel2
 from controller.MessageService import MessageBoxService
-from ui.widgets.VerticalTabBar import VerticalTabBar
 from ui.base import SearchLineBase
 from controller.GlobalSignalBus import global_signals
 from utils.utils import timeit
+from darkeye_ui.components.rotate_button import RotateButton
+from darkeye_ui.components.shake_button import ShakeButton
+from darkeye_ui.components.icon_push_button import IconPushButton
 
 class FloatingPanel(QWidget):
 
@@ -36,7 +39,7 @@ class FloatingPanel(QWidget):
         self.tag_emit_tabwidget = QTabWidget()
         self.tag_emit_tabwidget.setTabPosition(QTabWidget.West)
         # 设置自定义的垂直标签栏
-        self.tag_emit_tabwidget.setTabBar(VerticalTabBar())
+        self.tag_emit_tabwidget.setTabBar(TokenVerticalTabBar())
 
         self.mainlayout.addWidget(self.searchLine)
         self.mainlayout.addWidget(self.tag_emit_tabwidget)
@@ -105,12 +108,12 @@ class TagSelector6(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setWidget(self.tag_receive_widget)
 
-        self.vlabel=VLabel("作品标签",background_color="#00000000",border_color="#000000")
+        self.vlabel = TokenVLabel("作品标签", background_color="#00000000", border_color="#000000")
         self.tag_receive_layout.addWidget(self.vlabel)
         
-        self.btn_clear=ShakeButton("brush-cleaning.svg")
-        self.btn_reload_tag=RotateButton("refresh-cw.svg")
-        self.btn_expand=IconPushButton("arrow-right.svg")
+        self.btn_clear=ShakeButton(icon_name="brush_cleaning",icon_size=24,out_size=24)
+        self.btn_reload_tag=RotateButton(icon_name="refresh_cw",icon_size=24,out_size=24)
+        self.btn_expand=IconPushButton(icon_name="arrow_right",icon_size=24,out_size=24)
 
         #self.btn_get_tag_ids=QPushButton("获\n得\nid")
         #self.btn_get_tag_ids.setFixedWidth(30)

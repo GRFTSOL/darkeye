@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt
 from config import ICONS_PATH
+from darkeye_ui.components.label import Label
 
 class TermsDialog(QDialog):
     """使用条款弹窗"""
@@ -21,7 +22,7 @@ class TermsDialog(QDialog):
         self.setFixedSize(500, 400)
 
         layout = QVBoxLayout(self)
-        text = QLabel()
+        text = Label()
         text.setTextFormat(Qt.TextFormat.RichText)  # 启用富文本格式
         text.setWordWrap(True)                      # 自动换行
         text.setText(

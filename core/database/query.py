@@ -71,6 +71,66 @@ def get_all_work_id()->list[int]:
         rows = cursor.fetchall()
         return [row[0] for row in rows]
 
+
+def get_dashboard_stats() -> dict:
+    '''
+    Dashboard 数据库概览统计，返回 7 项计数字典。
+    键与 DashboardPage 统计卡片一一对应。
+    '''
+    result = {
+        "work_count": 0,
+        "actress_count": 0,
+        "actor_count": 0,
+        "tag_count": 0,
+        "recent_30_days": 0,
+        "favorite_work_count": 0,
+        "favorite_actress_count": 0,
+    }
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+
+            # 作品总数
+            cursor.execute("SELECT COUNT(*) FROM work")
+            result["work_count"] = cursor.fetchone()[0]
+
+            # 女优总数
+            cursor.execute("SELECT COUNT(*) FROM actress")
+            result["actress_count"] = cursor.fetchone()[0]
+
+            # 男优总数
+            cursor.execute("SELECT COUNT(*) FROM actor")
+            result["actor_count"] = cursor.fetchone()[0]
+
+            # Tag 总数（排除重定向）
+            cursor.execute(
+                "SELECT COUNT(*) FROM tag WHERE redirect_tag_id IS NULL"
+            )
+            result["tag_count"] = cursor.fetchone()[0]
+
+            # 近 30 天新增作品
+            cursor.execute(
+                """
+                SELECT COUNT(*) FROM work
+                WHERE create_time >= date('now', '-30 day')
+                """
+            )
+            result["recent_30_days"] = cursor.fetchone()[0]
+
+            # 收藏作品、收藏女优（需附加私有库）
+            attach_private_db(cursor)
+            try:
+                cursor.execute("SELECT COUNT(*) FROM priv.favorite_work")
+                result["favorite_work_count"] = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) FROM priv.favorite_actress")
+                result["favorite_actress_count"] = cursor.fetchone()[0]
+            finally:
+                detach_private_db(cursor)
+    except Exception as e:
+        logging.error(f"get_dashboard_stats 查询失败: {e}")
+    return result
+
+
 def get_work_ids_with_cover(limit:int=30)->list[int]:
     '''获得有封面的work_id列表，按更新时间逆序取前limit条'''
     query = '''
@@ -130,27 +190,27 @@ def query_studio(work_id:int)->str|None:
 def get_actress_info(actress_id:int)->dict:
     '''查询一个女优的所有的信息'''
     query='''
-SELECT
-    n.cn,
-    n.jp,
-    n.en,
-    n.kana,
-    ROUND((julianday('now') - julianday(a.birthday)) / 365.25, 1) AS age,
-    a.image_urlA,
-    a.birthday,
-    a.height,
-    a.bust,
-    a.waist,
-    a.hip,
-    a.cup,
-    a.debut_date,
-    a.need_update
-FROM actress a
-LEFT JOIN actress_name n
-    ON n.actress_id = a.actress_id
-   AND n.redirect_actress_name_id IS NULL
-WHERE a.actress_id = ?
-'''
+    SELECT
+        n.cn,
+        n.jp,
+        n.en,
+        n.kana,
+        ROUND((julianday('now') - julianday(a.birthday)) / 365.25, 1) AS age,
+        a.image_urlA,
+        a.birthday,
+        a.height,
+        a.bust,
+        a.waist,
+        a.hip,
+        a.cup,
+        a.debut_date,
+        a.need_update
+    FROM actress a
+    LEFT JOIN actress_name n
+        ON n.actress_id = a.actress_id
+    AND n.redirect_actress_name_id IS NULL
+    WHERE a.actress_id = ?
+    '''
 
     with get_connection(DATABASE,True) as conn:
         cursor = conn.cursor()
@@ -163,20 +223,20 @@ WHERE a.actress_id = ?
 def get_actor_info(actor_id:int)->dict:
     '''查询一个男演员的所有数据'''
     query='''
-SELECT
-    n.cn,
-    n.jp,
-    n.en,
-    n.kana,
-    a.image_url,
-    a.birthday,
-	a.handsome,
-	a.fat
-FROM actor a
-LEFT JOIN actor_name n
-    ON n.actor_id = a.actor_id
-WHERE a.actor_id = ?
-'''
+    SELECT
+        n.cn,
+        n.jp,
+        n.en,
+        n.kana,
+        a.image_url,
+        a.birthday,
+        a.handsome,
+        a.fat
+    FROM actor a
+    LEFT JOIN actor_name n
+        ON n.actor_id = a.actor_id
+    WHERE a.actor_id = ?
+    '''
 
     with get_connection(DATABASE,True) as conn:
         cursor = conn.cursor()
@@ -247,13 +307,13 @@ def get_null_actor()->list:
 def get_tag_type()->list[dict]:
     '''获得所有的tag_type'''
     query='''
-SELECT
-	tag_type_id,
-	tag_type_name,
-	tag_order
-FROM
-	tag_type
-ORDER BY tag_order
+    SELECT
+        tag_type_id,
+        tag_type_name,
+        tag_order
+    FROM
+        tag_type
+    ORDER BY tag_order
             '''
     with get_connection(DATABASE,True) as conn:
         cursor = conn.cursor()
@@ -266,12 +326,12 @@ ORDER BY tag_order
 def get_alias_tag(tag_id:int)->list[dict]:
     '''获得那些被重定向后的tag'''
     query='''
-SELECT 
-	tag_id,
-    tag_name,
-    redirect_tag_id
-FROM tag 
-WHERE redirect_tag_id=?
+    SELECT 
+        tag_id,
+        tag_name,
+        redirect_tag_id
+    FROM tag 
+    WHERE redirect_tag_id=?
     '''
     with get_connection(DATABASE,True) as conn:
         cursor = conn.cursor()
@@ -286,17 +346,17 @@ def getTags()->list[tuple]:
     供加载tag_selector使用
     '''
     query='''
-SELECT 
-	tag_id, 
-	tag_name, 
-    tag_type.tag_type_name AS tag_name,
-	color,
-	detail,
-	group_id
-FROM tag 
-JOIN tag_type ON tag_type.tag_type_id=tag.tag_type_id
-WHERE redirect_tag_id is NULL 
-ORDER BY tag_type.tag_order,color
+    SELECT 
+        tag_id, 
+        tag_name, 
+        tag_type.tag_type_name AS tag_name,
+        color,
+        detail,
+        group_id
+    FROM tag 
+    JOIN tag_type ON tag_type.tag_type_id=tag.tag_type_id
+    WHERE redirect_tag_id is NULL 
+    ORDER BY tag_type.tag_order,color
     '''
     with get_connection(DATABASE,True) as conn:
         cursor = conn.cursor()

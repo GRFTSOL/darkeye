@@ -1,10 +1,13 @@
 from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel,QVBoxLayout,QPushButton,QStackedWidget,QScrollArea,QButtonGroup
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt,Signal,Slot, QThreadPool, QRunnable, QObject
-from ui.statistics.CalendarHeatmap import CalendarHeatmap
+from darkeye_ui.components import CalendarHeatmap
 from core.database.query import get_record_count_by_year,get_record_by_year
-from ui.basic import IconPushButton
 
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.transparent_widget import TransparentWidget
+from darkeye_ui.components.icon_push_button import IconPushButton
+from darkeye_ui.components.button import Button
 
 class DatabaseQueryWorker(QRunnable):
     """数据库查询工作线程"""
@@ -48,8 +51,8 @@ class SwitchHeapMap(QWidget):
         self.buttonlist=ButtonList(year_list)
         self.buttonlist.setFixedHeight(200)
         # 左右切换按钮
-        self.btn_prev =IconPushButton("arrow-up.svg")
-        self.btn_next =IconPushButton("arrow-down.svg")
+        self.btn_prev =IconPushButton(icon_name="arrow_up")
+        self.btn_next =IconPushButton(icon_name="arrow_down")
 
         today_year = datetime.today().year# 获取当前年份
         self.current_year = today_year
@@ -58,7 +61,7 @@ class SwitchHeapMap(QWidget):
         self.btn_next.clicked.connect(lambda: self.switch(1))
 
         # 先显示占位UI
-        self.placeholder_widget = QLabel("加载中...")
+        self.placeholder_widget = Label("加载中...")
         self.placeholder_widget.setAlignment(Qt.AlignCenter)
         self.placeholder_widget.setStyleSheet("font-size: 16px; color: #999999; padding: 50px;")
         self.placeholder_widget.setFixedSize(750, 155)
@@ -77,7 +80,7 @@ class SwitchHeapMap(QWidget):
 
         # 初始显示加载占位符
         self.heatmap_names = ["加载中...", "加载中...", "加载中..."]
-        self.heatmap_name = QLabel(self.heatmap_names[0])
+        self.heatmap_name = Label(self.heatmap_names[0])
         # 布局
         btn_layout = QHBoxLayout()
         btn_layout.addWidget(self.heatmap_name)
@@ -170,14 +173,18 @@ class SwitchHeapMap(QWidget):
         self.heatmap_name.setText(self.heatmap_names[index])
 
     @Slot(int)
-    def update(self,year:int):
-        '''根据年份去更新自身'''
+    def update(self, year: int, force_refresh: bool = False):
+        '''根据年份去更新自身。force_refresh=True 时忽略缓存强制重新加载（用于数据变更后刷新）'''
         self.current_year = year
 
         # 显示加载状态
         self.heatmap_names = ["加载中...", "加载中...", "加载中..."]
         self.heatmap_name.setText(self.heatmap_names[self.stack.currentIndex()])
         self.content_stack.setCurrentWidget(self.placeholder_widget)
+
+        # 数据变更后需强制刷新，不使用旧缓存
+        if force_refresh and year in self.heatmap_data_cache:
+            del self.heatmap_data_cache[year]
 
         # 检查缓存
         if year in self.heatmap_data_cache:
@@ -266,30 +273,13 @@ class ButtonList(QScrollArea):
                 w.deleteLater()
 
         for i, text in enumerate(items):
-            btn = QPushButton(text)
+            btn = Button(text)
             btn.setFixedSize(100,40)
             btn.setCheckable(True)  # 关键：可选中
             self.group.addButton(btn, i)
             self.vbox.addWidget(btn)
             # 应用现代样式
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #f0f0f0;
-                    border: none;
-                    border-radius: 8px;
-                    padding: 8px 16px;
-                    color: #333;
-                    font-size: 14px;
-                }
-                QPushButton:hover {
-                    background-color: #e0e0e0;
-                }
-                QPushButton:checked {
-                    background-color: #0078d7;
-                    color: white;
-                    font-weight: bold;
-                }
-            """)
+
         # 撑开（保持紧凑但把多余空间留在底部）
         self.vbox.addStretch(1)
 

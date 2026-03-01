@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QTableView, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,QAbstractItemView,QDataWidgetMapper,QFormLayout,QLineEdit,QComboBox,QLabel,QFileDialog
+from PySide6.QtWidgets import QTableView, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,QAbstractItemView,QDataWidgetMapper,QFormLayout,QLineEdit,QComboBox,QFileDialog
 from PySide6.QtCore import Slot,Qt
 from PySide6.QtSql import QSqlRelation,QSqlRelationalTableModel,QSqlRelationalDelegate,QSqlQueryModel,QSqlQuery,QSqlDatabase
 import logging
@@ -6,10 +6,12 @@ import logging
 
 from config import BASE_DIR,DATABASE,INI_FILE
 from ui.basic import ModelSearch
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
 from controller.MessageService import MessageBoxService
-
-
+from darkeye_ui.components.token_table_view import TokenTableView
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.combo_box import ComboBox
 
 class RecycleBinPage(LazyWidget):
     def __init__(self, parent=None):
@@ -59,11 +61,11 @@ class RecycleBinPage(LazyWidget):
         self.searchWidget.set_model_view(self.model,self.view)#搜索框连接功能
 
     def init_ui(self):
-        self.view = QTableView()
+        self.view = TokenTableView()
         # 按钮
-        self.btn_refresh=QPushButton("刷新数据")
-        self.btn_delete=QPushButton("彻底删除")
-        self.btn_restore=QPushButton("恢复数据")
+        self.btn_refresh=Button("刷新数据")
+        self.btn_delete=Button("彻底删除")
+        self.btn_restore=Button("恢复数据")
 
 
         # 布局
@@ -73,8 +75,8 @@ class RecycleBinPage(LazyWidget):
         button_layout.addWidget(self.btn_restore)
 
 
-        self.serial_number=QLineEdit()
-        self.studio=QComboBox()
+        self.serial_number=LineEdit()
+        self.studio=ComboBox()
 
         self.searchWidget=ModelSearch()
 

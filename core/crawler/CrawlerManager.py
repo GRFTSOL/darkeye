@@ -211,13 +211,32 @@ class CrawlerManager2(QObject):
             del self._relays[key]
 
         
-        if not task.pending_sources:#全部完成开启合并
-            final_data:CrawledWorkData=self._merge_results(task.results, serial)
-            DataUpdate(final_data,self,withGUI=task.withGUI)
+        if not task.pending_sources:  # 全部完成，仅在工作线程做合并+翻译；DataUpdate 必须在主线程创建以便下载器信号槽正常
+            worker = Worker(lambda: self._do_merge_only(serial))
+            worker.signals.finished.connect(
+                self._on_merge_worker_finished,
+                Qt.ConnectionType.QueuedConnection,
+            )
+            QThreadPool.globalInstance().start(worker)
 
-            
+    def _do_merge_only(self, serial: str):
+        """在工作线程中执行：合并结果（含同步翻译）。返回 final_data，不创建 DataUpdate。"""
+        task = self.tasks.get(serial)
+        if not task:
+            return None
+        return self._merge_results(task.results, serial)
 
-
+    @Slot(object)
+    def _on_merge_worker_finished(self, result):
+        """合并工作线程结束后的回调（主线程）：在主线程创建 DataUpdate，保证 SequentialDownloader 与下载完成槽在主线程执行。"""
+        if result is None:
+            return
+        final_data: CrawledWorkData = result
+        serial = final_data.serial_number
+        task = self.tasks.get(serial)
+        if not task:
+            return
+        DataUpdate(final_data, self, withGUI=task.withGUI)
 
     @timeit
     def _merge_results(self, results:Dict[str, dict],serial:str)-> CrawledWorkData:

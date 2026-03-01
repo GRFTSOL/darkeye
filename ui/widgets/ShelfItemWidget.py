@@ -467,6 +467,7 @@ class ShelfItemWidget(QWidget):
         #painter.setPen(QPen(QColor(255, 0, 0), 2))
         #painter.setBrush(Qt.BrushStyle.NoBrush)
         #painter.drawRect(self.rect().adjusted(1, 1, -1, -1))
+        painter.end()
 
     def mouseMoveEvent(self, event) -> None:
         mouse_x = event.position().x()

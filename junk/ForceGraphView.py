@@ -43,8 +43,8 @@ import uuid
 from core.graph.simulation_process_main import get_global_simulation_process
 from core.graph.graph import generate_graph,generate_random_graph,generate_similar_graph
 from core.graph.graph_session import GraphViewSession
-from ui.basic.Collapse import CollapsibleSection
-
+from darkeye_ui.components import TokenCollapsibleSection
+from darkeye_ui.components.icon_push_button import IconPushButton
 
 def timeit(func):
     """装饰器：打印函数执行耗时"""
@@ -1651,8 +1651,8 @@ class ForceViewControlWidget(QWidget):
         self.view = ForceView(parent=self.container)
         self.container_layout.addWidget(self.view)
 
-        from ui.basic import IconPushButton
-        self.settings_button = IconPushButton(iconpath="settings.svg",color="#5C5C5C",parent=self)
+        
+        self.settings_button = IconPushButton(icon_name="settings",parent=self)
 
         self.panel = QWidget(self)
 
@@ -1671,7 +1671,7 @@ class ForceViewControlWidget(QWidget):
         self.label_cal = QLabel()
         self.label_paint = QLabel()
 
-        effect_section = CollapsibleSection("效果", self.panel)
+        effect_section = TokenCollapsibleSection("效果", parent=self.panel)
         effect_form = QFormLayout()
 
         self.manybodyfstrength = ClickableSlider(Qt.Horizontal)  # type: ignore[arg-type]
@@ -1700,7 +1700,7 @@ class ForceViewControlWidget(QWidget):
         effect_form.addRow("连接距离", self.linklength)
         effect_section.addLayout(effect_form)
 
-        display_section = CollapsibleSection("显示", self.panel)
+        display_section = TokenCollapsibleSection("显示", parent=self.panel)
         display_form = QFormLayout()
         self.show_image=ToggleSwitch(width=48,height=24)
         self.show_image.setChecked(True)
@@ -1752,7 +1752,7 @@ class ForceViewControlWidget(QWidget):
 
         effect_form.addRow("图类型", graph_type_layout)
 
-        test_section = CollapsibleSection("测试", self.panel)
+        test_section = TokenCollapsibleSection("测试", parent=self.panel)
 
         self.label_scale = QLabel()
         self.view.scale_changed.connect(lambda s: self.label_scale.setText(f"{s:.2f}"))

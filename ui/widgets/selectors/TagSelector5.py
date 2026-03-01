@@ -10,15 +10,23 @@ from PySide6.QtGui import (
 )
 from pathlib import Path
 import logging
+from typing import TYPE_CHECKING, Optional
 
 from config import ICONS_PATH
 from core.database.query import getTags, get_tagid_by_keyword
-from ui.basic import IconPushButton, RotateButton, ShakeButton
+
 from controller.MessageService import MessageBoxService
-from ui.widgets.VerticalTabBar import VerticalTabBar
+from darkeye_ui.components import TokenVerticalTabBar
 from ui.base import SearchLineBase
 from controller.GlobalSignalBus import global_signals
 from utils.utils import timeit, get_text_color_from_background, get_hover_color_from_background
+from darkeye_ui.components.icon_push_button import IconPushButton
+from darkeye_ui.components.rotate_button import RotateButton
+from darkeye_ui.components.shake_button import ShakeButton
+
+if TYPE_CHECKING:
+    from darkeye_ui.design.theme_manager import ThemeManager
+    from darkeye_ui.design.tokens import ThemeTokens
 
 #这个纯ai改了3个小时，一遍一遍的改，没有人工的成分
 # ==============================================================================
@@ -431,7 +439,7 @@ class FloatingPanel(QWidget):
         
         self.tag_emit_tabwidget = QTabWidget()
         self.tag_emit_tabwidget.setTabPosition(QTabWidget.West)
-        self.tag_emit_tabwidget.setTabBar(VerticalTabBar())
+        self.tag_emit_tabwidget.setTabBar(TokenVerticalTabBar())
 
         self.mainlayout.addWidget(self.searchLine)
         self.mainlayout.addWidget(self.tag_emit_tabwidget)
@@ -440,6 +448,10 @@ class FloatingPanel(QWidget):
         self.tag_emit_tabwidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.tag_emit_tabwidget.setStyleSheet("""
+            QTabWidget {
+                border: none;
+                background: transparent;
+            }
             QTabWidget::pane {
                 border: none;
                 background: transparent;
@@ -463,7 +475,7 @@ class TagSelector5(QWidget):
     """
     TagSelector5 - 基于 QGraphicsView 的高性能标签选择器
     架构：
-    - 左侧 (已选区): 维持 Widget 模式 (WaterfallLayout + VerticalTagLabel2)
+    - 左侧 (已选区): 使用 QGraphicsView + TagWaterfallScene
     - 右侧 (备选区): 使用 QGraphicsView + TagWaterfallScene
     """
     success = Signal(bool)
@@ -503,6 +515,8 @@ class TagSelector5(QWidget):
         # 初始化逻辑
         self.load_tags()
         self.beatutetoolbox()
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._apply_tabwidget_styles)
         self.signal_connect()
 
         self.panel_visible = False
@@ -517,18 +531,21 @@ class TagSelector5(QWidget):
         self.left_view.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         # 宽度设定：配合 left_widget 的总宽，预留给 View 的空间
         self.left_view.setFixedWidth(130)
-        # 设置白色背景和边框
-        self.left_view.setStyleSheet("""
-            QGraphicsView {
-                border: 3px dashed #000000;    
-                border-radius: 5px;             
-                background: #ffffff;
-            }
-        """)
-        
-        # 2. 标题 Item (使用 TagGraphicsItem 模拟，ID=-1)
-        self.title_item = TagGraphicsItem(-1, "作品标签", "TITLE", "#000000", "", "")
-        self.title_item.border_color = QColor("#000000")
+        # 背景与边框由设计令牌控制，见 _apply_left_view_styles
+        self._theme_manager: Optional["ThemeManager"] = None
+        try:
+            from app_context import get_theme_manager
+            self._theme_manager = get_theme_manager()
+        except Exception:
+            pass
+        self._apply_left_view_styles()
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._apply_left_view_styles)
+
+        # 2. 标题 Item (使用 TagGraphicsItem 模拟，ID=-1)，颜色由令牌控制
+        title_bg, title_border = self._get_title_item_token_colors()
+        self.title_item = TagGraphicsItem(-1, "作品标签", "TITLE", title_bg, "", "")
+        self.title_item.border_color = QColor(title_border)
         self.title_item.setAcceptHoverEvents(False) # 标题不响应悬停
         self.title_item.setCursor(Qt.ArrowCursor)
         
@@ -536,9 +553,9 @@ class TagSelector5(QWidget):
         self.left_view.custom_items.append(self.title_item)
         
         # 3. 工具按钮
-        self.btn_clear = ShakeButton("brush-cleaning.svg")
-        self.btn_reload_tag = RotateButton("refresh-cw.svg")
-        self.btn_expand = IconPushButton("arrow-right.svg")
+        self.btn_clear = ShakeButton(icon_name="brush_cleaning",icon_size=24,out_size=24)
+        self.btn_reload_tag = RotateButton(icon_name="refresh_cw",icon_size=24,out_size=24)
+        self.btn_expand = IconPushButton(icon_name="arrow_right",icon_size=24,out_size=24)
 
         v_small_widget = QWidget()
         v_small_widget.setFixedWidth(24)
@@ -557,6 +574,52 @@ class TagSelector5(QWidget):
         left_layout.setSpacing(0)
         left_layout.addWidget(self.left_view)
         left_layout.addWidget(v_small_widget)
+
+    def _apply_view_style(self, view: TagWaterfallView) -> None:
+        """根据当前主题令牌设置单个 View 的边框与背景。"""
+        if self._theme_manager is not None:
+            t = self._theme_manager.tokens()
+            view.setStyleSheet(f"""
+                QGraphicsView {{
+                    border: {t.border_width} dashed {t.color_border};
+                    border-radius: {t.radius_md};
+                    background: {t.color_bg};
+                }}
+            """)
+        else:
+            view.setStyleSheet("""
+                QGraphicsView {
+                    border: 2px dashed #ccc;
+                    border-radius: 8px;
+                    background: #ffffff;
+                }
+            """)
+
+    def _get_title_item_token_colors(self) -> tuple[str, str]:
+        """从设计令牌获取标题项的背景色和边框色。"""
+        if self._theme_manager is not None:
+            t = self._theme_manager.tokens()
+            return (t.color_text, t.color_border)
+        return ("#333333", "#ccc")
+
+    def _apply_left_view_styles(self) -> None:
+        """根据当前主题令牌刷新左侧和右侧所有 View 的样式。"""
+        # 左侧 View
+        if hasattr(self, "left_view") and self.left_view is not None:
+            self._apply_view_style(self.left_view)
+        # 标题 Item 颜色（随主题更新）
+        if hasattr(self, "title_item") and self.title_item is not None:
+            title_bg, title_border = self._get_title_item_token_colors()
+            self.title_item.bg_color = QColor(title_bg)
+            self.title_item.text_color = get_text_color_from_background(self.title_item.bg_color)
+            self.title_item.border_color = QColor(title_border)
+            self.title_item.update()
+        # 右侧所有 Tab 中的 View
+        for view in getattr(self, "views_map", {}).values():
+            if view is not None:
+                self._apply_view_style(view)
+        # 右侧 TabWidget 的 TabBar 样式
+        self._apply_tabwidget_styles()
 
     def _init_right_ui(self):
         self.panel = FloatingPanel()
@@ -650,8 +713,9 @@ class TagSelector5(QWidget):
         # 为每个类型创建 Scene 和 View
         for tag_type, data_list in grouped_tags.items():
             scene = TagWaterfallScene()
-# 创建 View
+            # 创建 View，并使用设计令牌控制其背景与边框
             view = TagWaterfallView(scene)
+            self._apply_view_style(view)
             view.set_current_type(tag_type) # 关键：设置当前类型，否则 View 的事件触发布局时会因为 type=None 而清空内容
             
             for data in data_list:
@@ -817,10 +881,10 @@ class TagSelector5(QWidget):
     def toggle_panel(self):
         if self.panel_visible:
             self.panel.animate_width(0)
-            self.btn_expand.set_icon("arrow-right.svg")
+            self.btn_expand.set_icon_name("arrow_right")
         else:
             self.panel.animate_width(self.panel_fix_width)
-            self.btn_expand.set_icon("arrow-left.svg")
+            self.btn_expand.set_icon_name("arrow_left")
             
             # 延迟刷新布局，确保宽度已就位
             QTimer.singleShot(350, self.refresh_current_tab_layout)
@@ -841,42 +905,99 @@ class TagSelector5(QWidget):
 
     def set_state(self, state:bool):
         """控制边框样式"""
-        style = """
-            QGraphicsView {
-                border: 3px dashed %s;    
-                border-radius: 5px;             
-                background: #ffffff;
-            }
-        """ % ("#000000" if state else "#FFA500")
+        t = self._theme_manager.tokens()
+        if not state:
+            style = f"""
+                QGraphicsView {{
+                    border: {t.border_width} dashed {t.color_warning};    
+                    border-radius: 5px;             
+                }}
+            """
+        else:
+            style = f"""
+                QGraphicsView {{
+                    border: {t.border_width} dashed {t.color_border};    
+                    border-radius: 5px;             
+                }}
+            """
         self.left_view.setStyleSheet(style)
 
+    def _apply_tabwidget_styles(self) -> None:
+        """根据当前主题令牌设置右侧 QTabWidget 的 pane 与 QTabBar::tab 样式。"""
+        if not hasattr(self, "panel") or self.panel is None:
+            return
+        if self._theme_manager is not None:
+            t = self._theme_manager.tokens()
+            self.panel.tag_emit_tabwidget.setStyleSheet(f"""
+                QTabWidget::pane {{
+                    border: none;
+                    border-radius: 0;
+                    background: transparent;
+                    margin: 0;
+                    padding: 0;
+                }}
+                QTabBar::tab {{
+                    background: {t.color_bg};
+                    color: {t.color_text};
+                    border: {t.border_width} solid {t.color_border};
+                    padding: 6px 14px;
+                    border-top-left-radius: {t.radius_md};
+                    border-bottom-left-radius: {t.radius_md};
+                    margin-right: 2px;
+                }}
+                QTabBar::tab:hover {{
+                    background: {t.color_bg_input};
+                    color: {t.color_text};
+                }}
+                QTabBar::tab:selected {{
+                    background: {t.color_primary};
+                    color: {t.color_text_inverse};
+                    font-weight: bold;
+                }}
+            """)
+            # VerticalTabBar 自绘文字，需通过 dynamic property 传入颜色才能按令牌显示
+            tab_bar = self.panel.tag_emit_tabwidget.tabBar()
+            tab_bar.setProperty("tabTextColor", t.color_text)
+            tab_bar.setProperty("tabTextColorSelected", t.color_text_inverse)
+            tab_bar.style().unpolish(tab_bar)
+            tab_bar.style().polish(tab_bar)
+            tab_bar.update()
+        else:
+            self.panel.tag_emit_tabwidget.setStyleSheet("""
+                QTabWidget::pane {
+                    border: none;
+                    border-radius: 0;
+                    background: transparent;
+                    margin: 0;
+                    padding: 0;
+                }
+                QTabBar::tab {
+                    background: #ffffff;
+                    color: #999;
+                    border: 2px solid #ccc;
+                    padding: 6px 14px;
+                    border-top-left-radius: 8px;
+                    border-bottom-left-radius: 8px;
+                    margin-right: 2px;
+                }
+                QTabBar::tab:hover {
+                    background: #f0faff;
+                    color: #333;
+                }
+                QTabBar::tab:selected {
+                    background: #00aaff;
+                    color: #ffffff;
+                    font-weight: bold;
+                }
+            """)
+            tab_bar = self.panel.tag_emit_tabwidget.tabBar()
+            tab_bar.setProperty("tabTextColor", "#999")
+            tab_bar.setProperty("tabTextColorSelected", "#ffffff")
+            tab_bar.update()
+
     def beatutetoolbox(self):
-        """美化 TabWidget"""
-        self.panel.tag_emit_tabwidget.setStyleSheet("""
-        QTabWidget::pane {
-            border: 1px solid #444;
-            border-radius: 6px;
-            background: #FFFFFF;
-        }
-        QTabBar::tab {
-            background: #FFFFFF;
-            color: #ccc;
-            border: 1px solid #444;
-            padding: 6px 14px;
-            border-top-left-radius: 6px;
-            border-bottom-left-radius: 6px;
-            margin-right: 2px;
-        }
-        QTabBar::tab:hover {
-            background: #EBE3CE;
-            color: white;
-        }
-        QTabBar::tab:selected {
-            background: #FFA500;
-            color: white;
-            font-weight: bold;
-        }
-        """)
+        """美化 TabWidget（样式由令牌控制，见 _apply_tabwidget_styles）"""
+        self._apply_tabwidget_styles()
 
     # 搜索功能适配
     def search_func(self, keyword:str) -> list:

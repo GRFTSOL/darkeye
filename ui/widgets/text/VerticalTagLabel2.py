@@ -13,9 +13,9 @@ import logging
 from config import ICONS_PATH
 from pathlib import Path
 from utils.utils import get_text_color_from_background,get_hover_color_from_background
-from ui.basic.VLabel import VLabel
+from darkeye_ui.components import TokenVLabel
 
-class VerticalTagLabel2(VLabel):
+class VerticalTagLabel2(TokenVLabel):
     """垂直标签组件，支持点击事件和悬停效果
     特性:
     - 自定义背景色和文字颜色
@@ -65,7 +65,7 @@ class VerticalTagLabel2(VLabel):
     
 
 
-class VerticalTagLabel(VLabel):
+class VerticalTagLabel(TokenVLabel):
     '''仅展示功能不需要多的业务数据,但是这个还是带跳转的功能'''
     def __init__(self,tag_id,text="",background_color="#cccccc",detail="",parent=None):
         text_color = get_text_color_from_background(QColor(background_color))
@@ -105,7 +105,7 @@ class VerticalTagLabel(VLabel):
         self.setColors(background_color,text_color,hover_color)
 
 
-class VShowTagLabel(VLabel):
+class VShowTagLabel(TokenVLabel):
     '''仅展示功能不需要多的业务数据'''
     def __init__(self,tag_id,text="",background_color="#cccccc",detail="",parent=None):
         text_color = get_text_color_from_background(QColor(background_color))
@@ -125,7 +125,7 @@ class VShowTagLabel(VLabel):
         self.setColors(background_color,text_color,hover_color)
 
 
-class VerticalActressLabel(VLabel):
+class VerticalActressLabel(TokenVLabel):
     '''女演员的标签，跳转到女演员详细页'''
 
     def __init__(self,actress_id,name,background_color,parent=None):
@@ -158,7 +158,7 @@ class VerticalActressLabel(VLabel):
         self.update()
         super().leaveEvent(event)
 
-class VerticalActorLabel(VLabel):
+class VerticalActorLabel(TokenVLabel):
     '''男演员的标签，跳转到男演员的页面'''
 
     def __init__(self,actor_id,name,background_color,parent=None):
@@ -178,7 +178,7 @@ class VerticalActorLabel(VLabel):
             #global_signals.actor_clicked.emit(self._actor_id)
             # 使用路由替代信号跳转
             from ui.navigation.router import Router
-            Router.instance().push("actor", actor_id=self._actor_id)
+            Router.instance().push("mutiwork", actor_id=self._actor_id)
         super().mousePressEvent(event)  # 保留默认行为
 
     def enterEvent(self, event):

@@ -11,6 +11,7 @@ from ui.navigation.router import Router
 from core.database.query import get_workid_by_serialnumber, exist_actress, get_actress_info, get_coveriamgeurl
 from config import WORKCOVER_PATH, ACTRESSIMAGES_PATH
 from functools import lru_cache
+from darkeye_ui.components.input import TextEdit
 
 class ImagePreviewWindow(QWidget):
     """
@@ -94,7 +95,7 @@ def get_image_path_for_text(text):
                 
     return None
 
-class WikiTextEdit(QTextEdit):
+class WikiTextEdit(TextEdit):
     """
     支持 Markdown 高亮和 [[Wikilink]] 点击跳转的编辑器
     [[跳出自动补全，并且有预览图片的功能

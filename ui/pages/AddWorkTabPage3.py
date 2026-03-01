@@ -13,18 +13,24 @@ from config import settings,WORKCOVER_PATH,TEMP_PATH
 from ui.widgets import ActressSelector,CompleterLineEdit,ActorSelector,CoverDropWidget
 from ui.widgets.selectors.TagSelector5 import TagSelector5
 from core.database.query import getUniqueDirector,get_work_tags,get_workinfo_by_workid,get_actressid_by_workid,get_actorid_by_workid,get_unique_short_story,exist_actor,get_workid_by_serialnumber,exist_actress
-from core.database.insert import InsertNewWorkByHand,InsertNewActor,InsertNewActress
+from core.database.insert import InsertNewWorkByHand
 from core.database.update import update_work_byhand
 from utils.utils import mse,load_ini_ids,covert_fanza,translate_text_sync
-from ui.basic import IconPushButton
-from ui.base import LazyWidget
+
+
+from darkeye_ui import LazyWidget
 from controller.MessageService import MessageBoxService,IMessageService
 
 from core.crawler.Worker import Worker
-from core.crawler.download import download_image
+
 from ui.navigation.router import Router
 from ui.widgets.text.WikiTextEdit import WikiTextEdit
 from controller.GlobalSignalBus import global_signals
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.input import PlainTextEdit
+from darkeye_ui.components.icon_push_button import IconPushButton
+from darkeye_ui.components.button import Button
 
 class ButtonState(Enum):
     NORMAL = 1
@@ -625,30 +631,32 @@ class AddWorkTabPage3(LazyWidget):
         self.crawler_toolbox = CrawlerToolBox()
         self.coverdroplabel = CoverDropWidget(aspect_ratio=0.7)
 
-        self.label_serial_umber = QLabel("番       号：")
+        self.label_serial_umber = Label("番       号：")
         self.input_serial_number = CompleterLineEdit(get_serial_number)
-        self.btn_load_form_db = QPushButton("加载")
-        self.btn_jump_detail = IconPushButton("eye.svg")
-        self.label_time = QLabel("发布日期：")
-        self.input_time = QLineEdit()
+
+
+        self.btn_load_form_db = Button("加载")
+        self.btn_jump_detail = IconPushButton(icon_name="eye")
+        self.label_time = Label("发布日期：")
+        self.input_time = LineEdit()
         self.input_time.setPlaceholderText("YYYY-MM-DD")
-        self.label_director = QLabel("导       演：")
+        self.label_director = Label("导       演：")
         self.input_director = CompleterLineEdit(getUniqueDirector)
-        self.label_vlength = QLabel("影片长度：")
-        self.input_vlength = QLineEdit()
+        self.label_vlength = Label("影片长度：")
+        self.input_vlength = LineEdit()
         self.input_vlength.setValidator(QIntValidator())
-        self.btn_add_work = QPushButton()
-        self.label_cn_title = QLabel("中文标题")
-        self.cn_title = QPlainTextEdit()
-        self.label_jp_title = QLabel("日文标题")
-        self.jp_title = QPlainTextEdit()
-        self.label_cn_story = QLabel("中文剧情")
-        self.cn_story = QPlainTextEdit()
-        self.label_jp_story = QLabel("日文剧情")
-        self.jp_story = QPlainTextEdit()
-        self.btn_trans_title = IconPushButton(iconpath="languages.svg", iconsize=16, outsize=16)
+        self.btn_add_work = Button()
+        self.label_cn_title = Label("中文标题")
+        self.cn_title = PlainTextEdit()
+        self.label_jp_title = Label("日文标题")
+        self.jp_title = PlainTextEdit()
+        self.label_cn_story = Label("中文剧情")
+        self.cn_story = PlainTextEdit()
+        self.label_jp_story = Label("日文剧情")
+        self.jp_story = PlainTextEdit()
+        self.btn_trans_title = IconPushButton(icon_name="languages", icon_size=16, out_size=16)
         self.btn_trans_title.setToolTip("翻译日文标题成中文并写在上方 中文标题框 内")
-        self.btn_trans_story = IconPushButton(iconpath="languages.svg", iconsize=16, outsize=16)
+        self.btn_trans_story = IconPushButton(icon_name="languages", icon_size=16, out_size=16)
         self.btn_trans_story.setToolTip("翻译日文剧情成中文并写在上方 中文剧情框 内")
         jp_title_label_layout = QHBoxLayout()
         jp_story_label_layout = QHBoxLayout()
@@ -665,7 +673,7 @@ class AddWorkTabPage3(LazyWidget):
         self.tag_selector.btn_expand.click()
 
         self.forceview = None
-        self.forceview_placeholder = QLabel("正在生成力导向图...")
+        self.forceview_placeholder = Label("正在生成力导向图...")
         self.forceview_placeholder.setAlignment(Qt.AlignCenter)  # type: ignore[arg-type]
         self.viewmodel.workload.connect(self.on_set_directview)
 
@@ -931,6 +939,8 @@ class AddWorkTabPage3(LazyWidget):
 
         global_signals.gui_update.connect(self.update_gui)
         global_signals.download_success.connect(self.update_cover)
+        global_signals.work_data_changed.connect(self.input_serial_number.reload_items)
+        global_signals.work_data_changed.connect(self.input_director.reload_items)
 
 
 #----------------------------------------------------------
@@ -1024,7 +1034,7 @@ class AddWorkTabPage3(LazyWidget):
                     self.btn_add_work.setText("修改")
                     self.btn_add_work.setStyleSheet("""           
                             QPushButton {
-                            background-color: #FF9800;
+                            background-color: #FFA500;
                             color: white;
                             border-radius: 5px;
                             padding: 6px;}

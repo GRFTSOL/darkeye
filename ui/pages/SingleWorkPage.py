@@ -4,11 +4,15 @@ from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor,QFont
 from PySide6.QtCore import Qt, QPointF,Signal,Slot
 import logging
 
-from ui.basic import VerticalTextLabel,VLabel,VFlowLayout,HeartLabel,IconPushButton
+from darkeye_ui.components import TokenVLabel
+from darkeye_ui.layouts import VFlowLayout
+from darkeye_ui.components.heart_label import HeartLabel
 from config import WORKCOVER_PATH,ICONS_PATH
 from ui.widgets.text.VerticalTagLabel2 import VerticalActressLabel,VerticalTagLabel,VerticalActorLabel
-from ui.base import LazyWidget
-
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.vertical_text_label import VerticalTextLabel
+from darkeye_ui.components.transparent_widget import TransparentWidget
+from darkeye_ui.components.icon_push_button import IconPushButton
 #渐变层纯绘图层
 class GradientOverlay(QWidget):
     #上面的渐变层
@@ -42,6 +46,7 @@ class GradientOverlay(QWidget):
         grad_right.setColorAt(1, QColor(0, 0, 0, 0))    # 中间透明
         painter.setBrush(grad_right)
         painter.drawRect(window_width-0.1*window_height,0,window_width,window_height)
+        painter.end()
 
 class Cover(QLabel):
     def __init__(self,parent=None):
@@ -101,7 +106,7 @@ class Cover(QLabel):
         self.update_background_image()
 
 
-class WorkInfo(QWidget):
+class WorkInfo(TransparentWidget):
     def __init__(self,parent=None):
         super().__init__(parent)
         from controller.MessageService import MessageBoxService
@@ -121,24 +126,24 @@ class WorkInfo(QWidget):
         self.story.setFont(QFont("Microsoft YaHei", 12))
         self.story.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
-        self.serial_number_label=VLabel("番号",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.serial_number=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.serial_number_label=TokenVLabel("番号",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.serial_number=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         #self.serial_number.setTextColor("#FFFFFF")
 
-        self.release_date_label=VLabel("发行日期",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.release_date=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.release_date_label=TokenVLabel("发行日期",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.release_date=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         #self.release_date.setTextColor("#FFFFFF")
 
         #这些东西都要动态添加，有些是空的就会有大问题
-        self.director_label=VLabel("导演",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.director=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
+        self.director_label=TokenVLabel("导演",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.director=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
 
-        self.studio_label=VLabel("制作商",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.studio=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
-        self.label_tag=VLabel("作品标签",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.studio_label=TokenVLabel("制作商",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.studio=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
+        self.label_tag=TokenVLabel("作品标签",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
 
-        self.actress=QWidget()
-        self.label=QWidget()
+        self.actress = TransparentWidget(self)
+        self.label = TransparentWidget(self)
         self.label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.actress.setFixedHeight(550)
         self.label.setFixedHeight(550)
@@ -149,9 +154,9 @@ class WorkInfo(QWidget):
         self.label_layout.addWidget(self.label_tag)
 
         self.heart=HeartLabel()
-        self.trash=IconPushButton("trash-2.svg",24,24,True,color="#FFFFFF")
-        self.modify=IconPushButton("square-pen.svg",24,24,True,color="#FFFFFF")
-        self.watch=IconPushButton("tv.svg",24,24,True,color="#FFFFFF")
+        self.trash=IconPushButton(icon_name="trash_2",icon_size=24,out_size=32,hoverable=True,inverted=True)
+        self.modify=IconPushButton(icon_name="square_pen",icon_size=24,out_size=32,hoverable=True,inverted=True)
+        self.watch=IconPushButton(icon_name="tv",icon_size=24,out_size=32,hoverable=True,inverted=True)
         
         tool_v_layout=QVBoxLayout()
         tool_v_layout.addWidget(self.heart,0,Qt.AlignCenter)
@@ -175,8 +180,8 @@ class WorkInfo(QWidget):
         director_v_layout.addWidget(self.studio)
         director_v_layout.addStretch()
 
-        # 内容行：所有列打包到一个容器，容器只占内容宽度，避免被拉宽产生列间空隙
-        content_row = QWidget(self)
+        # 内容行：所有列打包到一个容器，容器只占内容宽度，避免被拉宽产生列间空隙（透明容器）
+        content_row = TransparentWidget(self)
         content_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         content_row.setFixedHeight(550)
 
@@ -229,7 +234,7 @@ class WorkInfo(QWidget):
             #self.actress.deleteLater()
             return
 
-        label_actress=VLabel("女优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        label_actress=TokenVLabel("女优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         self.actress_layout.addWidget(label_actress)
         # 2. 动态创建按钮并添加女优列表
         for actress in actress_list:
@@ -243,7 +248,7 @@ class WorkInfo(QWidget):
         if actor_list is None:
             return
         #添加男优的标签
-        label_actor=VLabel("男优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        label_actor=TokenVLabel("男优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         self.actress_layout.addWidget(label_actor)
 
         for actor in actor_list:
@@ -374,6 +379,9 @@ class SingleWork(QWidget):
 
     def __init__(self):
         super().__init__()
+        # 父层不填充背景，WorkInfo 的透明才能透出下面的 Cover / GradientOverlay
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAutoFillBackground(False)
 
         self._h=self.height()
         #背景图片层

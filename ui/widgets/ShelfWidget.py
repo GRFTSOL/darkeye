@@ -4,7 +4,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QSizePolicy,
-    QLabel,
     QLineEdit,
     QComboBox,
 )
@@ -21,11 +20,15 @@ from core.database.query import (
     get_serial_number,
     get_maker_name,
 )
-from ui.basic import HorizontalScrollArea, RotateButton, ShakeButton
+from ui.basic import HorizontalScrollArea
 from ui.widgets import CompleterLineEdit
 from ui.widgets.ShelfVirtualizedView import ShelfVirtualizedView
 from ui.widgets.selectors.TagSelector5 import TagSelector5
-
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.rotate_button import RotateButton
+from darkeye_ui.components.shake_button import ShakeButton
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.combo_box import ComboBox
 
 class ShelfWidget(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -76,8 +79,8 @@ class ShelfWidget(QWidget):
 """
         )
 
-        self.story_input = QLineEdit()
-        self.title_input = QLineEdit()
+        self.story_input = LineEdit()
+        self.title_input = LineEdit()
         self.serial_number_input = CompleterLineEdit(get_serial_number)
         self.actress_input = CompleterLineEdit(get_actressname)
         self.director_input = CompleterLineEdit(getUniqueDirector)
@@ -92,28 +95,28 @@ class ShelfWidget(QWidget):
         self.actor_input.setFixedWidth(120)
         self.maker_input.setFixedWidth(150)
 
-        filterlayout.addWidget(QLabel("番号："))
+        filterlayout.addWidget(Label("番号："))
         filterlayout.addWidget(self.serial_number_input)
-        filterlayout.addWidget(QLabel("女优"))
+        filterlayout.addWidget(Label("女优"))
         filterlayout.addWidget(self.actress_input)
-        filterlayout.addWidget(QLabel("标题包含："))
+        filterlayout.addWidget(Label("标题包含："))
         filterlayout.addWidget(self.title_input)
-        filterlayout.addWidget(QLabel("简短故事包含："))
+        filterlayout.addWidget(Label("简短故事包含："))
         filterlayout.addWidget(self.story_input)
-        filterlayout.addWidget(QLabel("导演"))
+        filterlayout.addWidget(Label("导演"))
         filterlayout.addWidget(self.director_input)
-        filterlayout.addWidget(QLabel("男优"))
+        filterlayout.addWidget(Label("男优"))
         filterlayout.addWidget(self.actor_input)
-        filterlayout.addWidget(QLabel("片商"))
+        filterlayout.addWidget(Label("片商"))
         filterlayout.addWidget(self.maker_input)
 
-        self.info = QLabel()
+        self.info = Label()
         self.info.setFixedWidth(100)
 
-        self.btn_reload = RotateButton("refresh-cw.svg")
-        self.btn_eraser = ShakeButton("eraser.svg")
+        self.btn_reload = RotateButton(icon_name="refresh_cw",icon_size=24,out_size=24)
+        self.btn_eraser = ShakeButton(icon_name="eraser",icon_size=24,out_size=24)
 
-        self.order_combo = QComboBox()
+        self.order_combo = ComboBox()
         self.order_combo.addItems(
             [
                 "添加逆序",
@@ -128,12 +131,12 @@ class ShelfWidget(QWidget):
         )
         self.order_combo.setCurrentText(self.order)
 
-        self.scope_combo = QComboBox()
+        self.scope_combo = ComboBox()
         self.scope_combo.addItems(["公共库范围", "收藏库范围", "收藏未观看", "已撸过"])
         self.scope_combo.setCurrentText(self.scope)
 
         self.filter_widget = QWidget()
-        self.filter_widget.setFixedHeight(26)
+        self.filter_widget.setFixedHeight(32)
         self.filter_layout = QHBoxLayout(self.filter_widget)
         self.filter_layout.setContentsMargins(10, 0, 10, 0)
 

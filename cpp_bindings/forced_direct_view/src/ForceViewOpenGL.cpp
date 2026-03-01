@@ -432,6 +432,15 @@ void ForceViewOpenGL::setArrowScale(float f)
     update();
 }
 
+// 功能：设置背景颜色（OpenGL 清屏颜色）
+void ForceViewOpenGL::setBackgroundColor(const QColor& color)
+{
+    if (!color.isValid()) return;
+    m_backgroundColor = color;
+    requestRenderActivity();
+    update();
+}
+
 // 功能：设置是否绘制箭头
 void ForceViewOpenGL::setArrowEnabled(bool enabled)
 {
@@ -1052,7 +1061,8 @@ void ForceViewOpenGL::initializeGL()
     m_glReady = m_renderer->initialize(this);
     if (!m_glReady) return;
 
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);//清屏颜色，全白
+    glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
+                 m_backgroundColor.blueF(), m_backgroundColor.alphaF());
 }
 
 // 功能：视口尺寸变化时更新缓存尺寸并设置 glViewport
@@ -1071,6 +1081,8 @@ void ForceViewOpenGL::resizeGL(int w, int h)
 void ForceViewOpenGL::paintGL()
 {
     if (!m_glReady || !m_physicsState) {
+        glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
+                    m_backgroundColor.blueF(), m_backgroundColor.alphaF());
         glClear(GL_COLOR_BUFFER_BIT);
         return;
     }
@@ -1086,6 +1098,8 @@ void ForceViewOpenGL::paintGL()
         m_renderer->drawNodes(data, m_cachedUsePointSprite, m_scenePerPixel, m_cachedMvp);
     };
 
+    glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(),
+                 m_backgroundColor.blueF(), m_backgroundColor.alphaF());
     glClear(GL_COLOR_BUFFER_BIT);//每帧都清屏
 
     if (m_hoverIndex == -1 && m_hoverGlobal <= 0.0f && !m_lineVertsAll.empty()) {

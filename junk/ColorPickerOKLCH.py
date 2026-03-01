@@ -17,7 +17,7 @@ from utils.color import oklch_to_srgb
 from utils.utils import timeit
 from core.crawler.Worker import Worker
 from ui.basic.ColorSlider import AlphaSliderCustom
-from ui.basic.Collapse import CollapsibleSection
+from darkeye_ui.components import TokenCollapsibleSection
 
 
 from PySide6.QtGui import QRegularExpressionValidator, QKeyEvent
@@ -768,7 +768,7 @@ class ColorWheelApp(QWidget):
         vlayout.addLayout(c_layout)
         vlayout.addLayout(h_layout)
 
-        self.collapse=CollapsibleSection("精准控制")
+        self.collapse = TokenCollapsibleSection("精准控制")
         self.collapse.addWidget(page1)
 
         layout.addWidget(self.colorlabel)

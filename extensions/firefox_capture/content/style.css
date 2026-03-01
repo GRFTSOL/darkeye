@@ -16,6 +16,14 @@
     display: inline-block !important;
 }
 
+/* JavTxt：右下角 */
+.darkeye-tag--bottom-right {
+    top: auto !important;
+    left: auto !important;
+    bottom: 5px !important;
+    right: 5px !important;
+}
+
 /* 未收录状态：灰色加号 */
 .darkeye-tag.not-found {
     background-color: rgba(255, 255, 255, 0.9);

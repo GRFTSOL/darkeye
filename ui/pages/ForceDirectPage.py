@@ -1,9 +1,9 @@
 
-from PySide6.QtWidgets import QLabel, QVBoxLayout
+from PySide6.QtWidgets import  QVBoxLayout
 from PySide6.QtCore import Qt
 import logging
-from ui.base import LazyWidget
-
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.label import Label
 
 
 class ForceDirectPage(LazyWidget):
@@ -20,7 +20,7 @@ class ForceDirectPage(LazyWidget):
         self.setLayout(mainlayout)
         mainlayout.setContentsMargins(0, 0, 0, 0)
 
-        placeholder = QLabel("正在生成力导向图...")
+        placeholder = Label("正在生成力导向图...")
         placeholder.setAlignment(Qt.AlignCenter)# type: ignore[arg-type]
         mainlayout.addWidget(placeholder)
 

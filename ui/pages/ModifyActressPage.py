@@ -1,5 +1,5 @@
 
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QLabel,QVBoxLayout,QLineEdit,QTextEdit,QSizePolicy,QFormLayout,QSpinBox,QComboBox,QWidget
+from PySide6.QtWidgets import QHBoxLayout,QVBoxLayout,QFormLayout,QWidget
 from PySide6.QtCore import Qt,QObject,Signal,Property,Signal,Slot,QThreadPool
 
 from ui.widgets.CrawlerToolBox import CrawlerToolBox
@@ -8,13 +8,21 @@ from pathlib import Path
 from enum import Enum
 
 from config import settings,WORKCOVER_PATH
-from ui.base import LazyWidget
+from darkeye_ui import LazyWidget
 from controller.MessageService import MessageBoxService,IMessageService
 
-from ui.basic import ToggleSwitch,MovableTableView,IconPushButton
+from ui.basic import MovableTableView,IconPushButton
 from core.database.query import get_actress_allname
 from ui.widgets import ActressAvatarDropWidget
 from server.bridge import ServerBridge
+
+from darkeye_ui.components.toggle_switch import ToggleSwitch
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.combo_box import ComboBox
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.icon_push_button import IconPushButton
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.token_spin_box import TokenSpinBox
 
 class Model():
     '''纯放要显示数据的model'''
@@ -332,40 +340,41 @@ class ModifyActressPage(LazyWidget):
         vlayout.addWidget(self.avatar)
         formlayout=QFormLayout()
         vlayout.addLayout(formlayout)
-        self.input_height=QSpinBox()
+        self.input_height=TokenSpinBox()
         self.input_height.setRange(0,190)
-        self.input_waist=QSpinBox()
+        self.input_waist=TokenSpinBox()
         self.input_waist.setRange(0,120)
-        self.input_hip=QSpinBox()
+        self.input_hip=TokenSpinBox()
         self.input_hip.setRange(0,120)
-        self.input_bust=QSpinBox()
+        self.input_bust=TokenSpinBox()
         self.input_bust.setRange(0,120)
-        self.input_cup=QComboBox()
+        self.input_cup=ComboBox()
         self.input_cup.addItems(["A","B","C","D","E","F","G","H","I","J","K","L","M"])
         
-        self.input_birthday=QLineEdit()
-        self.input_debut_date=QLineEdit()
+        self.input_birthday=LineEdit()
+        self.input_debut_date=LineEdit()
         self.need_update=ToggleSwitch(width=40,height=20)
-        self.btn_commit=QPushButton("提交修改")
-        self.btn_claw_update=QPushButton("爬虫直接更新")
-        self.btn_claw_update_hand=QPushButton("浏览器插件手动选择更新")
+        self.btn_commit=Button("提交修改")
+        self.btn_claw_update=Button("爬虫直接更新")
+        self.btn_claw_update_hand=Button("浏览器插件手动选择更新")
         #self.btn_printModel=QPushButton("打印数据")
-        self.btn_minnano=QPushButton("minnano-av")
+        self.btn_minnano=Button("minnano-av")
         self.smallwidget=QWidget()#放一些小按钮
         self.smalllayout=QHBoxLayout(self.smallwidget)
-        self.btn_delete=IconPushButton("trash-2.svg")
-        self.btn_show=IconPushButton("eye.svg")
+        self.btn_delete=IconPushButton(icon_name="trash_2")
+        self.btn_show=IconPushButton(icon_name="eye")
+
         self.smalllayout.addWidget(self.btn_show)
         self.smalllayout.addWidget(self.btn_delete)
         
-        formlayout.addRow("身高(cm)",self.input_height)
-        formlayout.addRow("罩杯",self.input_cup)
-        formlayout.addRow("胸围(cm)",self.input_bust)        
-        formlayout.addRow("腰围(cm)",self.input_waist)
-        formlayout.addRow("臀围(cm)",self.input_hip)
-        formlayout.addRow("生日(yyyy-mm-dd)",self.input_birthday)
-        formlayout.addRow("出道日期(yyyy-mm-dd)",self.input_debut_date)
-        formlayout.addRow("需要更新",self.need_update)
+        formlayout.addRow(Label("身高(cm)"),self.input_height)
+        formlayout.addRow(Label("罩杯"),self.input_cup)
+        formlayout.addRow(Label("胸围(cm)"),self.input_bust)        
+        formlayout.addRow(Label("腰围(cm)"),self.input_waist)
+        formlayout.addRow(Label("臀围(cm)"),self.input_hip)
+        formlayout.addRow(Label("生日(yyyy-mm-dd)"),self.input_birthday)
+        formlayout.addRow(Label("出道日期(yyyy-mm-dd)"),self.input_debut_date)
+        formlayout.addRow(Label("需要更新"),self.need_update)
         formlayout.addRow("",self.btn_commit)
         formlayout.addRow("",self.btn_claw_update)
         formlayout.addRow("",self.btn_claw_update_hand)
