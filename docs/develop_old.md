@@ -436,7 +436,7 @@ AV网站作为一种热门与信息获取的来源，收藏软件作为一种永
 - 异常处理 ：
   - core/database/query.py 中的 SQL 执行部分虽然使用了 with 语句管理连接，但部分查询缺少细致的 try-except 捕获，一旦 SQL 报错可能会导致程序崩溃或状态异常。
 - 类型提示 (Type Hinting) ：
-  - 部分新代码（如 QSqlDatabaseManager ）使用了 Type Hints，建议推广到全项目，特别是核心逻辑部分，有助于减少运行时错误。
+  - 部分新代码使用了 Type Hints，建议推广到全项目，特别是核心逻辑部分，有助于减少运行时错误。
 
 
 

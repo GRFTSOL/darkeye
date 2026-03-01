@@ -29,12 +29,12 @@ main.py (入口)
 
 **现状**：
 - `core/database/query.py` 超过 2000 行，被 30+ 文件直接引用
-- 存在两套连接：`QSqlDatabaseManager`（Qt）与 `get_connection`（sqlite3）
+- 已统一为 sqlite3 `get_connection`（原 QSqlDatabaseManager 已移除）
 - 仅 `WorkRepository` 采用 Repository 模式，其余为分散的 procedural 函数
 
 **建议**：
 1. **统一连接策略**
-   - 明确分工：Qt UI 绑定用 `QSqlDatabaseManager`，爬虫/服务器/批量任务用 sqlite3 `get_connection`
+   - 全部使用 sqlite3 `get_connection`
    - 在文档中写明适用场景，避免混用
 
 2. **按实体拆分 Repository**
@@ -159,7 +159,7 @@ main.py (入口)
 
 **现状**：
 - `server/app.py` 的 `check_existence` 直接用 sqlite3 连接
-- 其他模块混用 `QSqlDatabaseManager` 与 `get_connection`
+- 其他模块统一使用 `get_connection`
 
 **建议**：
 1. **Server 使用 sqlite3**
@@ -268,7 +268,7 @@ main.py (入口)
 └─────────────────────────┬───────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────┐
-│  Database (QSqlDatabaseManager / get_connection)            │
+│  Database (get_connection)                                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 

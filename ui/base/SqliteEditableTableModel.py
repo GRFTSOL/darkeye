@@ -16,10 +16,20 @@ logger = logging.getLogger(__name__)
 class SqliteEditableTableModel(QAbstractTableModel):
     """基于 sqlite3 get_connection 的可编辑 QAbstractTableModel，支持增删改查。"""
 
-    def __init__(self, table_name: str, database: Union[str, Path], parent=None):
+    def __init__(
+        self,
+        table_name: str,
+        database: Union[str, Path],
+        parent=None,
+        relation_config: dict[int, tuple[str, str, str]] | None = None,
+        header_overrides: dict[int, str] | None = None,
+    ):
         super().__init__(parent)
         self._table = table_name
         self._database = database
+        self._relation_config = relation_config or {}
+        self._header_overrides = header_overrides or {}
+        self._relation_cache: dict[int, dict] = {}  # col -> {fk_value: display_value}
         self._headers: list[str] = []
         self._data: list[list] = []  # 可变行，便于 setData
         self._pk_col_index = 0
@@ -45,6 +55,25 @@ class SqliteEditableTableModel(QAbstractTableModel):
             logger.exception("加载表结构失败 %s: %s", self._table, e)
             return False
 
+    def _load_relation_cache(self) -> None:
+        """为 relation_config 中的列加载 fk_value -> display_value 缓存。"""
+        self._relation_cache.clear()
+        for col_idx, (fk_table, fk_col, display_col) in self._relation_config.items():
+            try:
+                with get_connection(self._database, readonly=True) as conn:
+                    cur = conn.execute(
+                        f"SELECT {fk_col}, {display_col} FROM {fk_table}"
+                    )
+                    rows = cur.fetchall()
+                cache = {}
+                for r in rows:
+                    fk_val, disp_val = r[0], r[1]
+                    cache[fk_val] = "" if disp_val is None else str(disp_val)
+                self._relation_cache[col_idx] = cache
+            except Exception as e:
+                logger.exception("加载关系缓存失败 %s.%s: %s", fk_table, display_col, e)
+                self._relation_cache[col_idx] = {}
+
     def _get_default_for_column(self, col_index: int) -> object:
         """根据列名返回合理的默认值（用于新行）。"""
         if col_index >= len(self._headers):
@@ -58,11 +87,31 @@ class SqliteEditableTableModel(QAbstractTableModel):
             return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return None
 
+    def _relation_display(self, col: int, val) -> str:
+        """根据 relation_cache 将外键值转换为显示文本，兼容 int/str 类型。"""
+        cache = self._relation_cache.get(col, {})
+        if val is None:
+            return ""
+        # 尝试多种 key 形式以兼容 DB 返回 int、setData 写入 str 等情况
+        for key in (val, str(val).strip()):
+            if key in cache:
+                return cache[key]
+        try:
+            if isinstance(val, str) and val.strip().isdigit():
+                k = int(val.strip())
+                if k in cache:
+                    return cache[k]
+        except (ValueError, TypeError):
+            pass
+        return str(val)
+
     def data(self, index: QModelIndex, role: int):
         if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
             row, col = index.row(), index.column()
             if 0 <= row < len(self._data) and 0 <= col < len(self._headers):
                 val = self._data[row][col]
+                if role == Qt.ItemDataRole.DisplayRole and col in self._relation_cache:
+                    return self._relation_display(col, val)
                 return "" if val is None else str(val)
         return None
 
@@ -75,6 +124,8 @@ class SqliteEditableTableModel(QAbstractTableModel):
     def headerData(self, section: int, orientation: Qt.Orientation, role: int):
         if role == Qt.ItemDataRole.DisplayRole:
             if orientation == Qt.Orientation.Horizontal:
+                if section in self._header_overrides:
+                    return self._header_overrides[section]
                 if 0 <= section < len(self._headers):
                     return self._headers[section]
             else:
@@ -140,6 +191,7 @@ class SqliteEditableTableModel(QAbstractTableModel):
             self._pending_deletes.clear()
             self._pending_insert_indices.clear()
             self._dirty_rows.clear()
+            self._load_relation_cache()
             self.endResetModel()
             self._last_error = ""
             return True

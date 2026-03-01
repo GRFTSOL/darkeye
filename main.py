@@ -74,18 +74,12 @@ def _run_main_app():
     logger = logging.getLogger(__name__)
     profiler.checkpoint("日志系统初始化")
 
-    # 启动本地API服务（异步）
-    profiler.measure_import("server")
-    from server import start_server
-    #start_server()
-    profiler.checkpoint("API服务器线程启动")
-
     # 仅导入必要的 GUI 启动组件（测量导入时间）
     profiler.measure_import("PySide6.QtWidgets")
     profiler.measure_import("PySide6.QtGui")
     from PySide6.QtWidgets import QApplication, QDialog, QSplashScreen
     from PySide6.QtGui import QPixmap, QSurfaceFormat
-    from PySide6.QtCore import Qt
+    from PySide6.QtCore import Qt, QTimer
 
     #OpenGL设置
     QApplication.setAttribute(Qt.AA_UseDesktopOpenGL)#不知道这个要不要加，但是这个好像没有什么用
@@ -192,6 +186,12 @@ def _run_main_app():
             splash.finish(window)
     profiler.checkpoint("主窗口显示完成")
 
+    # 界面已就绪，再在后台启动 API（用户通常不会立刻用，优化开屏速度）
+    profiler.measure_import("server")
+    from server import start_server
+    QTimer.singleShot(0, lambda: start_server())
+    profiler.checkpoint("API服务器线程启动（延迟）")
+
     # 打印性能分析摘要
     profiler.print_summary()
 
@@ -200,6 +200,7 @@ def _run_main_app():
 
 
 if __name__ == "__main__":
+    '''
     # 打包后 multiprocessing 使用 spawn：子进程会重新执行本脚本，必须跳过 GUI 避免无限开窗
     import multiprocessing
     multiprocessing.freeze_support()
@@ -207,4 +208,7 @@ if __name__ == "__main__":
         # 子进程：仅由 multiprocessing 引导执行 simulation worker，不跑主流程
         pass
     else:
-        _run_main_app()
+    '''
+    #现在不需要多进程，就这样
+    _run_main_app()
+

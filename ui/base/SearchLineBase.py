@@ -1,9 +1,7 @@
 #专门给 Model 和QTableView 用的搜索器
-from PySide6.QtWidgets import QTableView, QPushButton,QWidget,QHBoxLayout,QMessageBox,QLineEdit,QLabel
-from PySide6.QtSql import QSqlRelationalTableModel
+from PySide6.QtWidgets import QWidget,QHBoxLayout
 from PySide6.QtCore import Qt,Slot,QSize,Signal
-from PySide6.QtGui import QIcon,QKeyEvent
-from config import ICONS_PATH
+from PySide6.QtGui import QKeyEvent
 
 from typing import List, Callable
 import logging

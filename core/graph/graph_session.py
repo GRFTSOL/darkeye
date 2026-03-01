@@ -183,6 +183,10 @@ class GraphViewSession(QObject):
         if G is None:
             return
 
+        # 子图尚未初始化（用户未打开图视图或未调用 new_load），忽略本次 diff
+        if self.sub_G is None:
+            return
+
         new_sub_G=self.apply_filter(G)
         #比较新图new_sub_G和旧图sub_G的差异，然后计算增量diff，然后发给UI
         diff_list = []

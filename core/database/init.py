@@ -1,10 +1,8 @@
 import sqlite3
-from config import DATABASE,PRIVATE_DATABASE,SQLPATH
+from config import DATABASE, PRIVATE_DATABASE, SQLPATH
 import logging
-from PySide6.QtSql import QSqlDatabase,QSqlQuery
-from PySide6.QtWidgets import QMessageBox
 from pathlib import Path
-from .connection import QSqlDatabaseManager
+
 
 def init_private_db():
     """
@@ -34,20 +32,7 @@ def init_public_db(db_path:str):
 
 
 def init_database(public_db_path: Path, private_db_path: Path) -> bool:
-    """初始化数据库连接
-    
-    Returns:
-        bool: 是否成功初始化所有连接
+    """数据库连接已统一使用 sqlite3 get_connection，此处仅保留接口兼容性。
+    init_private_db 与 migrations 已负责建库与升级。
     """
-    db_manager = QSqlDatabaseManager()
-    
-    # 创建公共数据库连接
-    if not db_manager.create_connection("public", public_db_path):
-        return False
-        
-    # 创建私有数据库连接
-    if not db_manager.create_connection("private", private_db_path):
-        #连不上就创建
-        return False
-        
     return True

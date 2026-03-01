@@ -1,11 +1,10 @@
-from PySide6.QtWidgets import QTableView, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,QAbstractItemView,QDataWidgetMapper,QFormLayout,QLineEdit,QComboBox,QFileDialog
-from PySide6.QtCore import Slot,Qt
-from PySide6.QtSql import QSqlRelation,QSqlRelationalTableModel,QSqlRelationalDelegate,QSqlQueryModel,QSqlQuery,QSqlDatabase
+from PySide6.QtWidgets import QTableView, QVBoxLayout, QHBoxLayout, QAbstractItemView
+from PySide6.QtCore import Slot, Qt
 import logging
 
-
-from config import BASE_DIR,DATABASE,INI_FILE
+from config import DATABASE
 from ui.basic import ModelSearch
+from ui.base.SqliteQueryTableModel import SqliteQueryTableModel
 from darkeye_ui import LazyWidget
 from controller.MessageService import MessageBoxService
 from darkeye_ui.components.token_table_view import TokenTableView
@@ -28,37 +27,16 @@ class RecycleBinPage(LazyWidget):
         self.config()
 
     def config(self):
-        '''配置model与view'''
-        # 获取数据库连接
-        db_public = QSqlDatabase.database("public")
-        if not db_public.isValid():
-            self.msg.show_critical("错误", "无法获取数据库连接")
+        """配置 model 与 view"""
+        self.model = SqliteQueryTableModel("SELECT * FROM work WHERE is_deleted=1", DATABASE, self)
+        if not self.model.refresh():
+            self.msg.show_critical("错误", "无法加载数据，请查看日志。")
             return
 
-        # 创建模型
-        self.model = QSqlQueryModel(self)
-
-        # 创建带有数据库连接的查询
-        query_sql = "SELECT * FROM work WHERE is_deleted=1"
-        self.query = QSqlQuery(db_public)  # 使用指定的数据库连接
-        self.query.prepare(query_sql)
-        
-        # 执行查询并设置到模型
-        if not self.query.exec():
-            self.msg.show_critical("查询错误", f"执行查询失败: {self.query.lastError().text()}")
-            return
-            
-        self.model.setQuery(self.query)
-
-        # 设置表头
-        self.model.setHeaderData(0, Qt.Horizontal, "ID")
-
-        # 视图设置
         self.view.setModel(self.model)
         self.view.setColumnHidden(0, True)  # 隐藏 ID 列（主键）
         self.view.setSelectionBehavior(QAbstractItemView.SelectRows)  # 整行选择
-
-        self.searchWidget.set_model_view(self.model,self.view)#搜索框连接功能
+        self.searchWidget.set_model_view(self.model, self.view)
 
     def init_ui(self):
         self.view = TokenTableView()
@@ -94,12 +72,9 @@ class RecycleBinPage(LazyWidget):
     @Slot()
     def refresh_data(self):
         """刷新数据方法"""
-        if not self.query.exec():
-            self.msg.show_critical("查询错误", f"刷新数据失败: {self.query.lastError().text()}")
+        if not self.model.refresh():
+            self.msg.show_critical("查询错误", "刷新数据失败，请查看日志。")
             return
-            
-        self.model.setQuery(self.query)
-        self.view.setModel(self.model)
         logging.info("数据已刷新")
 
 
@@ -117,7 +92,7 @@ class RecycleBinPage(LazyWidget):
 
         from core.database.delete import delete_work
         for index in selected_indexes:
-            work_id = self.model.data(self.model.index(index.row(), 0))
+            work_id = self.model.data(self.model.index(index.row(), 0), Qt.ItemDataRole.DisplayRole)
             if not delete_work(work_id):
                 self.msg.show_critical("错误", f"删除失败:")
                 return
@@ -135,9 +110,9 @@ class RecycleBinPage(LazyWidget):
             return
         from core.database.update import mark_undelete
         for index in selected_indexes:
-            work_id = self.model.data(self.model.index(index.row(), 0))
+            work_id = self.model.data(self.model.index(index.row(), 0), Qt.ItemDataRole.DisplayRole)
             if not mark_undelete(work_id):
-                self.msg.show_critical("错误", f"恢复失败: {self.query.lastError().text()}")
+                self.msg.show_critical("错误", "恢复失败，请查看日志。")
                 return
         # 更新模型，刷新界面
         self.refresh_data()

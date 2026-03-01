@@ -59,7 +59,7 @@
 - `config.py`: 路径与配置（`settings.ini`、QSettings），公共/私有数据库路径、资源路径、窗口状态等。
 - `core/`: 核心业务逻辑
   - `crawler/`: 爬虫管理（CrawlerManager）、多源抓取与清洗。
-  - `database/`: 连接管理（`QSqlDatabaseManager` + sqlite3 `get_connection`）、init/migrations、query/insert/update/delete、`repositories/`（Work / Actress / Actor / Tag）、model。
+  - `database/`: 连接管理（sqlite3 `get_connection`）、init/migrations、query/insert/update/delete、`repositories/`（Work / Actress / Actor / Tag）、model。
   - `graph/`: 关系图：`graph_manager.py`（单例，维护总图、增量信号）、`graph_session.py`（会话与过滤）、`ForceDirectedViewWidget.py`（与 C++ OpenGL 视图协作）、`graph_filter.py`、`graph.py`（图生成）、`async_image_loader.py`、`ForceViewSettingsPanel.py`。
   - `recommendation/`: 推荐逻辑（如随机推荐）。
   - `schema/`, `cv/`, `utils/`: 数据模型、图像、日志/性能等工具。
@@ -94,7 +94,7 @@
   - 样式与逻辑分离，统一管理颜色和字体配置。
 - **数据层规范**：
   - 部分实体已采用 Repository（`core/database/repositories/`：Work、Actress、Actor、Tag），其余仍为 query/insert/update/delete 中的过程式函数；逐步迁移到 Repository，旧接口可保留为 deprecated。
-  - 引入实体模型 (Domain Models) 替代字典传递；统一连接策略：Qt 绑定用 `QSqlDatabaseManager`，爬虫/服务端/批量用 sqlite3 `get_connection`。
+  - 引入实体模型 (Domain Models) 替代字典传递；统一连接策略：全部使用 sqlite3 `get_connection`。
 
 ### 3.4 单体 + 插件架构 (Monolith + Plugins)
 

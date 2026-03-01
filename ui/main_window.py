@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_memory)
-        self.timer.start(3000)  # 3 秒更新一次，减少标题栏重绘
+        self.timer.start(1000)  # 1秒更新一次，减少标题栏重绘
 
         self.signal_connect()
 
@@ -224,13 +224,8 @@ class MainWindow(QMainWindow):
         #if not self.isMaximized():
             #set_size_pos(self.size(), self.pos())
         super().closeEvent(event)
-        #数据库
-        from core.database.connection import QSqlDatabaseManager
-        #这个QSqlDatabase是长连接，最后关闭
-        db_manager = QSqlDatabaseManager()
-        db_manager.close_all()
         from core.database.db_utils import clear_temp_folder
-        clear_temp_folder()#退出时清理临时数据
+        clear_temp_folder()  # 退出时清理临时数据
 
     @Slot()
     def handle_capture(self) -> None:
