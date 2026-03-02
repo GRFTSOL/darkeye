@@ -1,5 +1,9 @@
 """工作区管理类：持布局树、窗格工厂、拖拽与预览，供 WorkspaceDemoWidget 等容器使用。"""
 
+import json
+from pathlib import Path
+from typing import Callable
+
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
@@ -185,6 +189,10 @@ class WorkspaceManager:
                 return pane
         return None
 
+    def is_content_closeable(self, content_id: str) -> bool:
+        """查询 content_id 是否可关闭（用于序列化）。"""
+        return self._content_closeable.get(content_id, True)
+
     def _new_pane(self) -> PaneWidget:
         self._pane_counter += 1
         return PaneWidget(pane_id=f"pane_{self._pane_counter}")
@@ -272,6 +280,80 @@ class WorkspaceManager:
     def _on_preview(self, zone, target_pane) -> None:
         self._overlay.show_preview(zone, target_pane)
 
+    def save_layout(
+        self,
+        path: str | Path,
+        *,
+        get_content_descriptor: Callable[[PaneWidget, str], dict | None] | None = None,
+        get_pane_metadata: Callable[[PaneWidget], dict] | None = None,
+    ) -> None:
+        """将布局与内容序列化为 JSON。get_content_descriptor(pane, content_id) 返回可序列化的内容描述；
+        get_pane_metadata(pane) 返回窗格元数据（如 icon_only）。不提供时仅保存布局结构。"""
+        layout_dict = self._layout_tree.to_dict()
+        data: dict = {"layout": layout_dict}
+        if get_content_descriptor is not None:
+            pane_contents: dict[str, list[dict]] = {}
+            for pane in self._layout_tree.panes():
+                items = []
+                for content_id in pane.content_ids():
+                    desc = get_content_descriptor(pane, content_id)
+                    if desc is not None:
+                        desc = dict(desc)
+                        desc.setdefault("content_id", content_id)
+                        items.append(desc)
+                if items:
+                    pane_contents[pane.pane_id] = items
+            data["pane_contents"] = pane_contents
+        if get_pane_metadata is not None:
+            pane_metadata = {}
+            for pane in self._layout_tree.panes():
+                meta = get_pane_metadata(pane)
+                if meta:
+                    pane_metadata[pane.pane_id] = meta
+            data["pane_metadata"] = pane_metadata
+        path = Path(path)
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+    def load_layout(
+        self,
+        path: str | Path,
+        *,
+        content_factory: Callable[[dict], ContentConfig | None] | None = None,
+    ) -> None:
+        """从 path 加载布局与内容。content_factory(descriptor) 根据描述创建 ContentConfig；
+        不提供时仅恢复布局结构，窗格为空。支持旧格式（仅 layout 的 JSON）。"""
+        data = LayoutTree.load_layout_file(path)
+        layout_dict = data.get("layout", data)
+        pane_contents = data.get("pane_contents", {})
+        pane_metadata = data.get("pane_metadata", {})
+
+        for pane in list(self._layout_tree.panes()):
+            try:
+                pane.pane_empty.disconnect(self._on_pane_empty)
+            except (TypeError, RuntimeError):
+                pass
+            self._layout_tree.remove_pane(pane)
+
+        def pane_factory(pid: str) -> PaneWidget:
+            pane = PaneWidget(pane_id=pid)
+            self._register_pane(pane)
+            meta = pane_metadata.get(pid, {})
+            if meta.get("icon_only"):
+                pane.set_icon_only(True)
+            return pane
+
+        self._layout_tree.load_layout_from_dict(layout_dict, pane_factory)
+
+        if content_factory is not None and pane_contents:
+            for pane_id, items in pane_contents.items():
+                pane = self._layout_tree.find_pane_by_id(pane_id)
+                if pane is None:
+                    continue
+                for desc in items:
+                    cfg = content_factory(desc)
+                    if cfg is not None:
+                        self.fill_pane(pane, cfg)
 
     def create_content_config(self, content_id: str | None = None) -> ContentConfig:
         """创建内容配置，content_id 为 None 时由内部自动分配。"""

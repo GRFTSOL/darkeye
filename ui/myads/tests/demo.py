@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QLineEdit
+    QLineEdit,
+    QFileDialog,
 )
 from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtGui import QIcon
@@ -26,12 +27,14 @@ from config import ICONS_PATH
 """工作区 Demo 主入口：WorkspaceDemoWidget，组合 Pane、LayoutTree、拖拽与预览。"""
 
 
-def _make_placeholder_content(text: str) -> QWidget:
-    """创建占位内容。"""
+def _make_placeholder_content(text: str, icon_name: str = "") -> QWidget:
+    """创建占位内容。icon_name 用于序列化时还原图标。"""
     w = QWidget()
     w.setStyleSheet("background-color: white;")
     layout = QVBoxLayout(w)
     layout.addWidget(QLineEdit(text))
+    if icon_name:
+        w.setProperty("icon_name", icon_name)
     return w
 
 
@@ -51,7 +54,8 @@ class WorkspaceDemoWidget(QWidget):
 
         def make_config(title: str, icon_name: str, closeable: bool = True) -> ContentConfig:
             d = self._manager.create_content_config()
-            d.set_window_title(title).set_icon(QIcon(str(ICONS_PATH / icon_name))).set_widget(_make_placeholder_content(title)).set_closeable(closeable)
+            w = _make_placeholder_content(title, icon_name)
+            d.set_window_title(title).set_icon(QIcon(str(ICONS_PATH / icon_name))).set_widget(w).set_closeable(closeable)
             return d
 
         d_a = make_config("内容 A", "library-big.svg", False)
@@ -202,6 +206,82 @@ def main():
     btn_print = QPushButton("打印树数据")
     btn_print.clicked.connect(lambda: workspace.layout_tree().print_tree())
     btn_row.addWidget(btn_print)
+
+    def get_content_descriptor(pane, content_id):
+        """从 pane 提取内容描述（用于保存）。"""
+        title = pane.get_content_title(content_id)
+        closeable = workspace._manager.is_content_closeable(content_id)
+        widget = pane.get_content_widget(content_id)
+        placeholder_text = title
+        icon_name = ""
+        if widget:
+            for child in widget.findChildren(QLineEdit):
+                placeholder_text = child.text()
+                break
+            icon_name = widget.property("icon_name") or ""
+        return {
+            "content_id": content_id,
+            "title": title,
+            "icon_name": icon_name,
+            "closeable": closeable,
+            "placeholder_text": placeholder_text,
+        }
+
+    def get_pane_metadata(pane):
+        """提取窗格元数据（如 icon_only）。"""
+        if getattr(pane, "_icon_only", False):
+            return {"icon_only": True}
+        return {}
+
+    def content_factory(desc):
+        """从描述创建 ContentConfig（用于加载）。"""
+        content_id = desc.get("content_id", "")
+        title = desc.get("title", content_id)
+        icon_name = desc.get("icon_name", "library-big.svg")
+        closeable = desc.get("closeable", True)
+        placeholder_text = desc.get("placeholder_text", title)
+        cfg = workspace._manager.create_content_config(content_id=content_id)
+        w = _make_placeholder_content(placeholder_text, icon_name)
+        cfg.set_window_title(title).set_icon(QIcon(str(ICONS_PATH / icon_name))).set_widget(w).set_closeable(closeable)
+        return cfg
+
+    def do_save_layout():
+        path, _ = QFileDialog.getSaveFileName(
+            container, "保存布局与内容", "", "JSON 布局 (*.json);;所有文件 (*)"
+        )
+        if path:
+            try:
+                workspace._manager.save_layout(
+                    path,
+                    get_content_descriptor=get_content_descriptor,
+                    get_pane_metadata=get_pane_metadata,
+                )
+                current_target_label.setText(f"已保存到: {path}")
+            except Exception as e:
+                current_target_label.setText(f"保存失败: {e}")
+
+    def do_load_layout():
+        path, _ = QFileDialog.getOpenFileName(
+            container, "加载布局与内容", "", "JSON 布局 (*.json);;所有文件 (*)"
+        )
+        if path:
+            try:
+                workspace._manager.load_layout(path, content_factory=content_factory)
+                panes = workspace.layout_tree().panes()
+                split_target_holder[0] = panes[0] if panes else None
+                update_target_label()
+                current_target_label.setText(f"已加载: {path}")
+            except Exception as e:
+                current_target_label.setText(f"加载失败: {e}")
+
+    btn_save = QPushButton("保存布局与内容")
+    btn_save.clicked.connect(do_save_layout)
+    btn_row.addWidget(btn_save)
+
+    btn_load = QPushButton("加载布局与内容")
+    btn_load.clicked.connect(do_load_layout)
+    btn_row.addWidget(btn_load)
+
     btn_row.addStretch()
     layout.addLayout(btn_row)
 

@@ -388,6 +388,13 @@ class PaneWidget(QWidget):
         self._stack.insertWidget(to_index, w)
 
 
+    def get_content_title(self, content_id: str) -> str:
+        """根据 content_id 获取 Tab 标题（tabText 或 tabToolTip）。"""
+        idx = self._index_for_content_id(content_id)
+        if idx is None:
+            return ""
+        return self._tab_bar.tabText(idx) or self._tab_bar.tabToolTip(idx) or ""
+
     def get_content_widget(self, content_id: str) -> QWidget | None:
         """根据 content_id 获取内容 widget。"""
         idx = self._index_for_content_id(content_id)

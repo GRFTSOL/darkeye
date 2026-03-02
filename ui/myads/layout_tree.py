@@ -656,10 +656,25 @@ class LayoutTree:
         with path.open("r", encoding="utf-8") as f:
             return json.load(f)
 
+    def to_dict(self) -> dict:
+        """返回当前布局模型的 JSON 友好 dict（用于与 pane_contents 等合并后保存）。"""
+        return self._model.to_dict()
+
     def apply_layout(self, d: dict) -> None:
         """用 dict 替换当前模型并 sync。调用前需保证布局中所有 pane_id 已通过 register_pane_parent 注册。"""
         self._model.load_from_dict(d)
         self._renderer.sync()
+
+    def load_layout_from_dict(
+        self,
+        layout_dict: dict,
+        pane_factory: Callable[[str], PaneWidget],
+    ) -> None:
+        """从 layout_dict 加载布局（不读文件）。用于已解析的 dict，支持 layout 在根或 data['layout'] 中。"""
+        for pid in LayoutTreeModel.pane_ids_from_dict(layout_dict):
+            pane = pane_factory(pid)
+            self.register_pane_parent(pane)
+        self.apply_layout(layout_dict)
 
     def save_layout(self, path: str | Path) -> None:
         """将当前布局模型序列化为 JSON 并写入 path。"""
