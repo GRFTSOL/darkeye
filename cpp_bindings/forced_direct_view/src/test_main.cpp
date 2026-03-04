@@ -17,7 +17,7 @@
 
 /**
  * Standalone test: creates a ForceViewOpenGL with a random graph.
- * Two radio buttons allow switching between two pre-generated graphs.
+ * Radio buttons allow switching between three pre-generated graphs (999, 1001, 10000 nodes).
  */
 
 static void generateRandomGraph(int nNodes, int avgDegree, unsigned int seed,
@@ -70,16 +70,17 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
 
-    // Pre-generate two graph datasets
-    QVector<int>   edges1, edges2;
-    QVector<float> pos1, pos2;
-    QStringList    ids1, ids2;
-    QStringList    labels1, labels2;
-    QVector<float> radii1, radii2;
-    QVector<QColor> nodeColors1, nodeColors2;
+    // Pre-generate three graph datasets
+    QVector<int>   edges1, edges2, edges3;
+    QVector<float> pos1, pos2, pos3;
+    QStringList    ids1, ids2, ids3;
+    QStringList    labels1, labels2, labels3;
+    QVector<float> radii1, radii2, radii3;
+    QVector<QColor> nodeColors1, nodeColors2, nodeColors3;
 
-    generateRandomGraph(500, 1, 42u, edges1, pos1, ids1, labels1, radii1, nodeColors1);
-    generateRandomGraph(15000, 1, 123u, edges2, pos2, ids2, labels2, radii2, nodeColors2);
+    generateRandomGraph(999, 1, 42u, edges1, pos1, ids1, labels1, radii1, nodeColors1);
+    generateRandomGraph(1001, 1, 99u, edges2, pos2, ids2, labels2, radii2, nodeColors2);
+    generateRandomGraph(10000, 1, 123u, edges3, pos3, ids3, labels3, radii3, nodeColors3);
 
     // Main window
     QMainWindow mainWin;
@@ -103,16 +104,19 @@ int main(int argc, char* argv[])
     QGroupBox* groupBox = new QGroupBox("切换图", panel);
     QVBoxLayout* groupLayout = new QVBoxLayout(groupBox);
 
-    QRadioButton* rb1 = new QRadioButton("图1 (500节点)", groupBox);
-    QRadioButton* rb2 = new QRadioButton("图2 (15000节点)", groupBox);
+    QRadioButton* rb1 = new QRadioButton("图1 (999节点)", groupBox);
+    QRadioButton* rb2 = new QRadioButton("图2 (1001节点)", groupBox);
+    QRadioButton* rb3 = new QRadioButton("图3 (10000节点)", groupBox);
     rb1->setChecked(true);
 
     QButtonGroup* btnGroup = new QButtonGroup(central);
     btnGroup->addButton(rb1, 0);
     btnGroup->addButton(rb2, 1);
+    btnGroup->addButton(rb3, 2);
 
     groupLayout->addWidget(rb1);
     groupLayout->addWidget(rb2);
+    groupLayout->addWidget(rb3);
     panelLayout->addWidget(groupBox);
 
     // 性能信息面板：展示 tick / paint 耗时与 FPS
@@ -134,11 +138,14 @@ int main(int argc, char* argv[])
 
     // Apply graph based on selected radio button
     auto applyGraph = [view, &edges1, &pos1, &ids1, &labels1, &radii1, &nodeColors1,
-                       &edges2, &pos2, &ids2, &labels2, &radii2, &nodeColors2](int id) {
+                       &edges2, &pos2, &ids2, &labels2, &radii2, &nodeColors2,
+                       &edges3, &pos3, &ids3, &labels3, &radii3, &nodeColors3](int id) {
         if (id == 0) {
-            view->setGraph(500, edges1, pos1, ids1, labels1, radii1, nodeColors1);
+            view->setGraph(999, edges1, pos1, ids1, labels1, radii1, nodeColors1);
+        } else if (id == 1) {
+            view->setGraph(1001, edges2, pos2, ids2, labels2, radii2, nodeColors2);
         } else {
-            view->setGraph(15000, edges2, pos2, ids2, labels2, radii2, nodeColors2);
+            view->setGraph(10000, edges3, pos3, ids3, labels3, radii3, nodeColors3);
         }
     };
 

@@ -165,9 +165,10 @@ void ForceViewOpenGL::simLoop()
             std::lock_guard<std::mutex> lock(m_simMutex);
             if (m_simulation && m_physicsState && m_simulation->isActive()) {
                 active = true;
-                // 无间隔热身次数：节点数 * 0.15 + 10
-                const int warmupTicks = m_physicsState->nNodes > 0
-                    ? static_cast<int>(m_physicsState->nNodes * 0.15f + 10.0f)
+                // 无间隔热身次数：N·log(N)，与多体收敛复杂度一致
+                const int n = m_physicsState->nNodes;
+                const int warmupTicks = n > 0
+                    ? static_cast<int>(n * std::log(static_cast<float>(std::max(2, n))) * 0.2f + 10.0f)
                     : 5;
                 bool allowWarmup = m_allowWarmup.load(std::memory_order_acquire);
                 bool warmup = allowWarmup && m_simulation->tickCount() < warmupTicks;
@@ -316,6 +317,7 @@ void ForceViewOpenGL::setGraph(int nNodes,
 void ForceViewOpenGL::rebuildSimulation()
 {
     m_simulation = std::make_unique<Simulation>(m_physicsState.get());
+
     auto many = std::make_unique<ManyBodyForce>(m_manyBodyStrength, kManyBodyDistanceLimitSq);
     m_simulation->addForce("manybody", std::move(many));
     auto link = std::make_unique<LinkForce>(m_linkStrength, m_linkDistance);

@@ -1,6 +1,9 @@
 #include "Forces.h"
+#include "QuadTree.h"
 #include <cmath>
 #include <algorithm>
+#include <unordered_map>
+#include <vector>
 
 namespace {
 const float kOverlapDist2 = 1e-10f;
@@ -20,6 +23,79 @@ inline void overlapFallbackDirection(int i, int j, float& ux, float& uy)
     float invLen = 1.0f / std::sqrt(len2);
     ux = ax * invLen;
     uy = ay * invLen;
+}
+
+/** Barnes-Hut force accumulation for node i from quadtree node. */
+inline void manyBodyAccumulate(
+    int i,
+    int nodeIdx,
+    const std::vector<QuadNode>& nodes,
+    const float* pos,
+    const float* mass,
+    float strength,
+    float cutoff2,
+    float theta,
+    float alpha,
+    float& fx,
+    float& fy)
+{
+    const QuadNode& nd = nodes[nodeIdx];
+    float xi = pos[2 * i];
+    float yi = pos[2 * i + 1];
+    float mi = mass[i];
+
+    if (nd.leafIdx >= 0) {
+        int j = nd.leafIdx;
+        if (i == j) return;
+        float dx = xi - nd.cx;
+        float dy = yi - nd.cy;
+        float dist2 = dx * dx + dy * dy + 1e-6f;
+        if (dist2 >= cutoff2) return;
+
+        float mj = nd.mass;
+        float s  = strength * mi * mj / std::max(dist2, 1.0f) * alpha;
+        float ux, uy;
+        if (dist2 < kOverlapDist2) {
+            overlapFallbackDirection(i, j, ux, uy);
+        } else {
+            float invd = 1.0f / std::sqrt(dist2);
+            ux = dx * invd;
+            uy = dy * invd;
+        }
+        fx += s * ux;
+        fy += s * uy;
+        return;
+    }
+
+    // For internal nodes, compute minimum possible squared distance to any
+    // point in the cell (nearest-edge distance) for the cutoff test, instead
+    // of using center-of-mass distance which can incorrectly prune nearby
+    // children.
+    float dx_com = xi - nd.cx;
+    float dy_com = yi - nd.cy;
+    float dist2_com = dx_com * dx_com + dy_com * dy_com + 1e-6f;
+
+    float d = std::sqrt(dist2_com);
+    float cellSize = 2.0f * nd.halfSize;
+    float s_over_d = cellSize / std::max(d, 1e-6f);
+
+    if (s_over_d < theta) {
+        // Cell is far enough: use cutoff on center-of-mass distance
+        if (dist2_com >= cutoff2) return;
+
+        float mj = nd.mass;
+        float s  = strength * mi * mj / std::max(dist2_com, 1.0f) * alpha;
+        float ux = dx_com / d;
+        float uy = dy_com / d;
+        fx += s * ux;
+        fy += s * uy;
+    } else {
+        for (int c = 0; c < 4; ++c) {
+            if (nd.child[c] >= 0)
+                manyBodyAccumulate(i, nd.child[c], nodes, pos, mass,
+                                   strength, cutoff2, theta, alpha, fx, fy);
+        }
+    }
 }
 }
 
@@ -85,8 +161,8 @@ void LinkForce::apply(float alpha)
 // =====================================================================
 // ManyBodyForce
 // =====================================================================
-ManyBodyForce::ManyBodyForce(float strength, float cutoff2)
-    : m_strength(strength), m_cutoff2(cutoff2)
+ManyBodyForce::ManyBodyForce(float strength, float cutoff2, float theta)
+    : m_strength(strength), m_cutoff2(cutoff2), m_theta(theta)
 {}
 
 void ManyBodyForce::apply(float alpha)
@@ -94,11 +170,10 @@ void ManyBodyForce::apply(float alpha)
     const int N = m_state->nNodes;
     if (N < 2) return;
 
-    if (N < 2000) {
+    if (N < 1000) {
         applyBlock(alpha, 256);
-        //applyParallel(alpha);
     } else {
-        applyParallel(alpha);
+        applyBarnesHut(alpha);
     }
 }
 
@@ -200,6 +275,34 @@ void ManyBodyForce::applyParallel(float alpha)
     }
 }
 
+// Barnes-Hut O(N log N) — serial tree build, parallel force computation
+void ManyBodyForce::applyBarnesHut(float alpha)
+{
+    const int    N        = m_state->nNodes;
+    const float* pos      = m_state->pos.data();
+    const float* mass     = m_state->mass.data();
+    float*       vel      = m_state->vel.data();
+    const float  strength = m_strength;
+    const float  cutoff2  = m_cutoff2;
+    const float  theta    = m_theta;
+
+    // Serial tree build
+    m_quadTree.build(pos, mass, N);
+    if (m_quadTree.empty()) return;
+
+    const std::vector<QuadNode>& nodes = m_quadTree.nodes();
+
+#pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i) {
+        float fx_sum = 0.0f;
+        float fy_sum = 0.0f;
+        manyBodyAccumulate(i, m_quadTree.rootIndex(), nodes, pos, mass,
+                           strength, cutoff2, theta, alpha, fx_sum, fy_sum);
+        vel[2 * i]     += fx_sum;
+        vel[2 * i + 1] += fy_sum;
+    }
+}
+
 // =====================================================================
 // CollisionForce
 // =====================================================================
@@ -212,44 +315,82 @@ void CollisionForce::apply(float alpha)
     const int N = m_state->nNodes;
     if (N < 2) return;
 
-    if (N < 2000) {
-        const float* pos = m_state->pos.data();
-        float*       vel = m_state->vel.data();
-        const float  R   = m_radius;
-        const float  sa  = m_strength * alpha;
-        const float  eps = 1e-6f;
-
-        for (int i = 0; i < N; ++i) {
-            float xi = pos[2 * i];
-            float yi = pos[2 * i + 1];
-            float fx_sum = 0.0f;
-            float fy_sum = 0.0f;
-
-            for (int j = 0; j < N; ++j) {
-                if (i == j) continue;
-                float dx = xi - pos[2 * j];
-                float dy = yi - pos[2 * j + 1];
-                float dist = std::sqrt(dx * dx + dy * dy) + eps;
-                if (dist >= R) continue;
-
-                float overlap = R - dist;
-                float f = sa * overlap / std::max(dist, kOverlapDist);
-                float ux, uy;
-                if (dist < kOverlapDist) {
-                    overlapFallbackDirection(i, j, ux, uy);
-                } else {
-                    ux = dx / dist;
-                    uy = dy / dist;
-                }
-                fx_sum += f * ux;
-                fy_sum += f * uy;
-            }
-
-            vel[2 * i]     += fx_sum;
-            vel[2 * i + 1] += fy_sum;
-        }
+    if (N < 1000) {
+        applyBruteForce(alpha);
     } else {
-        applyParallel(alpha);
+        applyGrid(alpha);   // O(N) uniform grid; use applyParallel(alpha) for brute-force
+    }
+}
+
+void CollisionForce::applyGrid(float alpha)
+{
+    const int    N        = m_state->nNodes;
+    const float* pos      = m_state->pos.data();
+    float*       vel      = m_state->vel.data();
+    const float  R        = m_radius;
+    const float  sa       = m_strength * alpha;
+    const float  eps      = 1e-6f;
+
+    // Cell size >= R so we only need to check 3x3 neighborhood
+    const float cellSize = std::max(R, 1e-6f);
+    const float invCell  = 1.0f / cellSize;
+
+    struct CellKey {
+        int x, y;
+        bool operator==(const CellKey& o) const { return x == o.x && y == o.y; }
+    };
+    struct CellHash {
+        size_t operator()(const CellKey& c) const {
+            return size_t(c.x) * 31u + size_t(c.y);
+        }
+    };
+    std::unordered_map<CellKey, std::vector<int>, CellHash> grid;
+
+    for (int i = 0; i < N; ++i) {
+        int cx = static_cast<int>(std::floor(pos[2 * i] * invCell));
+        int cy = static_cast<int>(std::floor(pos[2 * i + 1] * invCell));
+        grid[{cx, cy}].push_back(i);
+    }
+
+#pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i) {
+        float xi = pos[2 * i];
+        float yi = pos[2 * i + 1];
+        int   cx = static_cast<int>(std::floor(xi * invCell));
+        int   cy = static_cast<int>(std::floor(yi * invCell));
+
+        float fx_sum = 0.0f;
+        float fy_sum = 0.0f;
+
+        for (int dx = -1; dx <= 1; ++dx) {
+            for (int dy = -1; dy <= 1; ++dy) {
+                auto it = grid.find({cx + dx, cy + dy});
+                if (it == grid.end()) continue;
+
+                for (int j : it->second) {
+                    if (i == j) continue;
+                    float ddx = xi - pos[2 * j];
+                    float ddy = yi - pos[2 * j + 1];
+                    float dist = std::sqrt(ddx * ddx + ddy * ddy) + eps;
+                    if (dist >= R) continue;
+
+                    float overlap = R - dist;
+                    float f = sa * overlap / std::max(dist, kOverlapDist);
+                    float ux, uy;
+                    if (dist < kOverlapDist) {
+                        overlapFallbackDirection(i, j, ux, uy);
+                    } else {
+                        ux = ddx / dist;
+                        uy = ddy / dist;
+                    }
+                    fx_sum += f * ux;
+                    fy_sum += f * uy;
+                }
+            }
+        }
+
+        vel[2 * i]     += fx_sum;
+        vel[2 * i + 1] += fy_sum;
     }
 }
 
@@ -263,6 +404,46 @@ void CollisionForce::applyParallel(float alpha)
     const float  eps      = 1e-6f;
 
 #pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i) {
+        float xi = pos[2 * i];
+        float yi = pos[2 * i + 1];
+        float fx_sum = 0.0f;
+        float fy_sum = 0.0f;
+
+        for (int j = 0; j < N; ++j) {
+            if (i == j) continue;
+            float dx = xi - pos[2 * j];
+            float dy = yi - pos[2 * j + 1];
+            float dist = std::sqrt(dx * dx + dy * dy) + eps;
+            if (dist >= R) continue;
+
+            float overlap = R - dist;
+            float f = sa * overlap / std::max(dist, kOverlapDist);
+            float ux, uy;
+            if (dist < kOverlapDist) {
+                overlapFallbackDirection(i, j, ux, uy);
+            } else {
+                ux = dx / dist;
+                uy = dy / dist;
+            }
+            fx_sum += f * ux;
+            fy_sum += f * uy;
+        }
+
+        vel[2 * i]     += fx_sum;
+        vel[2 * i + 1] += fy_sum;
+    }
+}
+
+void CollisionForce::applyBruteForce(float alpha)
+{
+    const int    N        = m_state->nNodes;
+    const float* pos      = m_state->pos.data();
+    float*       vel      = m_state->vel.data();
+    const float  R        = m_radius;
+    const float  sa       = m_strength * alpha;
+    const float  eps      = 1e-6f;
+
     for (int i = 0; i < N; ++i) {
         float xi = pos[2 * i];
         float yi = pos[2 * i + 1];

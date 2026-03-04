@@ -2,6 +2,7 @@
 #define FORCES_H
 
 #include "PhysicsState.h"
+#include "QuadTree.h"
 #include <string>
 
 // ---------------------------------------------------------------------------
@@ -59,33 +60,36 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// ManyBodyForce – pairwise repulsion   O(N^2)
-//   Uses block-tiled kernel for N < 2000, plain parallel for larger N.
+// ManyBodyForce – pairwise repulsion   O(N^2) or O(N log N) with Barnes-Hut
+//   Uses block-tiled for N < 500, parallel for 500–2000, Barnes-Hut for larger.
 // ---------------------------------------------------------------------------
 class ManyBodyForce : public Force
 {
 public:
-    ManyBodyForce(float strength = 100.0f, float cutoff2 = 40000.0f);
+    ManyBodyForce(float strength = 100.0f, float cutoff2 = 40000.0f, float theta = 0.6f);
 
     void apply(float alpha) override;
 
     void setStrength(float s) { m_strength = s; }
     float strength() const    { return m_strength; }
+    void setTheta(float t)    { m_theta = t; }
+    float theta() const       { return m_theta; }
 
 private:
-    // Block-tiled kernel (mirrors Python manybody_block_kernel)
     void applyBlock(float alpha, int blockSize);
-
-    // Parallel kernel for larger graphs
     void applyParallel(float alpha);
+    void applyBarnesHut(float alpha);
 
     float m_strength;
     float m_cutoff2;
+    float m_theta;
+    QuadTree m_quadTree;
 };
 
 // ---------------------------------------------------------------------------
-// CollisionForce – point-to-point repulsion when dist < radius   O(N^2)
-//   Only acts when distance < radius; no force beyond. Uses cutoff + OpenMP.
+// CollisionForce – point-to-point repulsion when dist < radius
+//   Brute-force O(N^2) for N<2000; uniform grid O(N) for N>=2000.
+//   applyParallel = brute-force parallel; applyGrid = grid-accelerated.
 // ---------------------------------------------------------------------------
 class CollisionForce : public Force
 {
@@ -100,7 +104,9 @@ public:
     float strength() const        { return m_strength; }
 
 private:
-    void applyParallel(float alpha);
+    void applyBruteForce(float alpha);  // O(N^2) serial
+    void applyParallel(float alpha);    // O(N^2) parallel
+    void applyGrid(float alpha);        // O(N) uniform grid acceleration
 
     float m_radius;
     float m_strength;

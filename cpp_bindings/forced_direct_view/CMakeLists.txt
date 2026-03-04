@@ -101,12 +101,14 @@ add_subdirectory(3rdparty/msdfgen)
 # =============================================
 set(${forceview_library}_sources
     src/Forces.cpp
+    src/QuadTree.cpp
     src/Simulation.cpp
     src/ForceViewOpenGL.cpp
     src/GraphRenderer.cpp
     src/MsdfFontAtlas.cpp
     src/MsdfTextRenderer.cpp
     include/Forces.h
+    include/QuadTree.h
     include/Simulation.h
     include/ForceViewOpenGL.h
     include/GraphRenderer.h
