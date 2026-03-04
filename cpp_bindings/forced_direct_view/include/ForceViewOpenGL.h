@@ -83,6 +83,26 @@ public:
     void setArrowEnabled(bool enabled);
     void setNeighborDepth(int depth);  // 1-5*** End Patch】} ***!
 
+    // 边颜色
+    void setEdgeColor(const QColor& c);
+    QColor edgeColor() const;
+    void setEdgeDimColor(const QColor& c);
+    QColor edgeDimColor() const;
+
+    // 节点颜色
+    void setBaseColor(const QColor& c);
+    QColor baseColor() const;
+    void setDimColor(const QColor& c);
+    QColor dimColor() const;
+    void setHoverColor(const QColor& c);
+    QColor hoverColor() const;
+
+    // 文本颜色
+    void setTextColor(const QColor& c);
+    QColor textColor() const;
+    void setTextDimColor(const QColor& c);
+    QColor textDimColor() const;
+
     // ======================== Misc ========================
     void setDragging(int nodeId, bool dragging);
     QRectF getContentRect() const;

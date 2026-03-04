@@ -248,6 +248,23 @@ void ForceViewOpenGL::setArrowEnabled(bool enabled)
     update();
 }
 
+void ForceViewOpenGL::setEdgeColor(const QColor& c) { m_edgeColor = c; requestRenderActivity(); update(); }
+QColor ForceViewOpenGL::edgeColor() const { return m_edgeColor; }
+void ForceViewOpenGL::setEdgeDimColor(const QColor& c) { m_edgeDimColor = c; requestRenderActivity(); update(); }
+QColor ForceViewOpenGL::edgeDimColor() const { return m_edgeDimColor; }
+
+void ForceViewOpenGL::setBaseColor(const QColor& c) { m_baseColor = c; requestRenderActivity(); update(); }
+QColor ForceViewOpenGL::baseColor() const { return m_baseColor; }
+void ForceViewOpenGL::setDimColor(const QColor& c) { m_dimColor = c; requestRenderActivity(); update(); }
+QColor ForceViewOpenGL::dimColor() const { return m_dimColor; }
+void ForceViewOpenGL::setHoverColor(const QColor& c) { m_hoverColor = c; requestRenderActivity(); update(); }
+QColor ForceViewOpenGL::hoverColor() const { return m_hoverColor; }
+
+void ForceViewOpenGL::setTextColor(const QColor& c) { m_textColor = c; requestRenderActivity(); update(); }
+QColor ForceViewOpenGL::textColor() const { return m_textColor; }
+void ForceViewOpenGL::setTextDimColor(const QColor& c) { m_textDimColor = c; requestRenderActivity(); update(); }
+QColor ForceViewOpenGL::textDimColor() const { return m_textDimColor; }
+
 // =====================================================================
 // Neighbor / hover / dragging
 // =====================================================================
