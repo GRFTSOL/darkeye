@@ -78,8 +78,8 @@ int main(int argc, char* argv[])
     QVector<float> radii1, radii2;
     QVector<QColor> nodeColors1, nodeColors2;
 
-    generateRandomGraph(500, 2, 42u, edges1, pos1, ids1, labels1, radii1, nodeColors1);
-    generateRandomGraph(1900, 1, 123u, edges2, pos2, ids2, labels2, radii2, nodeColors2);
+    generateRandomGraph(500, 1, 42u, edges1, pos1, ids1, labels1, radii1, nodeColors1);
+    generateRandomGraph(15000, 1, 123u, edges2, pos2, ids2, labels2, radii2, nodeColors2);
 
     // Main window
     QMainWindow mainWin;
@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
     QVBoxLayout* groupLayout = new QVBoxLayout(groupBox);
 
     QRadioButton* rb1 = new QRadioButton("图1 (500节点)", groupBox);
-    QRadioButton* rb2 = new QRadioButton("图2 (1900节点)", groupBox);
+    QRadioButton* rb2 = new QRadioButton("图2 (15000节点)", groupBox);
     rb1->setChecked(true);
 
     QButtonGroup* btnGroup = new QButtonGroup(central);
@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
         if (id == 0) {
             view->setGraph(500, edges1, pos1, ids1, labels1, radii1, nodeColors1);
         } else {
-            view->setGraph(1900, edges2, pos2, ids2, labels2, radii2, nodeColors2);
+            view->setGraph(15000, edges2, pos2, ids2, labels2, radii2, nodeColors2);
         }
     };
 

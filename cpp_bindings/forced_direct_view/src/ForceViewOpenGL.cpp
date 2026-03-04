@@ -9,6 +9,8 @@
 #include <QSurfaceFormat>
 #include <QVariantMap>
 #include <QHash>
+#include <QThread>
+#include <QMetaObject>
 
 #include <cmath>
 #include <chrono>
@@ -81,6 +83,12 @@ ForceViewOpenGL::~ForceViewOpenGL()
     }
     m_fontAtlas.reset();
     doneCurrent();
+
+    // 等待后台 MSDF atlas 构建线程安全退出
+    m_msdfAtlasThreadRunning.store(false, std::memory_order_release);
+    if (m_msdfAtlasThread.joinable()) {
+        m_msdfAtlasThread.join();
+    }
 
     stopSimThread();
     if (m_renderTimer) m_renderTimer->stop();
@@ -224,6 +232,14 @@ void ForceViewOpenGL::setGraph(int nNodes,
                                const QVector<float>& radii,
                                const QVector<QColor>& nodeColors)
 {
+    // 确保在 GUI 线程执行，避免与 paintGL 竞态导致崩溃
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, [this, nNodes, edges, pos, id, labels, radii, nodeColors]() {
+            setGraph(nNodes, edges, pos, id, labels, radii, nodeColors);
+        }, Qt::QueuedConnection);
+        return;
+    }
+
     {
         std::lock_guard<std::mutex> lock(m_simMutex);
         if (m_simulation) m_simulation->stop();
@@ -270,7 +286,16 @@ void ForceViewOpenGL::setGraph(int nNodes,
     m_lastDimEdges.clear();
     m_lastHighlightEdges.clear();
     updateFactor();
-    rebuildMsdfAtlas();
+    // 图变更后立即清空布局缓存，避免使用旧图的布局数据导致崩溃
+    m_labelLayoutCache.clear();
+    m_labelLayoutByIndex.clear();
+    {
+        std::lock_guard<std::mutex> lock(m_msdfAtlasMutex);
+        m_msdfAtlasResultReady = false;
+    }
+    m_msdfAtlasBuildId++;
+    // 图变更后触发一次异步 MSDF atlas 构建（若需要显示文字时会自动应用）
+    startMsdfAtlasBuildAsync();
 
     m_allowWarmup.store(true, std::memory_order_release);
     {
@@ -1009,6 +1034,76 @@ QColor ForceViewOpenGL::mixColor(const QColor& c1, const QColor& c2, float t)
     return QColor(r, g, b, a);
 }
 
+void ForceViewOpenGL::startMsdfAtlasBuildAsync()
+{
+    if (!m_fontAtlas || !m_fontAtlas->isReady())
+        return;
+    // 已有构建线程在运行时，直接忽略新的请求，等待当前完成
+    if (m_msdfAtlasThreadRunning.load(std::memory_order_acquire))
+        return;
+
+    // 使用与 initializeGL 相同的字体配置；如后续需要可抽取为成员。
+    // NOTE: If the previous build thread finished but wasn't joined yet, the std::thread
+    // remains joinable; assigning a new std::thread into it would std::terminate().
+    if (m_msdfAtlasThread.joinable()) {
+        m_msdfAtlasThread.join();
+    }
+
+    MsdfFontAtlas::Config cfg;
+    cfg.fontPath = QStringLiteral("C:/Windows/Fonts/msyh.ttc");
+    cfg.atlasWidth = 2048;
+    cfg.atlasHeight = 2048;
+    cfg.pxRange = 6.0f;
+
+    const QStringList labels = m_labels;
+    const int buildId = m_msdfAtlasBuildId;
+
+    m_msdfAtlasThreadRunning.store(true, std::memory_order_release);
+    m_msdfAtlasThread = std::thread([this, cfg, labels, buildId]() {
+        MsdfAtlasBuildResult result;
+        result.buildId = buildId;
+        QString error;
+        MsdfFontAtlas::AtlasData data;
+        if (MsdfFontAtlas::BuildAtlasStandalone(cfg, labels, data, &error)) {
+            result.success = true;
+            result.data = std::move(data);
+        } else {
+            result.success = false;
+            result.error = error;
+        }
+        {
+            std::lock_guard<std::mutex> lock(m_msdfAtlasMutex);
+            m_msdfAtlasResult = std::move(result);
+            m_msdfAtlasResultReady = true;
+        }
+        m_msdfAtlasThreadRunning.store(false, std::memory_order_release);
+    });
+}
+
+void ForceViewOpenGL::applyMsdfAtlasResultIfReady()
+{
+    MsdfAtlasBuildResult result;
+    {
+        std::lock_guard<std::mutex> lock(m_msdfAtlasMutex);
+        if (!m_msdfAtlasResultReady)
+            return;
+        result = std::move(m_msdfAtlasResult);
+        m_msdfAtlasResultReady = false;
+    }
+    if (result.buildId != m_msdfAtlasBuildId) {
+        // 结果已过期（图已切换），丢弃并触发新图构建
+        startMsdfAtlasBuildAsync();
+        return;
+    }
+    if (result.success && m_fontAtlas) {
+        // 应用新 atlas 数据并重建布局缓存
+        m_fontAtlas->applyAtlasData(std::move(result.data));
+        rebuildLabelLayoutCache();
+        // 强制让后续帧重新上传纹理
+        m_lastAtlasGeneration = -1;
+    }
+}
+
 void ForceViewOpenGL::rebuildMsdfAtlas()
 {
     if (!m_fontAtlas || !m_fontAtlas->isReady()) return;
@@ -1068,6 +1163,9 @@ void ForceViewOpenGL::buildTextVertices()
     m_textVerticesRest.clear();
     m_textVerticesHover.clear();
     if (!m_fontAtlas || !m_fontAtlas->isReady() || !m_physicsState) return;
+    // 布局与图数据必须一致，否则跳过文字生成避免崩溃
+    if (m_labelLayoutByIndex.size() != static_cast<size_t>(m_labels.size())) return;
+    if (m_labels.size() != static_cast<size_t>(m_physicsState->nNodes)) return;
 
     const float scale = m_zoom;
     if (scale <= m_textThresholdOff) return;
@@ -1082,8 +1180,9 @@ void ForceViewOpenGL::buildTextVertices()
     const float fontSize = m_msdfFontSize;
     const float descent = static_cast<float>(m_fontAtlas->descender());
 
+    const int nNodes = m_physicsState->nNodes;
     auto emitLabel = [&](int i, const QColor& color, float alpha, float fontScale, std::vector<float>& out) {
-        if (i < 0 || i >= static_cast<int>(m_labelLayoutByIndex.size())) return;
+        if (i < 0 || i >= nNodes || i >= static_cast<int>(m_labelLayoutByIndex.size())) return;
         const LabelLayoutEntry* layout = m_labelLayoutByIndex[i];
         if (!layout || layout->quads.empty()) return;
 
@@ -1194,8 +1293,9 @@ void ForceViewOpenGL::initializeGL()
     m_textRenderer = std::make_unique<MsdfTextRenderer>();
     m_textRenderer->initialize(this);
 
+    // 初始化完成后，如果已有标签，立即启动一次异步 MSDF atlas 构建
     if (!m_labels.isEmpty()) {
-        rebuildMsdfAtlas();
+        startMsdfAtlasBuildAsync();
     }
 
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -1225,6 +1325,9 @@ void ForceViewOpenGL::paintGL()
 
     // 准备帧数据（分离出来的数据准备逻辑）
     prepareFrame();
+
+    // 若后台 MSDF atlas 构建已有结果，先应用到当前 fontAtlas
+    applyMsdfAtlasResultIfReady();
 
     // 使用缓存的数据进行渲染
     auto drawNodeBatch = [&](const std::vector<float>& data) {
@@ -1362,7 +1465,9 @@ void ForceViewOpenGL::wheelEvent(QWheelEvent* event)
     bool zoomIn = event->angleDelta().y() > 0;
     float factor = zoomIn ? kZoomWheelFactor : 1.0f / kZoomWheelFactor;
     float newZoom = m_zoom * factor;
-    if (newZoom < kZoomMin || newZoom > kZoomMax) { event->accept(); return; }
+    // 使用夹紧而不是直接拒绝，这样即使当前 m_zoom 已经小于 kZoomMin，
+    // 第一次滚轮放大也能把缩放拉回到有效区间，避免“缩放死锁”
+    newZoom = qBound(kZoomMin, newZoom, kZoomMax);
 
     QPointF pos = event->position();
     float sx = static_cast<float>(pos.x()), sy = static_cast<float>(pos.y());
@@ -1576,7 +1681,8 @@ void ForceViewOpenGL::add_node_runtime(const QString& nodeId, float x, float y,
     // 更新显示半径
     updateFactor();
 
-    rebuildMsdfAtlas();
+    // 节点/标签结构变更后触发异步 atlas 重建
+    startMsdfAtlasBuildAsync();
 
     // 同步渲染位置
     m_physicsState->syncDragPosFromPos();
@@ -1652,7 +1758,8 @@ void ForceViewOpenGL::remove_node_runtime(const QString& nodeId)
     // 更新显示半径
     updateFactor();
 
-    rebuildMsdfAtlas();
+    // 节点/标签结构变更后触发异步 atlas 重建
+    startMsdfAtlasBuildAsync();
 
     // 重启仿真以应用变化
     if (m_simulation) {
@@ -1908,7 +2015,8 @@ void ForceViewOpenGL::apply_diff_runtime(const QVariantList& diffList)
     if (m_hoverIndex >= 0) updateNeighborMaskForHover(m_hoverIndex);
 
     updateFactor();
-    rebuildMsdfAtlas();
+    // 批量 diff 修改节点/标签后，触发异步 atlas 重建
+    startMsdfAtlasBuildAsync();
     m_physicsState->syncDragPosFromPos();
 
     if (m_simulation) {

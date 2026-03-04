@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cmath>
 #include <unordered_set>
+#include <utility>
 
 namespace {
 
@@ -51,6 +52,48 @@ float clamp01(float value)
 MsdfFontAtlas::~MsdfFontAtlas()
 {
     clear();
+}
+
+bool MsdfFontAtlas::applyAtlasData(const AtlasData& data)
+{
+    if (data.width <= 0 || data.height <= 0) {
+        return false;
+    }
+
+    m_config = data.config;
+    m_atlasWidth = data.width;
+    m_atlasHeight = data.height;
+    m_atlasPixels = data.pixels;
+    m_glyphs = data.glyphs;
+    m_kerningCache.clear();
+    // 每次应用新图集时递增 generation，便于外部检测变化
+    m_generation += 1;
+    m_ascender = data.ascender;
+    m_descender = data.descender;
+    m_lineHeight = data.lineHeight;
+    m_ready = true;
+    return true;
+}
+
+bool MsdfFontAtlas::applyAtlasData(AtlasData&& data)
+{
+    if (data.width <= 0 || data.height <= 0) {
+        return false;
+    }
+
+    m_config = std::move(data.config);
+    m_atlasWidth = data.width;
+    m_atlasHeight = data.height;
+    m_atlasPixels = std::move(data.pixels);
+    m_glyphs = std::move(data.glyphs);
+    m_kerningCache.clear();
+    // å§£å¿”î‚¼æ´æ—‚æ•¤é‚æ¿æµ˜é—†å—˜æ¤‚é–«æŽ‘î–ƒ generationé”›å±¼ç©¶æµœåº¡î˜»é–®ã„¦î—…å¨´å¬ªå½‰é–?
+    m_generation += 1;
+    m_ascender = data.ascender;
+    m_descender = data.descender;
+    m_lineHeight = data.lineHeight;
+    m_ready = true;
+    return true;
 }
 
 /// 初始化：加载字体、初始化 FreeType，并查询字体度量
@@ -113,18 +156,30 @@ bool MsdfFontAtlas::queryFontMetrics()
 }
 
 /**
- * 根据标签列表构建 MSDF 图集。
- * 1. 收集所有标签中的 Unicode 码点（含空格和问号作为后备）
- * 2. 对每个码点生成 MSDF 位图
- * 3. 将位图打包到一张纹理中（矩形装箱）
- * 4. 记录每个字形的 UV 坐标、advance、平面边界等
+ * 根据标签列表构建 MSDF 图集（同步版本，直接写入当前实例）。
+ * 后台线程请使用 BuildAtlasStandalone，然后在 UI 线程中通过 applyAtlasData 应用结果。
  */
 bool MsdfFontAtlas::buildForLabels(const QStringList& labels, QString* errorMessage)
+{
+    AtlasData data;
+    if (!buildAtlasData(labels, data, errorMessage))
+        return false;
+
+    // 使用新的 atlas 数据更新当前实例
+    // generation 使用递增策略，便于外部检测变化
+    data.generation = m_generation + 1;
+    return applyAtlasData(data);
+}
+
+bool MsdfFontAtlas::buildAtlasData(const QStringList& labels, AtlasData& out, QString* errorMessage)
 {
     if (!m_ready || !m_font) {
         setError(errorMessage, QStringLiteral("MSDF font atlas is not initialized."));
         return false;
     }
+
+    out = AtlasData{};
+    out.config = m_config;
 
     // 待打包字形：含 MSDF 位图及在图集中的位置
     struct PendingGlyph {
@@ -285,12 +340,30 @@ bool MsdfFontAtlas::buildForLabels(const QStringList& labels, QString* errorMess
         newGlyphs[pg.info.codepoint] = pg.info;
     }
 
-    m_atlasWidth = atlasW;
-    m_atlasHeight = atlasH;
-    m_atlasPixels.swap(pixels);
-    m_glyphs.swap(newGlyphs);
-    m_kerningCache.clear();
-    ++m_generation;
+    out.width = atlasW;
+    out.height = atlasH;
+    out.pixels.swap(pixels);
+    out.glyphs.swap(newGlyphs);
+    out.ascender = m_ascender;
+    out.descender = m_descender;
+    out.lineHeight = m_lineHeight;
+    return true;
+}
+
+bool MsdfFontAtlas::BuildAtlasStandalone(const Config& cfg,
+                                         const QStringList& labels,
+                                         AtlasData& out,
+                                         QString* errorMessage)
+{
+    MsdfFontAtlas tmp;
+    if (!tmp.initialize(cfg, errorMessage)) {
+        return false;
+    }
+    if (!tmp.buildAtlasData(labels, out, errorMessage)) {
+        return false;
+    }
+    // generation 由调用方在应用数据时决定，这里保持默认值 0
+    out.generation = 0;
     return true;
 }
 

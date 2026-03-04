@@ -32,11 +32,29 @@ public:
         float v1 = 0.0f;
     };
 
+    struct AtlasData {
+        Config config;
+        std::vector<unsigned char> pixels;
+        int width = 0;
+        int height = 0;
+        std::unordered_map<uint32_t, GlyphInfo> glyphs;
+        double ascender = 0.0;
+        double descender = 0.0;
+        double lineHeight = 1.0;
+        int generation = 0;
+    };
+
     MsdfFontAtlas() = default;
     ~MsdfFontAtlas();
 
     bool initialize(const Config& config, QString* errorMessage = nullptr);
     bool buildForLabels(const QStringList& labels, QString* errorMessage = nullptr);
+    bool applyAtlasData(const AtlasData& data);
+    bool applyAtlasData(AtlasData&& data);
+    static bool BuildAtlasStandalone(const Config& cfg,
+                                     const QStringList& labels,
+                                     AtlasData& out,
+                                     QString* errorMessage = nullptr);
 
     const GlyphInfo* findGlyph(uint32_t codepoint) const;
     bool hasGlyph(uint32_t codepoint) const;
@@ -57,6 +75,7 @@ public:
     float targetInnerPixels() const { return 32.0f; }
 
 private:
+    bool buildAtlasData(const QStringList& labels, AtlasData& out, QString* errorMessage);
     bool queryFontMetrics();
 
     void* m_freetype = nullptr;

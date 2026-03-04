@@ -25,9 +25,9 @@
 #include "PhysicsState.h"
 #include "Simulation.h"
 #include "Forces.h"
+#include "MsdfFontAtlas.h"
 
 class GraphRenderer;
-class MsdfFontAtlas;
 class MsdfTextRenderer;
 
 #ifdef BINDINGS_BUILD
@@ -317,6 +317,12 @@ private:
         float totalWidth; // em-normalized total width (with kerning)
         std::vector<GlyphQuad> quads;
     };
+    struct MsdfAtlasBuildResult {
+        MsdfFontAtlas::AtlasData data;
+        bool success = false;
+        QString error;
+        int buildId = 0;
+    };
     std::unique_ptr<MsdfFontAtlas> m_fontAtlas;
     std::unique_ptr<MsdfTextRenderer> m_textRenderer;
     float m_msdfFontSize = 8.0f;
@@ -326,8 +332,17 @@ private:
     std::vector<float> m_textVerticesDim;    // 融入背景的文字（先画）
     std::vector<float> m_textVerticesRest;   // 正常文字（后画，压在上层）
     std::vector<float> m_textVerticesHover;  // 悬停放大文字（单独绘制以匹配缩放的 pxRange）
+    // 后台 MSDF atlas 构建线程状态
+    std::thread m_msdfAtlasThread;
+    std::atomic<bool> m_msdfAtlasThreadRunning{false};
+    std::mutex m_msdfAtlasMutex;
+    bool m_msdfAtlasResultReady = false;
+    MsdfAtlasBuildResult m_msdfAtlasResult;
+    int m_msdfAtlasBuildId = 0;
 
     void rebuildMsdfAtlas();
+    void startMsdfAtlasBuildAsync();
+    void applyMsdfAtlasResultIfReady();
     void rebuildLabelLayoutCache();
     void buildTextVertices();
 
