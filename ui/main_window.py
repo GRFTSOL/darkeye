@@ -6,7 +6,7 @@ import logging
 from config import ICONS_PATH,APP_VERSION,set_max_window
 from controller.ShortcutRegistry import ShortcutRegistry
 from controller.ShortcutBindings import setup_mainwindow_actions#这个准备数据的操作是可以放在后台的但是QAction一定要放主线程
-from ui.widgets.Sidebar2 import Sidebar2
+from darkeye_ui.components import Sidebar2
 from ui.navigation.router import Router
 from controller.GlobalSignalBus import global_signals
 

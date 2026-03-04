@@ -1,46 +1,65 @@
+# darkeye_ui/components/sidebar2.py - 侧边栏导航组件
+"""侧边栏：八边形按钮列，hover 呼出 tooltip，点击选中，令牌驱动。"""
+from pathlib import Path
+from typing import Optional, Sequence, Union
+
 from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Signal
 from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from config import ICONS_PATH
-from app_context import get_theme_manager
-from darkeye_ui.components import CalloutTooltip, ChamferButton
-from darkeye_ui.design.icon import BUILTIN_ICONS
+from .callout_tooltip import CalloutTooltip
+from .chamfer_button import ChamferButton
+from ..design.icon import BUILTIN_ICONS
+
+# menu_defs: [(menu_id, text, icon_name), ...]
+# icon_name: 内置键（如 "mars"）或 .svg 文件名 / 其他文件名，需 icons_base_path
+MenuDef = tuple[str, str, str]
 
 
-def _resolve_icon(icon_name: str | None):
+def _resolve_icon(
+    icon_name: str | None,
+    icons_base_path: Path | None,
+) -> tuple[Optional[str], Optional[Path]]:
     """将 menu_defs 的 icon_name 解析为 ChamferButton 的 icon_name / icon_path。
-    .svg 结尾的：从 config 取 ICONS_PATH 拼成完整路径；否则尝试按 builtin 键匹配。
+    - 内置键：直接返回 (icon_name, None)
+    - .svg 或路径：需要 icons_base_path，返回 (None, full_path)
     """
     if not icon_name:
         return None, None
-    if icon_name.endswith(".svg"):
-        return None, ICONS_PATH / icon_name
     if icon_name in BUILTIN_ICONS:
         return icon_name, None
-    return None, ICONS_PATH / icon_name
+    if icons_base_path is not None:
+        return None, icons_base_path / icon_name
+    # 回退：尝试从应用 config 获取（兼容旧用法）
+    try:
+        from config import ICONS_PATH  # type: ignore[import-untyped]
+        return None, Path(ICONS_PATH) / icon_name
+    except Exception:
+        return None, None
 
 
 class Sidebar2(QWidget):
     """
-    简化版侧边栏：
-    - 只保留一列八边形按钮
-    - 所有按钮在侧边栏中垂直居中
-    - hover 显示 tooltip，点击发射 menu_id
-    - 尽量兼容现有 Sidebar 的接口（itemClicked / selectedChanged / select 等）
+    侧边栏导航：一列八边形按钮，垂直居中。
+    - menu_defs: [(menu_id, text, icon_name), ...]，icon_name 为 builtin 键或文件名
+    - icons_base_path: 外部图标根路径，None 时优先用 config.ICONS_PATH（应用内）
+    - hover 显示 callout tooltip
+    - 支持 itemClicked / selectedChanged / select / get_selected_id / clear_selection
     """
 
     itemClicked = Signal(str)
     selectedChanged = Signal(str)
 
-    def __init__(self, menu_defs=None, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        menu_defs: Sequence[MenuDef] | None = None,
+        icons_base_path: Optional[Union[str, Path]] = None,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
 
-        # 与旧 Sidebar 接口保持一致
-        if menu_defs is None:
-            self.menu_defs = []
-        else:
-            self.menu_defs = menu_defs
+        self.menu_defs = list(menu_defs) if menu_defs else []
+        base = Path(icons_base_path) if icons_base_path else None
 
         self._buttons: dict[str, ChamferButton] = {}
         self._current_id: str | None = None
@@ -51,20 +70,18 @@ class Sidebar2(QWidget):
         self._hovered_btn: ChamferButton | None = None
         self._hovered_text: str = ""
 
-        # 背景：用 paintEvent 绘制八边形（直倒角），不用圆角
         self.setFixedWidth(72)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet("Sidebar2 { background-color: transparent; }")
         self.setAutoFillBackground(False)
 
-        # 布局：按钮整体垂直居中
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
         layout.addStretch(1)
         for mid, text, icon_name in self.menu_defs:
-            iname, ipath = _resolve_icon(icon_name)
+            iname, ipath = _resolve_icon(icon_name, base)
             btn = ChamferButton(
                 text=text,
                 icon_name=iname,
@@ -82,15 +99,18 @@ class Sidebar2(QWidget):
         self._btn_to_text = {self._buttons[mid]: text for mid, text, _ in self.menu_defs}
         layout.addStretch(1)
 
-        # 默认选中第一个
         if self.menu_defs:
             first_id = self.menu_defs[0][0]
             if first_id in self._buttons:
                 self._current_id = first_id
                 self._buttons[first_id].set_selected(True)
 
-        # 令牌驱动：背景色随主题切换；callout tooltip 随主题刷新
-        theme_mgr = get_theme_manager()
+        theme_mgr = None
+        try:
+            from app_context import get_theme_manager  # type: ignore[import-untyped]
+            theme_mgr = get_theme_manager()
+        except Exception:
+            pass
         if theme_mgr is not None:
             theme_mgr.themeChanged.connect(self.update)
             theme_mgr.themeChanged.connect(self._callout_tooltip.update)
@@ -114,11 +134,9 @@ class Sidebar2(QWidget):
             self._callout_tooltip.show_for(self._hovered_btn, self._hovered_text)
 
     def paintEvent(self, event) -> None:  # type: ignore[override]
-        """绘制侧边栏整体背景为八边形（直倒角），上下留白 20px，左右各 5px。"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
-        # 上下空白 20px，左右各 5px
         r = self.rect().adjusted(5, 20, -5, -20)
         w, h = r.width(), r.height()
         x, y = r.x(), r.y()
@@ -135,20 +153,21 @@ class Sidebar2(QWidget):
         path.lineTo(x, y + chamfer)
         path.closeSubpath()
 
-        # 背景色由令牌控制（color_bg_input 用于侧边栏等次级面板）
-        color_str = "#D4ECD7"  # 回退默认
-        theme_mgr = get_theme_manager()
-        if theme_mgr is not None:
-            tokens = theme_mgr.tokens()
-            color_str = getattr(tokens, "color_bg_input", color_str)
+        color_str = "#D4ECD7"
+        try:
+            from app_context import get_theme_manager  # type: ignore[import-untyped]
+            theme_mgr = get_theme_manager()
+            if theme_mgr is not None:
+                tokens = theme_mgr.tokens()
+                color_str = getattr(tokens, "color_bg_input", color_str)
+        except Exception:
+            pass
         c = QColor(color_str)
         painter.setPen(QPen(c, 1))
         painter.setBrush(QBrush(c))
         painter.drawPath(path)
 
-    # --------- 兼容接口 ---------
     def _on_button_clicked(self, menu_id: str) -> None:
-        # 与旧 Sidebar 一样：点击当前按钮再次会取消选中，并发射空 selectedChanged
         if self._current_id == menu_id:
             btn = self._buttons.get(menu_id)
             if btn:
@@ -168,7 +187,7 @@ class Sidebar2(QWidget):
 
         self.itemClicked.emit(menu_id)
 
-    def get_selected_id(self):
+    def get_selected_id(self) -> str | None:
         return self._current_id
 
     def clear_selection(self) -> None:
@@ -195,9 +214,5 @@ class Sidebar2(QWidget):
             self.selectedChanged.emit(menu_id)
 
     def toggle_menu(self) -> None:
-        """
-        为兼容旧 Sidebar 接口而保留的空方法。
-        Sidebar2 不再提供展开/折叠动画。
-        """
+        """兼容旧 Sidebar 接口，无实现。"""
         pass
-

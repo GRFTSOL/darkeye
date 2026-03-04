@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QStackedWidget, QWidget
 from PySide6.QtCore import QObject
 import logging
 from typing import Dict, Any, Optional, Callable, Union
-from ui.widgets.Sidebar2 import Sidebar2
+from darkeye_ui.components import Sidebar2
 
 class Router(QObject):
     _instance = None

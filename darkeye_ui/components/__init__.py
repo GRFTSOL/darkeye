@@ -11,6 +11,7 @@ from .heart_rating_widget import HeartRatingWidget
 from .icon_push_button import IconPushButton
 from .rotate_button import RotateButton
 from .shake_button import ShakeButton
+from .sidebar2 import Sidebar2
 from .input import LineEdit, PlainTextEdit, TextEdit
 from .label import Label
 from .oct_image import OctImage
@@ -41,6 +42,7 @@ __all__ = [
     "IconPushButton",
     "RotateButton",
     "ShakeButton",
+    "Sidebar2",
     "Label",
     "LineEdit",
     "PlainTextEdit",
