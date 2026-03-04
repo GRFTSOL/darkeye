@@ -4,6 +4,7 @@
 #include "MsdfTextRenderer.h"
 
 #include <QSurfaceFormat>
+#include <QFileInfo>
 
 #include <cmath>
 #include <chrono>
@@ -23,6 +24,8 @@ static double nowSec()
 ForceViewOpenGL::ForceViewOpenGL(QWidget* parent)
     : QOpenGLWidget(parent)
 {
+    m_fontPath = detectDefaultFontPath();
+
     QSurfaceFormat fmt;
     fmt.setVersion(3, 3);
     fmt.setProfile(QSurfaceFormat::CoreProfile);
@@ -53,6 +56,70 @@ ForceViewOpenGL::~ForceViewOpenGL()
     stopSimThread();
     if (m_renderTimer) m_renderTimer->stop();
     if (m_idleTimer) m_idleTimer->stop();
+}
+
+// =====================================================================
+// Font path
+// =====================================================================
+
+QString ForceViewOpenGL::detectDefaultFontPath()
+{
+    static const char* const candidates[] = {
+#ifdef Q_OS_WIN
+        "C:/Windows/Fonts/msyh.ttc",
+        "C:/Windows/Fonts/msyhl.ttc",
+        "C:/Windows/Fonts/simhei.ttf",
+        "C:/Windows/Fonts/simsun.ttc",
+        "C:/Windows/Fonts/arial.ttf",
+#elif defined(Q_OS_MAC)
+        "/System/Library/Fonts/PingFang.ttc",
+        "/System/Library/Fonts/STHeiti Light.ttc",
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/Library/Fonts/Arial.ttf",
+#else
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+#endif
+    };
+
+    for (const char* path : candidates) {
+        if (QFileInfo::exists(QString::fromUtf8(path)))
+            return QString::fromUtf8(path);
+    }
+    return QString();
+}
+
+MsdfFontAtlas::Config ForceViewOpenGL::makeFontConfig() const
+{
+    MsdfFontAtlas::Config cfg;
+    cfg.fontPath = m_fontPath;
+    cfg.atlasWidth = 2048;
+    cfg.atlasHeight = 2048;
+    cfg.pxRange = 6.0f;
+    return cfg;
+}
+
+void ForceViewOpenGL::setFontPath(const QString& path)
+{
+    if (m_fontPath == path) return;
+    m_fontPath = path;
+
+    if (m_fontAtlas && m_glReady) {
+        m_fontAtlas->initialize(makeFontConfig());
+        m_labelLayoutCache.clear();
+        m_labelLayoutByIndex.clear();
+        if (!m_labels.isEmpty())
+            startMsdfAtlasBuildAsync();
+        requestRenderActivity();
+    }
+}
+
+QString ForceViewOpenGL::fontPath() const
+{
+    return m_fontPath;
 }
 
 // =====================================================================
@@ -155,7 +222,6 @@ void ForceViewOpenGL::simLoop()
             if (didTick) {
                 emit tickTimeUpdated(elapsed);
                 emit alphaUpdated(alphaVal);
-                if (lastActive && !active) emit simulationStopped();
             }
             lastActive = active;
             if (!didTick) {
@@ -279,12 +345,7 @@ void ForceViewOpenGL::initializeGL()
 
 
     m_fontAtlas = std::make_unique<MsdfFontAtlas>();
-    MsdfFontAtlas::Config fontCfg;
-    fontCfg.fontPath = QStringLiteral("C:/Windows/Fonts/msyh.ttc");
-    fontCfg.atlasWidth = 2048;
-    fontCfg.atlasHeight = 2048;
-    fontCfg.pxRange = 6.0f;
-    m_fontAtlas->initialize(fontCfg);
+    m_fontAtlas->initialize(makeFontConfig());
 
     m_textRenderer = std::make_unique<MsdfTextRenderer>();
     m_textRenderer->initialize(this);

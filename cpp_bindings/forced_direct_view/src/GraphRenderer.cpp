@@ -1,4 +1,5 @@
 #include "GraphRenderer.h"
+#include "GLShaderUtils.h"
 
 #include <QDebug>
 #include <QOpenGLFunctions_3_3_Core>
@@ -135,46 +136,6 @@ void main() {
     fragColor = vec4(vColor.rgb * (vColor.a * alpha), vColor.a * alpha);
 }
 )";
-
-// 功能：编译 GLSL 着色器，返回 Shader 对象 ID；失败返回 0
-static unsigned int compileShader(QOpenGLFunctions_3_3_Core* gl, unsigned int type, const char* src)
-{
-    unsigned int sh = gl->glCreateShader(type);
-    gl->glShaderSource(sh, 1, &src, nullptr);
-    gl->glCompileShader(sh);
-    int ok = 0;
-    gl->glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
-    if (!ok) {
-        char buf[512];
-        gl->glGetShaderInfoLog(sh, sizeof(buf), nullptr, buf);
-        qCritical("GraphRenderer: %s shader compile failed:\n%s",
-            type == GL_VERTEX_SHADER ? "Vertex" : "Fragment", buf);
-        gl->glDeleteShader(sh);
-        return 0;
-    }
-    return sh;
-}
-
-// 功能：链接顶点和片元着色器为程序对象；失败返回 0
-static unsigned int linkProgram(QOpenGLFunctions_3_3_Core* gl, unsigned int vs, unsigned int fs)
-{
-    unsigned int prog = gl->glCreateProgram();
-    gl->glAttachShader(prog, vs);
-    gl->glAttachShader(prog, fs);
-    gl->glLinkProgram(prog);
-    gl->glDeleteShader(vs);
-    gl->glDeleteShader(fs);
-    int ok = 0;
-    gl->glGetProgramiv(prog, GL_LINK_STATUS, &ok);
-    if (!ok) {
-        char buf[512];
-        gl->glGetProgramInfoLog(prog, sizeof(buf), nullptr, buf);
-        qCritical("GraphRenderer: program link failed:\n%s", buf);
-        gl->glDeleteProgram(prog);
-        return 0;
-    }
-    return prog;
-}
 
 bool GraphRenderer::initialize(QOpenGLFunctions_3_3_Core* gl)
 {

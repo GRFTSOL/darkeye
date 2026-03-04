@@ -341,7 +341,9 @@ void CollisionForce::applyGrid(float alpha)
     };
     struct CellHash {
         size_t operator()(const CellKey& c) const {
-            return size_t(c.x) * 31u + size_t(c.y);
+            size_t h = static_cast<size_t>(c.x) * 0x9e3779b97f4a7c15ULL;
+            h ^= static_cast<size_t>(c.y) * 0x517cc1b727220a95ULL;
+            return h;
         }
     };
     std::unordered_map<CellKey, std::vector<int>, CellHash> grid;

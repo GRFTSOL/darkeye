@@ -1,4 +1,5 @@
 #include "MsdfTextRenderer.h"
+#include "GLShaderUtils.h"
 
 #include <QOpenGLFunctions_3_3_Core>
 
@@ -37,39 +38,6 @@ void main() {
 }
 )";
 
-static unsigned int compileShader(QOpenGLFunctions_3_3_Core* gl, unsigned int type, const char* src)
-{
-    unsigned int s = gl->glCreateShader(type);
-    gl->glShaderSource(s, 1, &src, nullptr);
-    gl->glCompileShader(s);
-    int ok = 0;
-    gl->glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
-    if (!ok) {
-        char log[512];
-        gl->glGetShaderInfoLog(s, 512, nullptr, log);
-        gl->glDeleteShader(s);
-        return 0;
-    }
-    return s;
-}
-
-static unsigned int linkProgram(QOpenGLFunctions_3_3_Core* gl, unsigned int vs, unsigned int fs)
-{
-    unsigned int p = gl->glCreateProgram();
-    gl->glAttachShader(p, vs);
-    gl->glAttachShader(p, fs);
-    gl->glLinkProgram(p);
-    int ok = 0;
-    gl->glGetProgramiv(p, GL_LINK_STATUS, &ok);
-    if (!ok) {
-        char log[512];
-        gl->glGetProgramInfoLog(p, 512, nullptr, log);
-        gl->glDeleteProgram(p);
-        return 0;
-    }
-    return p;
-}
-
 bool MsdfTextRenderer::initialize(QOpenGLFunctions_3_3_Core* gl)
 {
     m_gl = gl;
@@ -82,8 +50,6 @@ bool MsdfTextRenderer::initialize(QOpenGLFunctions_3_3_Core* gl)
         return false;
     }
     m_program = linkProgram(gl, vs, fs);
-    gl->glDeleteShader(vs);
-    gl->glDeleteShader(fs);
     if (!m_program) return false;
 
     m_uniformMvp = gl->glGetUniformLocation(m_program, "uMVP");

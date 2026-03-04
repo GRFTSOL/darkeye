@@ -17,11 +17,7 @@ void ForceViewOpenGL::startMsdfAtlasBuildAsync()
         m_msdfAtlasThread.join();
     }
 
-    MsdfFontAtlas::Config cfg;
-    cfg.fontPath = QStringLiteral("C:/Windows/Fonts/msyh.ttc");
-    cfg.atlasWidth = 2048;
-    cfg.atlasHeight = 2048;
-    cfg.pxRange = 6.0f;
+    const MsdfFontAtlas::Config cfg = makeFontConfig();
 
     const QStringList labels = m_labels;
     const int buildId = m_msdfAtlasBuildId;

@@ -11,6 +11,26 @@
 #include <algorithm>
 #include <mutex>
 
+bool ForceViewOpenGL::removeNodeInternal(int indexToRemove)
+{
+    const int lastNodeIndex = m_physicsState->nNodes - 1;
+    if (!m_physicsState->removeNode(indexToRemove)) return false;
+
+    if (indexToRemove != lastNodeIndex && lastNodeIndex >= 0 && lastNodeIndex < m_ids.size()) {
+        m_ids[indexToRemove] = m_ids[lastNodeIndex];
+        if (lastNodeIndex < m_labels.size()) m_labels[indexToRemove] = m_labels[lastNodeIndex];
+        if (lastNodeIndex < m_showRadiiBase.size()) m_showRadiiBase[indexToRemove] = m_showRadiiBase[lastNodeIndex];
+        if (lastNodeIndex < m_nodeColors.size()) m_nodeColors[indexToRemove] = m_nodeColors[lastNodeIndex];
+    }
+    if (lastNodeIndex >= 0 && lastNodeIndex < m_ids.size()) {
+        m_ids.removeAt(lastNodeIndex);
+        if (lastNodeIndex < m_labels.size()) m_labels.removeAt(lastNodeIndex);
+        if (lastNodeIndex < m_showRadiiBase.size()) m_showRadiiBase.removeAt(lastNodeIndex);
+        if (lastNodeIndex < m_nodeColors.size()) m_nodeColors.removeAt(lastNodeIndex);
+    }
+    return true;
+}
+
 void ForceViewOpenGL::add_node_runtime(const QString& nodeId, float x, float y,
                                          const QString& label, float radius,
                                          const QColor& color)
@@ -37,6 +57,8 @@ void ForceViewOpenGL::add_node_runtime(const QString& nodeId, float x, float y,
 
     updateFactor();
 
+    m_labelLayoutCache.clear();
+    m_labelLayoutByIndex.clear();
     startMsdfAtlasBuildAsync();
 
     m_physicsState->syncDragPosFromPos();
@@ -66,27 +88,12 @@ void ForceViewOpenGL::remove_node_runtime(const QString& nodeId)
 
     if (indexToRemove == -1) return;
 
-    const int lastNodeIndex = m_physicsState->nNodes - 1;
-
-    bool removed = m_physicsState->removeNode(indexToRemove);
-    if (!removed) return;
-
-    if (indexToRemove != lastNodeIndex && lastNodeIndex >= 0 && lastNodeIndex < m_ids.size()) {
-        m_ids[indexToRemove] = m_ids[lastNodeIndex];
-        if (lastNodeIndex < m_labels.size()) m_labels[indexToRemove] = m_labels[lastNodeIndex];
-        if (lastNodeIndex < m_showRadiiBase.size()) m_showRadiiBase[indexToRemove] = m_showRadiiBase[lastNodeIndex];
-        if (lastNodeIndex < m_nodeColors.size()) m_nodeColors[indexToRemove] = m_nodeColors[lastNodeIndex];
-    }
-    if (lastNodeIndex >= 0 && lastNodeIndex < m_ids.size()) {
-        m_ids.removeAt(lastNodeIndex);
-        if (lastNodeIndex < m_labels.size()) m_labels.removeAt(lastNodeIndex);
-        if (lastNodeIndex < m_showRadiiBase.size()) m_showRadiiBase.removeAt(lastNodeIndex);
-        if (lastNodeIndex < m_nodeColors.size()) m_nodeColors.removeAt(lastNodeIndex);
-    }
+    const int oldLastIndex = m_physicsState->nNodes - 1;
+    if (!removeNodeInternal(indexToRemove)) return;
 
     auto fixIdx = [&](int& idx) {
         if (idx == indexToRemove) idx = -1;
-        else if (idx == lastNodeIndex) idx = indexToRemove;
+        else if (idx == oldLastIndex) idx = indexToRemove;
     };
     fixIdx(m_hoverIndex);
     fixIdx(m_lastHoverIndex);
@@ -104,6 +111,8 @@ void ForceViewOpenGL::remove_node_runtime(const QString& nodeId)
 
     updateFactor();
 
+    m_labelLayoutCache.clear();
+    m_labelLayoutByIndex.clear();
     startMsdfAtlasBuildAsync();
 
     if (m_simulation) {
@@ -245,6 +254,11 @@ void ForceViewOpenGL::apply_diff_runtime(const QVariantList& diffList)
     }
 
     // 2) 删除节点
+    if (!delNodes.isEmpty()) {
+        m_hoverIndex = -1;
+        m_lastHoverIndex = -1;
+        m_selectedIndex = -1;
+    }
     for (const QVariantMap& m : delNodes) {
         const QString nodeId = m.value(QStringLiteral("id")).toString();
         if (nodeId.isEmpty()) continue;
@@ -255,29 +269,7 @@ void ForceViewOpenGL::apply_diff_runtime(const QVariantList& diffList)
         }
         if (indexToRemove < 0) continue;
 
-        const int lastNodeIndex = m_physicsState->nNodes - 1;
-        if (!m_physicsState->removeNode(indexToRemove)) continue;
-
-        if (indexToRemove != lastNodeIndex && lastNodeIndex >= 0 && lastNodeIndex < m_ids.size()) {
-            m_ids[indexToRemove] = m_ids[lastNodeIndex];
-            if (lastNodeIndex < m_labels.size()) m_labels[indexToRemove] = m_labels[lastNodeIndex];
-            if (lastNodeIndex < m_showRadiiBase.size()) m_showRadiiBase[indexToRemove] = m_showRadiiBase[lastNodeIndex];
-            if (lastNodeIndex < m_nodeColors.size()) m_nodeColors[indexToRemove] = m_nodeColors[lastNodeIndex];
-        }
-        if (lastNodeIndex >= 0 && lastNodeIndex < m_ids.size()) {
-            m_ids.removeAt(lastNodeIndex);
-            if (lastNodeIndex < m_labels.size()) m_labels.removeAt(lastNodeIndex);
-            if (lastNodeIndex < m_showRadiiBase.size()) m_showRadiiBase.removeAt(lastNodeIndex);
-            if (lastNodeIndex < m_nodeColors.size()) m_nodeColors.removeAt(lastNodeIndex);
-        }
-
-        auto fixIdx = [&](int& idx) {
-            if (idx == indexToRemove) idx = -1;
-            else if (idx == lastNodeIndex) idx = indexToRemove;
-        };
-        fixIdx(m_hoverIndex);
-        fixIdx(m_lastHoverIndex);
-        fixIdx(m_selectedIndex);
+        removeNodeInternal(indexToRemove);
     }
 
     // 3) 添加节点
