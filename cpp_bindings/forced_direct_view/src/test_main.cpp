@@ -4,8 +4,8 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QGroupBox>
-#include <QRadioButton>
-#include <QButtonGroup>
+#include <QSpinBox>
+#include <QPushButton>
 #include <QVector>
 #include <QStringList>
 #include <QDebug>
@@ -17,7 +17,7 @@
 
 /**
  * Standalone test: creates a ForceViewOpenGL with a random graph.
- * Radio buttons allow switching between three pre-generated graphs (999, 1001, 10000 nodes).
+ * Input box + button allow generating graphs with user-specified node count (default 400).
  */
 
 static void generateRandomGraph(int nNodes, int avgDegree, unsigned int seed,
@@ -70,17 +70,12 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
 
-    // Pre-generate three graph datasets
-    QVector<int>   edges1, edges2, edges3;
-    QVector<float> pos1, pos2, pos3;
-    QStringList    ids1, ids2, ids3;
-    QStringList    labels1, labels2, labels3;
-    QVector<float> radii1, radii2, radii3;
-    QVector<QColor> nodeColors1, nodeColors2, nodeColors3;
-
-    generateRandomGraph(999, 1, 42u, edges1, pos1, ids1, labels1, radii1, nodeColors1);
-    generateRandomGraph(1001, 1, 99u, edges2, pos2, ids2, labels2, radii2, nodeColors2);
-    generateRandomGraph(10000, 1, 123u, edges3, pos3, ids3, labels3, radii3, nodeColors3);
+    // Graph data (generated on demand)
+    QVector<int>   edges;
+    QVector<float> pos;
+    QStringList    ids, labels;
+    QVector<float> radii;
+    QVector<QColor> nodeColors;
 
     // Main window
     QMainWindow mainWin;
@@ -104,19 +99,16 @@ int main(int argc, char* argv[])
     QGroupBox* groupBox = new QGroupBox("切换图", panel);
     QVBoxLayout* groupLayout = new QVBoxLayout(groupBox);
 
-    QRadioButton* rb1 = new QRadioButton("图1 (999节点)", groupBox);
-    QRadioButton* rb2 = new QRadioButton("图2 (1001节点)", groupBox);
-    QRadioButton* rb3 = new QRadioButton("图3 (10000节点)", groupBox);
-    rb1->setChecked(true);
+    QSpinBox* nodeCountSpin = new QSpinBox(groupBox);
+    nodeCountSpin->setRange(1, 100000);
+    nodeCountSpin->setValue(400);
+    nodeCountSpin->setSuffix(" 节点");
 
-    QButtonGroup* btnGroup = new QButtonGroup(central);
-    btnGroup->addButton(rb1, 0);
-    btnGroup->addButton(rb2, 1);
-    btnGroup->addButton(rb3, 2);
+    QPushButton* applyBtn = new QPushButton("切换", groupBox);
 
-    groupLayout->addWidget(rb1);
-    groupLayout->addWidget(rb2);
-    groupLayout->addWidget(rb3);
+    groupLayout->addWidget(new QLabel("节点数量:", groupBox));
+    groupLayout->addWidget(nodeCountSpin);
+    groupLayout->addWidget(applyBtn);
     panelLayout->addWidget(groupBox);
 
     // 性能信息面板：展示 tick / paint 耗时与 FPS
@@ -136,21 +128,15 @@ int main(int argc, char* argv[])
 
     mainWin.setCentralWidget(central);
 
-    // Apply graph based on selected radio button
-    auto applyGraph = [view, &edges1, &pos1, &ids1, &labels1, &radii1, &nodeColors1,
-                       &edges2, &pos2, &ids2, &labels2, &radii2, &nodeColors2,
-                       &edges3, &pos3, &ids3, &labels3, &radii3, &nodeColors3](int id) {
-        if (id == 0) {
-            view->setGraph(999, edges1, pos1, ids1, labels1, radii1, nodeColors1);
-        } else if (id == 1) {
-            view->setGraph(1001, edges2, pos2, ids2, labels2, radii2, nodeColors2);
-        } else {
-            view->setGraph(10000, edges3, pos3, ids3, labels3, radii3, nodeColors3);
-        }
+    auto applyGraph = [view, &edges, &pos, &ids, &labels, &radii, &nodeColors](int nNodes) {
+        generateRandomGraph(nNodes, 1, static_cast<unsigned int>(nNodes * 42u), edges, pos, ids, labels, radii, nodeColors);
+        view->setGraph(nNodes, edges, pos, ids, labels, radii, nodeColors);
     };
 
-    QObject::connect(btnGroup, &QButtonGroup::idClicked, applyGraph);
-    applyGraph(0);  // Default: graph 1
+    QObject::connect(applyBtn, &QPushButton::clicked, [applyGraph, nodeCountSpin]() {
+        applyGraph(nodeCountSpin->value());
+    });
+    applyGraph(nodeCountSpin->value());  // Default: 400 nodes on startup
 
     QObject::connect(view, &ForceViewOpenGL::nodeLeftClicked,
                      [](const QString& nodeId) { qDebug() << "Left-clicked node: id[" << nodeId << "]"; });
