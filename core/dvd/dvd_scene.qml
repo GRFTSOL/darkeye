@@ -1,4 +1,5 @@
 import QtQuick
+import QtCore
 import QtQuick3D
 import QtQuick3D.AssetUtils
 import QtQuick3D.Helpers
@@ -8,6 +9,9 @@ View3D {
     anchors.fill: parent
     camera: orbitCamera
     property int hoveredDelegateIndex: -1
+    property int selectedDelegateIndex: -1
+    property int expandedDelegateIndex: -1
+    property int pressedDelegateIndex: -1
 
     environment: SceneEnvironment {
         clearColor: "#1a1a2e"
@@ -84,8 +88,13 @@ View3D {
                 property string tex: (dvdTextureSources && index < dvdTextureSources.length)
                     ? dvdTextureSources[index] : "maps/0.png"
                 x: index * dvdSpacing
-                z: view3d.hoveredDelegateIndex === index ? 0.8 : 0
-                Behavior on z { NumberAnimation { duration: 120 } }
+                z: view3d.selectedDelegateIndex === index ? 1.5
+                    : (view3d.hoveredDelegateIndex === index ? 0.5 : 0)
+                eulerRotation.y: view3d.selectedDelegateIndex === index ? -90 : 0
+                // 以 DVD 几何中心为旋转轴，避免旋转时“飞走”
+                pivot: Qt.vector3d(-0.00979297 * modelScale, 5.68405e-05 * modelScale, -0.0676852 * modelScale)
+                Behavior on z { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+                Behavior on eulerRotation.y { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
                 Loader3D {
                     id: dvdLoader
                     source: dvdQmlUrl
@@ -98,6 +107,12 @@ View3D {
                             if (typeof item.textureSource !== "undefined") item.textureSource = tex
                             if (typeof item.delegateIndex !== "undefined") item.delegateIndex = index
                         }
+                    }
+                    Binding {
+                        target: dvdLoader.item
+                        property: "expanded"
+                        value: view3d.expandedDelegateIndex === index
+                        when: dvdLoader.item && typeof dvdLoader.item.expanded !== "undefined"
                     }
                 }
                 onTexChanged: {
@@ -127,27 +142,67 @@ View3D {
         anchors.fill: parent
         origin: orbitOrigin
         camera: orbitCamera
+        acceptedButtons: Qt.RightButton
+    }
+
+    function findDelegateIndex(obj) {
+        var n = obj
+        while (n) {
+            if (typeof n.delegateIndex !== "undefined" && n.delegateIndex >= 0)
+                return n.delegateIndex
+            n = n.parent
+        }
+        return -1
     }
 
     MouseArea {
+        z: 1
         anchors.fill: parent
         hoverEnabled: true
         propagateComposedEvents: true
         onPositionChanged: function(mouse) {
             var result = view3d.pick(mouse.x, mouse.y)
             if (result && result.objectHit) {
-                var hitParent = result.objectHit.parent
-                if (hitParent && typeof hitParent.delegateIndex !== "undefined" && hitParent.delegateIndex >= 0)
-                    view3d.hoveredDelegateIndex = hitParent.delegateIndex
-                else
-                    view3d.hoveredDelegateIndex = -1
+                view3d.hoveredDelegateIndex = view3d.findDelegateIndex(result.objectHit)
             } else {
                 view3d.hoveredDelegateIndex = -1
             }
             mouse.accepted = false
         }
-        onPressed: function(mouse) { mouse.accepted = false }
-        onReleased: function(mouse) { mouse.accepted = false }
+        onPressed: function(mouse) {
+            if (mouse.button !== Qt.LeftButton) {
+                mouse.accepted = false
+                return
+            }
+            var result = view3d.pick(mouse.x, mouse.y)
+            if (result && result.objectHit) {
+                view3d.pressedDelegateIndex = view3d.findDelegateIndex(result.objectHit)
+            } else {
+                view3d.pressedDelegateIndex = -1
+            }
+            mouse.accepted = true
+        }
+        onReleased: function(mouse) {
+            if (mouse.button !== Qt.LeftButton) {
+                mouse.accepted = false
+                return
+            }
+            if (view3d.pressedDelegateIndex >= 0) {
+                var idx = view3d.pressedDelegateIndex
+                if (view3d.selectedDelegateIndex === idx) {
+                    // 横着状态下再次点击：切换展开/收起
+                    view3d.expandedDelegateIndex = (view3d.expandedDelegateIndex === idx) ? -1 : idx
+                } else {
+                    view3d.selectedDelegateIndex = idx
+                    view3d.expandedDelegateIndex = -1
+                }
+            } else {
+                view3d.selectedDelegateIndex = -1
+                view3d.expandedDelegateIndex = -1
+            }
+            view3d.pressedDelegateIndex = -1
+            mouse.accepted = true
+        }
         onExited: view3d.hoveredDelegateIndex = -1
     }
 

@@ -39,7 +39,7 @@ def main() -> None:
     window = QMainWindow()
     window.setWindowTitle("Qt Quick 3D - DVD 模型")
     window.resize(800, 600)
-    dvd_count = 1000
+    dvd_count = 100
     quick_widget = QQuickWidget()
     ctx = quick_widget.rootContext()
     ctx.setContextProperty("modelUrl", "")  # 不使用外部 glb
