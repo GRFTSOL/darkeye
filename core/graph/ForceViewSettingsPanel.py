@@ -255,20 +255,17 @@ class ForceViewSettingsPanel(QScrollArea):
         self._color_buttons.extend(
             [self.color_actress, self.color_work, self.color_center, self.color_default]
         )
-        color_row = QHBoxLayout()
+        color_row = QVBoxLayout()
         color_row.addWidget(Label("女优"))
         color_row.addWidget(self.color_actress)
         color_row.addWidget(Label("作品"))
         color_row.addWidget(self.color_work)
+        color_row.addWidget(Label("中心"))
+        color_row.addWidget(self.color_center)
+        color_row.addWidget(Label("默认"))
+        color_row.addWidget(self.color_default)
         color_row.addStretch()
         display_form.addRow(Label("节点颜色"), color_row)
-        color_row2 = QHBoxLayout()
-        color_row2.addWidget(Label("中心"))
-        color_row2.addWidget(self.color_center)
-        color_row2.addWidget(Label("默认"))
-        color_row2.addWidget(self.color_default)
-        color_row2.addStretch()
-        display_form.addRow("", color_row2)
 
         display_section.addLayout(display_form)
 

@@ -27,6 +27,8 @@ from darkeye_ui.components.token_radio_button import TokenRadioButton
 from darkeye_ui.components.combo_box import ComboBox
 from darkeye_ui.components.token_key_sequence_edit import TokenKeySequenceEdit
 from darkeye_ui.components.color_picker import ColorPicker
+from darkeye_ui.components.toggle_switch import ToggleSwitch
+from controller.GlobalSignalBus import global_signals
 
 # 主题下拉选项与 ThemeId 顺序一致
 THEME_OPTIONS = [
@@ -77,9 +79,12 @@ class CommonPage(QWidget):
 
         self.color_picker.colorConfirmed.connect(self._on_primary_color_changed)
         self._update_primary_picker_state()
+        self.greenmode=ToggleSwitch()
 
         main_layout.addRow(Label("主色"), self.primary_color_row)
         main_layout.addRow(Label("主题"), self.theme_choose)
+        main_layout.addRow(Label("绿色模式"),self.greenmode)
+        self.greenmode.toggled.connect(global_signals.green_mode_changed.emit)
         #main_layout.addRow("字体选择",self.textchoose)
         #main_layout.addRow("字号选择",self.textsizechoose)
 
