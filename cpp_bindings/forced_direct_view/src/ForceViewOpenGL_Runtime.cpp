@@ -179,6 +179,11 @@ void ForceViewOpenGL::add_node_runtime(const QString& nodeId, float x, float y,
 
     m_labelLayoutCache.clear();
     m_labelLayoutByIndex.clear();
+    {
+        std::lock_guard<std::mutex> atlasLock(m_msdfAtlasMutex);
+        m_msdfAtlasResultReady = false;
+    }
+    ++m_msdfAtlasBuildId;
     startMsdfAtlasBuildAsync();
 
     m_physicsState->syncDragPosFromPos();
@@ -240,6 +245,11 @@ void ForceViewOpenGL::remove_node_runtime(const QString& nodeId)
 
     m_labelLayoutCache.clear();
     m_labelLayoutByIndex.clear();
+    {
+        std::lock_guard<std::mutex> atlasLock(m_msdfAtlasMutex);
+        m_msdfAtlasResultReady = false;
+    }
+    ++m_msdfAtlasBuildId;
     startMsdfAtlasBuildAsync();
 
     if (m_simulation) {
@@ -488,6 +498,13 @@ void ForceViewOpenGL::apply_diff_runtime(const QVariantList& diffList)
     if (m_hoverIndex >= 0) updateNeighborMaskForHover(m_hoverIndex);
 
     updateFactor();
+    m_labelLayoutCache.clear();
+    m_labelLayoutByIndex.clear();
+    {
+        std::lock_guard<std::mutex> atlasLock(m_msdfAtlasMutex);
+        m_msdfAtlasResultReady = false;
+    }
+    ++m_msdfAtlasBuildId;
     startMsdfAtlasBuildAsync();
     m_physicsState->syncDragPosFromPos();
 

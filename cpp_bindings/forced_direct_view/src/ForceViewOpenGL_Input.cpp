@@ -94,8 +94,19 @@ void ForceViewOpenGL::mouseMoveEvent(QMouseEvent* event)
         float nx, ny;
         screenToScene(sx, sy, nx, ny);
         nx += m_dragOffsetX; ny += m_dragOffsetY;
-        m_physicsState->setDragPos(m_selectedIndex, nx, ny);
-        m_physicsState->updateRenderPosAt(m_selectedIndex, nx, ny);
+        {
+            std::lock_guard<std::mutex> lock(m_simMutex);
+            if (!m_physicsState || m_selectedIndex < 0 || m_selectedIndex >= m_physicsState->nNodes) {
+                m_selectedIndex = -1;
+            } else {
+                m_physicsState->setDragPos(m_selectedIndex, nx, ny);
+                m_physicsState->updateRenderPosAt(m_selectedIndex, nx, ny);
+            }
+        }
+        if (m_selectedIndex < 0) {
+            QOpenGLWidget::mouseMoveEvent(event);
+            return;
+        }
         if (!m_dragging) {
             setDragging(m_selectedIndex, true);
             setCursor(Qt::PointingHandCursor);

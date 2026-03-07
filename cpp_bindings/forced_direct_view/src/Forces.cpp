@@ -189,7 +189,9 @@ void ManyBodyForce::applyBlock(float alpha, int block)
 
     for (int i0 = 0; i0 < N; i0 += block) {
         int i1 = std::min(i0 + block, N);
-        for (int j0 = 0; j0 < N; j0 += block) {
+        // Iterate upper-triangular block pairs only. Each unordered node pair
+        // must be processed exactly once because this kernel writes to both i and j.
+        for (int j0 = i0; j0 < N; j0 += block) {
             int j1 = std::min(j0 + block, N);
             for (int i = i0; i < i1; ++i) {
                 float xi = pos[2 * i];

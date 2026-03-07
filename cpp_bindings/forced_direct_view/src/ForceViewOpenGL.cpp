@@ -111,6 +111,11 @@ void ForceViewOpenGL::setFontPath(const QString& path)
         m_fontAtlas->initialize(makeFontConfig());
         m_labelLayoutCache.clear();
         m_labelLayoutByIndex.clear();
+        {
+            std::lock_guard<std::mutex> lock(m_msdfAtlasMutex);
+            m_msdfAtlasResultReady = false;
+        }
+        ++m_msdfAtlasBuildId;
         if (!m_labels.isEmpty())
             startMsdfAtlasBuildAsync();
         requestRenderActivity();

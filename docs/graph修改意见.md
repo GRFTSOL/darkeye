@@ -114,13 +114,10 @@ ForceViewOpenGL (QOpenGLWidget, 薄壳)
 ## 分阶段改造建议
 
 ### P0（先做稳定性）
-1. 统一线程入口：所有 runtime mutation 都转 GUI 线程执行。
-2. 修正 `setGraph` 对 `pos` 的契约实现。
-3. 统一 force 阈值常量与注释，消除文档漂移。
+
 
 ### P1（拆核心耦合）
 1. 抽离 `GraphDataStore`，收拢 `m_ids/m_labels/m_nodeColors/...`。
-2. `PhysicsState` 精简为纯仿真数据，不再处理拓扑业务逻辑。
 3. `SimulationController` 独立，封装线程和锁策略。
 
 ### P2（提性能上限）
