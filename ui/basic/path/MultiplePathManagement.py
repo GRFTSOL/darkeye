@@ -60,7 +60,7 @@ class ButtonDelegate(QStyledItemDelegate):
 
     def sizeHint(self, option, index):
         if index.row() in self.button_visible_rows:
-            return super().sizeHint(option, index) + QSize(20, 0)  # 稍宽一点
+            return super().sizeHint(option, index) + QSize(10, 0)  # 紧凑宽度
         return super().sizeHint(option, index)
 
 
@@ -91,7 +91,7 @@ class MultiplePathManagement(QWidget):
         self.table = TokenTableWidget()
         self.table.setColumnCount(2)
         self.table.setHorizontalHeaderLabels(["路径（双击输入或选按钮）", "操作"])
-        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.horizontalHeader().setStretchLastSection(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setRowCount(0)
 
@@ -102,10 +102,11 @@ class MultiplePathManagement(QWidget):
         self.table.setShowGrid(False)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
 
-
-        # 第2列宽度固定，隐藏按钮直到双击
-        self.table.setColumnWidth(0, 300)
-        self.table.setColumnWidth(1, 30)
+        # 第1列拉伸填满，第2列固定窄宽度
+        from PySide6.QtWidgets import QHeaderView
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
+        self.table.setColumnWidth(1, 22)
 
         # 自定义代理：控制按钮显示
         self.delegate = ButtonDelegate(self,self.table)

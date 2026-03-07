@@ -16,6 +16,7 @@ from .loader import load_stylesheet
 from .tokens import (
     BLUE_TOKENS,
     DARK_TOKENS,
+    derive_colors_from_primary,
     GREEN_TOKENS,
     LIGHT_TOKENS,
     PURPLE_TOKENS,
@@ -46,6 +47,7 @@ class ThemeManager(QObject):
     def __init__(self, qss_filename: str = "mymain.qss", parent: QObject | None = None):
         super().__init__(parent)
         self._current = ThemeId.LIGHT
+        self._custom_primary: str | None = None
         self._qss_filename = qss_filename
         self._tokens_map: dict[ThemeId, ThemeTokens] = {
             ThemeId.LIGHT: LIGHT_TOKENS,
@@ -65,8 +67,24 @@ class ThemeManager(QObject):
         self._current = theme_id
         self.themeChanged.emit(theme_id)
 
+    def custom_primary(self) -> str | None:
+        """当前自定义主色，仅对 LIGHT/DARK 主题生效。"""
+        return self._custom_primary
+
+    def set_custom_primary(self, hex_color: str | None) -> None:
+        """设置自定义主色，仅对 LIGHT/DARK 主题生效。传入 None 恢复默认。"""
+        self._custom_primary = hex_color
+
     def tokens(self) -> ThemeTokens:
-        return self._tokens_map[self._current]
+        base = self._tokens_map[self._current]
+        if self._custom_primary and self._current in (ThemeId.LIGHT, ThemeId.DARK):
+            derived = derive_colors_from_primary(
+                self._custom_primary, is_dark=(self._current == ThemeId.DARK)
+            )
+            d = base.to_dict()
+            d.update(derived)
+            return ThemeTokens(**d)
+        return base
 
     def set_theme(self, app: "QApplication", theme_id: ThemeId) -> None:
         """切换主题并应用样式表。"""

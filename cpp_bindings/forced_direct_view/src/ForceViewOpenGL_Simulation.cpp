@@ -42,18 +42,67 @@ void ForceViewOpenGL::setGraph(int nNodes,
     m_physicsState->init(nNodes, edgeVec);
 
 
-    const float L = std::sqrt(static_cast<float>(nNodes)) * kInitialLayoutScaleFactor + kInitialLayoutBaseOffset;
-    std::mt19937 rng(static_cast<unsigned>(std::chrono::steady_clock::now().time_since_epoch().count()));
-    std::uniform_real_distribution<float> dist(-L, L);
-    for (int i = 0; i < nNodes; ++i) {
-        m_physicsState->pos[2 * i]     = dist(rng);
-        m_physicsState->pos[2 * i + 1] = dist(rng);
+    bool useInputPos = (pos.size() >= 2 * nNodes);
+    if (useInputPos) {
+        for (int i = 0; i < nNodes; ++i) {
+            const float x = pos[2 * i];
+            const float y = pos[2 * i + 1];
+            if (!std::isfinite(x) || !std::isfinite(y)) {
+                useInputPos = false;
+                break;
+            }
+        }
+    }
+
+    if (useInputPos) {
+        for (int i = 0; i < nNodes; ++i) {
+            m_physicsState->pos[2 * i]     = pos[2 * i];
+            m_physicsState->pos[2 * i + 1] = pos[2 * i + 1];
+        }
+    } else {
+        const float L = std::sqrt(static_cast<float>(nNodes)) * kInitialLayoutScaleFactor + kInitialLayoutBaseOffset;
+        std::mt19937 rng(static_cast<unsigned>(std::chrono::steady_clock::now().time_since_epoch().count()));
+        std::uniform_real_distribution<float> dist(-L, L);
+        for (int i = 0; i < nNodes; ++i) {
+            m_physicsState->pos[2 * i]     = dist(rng);
+            m_physicsState->pos[2 * i + 1] = dist(rng);
+        }
     }
     m_physicsState->syncRenderPosFromPos();
     m_physicsState->syncDragPosFromPos();
 
     m_ids = id;
+    m_ids.resize(nNodes);
+    for (int i = 0; i < nNodes; ++i) {
+        if (m_ids[i].isEmpty()) {
+            m_ids[i] = QStringLiteral("node_%1").arg(i);
+        }
+    }
 
+    m_labels = labels;
+    m_labels.resize(nNodes);
+    for (int i = 0; i < nNodes; ++i) {
+        if (m_labels[i].isEmpty()) {
+            m_labels[i] = m_ids[i];
+        }
+    }
+
+    m_showRadiiBase = radii;
+    m_showRadiiBase.resize(nNodes);
+    for (int i = 0; i < nNodes; ++i) {
+        const float r = m_showRadiiBase[i];
+        if (!std::isfinite(r) || r <= 0.0f) {
+            m_showRadiiBase[i] = kDefaultNodeRadius;
+        }
+    }
+
+    m_nodeColors = nodeColors;
+    m_nodeColors.resize(nNodes);
+    for (int i = 0; i < nNodes; ++i) {
+        if (!m_nodeColors[i].isValid()) {
+            m_nodeColors[i] = m_baseColor;
+        }
+    }
 
     m_neighbors.assign(nNodes, {});
     int E = static_cast<int>(edgeVec.size()) / 2;
@@ -65,9 +114,6 @@ void ForceViewOpenGL::setGraph(int nNodes,
         }
     }
 
-    m_showRadiiBase = radii;
-    m_labels = labels;
-    m_nodeColors = nodeColors;
     m_neighborMask.assign(nNodes, 0);
     m_lastNeighborMask.clear();
     m_hoverIndex = -1; //悬浮的节点index，pos[index]可以取到这个节点的pos，
@@ -320,9 +366,25 @@ void ForceViewOpenGL::setNeighborDepth(int depth)
 
 void ForceViewOpenGL::setDragging(int index, bool dragging)
 {
-    if (m_physicsState && index >= 0 && index < m_physicsState->nNodes) {
+    if (!m_physicsState || index < 0 || index >= m_physicsState->nNodes) {
+        return;
+    }
+
+    bool needRestart = false;
+    {
+        std::lock_guard<std::mutex> lock(m_simMutex);
+        if (!m_physicsState || index < 0 || index >= m_physicsState->nNodes) {
+            return;
+        }
         m_physicsState->dragging[index] = dragging ? 1 : 0;
-        if (dragging) { const float* pos = m_physicsState->renderPosData(); m_physicsState->setDragPos(index, pos[2*index], pos[2*index+1]); }
-        if (dragging) restartSimulation();
+        if (dragging) {
+            const float* pos = m_physicsState->renderPosData();
+            m_physicsState->setDragPos(index, pos[2 * index], pos[2 * index + 1]);
+            needRestart = true;
+        }
+    }
+
+    if (needRestart) {
+        restartSimulation();
     }
 }

@@ -40,7 +40,7 @@ void ForceViewOpenGL::wheelEvent(QWheelEvent* event)
 void ForceViewOpenGL::mousePressEvent(QMouseEvent* event)
 {
     if (!m_physicsState || m_physicsState->nNodes == 0) { QOpenGLWidget::mousePressEvent(event); return; }
-    prepareFrame();
+    updateVisibleMask();
     float sx = static_cast<float>(event->pos().x()), sy = static_cast<float>(event->pos().y());
     float cx, cy;
     screenToScene(sx, sy, cx, cy);
@@ -94,8 +94,19 @@ void ForceViewOpenGL::mouseMoveEvent(QMouseEvent* event)
         float nx, ny;
         screenToScene(sx, sy, nx, ny);
         nx += m_dragOffsetX; ny += m_dragOffsetY;
-        m_physicsState->setDragPos(m_selectedIndex, nx, ny);
-        m_physicsState->updateRenderPosAt(m_selectedIndex, nx, ny);
+        {
+            std::lock_guard<std::mutex> lock(m_simMutex);
+            if (!m_physicsState || m_selectedIndex < 0 || m_selectedIndex >= m_physicsState->nNodes) {
+                m_selectedIndex = -1;
+            } else {
+                m_physicsState->setDragPos(m_selectedIndex, nx, ny);
+                m_physicsState->updateRenderPosAt(m_selectedIndex, nx, ny);
+            }
+        }
+        if (m_selectedIndex < 0) {
+            QOpenGLWidget::mouseMoveEvent(event);
+            return;
+        }
         if (!m_dragging) {
             setDragging(m_selectedIndex, true);
             setCursor(Qt::PointingHandCursor);
@@ -191,6 +202,13 @@ void ForceViewOpenGL::enterEvent(QEnterEvent* event)
 
 void ForceViewOpenGL::leaveEvent(QEvent* event)
 {
+    if (m_hoverIndex != -1) {
+        m_lastHoverIndex = m_hoverIndex;
+        m_hoverIndex = -1;
+        emit nodeHovered(QString());
+        emit nodeHoveredWithInfo(QString(), 0.0f, 0.0f, 0.0f, 0.0f, false);
+        requestRenderActivity();
+    }
     setCursor(Qt::ArrowCursor);
     QOpenGLWidget::leaveEvent(event);
 }

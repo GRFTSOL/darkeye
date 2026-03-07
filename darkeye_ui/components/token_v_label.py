@@ -6,6 +6,7 @@ from PySide6.QtCore import QDateTime, QSize, QTimer, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath
 from PySide6.QtWidgets import QLabel
 
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import LIGHT_TOKENS, ThemeTokens
 
 if TYPE_CHECKING:
@@ -45,12 +46,7 @@ class TokenVLabel(QLabel):
         self.corner_cut_ratio = 0.2
         self.hole_radius_ratio = 0.1
 
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "TokenVLabel")
         self._theme_manager = theme_manager
         if self._theme_manager is not None:
             self._theme_manager.themeChanged.connect(self._on_theme_changed)

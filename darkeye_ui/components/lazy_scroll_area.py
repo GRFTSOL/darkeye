@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING, Callable, Optional
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QLayoutItem, QScrollArea, QScrollBar, QVBoxLayout, QWidget
 
+from .._logging import get_logger, warn_once
 from ..layouts import WaterfallLayout
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import LIGHT_TOKENS, ThemeTokens
 
 if TYPE_CHECKING:
@@ -74,13 +76,9 @@ class LazyScrollArea(QScrollArea):
     ):
         super().__init__(parent)
         self.setWidgetResizable(True)
+        self._logger = get_logger(__name__)
 
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "LazyScrollArea")
         self._theme_manager = theme_manager
         if self._theme_manager is not None:
             self._theme_manager.themeChanged.connect(self._apply_token_styles)
@@ -89,7 +87,13 @@ class LazyScrollArea(QScrollArea):
         try:
             from controller.MessageService import MessageBoxService
             self.msg = MessageBoxService(self)
-        except Exception:
+        except ImportError as exc:
+            warn_once(
+                self._logger,
+                "LazyScrollArea:message_service_missing",
+                "LazyScrollArea: MessageBoxService unavailable, continue without message helper.",
+                exc_info=exc,
+            )
             self.msg = None
 
         self._hint = hint

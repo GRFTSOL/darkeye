@@ -60,12 +60,15 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// ManyBodyForce – pairwise repulsion   O(N^2) or O(N log N) with Barnes-Hut
-//   Uses block-tiled for N < 500, parallel for 500–2000, Barnes-Hut for larger.
+// ManyBodyForce — pairwise repulsion   O(N^2) or O(N log N) with Barnes-Hut
+//   Uses block-tiled for smaller N and Barnes-Hut for larger N.
+//   See kBarnesHutThreshold for the switch point.
 // ---------------------------------------------------------------------------
 class ManyBodyForce : public Force
 {
 public:
+    static constexpr int kBarnesHutThreshold = 1000;
+
     ManyBodyForce(float strength = 100.0f, float cutoff2 = 40000.0f, float theta = 0.6f);
 
     void apply(float alpha) override;
@@ -87,13 +90,15 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// CollisionForce – point-to-point repulsion when dist < radius
-//   Brute-force O(N^2) for N<2000; uniform grid O(N) for N>=2000.
-//   applyParallel = brute-force parallel; applyGrid = grid-accelerated.
+// CollisionForce — point-to-point repulsion when dist < radius
+//   Uses brute-force for smaller N and uniform-grid acceleration for larger N.
+//   See kGridThreshold for the switch point.
 // ---------------------------------------------------------------------------
 class CollisionForce : public Force
 {
 public:
+    static constexpr int kGridThreshold = 1000;
+
     CollisionForce(float radius = 10.0f, float strength = 50.0f);
 
     void apply(float alpha) override;

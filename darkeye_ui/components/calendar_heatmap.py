@@ -6,6 +6,7 @@ from PySide6.QtCore import QDate, QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import LIGHT_TOKENS, ThemeTokens
 
 if TYPE_CHECKING:
@@ -28,12 +29,7 @@ class CalendarHeatmap(QWidget):
         self.year = year
         self.data = data or {}
 
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "CalendarHeatmap")
         self._theme_manager = theme_manager
         if self._theme_manager is not None:
             self._theme_manager.themeChanged.connect(self._on_theme_changed)

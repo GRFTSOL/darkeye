@@ -76,6 +76,7 @@ void ForceViewOpenGL::updateVisibleMask()
     m_visibleEdges.reserve(E * 2);
     for (int e = 0; e < E; ++e) {
         int s = edges[2*e], d = edges[2*e+1];
+        if (s < 0 || s >= N || d < 0 || d >= N) continue;
         if (m_nodeMask[s] || m_nodeMask[d]) {
             m_visibleEdges.push_back(s);
             m_visibleEdges.push_back(d);

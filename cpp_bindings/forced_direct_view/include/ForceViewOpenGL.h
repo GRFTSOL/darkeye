@@ -104,6 +104,10 @@ public:
     void setTextDimColor(const QColor& c);
     QColor textDimColor() const;
 
+    // 字体路径
+    void setFontPath(const QString& path);
+    QString fontPath() const;
+
     // ======================== Misc ========================
     void setDragging(int nodeId, bool dragging);
     QRectF getContentRect() const;
@@ -176,11 +180,13 @@ private:
     static constexpr float kInitialLayoutScaleFactor   = 25.0f;
     static constexpr float kInitialLayoutBaseOffset    = 50.0f;
     static constexpr float kContentPaddingRatio        = 0.1f;
+    static constexpr float kContentPaddingAbs          = 20.0f;
     static constexpr float kViewPadding                = 50.0f;
 
     static constexpr float kFitViewScaleMargin         = 0.9f;
     static constexpr float kFitViewZoomMin             = 0.01f;
-    static constexpr float kFitViewZoomMax             = 1000.0f;
+    static constexpr float kFitViewZoomMax             = 10.0f;
+    static constexpr float kFitViewMaxNodeRadiusPx     = 22.0f;
 
     static constexpr float kZoomMin                    = 0.1f;
     static constexpr float kZoomMax                    = 10.0f;
@@ -217,6 +223,11 @@ private:
 
     // Prepare frame data before rendering
     void prepareFrame();
+
+    bool removeNodeInternal(int indexToRemove);
+
+    static QString detectDefaultFontPath();
+    MsdfFontAtlas::Config makeFontConfig() const;
 
     static QColor mixColor(const QColor& c1, const QColor& c2, float t);
 
@@ -349,6 +360,7 @@ private:
     };
     std::unique_ptr<MsdfFontAtlas> m_fontAtlas;
     std::unique_ptr<MsdfTextRenderer> m_textRenderer;
+    QString m_fontPath;
     float m_msdfFontSize = 8.0f;
     int m_lastAtlasGeneration = -1;
     std::unordered_map<std::string, LabelLayoutEntry> m_labelLayoutCache;

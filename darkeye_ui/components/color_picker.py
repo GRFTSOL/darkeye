@@ -17,6 +17,7 @@ class ColorPicker(QLabel):
     ShapeCircle = "circle"
 
     colorChanged = Signal(str)
+    colorConfirmed = Signal(str)
 
     def __init__(self, color: QColor = None, parent=None, *, show_text: bool = True, shape: str = ShapeRectangle):
         super().__init__(parent)
@@ -60,15 +61,15 @@ class ColorPicker(QLabel):
 
     def _apply_shape_and_size(self):
         if self._shape == self.ShapeCircle:
-            size = 40
+            size = 32
             self.setFixedSize(size, size)
             self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         else:
             self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
             self.setMask(QRegion())
-            self.setMaximumHeight(40)
+            self.setMaximumHeight(32)
             self.setMinimumSize(0, 0)
-            self.setMaximumSize(16777215, 40)
+            self.setMaximumSize(32, 32)
 
     def _update_display(self):
         """根据 show_text 和 shape 更新文字与样式。"""
@@ -144,9 +145,17 @@ class ColorPicker(QLabel):
 
         global_pos = self.mapToGlobal(QPoint(0, 0))
         wheel_width = self._color_wheel.width()
+        wheel_height = self._color_wheel.height()
         label_width = self.width()
         x = global_pos.x() + (label_width - wheel_width) // 2
-        y = global_pos.y() - self._color_wheel.height() - 10
+
+        screen_rect = self.screen().availableGeometry()
+        space_above = global_pos.y() - screen_rect.top()
+        gap = 10
+        if space_above >= wheel_height + gap:
+            y = global_pos.y() - wheel_height - gap
+        else:
+            y = global_pos.y() + self.height() + gap
         self._color_wheel.move(x, y)
 
         self._color_wheel.show()
@@ -177,5 +186,6 @@ class ColorPicker(QLabel):
                 hex_color = self._color_wheel.getHexColor()
                 if hex_color:
                     self._update_color(QColor(hex_color))
+                    self.colorConfirmed.emit(hex_color)
                 return True
         return super().eventFilter(obj, event)

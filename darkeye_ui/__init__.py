@@ -33,6 +33,8 @@ from .components import (  # type: ignore[F401]
     IconPushButton,
     Label,
     LineEdit,
+    TextEdit,
+    PlainTextEdit,
     StateToggleButton,
     ToggleSwitch,
 )
@@ -68,7 +70,9 @@ __all__ = [
     "Button",
     "IconPushButton",
     "Label",
-    "Input",
+    "LineEdit",
+    "TextEdit",
+    "PlainTextEdit",
     "StateToggleButton",
     "ToggleSwitch",
     # layouts

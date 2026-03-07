@@ -2,7 +2,7 @@
 from darkeye_ui import LazyWidget
 
 from PySide6.QtWidgets import  QHBoxLayout,QVBoxLayout,QFileDialog,QGridLayout,QWidget,QFormLayout
-from PySide6.QtGui import QIcon,QKeySequence
+from PySide6.QtGui import QIcon,QKeySequence,QColor
 from PySide6.QtCore import Slot,Qt
 import logging
 from config import ICONS_PATH
@@ -15,7 +15,7 @@ from config import APP_VERSION
 
 import logging
 from config import BASE_DIR,DATABASE,INI_FILE,ICONS_PATH,PRIVATE_DATABASE,DATABASE_BACKUP_PATH,PRIVATE_DATABASE_BACKUP_PATH
-from config import get_theme_id, set_theme_id
+from config import get_theme_id, set_theme_id, get_custom_primary, set_custom_primary
 from controller.ShortcutRegistry import ShortcutRegistry
 from pathlib import Path
 from app_context import get_theme_manager
@@ -26,6 +26,9 @@ from darkeye_ui.components.button import Button
 from darkeye_ui.components.token_radio_button import TokenRadioButton
 from darkeye_ui.components.combo_box import ComboBox
 from darkeye_ui.components.token_key_sequence_edit import TokenKeySequenceEdit
+from darkeye_ui.components.color_picker import ColorPicker
+from darkeye_ui.components.toggle_switch import ToggleSwitch
+from controller.GlobalSignalBus import global_signals
 
 # 主题下拉选项与 ThemeId 顺序一致
 THEME_OPTIONS = [
@@ -61,16 +64,73 @@ class CommonPage(QWidget):
                     pass
         self.theme_choose.currentIndexChanged.connect(self._on_theme_changed)
 
+        # 主色选择器（置于主题行上方，仅亮色/暗色主题可调）
+        theme_mgr = get_theme_manager()
+        self.primary_color_row = QWidget()
+        primary_color_layout = QHBoxLayout(self.primary_color_row)
+        primary_color_layout.setContentsMargins(0, 0, 0, 0)
+        initial_primary = (
+            get_custom_primary()
+            or (theme_mgr.custom_primary() if theme_mgr else None)
+            or (theme_mgr.tokens().color_primary if theme_mgr else "#2563eb")
+        )
+        self.color_picker = ColorPicker(QColor(initial_primary), shape=ColorPicker.ShapeCircle)
+        primary_color_layout.addWidget(self.color_picker)
+
+        self.color_picker.colorConfirmed.connect(self._on_primary_color_changed)
+        self._update_primary_picker_state()
+        self.greenmode=ToggleSwitch()
+
+        main_layout.addRow(Label("主色"), self.primary_color_row)
         main_layout.addRow(Label("主题"), self.theme_choose)
+        main_layout.addRow(Label("绿色模式"),self.greenmode)
+        self.greenmode.toggled.connect(global_signals.green_mode_changed.emit)
         #main_layout.addRow("字体选择",self.textchoose)
         #main_layout.addRow("字号选择",self.textsizechoose)
 
 
+    def _update_primary_picker_state(self):
+        theme_mgr = get_theme_manager()
+        tid = theme_mgr.current() if theme_mgr else ThemeId.LIGHT
+        is_light_or_dark = tid in (ThemeId.LIGHT, ThemeId.DARK)
+        self.primary_color_row.setEnabled(is_light_or_dark)
+        if not is_light_or_dark:
+            if theme_mgr:
+                theme_mgr.set_custom_primary(None)
+            set_custom_primary(None)
+        else:
+            self.color_picker.blockSignals(True)
+            # 优先从 INI 读取主色
+            self.color_picker.set_color(
+                get_custom_primary()
+                or (theme_mgr.custom_primary() if theme_mgr else None)
+                or (theme_mgr.tokens().color_primary if theme_mgr else "#2563eb")
+            )
+            self.color_picker.blockSignals(False)
+
+    def _on_primary_color_changed(self, hex_color: str):
+        theme_mgr = get_theme_manager()
+        if theme_mgr:
+            theme_mgr.set_custom_primary(hex_color)
+        set_custom_primary(hex_color)
+        apply_theme(theme_mgr.current() if theme_mgr else ThemeId.LIGHT)
+
     def _on_theme_changed(self, index: int):
         if 0 <= index < len(THEME_OPTIONS):
             theme_id = THEME_OPTIONS[index][0]
+            theme_mgr = get_theme_manager()
+            if theme_id not in (ThemeId.LIGHT, ThemeId.DARK):
+                if theme_mgr:
+                    theme_mgr.set_custom_primary(None)
+                set_custom_primary(None)
+            else:
+                # 切换回亮色/暗色时优先从 INI 恢复主色
+                saved = get_custom_primary()
+                if theme_mgr and saved:
+                    theme_mgr.set_custom_primary(saved)
             set_theme_id(theme_id)
             apply_theme(theme_id)
+            self._update_primary_picker_state()
 
 
 class ShortcutSettingRow(QWidget):

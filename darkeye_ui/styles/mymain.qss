@@ -848,3 +848,153 @@ QGroupBox#DesignGroupBox::title {
     font-family: {{font_family_base}};
     font-size: {{font_size_base}};
 }
+
+/* ----- ProgressBar (objectName=DesignProgressBar) ----- */
+QProgressBar#DesignProgressBar {
+    background-color: {{color_bg_input}};
+    color: {{color_text}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    text-align: center;
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+    min-height: 14px;
+}
+
+QProgressBar#DesignProgressBar::chunk {
+    background-color: {{color_primary}};
+    border-radius: 4px;
+}
+
+QProgressBar#DesignProgressBar:disabled {
+    color: {{color_text_disabled}};
+    border-color: {{color_border}};
+}
+
+/* ----- Breadcrumb (objectName=DesignBreadcrumb) ----- */
+QWidget#DesignBreadcrumb {
+    background: transparent;
+}
+
+QLabel#DesignBreadcrumbSeparator {
+    color: {{color_text_placeholder}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+    padding: 0 2px;
+}
+
+/* ----- Pagination (objectName=DesignPagination) ----- */
+QWidget#DesignPagination {
+    background: transparent;
+}
+
+/* ----- SearchBar (objectName=DesignSearchBar) ----- */
+QWidget#DesignSearchBar {
+    background: transparent;
+}
+
+/* ----- TreeView (objectName=DesignTreeView) ----- */
+QTreeView#DesignTreeView {
+    background-color: {{color_bg}};
+    color: {{color_text}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+    alternate-background-color: {{color_bg_input}};
+    selection-background-color: {{color_primary}};
+    selection-color: {{color_text_inverse}};
+}
+
+QTreeView#DesignTreeView:focus {
+    border-color: {{color_border_focus}};
+}
+
+QTreeView#DesignTreeView::item {
+    padding: 4px 6px;
+}
+
+QTreeView#DesignTreeView::item:hover:!selected {
+    background-color: {{color_bg_input}};
+}
+
+QTreeView#DesignTreeView::item:selected {
+    background-color: {{color_primary}};
+    color: {{color_text_inverse}};
+}
+
+QTreeView#DesignTreeView QHeaderView::section {
+    background-color: {{color_bg_page}};
+    color: {{color_text}};
+    border: 0px;
+    border-bottom: 1px solid {{color_border}};
+    padding: 4px 6px;
+}
+
+/* ----- EmptyState (objectName=DesignEmptyState) ----- */
+QWidget#DesignEmptyState {
+    background-color: {{color_bg}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+}
+
+QLabel#DesignEmptyStateIcon {
+    color: {{color_text_placeholder}};
+    font-family: {{font_family_base}};
+    font-size: 26px;
+    font-weight: 700;
+}
+
+QLabel#DesignEmptyStateTitle {
+    color: {{color_text}};
+    font-family: {{font_family_base}};
+    font-size: 14px;
+    font-weight: 700;
+}
+
+QLabel#DesignEmptyStateDescription {
+    color: {{color_text_placeholder}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+}
+
+/* ----- Chip / Tag (objectName=DesignChip) ----- */
+QPushButton#DesignChip {
+    background-color: {{color_bg_input}};
+    color: {{color_text}};
+    border: {{border_width}} solid {{color_border}};
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+}
+
+QPushButton#DesignChip:hover {
+    border-color: {{color_primary}};
+}
+
+QPushButton#DesignChip:pressed {
+    background-color: {{color_bg_page}};
+}
+
+QPushButton#DesignChip:checked {
+    background-color: {{color_primary}};
+    color: {{color_text_inverse}};
+    border-color: {{color_primary}};
+}
+
+QPushButton#DesignChip[tone="info"] {
+    border-color: {{color_info}};
+}
+
+QPushButton#DesignChip[tone="success"] {
+    border-color: {{color_success}};
+}
+
+QPushButton#DesignChip[tone="warning"] {
+    border-color: {{color_warning}};
+}
+
+QPushButton#DesignChip[tone="error"] {
+    border-color: {{color_error}};
+}

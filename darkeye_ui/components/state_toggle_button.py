@@ -5,6 +5,7 @@ from PySide6.QtCore import QSize, Signal
 from PySide6.QtWidgets import QPushButton
 
 from ..design import get_builtin_icon
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import ThemeTokens, LIGHT_TOKENS
 
 if TYPE_CHECKING:
@@ -34,6 +35,7 @@ class StateToggleButton(QPushButton):
         self._icon_size = icon_size
         self._out_size = out_size
         self._hoverable = hoverable
+        theme_manager = resolve_theme_manager(theme_manager, "StateToggleButton")
         self._theme_manager = theme_manager
 
         self.setFixedSize(out_size, out_size)

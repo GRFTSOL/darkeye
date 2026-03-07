@@ -3,7 +3,9 @@ from PySide6.QtWidgets import QCompleter
 from PySide6.QtCore import Qt, QEvent, Signal, Slot, QThreadPool, QRunnable
 from typing import Callable, Optional, TYPE_CHECKING
 
+from .._logging import get_logger, warn_once
 from .input import LineEdit
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import LIGHT_TOKENS
 
 if TYPE_CHECKING:
@@ -45,11 +47,18 @@ class CompleterLoaderRunnable(QRunnable):
         super().__init__()
         self.loader_func = loader_func
         self.signal = signal
+        self._logger = get_logger(__name__)
 
     def run(self):
         try:
             items = self.loader_func() if self.loader_func else []
-        except Exception:
+        except (AttributeError, RuntimeError, TypeError, ValueError) as exc:
+            warn_once(
+                self._logger,
+                "CompleterLineEdit:loader_failed",
+                "CompleterLineEdit: loader_func failed, fallback to empty items.",
+                exc_info=exc,
+            )
             items = []
         self.signal.emit(items)
 
@@ -70,12 +79,7 @@ class CompleterLineEdit(LineEdit):
         self.loader_func = loader_func
         self._loading = False
         self._cache: list = []
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "CompleterLineEdit")
         self._theme_manager = theme_manager
         self.setup_completer()
         self.items_loaded.connect(self._on_items_loaded)

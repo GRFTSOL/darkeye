@@ -2,6 +2,8 @@
 from dataclasses import dataclass
 from typing import Any, Dict
 
+from PySide6.QtGui import QColor
+
 
 @dataclass
 class ThemeTokens:
@@ -30,6 +32,41 @@ class ThemeTokens:
 
     def to_dict(self) -> Dict[str, Any]:
         return {k: v for k, v in self.__dict__.items()}
+
+
+def derive_colors_from_primary(primary_hex: str, is_dark: bool) -> Dict[str, str]:
+    """从主色派生 color_primary_hover、color_border_focus、color_info、color_bg_input。"""
+    c = QColor(primary_hex)
+    h, s, l = c.getHslF()[0:3]
+
+    # color_primary_hover: 亮色时略暗，暗色时略亮
+    if is_dark:
+        l_hover = min(1.0, l + 0.15)
+    else:
+        l_hover = max(0.0, l * 0.9)
+    c_hover = QColor.fromHslF(h, s, l_hover)
+
+    # color_info: 同色相，略调亮度（info 风格）
+    if is_dark:
+        l_info = min(1.0, l + 0.08)
+    else:
+        l_info = max(0.0, l - 0.05)
+    s_info = max(0.0, min(1.0, s * 0.95))
+    c_info = QColor.fromHslF(h, s_info, l_info)
+
+    # color_bg_input: 输入框背景，主色极淡的 tint
+    if is_dark:
+        c_bg_input = QColor.fromHslF(h, 0.03, 0.18)
+    else:
+        c_bg_input = QColor.fromHslF(h, 0.10, 0.88)
+
+    return {
+        "color_primary": primary_hex,
+        "color_primary_hover": c_hover.name(),
+        "color_border_focus": primary_hex,
+        "color_info": c_info.name(),
+        "color_bg_input": c_bg_input.name(),
+    }
 
 
 LIGHT_TOKENS = ThemeTokens(

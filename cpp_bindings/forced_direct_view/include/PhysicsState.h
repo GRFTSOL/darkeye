@@ -7,20 +7,20 @@
 #include <algorithm>
 
 /**
- * PhysicsState — flat arrays holding the physical state of a force-directed graph.
+ * PhysicsState: flat arrays holding physical simulation data.
  *
  * All per-node arrays are indexed 0..nNodes-1.
- * pos / vel are interleaved: [x0,y0, x1,y1, …], length 2*nNodes.
- * edges is interleaved: [src0,dst0, src1,dst1, …], length 2*edgeCount.
+ * pos/vel are interleaved: [x0,y0, x1,y1, ...], length 2*nNodes.
+ * edges is interleaved: [src0,dst0, src1,dst1, ...], length 2*edgeCount.
  */
 struct PhysicsState
 {
     int nNodes = 0;
 
-    // positions  – flat [x0,y0, x1,y1, ...], size 2*nNodes
+    // positions: [x0,y0, x1,y1, ...], size 2*nNodes
     std::vector<float> pos;
 
-    // velocities – flat [x0,y0, x1,y1, ...], size 2*nNodes
+    // velocities: [x0,y0, x1,y1, ...], size 2*nNodes
     std::vector<float> vel;
 
     // per-node mass, size nNodes (default 1.0)
@@ -29,21 +29,22 @@ struct PhysicsState
     // per-node dragging flag, size nNodes
     std::vector<uint8_t> dragging;   // 0 or 1 (avoid std::vector<bool> proxy)
 
+    // Render-side double buffer for position snapshots.
     std::vector<float> renderPosA;
     std::vector<float> renderPosB;
     std::atomic<int> renderIndex{0};
 
+    // Drag target positions, size 2*nNodes.
     std::vector<float> dragPos;
 
-    // edge list – flat [src0,dst0, src1,dst1, ...], size 2*E
+    // Edge list: [src0,dst0, src1,dst1, ...], size 2*E
     std::vector<int> edges;
-
-    // ---- helpers ---------------------------------------------------------
 
     int edgeCount() const { return static_cast<int>(edges.size()) / 2; }
 
-    /** Allocate / reset all arrays for nNodes nodes and the given edge list.
-     *  pos is NOT zeroed — caller must fill it (e.g. from Python initial layout).
+    /**
+     * Allocate/reset all arrays for n nodes and the given edge list.
+     * pos is not initialized here; caller fills it.
      */
     void init(int n, const std::vector<int>& edgeList)
     {
@@ -59,7 +60,7 @@ struct PhysicsState
         edges = edgeList;
     }
 
-    // Convenience: pos accessors (no bounds check for speed)
+    // Convenience accessors (no bounds check)
     float  px(int i) const { return pos[2 * i];     }
     float  py(int i) const { return pos[2 * i + 1]; }
     float& px(int i)       { return pos[2 * i];     }
@@ -105,7 +106,7 @@ struct PhysicsState
         std::copy(pos.begin(), pos.end(), dragPos.begin());
     }
 
-    //设置移动点的坐标，传进来的就是鼠标在动的坐标
+    // Set drag target position from pointer interaction.
     void setDragPos(int i, float x, float y)
     {
         if (i < 0 || i >= nNodes) return;
@@ -122,131 +123,6 @@ struct PhysicsState
             buf.resize(pos.size());
         buf[2 * i]     = x;
         buf[2 * i + 1] = y;
-    }
-
-    // ---- 运行时修改图结构的辅助方法 ----
-
-    /** 添加一个新节点，返回新节点的索引 */
-    int addNode(float x = 0.0f, float y = 0.0f)
-    {
-        int newIndex = nNodes++;
-        pos.resize(2 * nNodes);
-        vel.resize(2 * nNodes);
-        mass.push_back(1.0f);
-        dragging.push_back(0);
-        renderPosA.resize(2 * nNodes);
-        renderPosB.resize(2 * nNodes);
-        dragPos.resize(2 * nNodes);
-        pos[2 * newIndex] = x;
-        pos[2 * newIndex + 1] = y;
-        vel[2 * newIndex] = 0.0f;
-        vel[2 * newIndex + 1] = 0.0f;
-        renderPosA[2 * newIndex] = x;
-        renderPosA[2 * newIndex + 1] = y;
-        renderPosB[2 * newIndex] = x;
-        renderPosB[2 * newIndex + 1] = y;
-        dragPos[2 * newIndex] = x;
-        dragPos[2 * newIndex + 1] = y;
-        return newIndex;
-    }
-
-    /** 删除指定索引的节点（返回是否成功） */
-    bool removeNode(int index)
-    {
-        if (index < 0 || index >= nNodes) return false;
-
-        // swap-last: 将最后一个节点搬到删除位置，保持数组连续
-        const int last = nNodes - 1;
-        const bool moved = (index != last);
-        if (moved) {
-            pos[2 * index]         = pos[2 * last];
-            pos[2 * index + 1]     = pos[2 * last + 1];
-            vel[2 * index]         = vel[2 * last];
-            vel[2 * index + 1]     = vel[2 * last + 1];
-            mass[index]            = mass[last];
-            dragging[index]        = dragging[last];
-            renderPosA[2 * index]     = renderPosA[2 * last];
-            renderPosA[2 * index + 1] = renderPosA[2 * last + 1];
-            renderPosB[2 * index]     = renderPosB[2 * last];
-            renderPosB[2 * index + 1] = renderPosB[2 * last + 1];
-            dragPos[2 * index]     = dragPos[2 * last];
-            dragPos[2 * index + 1] = dragPos[2 * last + 1];
-        }
-
-        nNodes--;
-        pos.resize(2 * nNodes);
-        vel.resize(2 * nNodes);
-        mass.resize(nNodes);
-        dragging.resize(nNodes);
-        renderPosA.resize(2 * nNodes);
-        renderPosB.resize(2 * nNodes);
-        dragPos.resize(2 * nNodes);
-
-        // 更新边列表：
-        // - 删除任何连接到被删除节点 index 的边
-        // - 若发生 swap-last（last -> index），将边端点中的 last 重映射为 index
-        // 注意：不能用“>index 全部 --”的 shift-left 逻辑，否则会与 swap-last 语义冲突。
-        std::vector<int> newEdges;
-        newEdges.reserve(edges.size());
-        const int newN = nNodes;
-        for (size_t i = 0; i + 1 < edges.size(); i += 2) {
-            int u = edges[i];
-            int v = edges[i + 1];
-
-            // 丢弃与被删除节点相连的整条边
-            if (u == index || v == index) continue;
-
-            // swap-last: 将 last 端点重映射到 index
-            if (moved) {
-                if (u == last) u = index;
-                if (v == last) v = index;
-            }
-
-            // 防御：确保端点仍在合法范围内，且不是自环
-            if (u < 0 || v < 0 || u >= newN || v >= newN || u == v) continue;
-
-            newEdges.push_back(u);
-            newEdges.push_back(v);
-        }
-        edges.swap(newEdges);
-
-        return true;
-    }
-
-    /** 添加一条边（u, v 为节点索引，返回是否成功） */
-    bool addEdge(int u, int v)
-    {
-        if (u < 0 || u >= nNodes || v < 0 || v >= nNodes || u == v) return false;
-
-        // 检查是否已存在
-        for (size_t i = 0; i < edges.size(); i += 2) {
-            if ((edges[i] == u && edges[i + 1] == v) ||
-                (edges[i] == v && edges[i + 1] == u)) {
-                return false;
-            }
-        }
-
-        edges.push_back(u);
-        edges.push_back(v);
-        return true;
-    }
-
-    /** 删除一条边（u, v 为节点索引，返回是否成功） */
-    bool removeEdge(int u, int v)
-    {
-        if (u < 0 || u >= nNodes || v < 0 || v >= nNodes) return false;
-
-        // 查找并删除边（检查两个方向）
-        for (size_t i = 0; i < edges.size(); i += 2) {
-            if ((edges[i] == u && edges[i + 1] == v) ||
-                (edges[i] == v && edges[i + 1] == u)) {
-                // 删除这两个元素
-                edges.erase(edges.begin() + i, edges.begin() + i + 2);
-                return true;
-            }
-        }
-
-        return false;
     }
 };
 

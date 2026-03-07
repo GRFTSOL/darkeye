@@ -4,6 +4,8 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
+from .._logging import get_logger, warn_once
+from ..design.theme_context import resolve_theme_manager
 from ..layouts import VerticalTextLayout
 from ..design.tokens import ThemeTokens, LIGHT_TOKENS
 
@@ -28,7 +30,9 @@ class VerticalTextLabel(QWidget):
         parent=None,
     ) -> None:
         super().__init__(parent)
+        self._logger = get_logger(__name__)
 
+        theme_manager = resolve_theme_manager(theme_manager, "VerticalTextLabel")
         self._theme_manager = theme_manager
         self._tone = tone  # normal / inverse
         self.setProperty("tone", tone)
@@ -39,7 +43,13 @@ class VerticalTextLabel(QWidget):
         font_family = tokens.font_family_base
         try:
             base_size = int(tokens.font_size_base.replace("px", ""))
-        except Exception:
+        except (ValueError, AttributeError) as exc:
+            warn_once(
+                self._logger,
+                "VerticalTextLabel:invalid_font_size_base",
+                "VerticalTextLabel: invalid font_size_base token, fallback to default size 14.",
+                exc_info=exc,
+            )
             base_size = 14
 
         self._font = QFont(font_family, base_size + 2)

@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import LIGHT_TOKENS, ThemeTokens
 
 if TYPE_CHECKING:
@@ -30,12 +31,7 @@ class ModernScrollMenu(QWidget):
         parent=None,
     ):
         super().__init__(parent)
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                theme_manager = None
+        theme_manager = resolve_theme_manager(theme_manager, "ModernScrollMenu")
         self._theme_manager = theme_manager
 
         self.nav_buttons = {}

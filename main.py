@@ -28,11 +28,15 @@ def load_app_stylesheet(app):
     from app_context import set_theme_manager
 
     theme_mgr = ThemeManager()
-    from config import get_theme_id
+    from config import get_theme_id, get_custom_primary
     try:
         initial_theme = ThemeId[get_theme_id()]
     except (KeyError, TypeError):
         initial_theme = ThemeId.LIGHT
+    if initial_theme in (ThemeId.LIGHT, ThemeId.DARK):
+        saved_primary = get_custom_primary()
+        if saved_primary:
+            theme_mgr.set_custom_primary(saved_primary)
     theme_mgr.set_theme(app, initial_theme)
     set_theme_manager(theme_mgr)
 

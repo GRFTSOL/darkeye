@@ -7,6 +7,8 @@ from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
 from PySide6.QtWidgets import QStyle, QStyleOptionTab, QStylePainter, QTabBar
 
+from .._logging import get_logger, warn_once
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import LIGHT_TOKENS, ThemeTokens
 
 if TYPE_CHECKING:
@@ -22,18 +24,14 @@ class TokenVerticalTabBar(QTabBar):
         parent=None,
     ):
         super().__init__(parent)
+        self._logger = get_logger(__name__)
         self.setObjectName("VerticalTabBar")
         self.setShape(QTabBar.RoundedWest)
         self._line_spacing = self.fontMetrics().height() * 0.05
         self._column_spacing = self.fontMetrics().height() * 0.1
         self.setFont(QFont("Microsoft YaHei", 12))
 
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "TokenVerticalTabBar")
         self._theme_manager = theme_manager
         if self._theme_manager is not None:
             self._theme_manager.themeChanged.connect(self._apply_token_styles)
@@ -51,8 +49,13 @@ class TokenVerticalTabBar(QTabBar):
         try:
             self.style().unpolish(self)
             self.style().polish(self)
-        except Exception:
-            pass
+        except (AttributeError, RuntimeError) as exc:
+            warn_once(
+                self._logger,
+                "TokenVerticalTabBar:polish_failed",
+                "TokenVerticalTabBar: style polish failed after theme change.",
+                exc_info=exc,
+            )
         self.update()
 
     def _replace_ellipsis(self, text: str) -> str:
@@ -123,7 +126,13 @@ class TokenVerticalTabBar(QTabBar):
                         c = QColor(str(text_color))
                         if c.isValid():
                             painter.setPen(c)
-                    except Exception:
+                    except (TypeError, ValueError) as exc:
+                        warn_once(
+                            self._logger,
+                            "TokenVerticalTabBar:invalid_text_color",
+                            "TokenVerticalTabBar: invalid tab text color, fallback to palette color.",
+                            exc_info=exc,
+                        )
                         painter.setPen(self.palette().color(self.foregroundRole()))
                 else:
                     painter.setPen(self.palette().color(self.foregroundRole()))

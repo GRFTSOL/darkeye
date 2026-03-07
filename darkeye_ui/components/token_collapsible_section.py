@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QSizePolicy, QToolButton, QVBoxLayout, QWidget
 
 from ..design import get_builtin_icon
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import LIGHT_TOKENS, ThemeTokens
 
 if TYPE_CHECKING:
@@ -26,12 +27,7 @@ class TokenCollapsibleSection(QWidget):
         super().__init__(parent)
         self._is_expanded = False
 
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "TokenCollapsibleSection")
         self._theme_manager = theme_manager
         if self._theme_manager is not None:
             self._theme_manager.themeChanged.connect(self._apply_token_styles)

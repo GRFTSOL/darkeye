@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt, QSize, Signal, Property, QPropertyAnimation
 from PySide6.QtGui import QPainter, QColor, QBrush
 from PySide6.QtWidgets import QWidget
 
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import ThemeTokens, LIGHT_TOKENS
 
 if TYPE_CHECKING:
@@ -28,12 +29,7 @@ class ToggleSwitch(QWidget):
         self.setFixedSize(width, height)
         self._checked = False
         # 未传入时尝试从应用上下文获取全局 ThemeManager，使主题切换时颜色能更新
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "ToggleSwitch")
         self._theme_manager = theme_manager
 
         # 动画用属性
@@ -63,7 +59,7 @@ class ToggleSwitch(QWidget):
     def _apply_tokens(self) -> None:
         t = self._tokens()
         self._inactive_color = QColor(t.color_border)
-        self._active_color = QColor(t.color_success)
+        self._active_color = QColor(t.color_primary)
         self._circle_color = QColor(t.color_bg)
         # 同步当前显示背景色与状态一致，避免主题切换后色差
         self._bg_color = self._active_color if self._checked else self._inactive_color
@@ -149,6 +145,13 @@ class ToggleSwitch(QWidget):
         self._anim_bg.start()
 
     checked = Property(bool, isChecked, setChecked)
+
+    def refresh_tokens(self) -> None:
+        """供主题切换时调用，重新应用令牌并重绘。"""
+        self._apply_tokens()
+        self._offset = self._end_offset_for_checked(self._checked)
+        self._bg_color = self._active_color if self._checked else self._inactive_color
+        self.update()
 
     def sizeHint(self) -> QSize:
         return QSize(48, 24)

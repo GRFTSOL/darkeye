@@ -2,6 +2,8 @@ from typing import Optional, TYPE_CHECKING
 
 from PySide6.QtWidgets import QGroupBox, QWidget
 
+from ..design.theme_context import resolve_theme_manager
+
 if TYPE_CHECKING:
     from ..design.theme_manager import ThemeManager
 
@@ -18,6 +20,7 @@ class TokenGroupBox(QGroupBox):
     ) -> None:
         super().__init__(title, parent)
         self.setObjectName("DesignGroupBox")
+        theme_manager = resolve_theme_manager(theme_manager, "TokenGroupBox")
         self._theme_manager = theme_manager
         if theme_manager is not None:
             theme_manager.themeChanged.connect(self._on_theme_changed)

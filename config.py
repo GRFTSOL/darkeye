@@ -158,3 +158,15 @@ def set_theme_id(theme_id) -> None:
         theme_id = theme_id.name
     settings.setValue("App/Theme", theme_id)
     settings.sync()
+
+
+def get_custom_primary() -> str | None:
+    '''从 .ini 读取自定义主色（仅亮色/暗色主题生效），不存在或为空则返回 None'''
+    val = settings.value("App/CustomPrimary", "", type=str)
+    return val if (val and val.strip()) else None
+
+
+def set_custom_primary(hex_color: str | None) -> None:
+    '''将自定义主色写入 .ini，传入 None 时清除'''
+    settings.setValue("App/CustomPrimary", hex_color or "")
+    settings.sync()
