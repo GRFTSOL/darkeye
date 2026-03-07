@@ -5,10 +5,11 @@ from PySide6.QtCore import Qt, QPointF
 from PySide6.QtGui import QBrush, QColor, QPen, QPolygonF, QPainter
 from PySide6.QtWidgets import QFrame, QGraphicsLineItem, QGraphicsPolygonItem, QGraphicsScene, QGraphicsTextItem, QGraphicsView
 
-from darkeye_ui.design.tokens import LIGHT_TOKENS, ThemeTokens
+from ..design.theme_context import resolve_theme_manager
+from ..design.tokens import LIGHT_TOKENS, ThemeTokens
 
 if TYPE_CHECKING:
-    from darkeye_ui.design.theme_manager import ThemeManager
+    from ..design.theme_manager import ThemeManager
 
 
 class RadarChartWidget(QGraphicsView):
@@ -32,12 +33,7 @@ class RadarChartWidget(QGraphicsView):
         self.values = values
         self.show_values = show_values if show_values is not None else values
 
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "RadarChartWidget")
         self._theme_manager = theme_manager
         if self._theme_manager is not None:
             self._theme_manager.themeChanged.connect(self._on_theme_changed)

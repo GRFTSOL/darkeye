@@ -9,6 +9,7 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QAbstractButton, QWidget
 
 from ..design import get_builtin_icon, svg_to_icon
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import ThemeTokens, LIGHT_TOKENS
 
 if TYPE_CHECKING:
@@ -70,12 +71,7 @@ class ChamferButton(QAbstractButton):
             icon_size = int(out_size * 0.55)
         self._icon_size = icon_size
 
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "ChamferButton")
         self._theme_manager = theme_manager
 
         if use_native_tooltip:

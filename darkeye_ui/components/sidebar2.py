@@ -1,19 +1,25 @@
 # darkeye_ui/components/sidebar2.py - 侧边栏导航组件
 """侧边栏：八边形按钮列，hover 呼出 tooltip，点击选中，令牌驱动。"""
 from pathlib import Path
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Union, TYPE_CHECKING
 
 from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Signal
 from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
+from .._logging import get_logger, warn_once
+from ..design.theme_context import resolve_theme_manager
 from .callout_tooltip import CalloutTooltip
 from .chamfer_button import ChamferButton
 from ..design.icon import BUILTIN_ICONS
 
+if TYPE_CHECKING:
+    from ..design.theme_manager import ThemeManager
+
 # menu_defs: [(menu_id, text, icon_name), ...]
 # icon_name: 内置键（如 "mars"）或 .svg 文件名 / 其他文件名，需 icons_base_path
 MenuDef = tuple[str, str, str]
+logger = get_logger(__name__)
 
 
 def _resolve_icon(
@@ -34,7 +40,14 @@ def _resolve_icon(
     try:
         from config import ICONS_PATH  # type: ignore[import-untyped]
         return None, Path(ICONS_PATH) / icon_name
-    except Exception:
+    except ImportError as exc:
+        warn_once(
+            logger,
+            "Sidebar2:missing_icons_path",
+            "Sidebar2: ICONS_PATH is unavailable, icon %s will be skipped.",
+            icon_name,
+            exc_info=exc,
+        )
         return None, None
 
 
@@ -54,16 +67,18 @@ class Sidebar2(QWidget):
         self,
         menu_defs: Sequence[MenuDef] | None = None,
         icons_base_path: Optional[Union[str, Path]] = None,
+        theme_manager: Optional["ThemeManager"] = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
 
         self.menu_defs = list(menu_defs) if menu_defs else []
         base = Path(icons_base_path) if icons_base_path else None
+        self._theme_manager = resolve_theme_manager(theme_manager, "Sidebar2")
 
         self._buttons: dict[str, ChamferButton] = {}
         self._current_id: str | None = None
-        self._callout_tooltip = CalloutTooltip()
+        self._callout_tooltip = CalloutTooltip(theme_manager=self._theme_manager)
         self._tooltip_timer = QTimer(self)
         self._tooltip_timer.setSingleShot(True)
         self._tooltip_timer.timeout.connect(self._show_callout_tooltip)
@@ -90,6 +105,7 @@ class Sidebar2(QWidget):
                 chamfer_ratio=0.5,
                 menu_id=mid,
                 use_native_tooltip=False,
+                theme_manager=self._theme_manager,
                 parent=self,
             )
             btn.clicked.connect(lambda _=False, m=mid: self._on_button_clicked(m))
@@ -105,15 +121,9 @@ class Sidebar2(QWidget):
                 self._current_id = first_id
                 self._buttons[first_id].set_selected(True)
 
-        theme_mgr = None
-        try:
-            from app_context import get_theme_manager  # type: ignore[import-untyped]
-            theme_mgr = get_theme_manager()
-        except Exception:
-            pass
-        if theme_mgr is not None:
-            theme_mgr.themeChanged.connect(self.update)
-            theme_mgr.themeChanged.connect(self._callout_tooltip.update)
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self.update)
+            self._theme_manager.themeChanged.connect(self._callout_tooltip.update)
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         if event.type() == QEvent.Type.Enter:
@@ -154,14 +164,17 @@ class Sidebar2(QWidget):
         path.closeSubpath()
 
         color_str = "#D4ECD7"
-        try:
-            from app_context import get_theme_manager  # type: ignore[import-untyped]
-            theme_mgr = get_theme_manager()
-            if theme_mgr is not None:
-                tokens = theme_mgr.tokens()
+        if self._theme_manager is not None:
+            try:
+                tokens = self._theme_manager.tokens()
                 color_str = getattr(tokens, "color_bg_input", color_str)
-        except Exception:
-            pass
+            except (AttributeError, RuntimeError, TypeError) as exc:
+                warn_once(
+                    logger,
+                    "Sidebar2:read_tokens_failed",
+                    "Sidebar2: failed to read theme tokens in paintEvent, use default fallback color.",
+                    exc_info=exc,
+                )
         c = QColor(color_str)
         painter.setPen(QPen(c, 1))
         painter.setBrush(QBrush(c))

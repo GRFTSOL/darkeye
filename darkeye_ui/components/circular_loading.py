@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt, QSize, QTimer, QRectF
 from PySide6.QtGui import QPainter, QColor, QPen
 from PySide6.QtWidgets import QWidget
 
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import ThemeTokens, LIGHT_TOKENS
 
 if TYPE_CHECKING:
@@ -35,12 +36,7 @@ class CircularLoading(QWidget):
         self._size = size
         self._stroke_width = stroke_width  # None 时从 border_width 解析
 
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "CircularLoading")
         self._theme_manager = theme_manager
 
         self._angle = 0.0  # 弧线起始角度，随时间累加实现旋转

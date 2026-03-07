@@ -7,6 +7,11 @@ from PySide6.QtCore import QByteArray, QSize
 from PySide6.QtGui import QIcon, QImage, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
+from .._logging import get_logger, warn_once
+
+
+logger = get_logger(__name__)
+
 
 def _device_pixel_ratio() -> float:
     """获取主屏设备像素比，高 DPI 下用于渲染更清晰的图标。"""
@@ -15,8 +20,13 @@ def _device_pixel_ratio() -> float:
         app = QApplication.instance()
         if app and app.primaryScreen() is not None:
             return app.primaryScreen().devicePixelRatio()
-    except Exception:
-        pass
+    except (AttributeError, RuntimeError) as exc:
+        warn_once(
+            logger,
+            "icon:device_pixel_ratio_failed",
+            "icon: failed to read screen devicePixelRatio, fallback to 1.0.",
+            exc_info=exc,
+        )
     return 1.0
 
 

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSlider
 
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import ThemeTokens, LIGHT_TOKENS
 
 if TYPE_CHECKING:
@@ -54,12 +55,7 @@ class ClickableSlider(QSlider):
         theme_manager: Optional["ThemeManager"] = None,
     ):  # type: ignore[arg-type]
         super().__init__(orientation, parent)
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "ClickableSlider")
         self._theme_manager = theme_manager
 
         self.setStyleFromTokens(LIGHT_TOKENS)

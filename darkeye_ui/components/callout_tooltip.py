@@ -1,12 +1,17 @@
 # darkeye_ui/components/callout_tooltip.py - 自绘尖角提示框
 """呼出式提示框：圆角矩形 + 左侧指向目标控件的三角形尖角，由设计令牌驱动。"""
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QWidget
 
+from .._logging import get_logger, warn_once
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import ThemeTokens, LIGHT_TOKENS
+
+if TYPE_CHECKING:
+    from ..design.theme_manager import ThemeManager
 
 
 def _parse_radius(radius_str: str) -> int:
@@ -31,7 +36,11 @@ class CalloutTooltip(QWidget):
     GAP = 0
     ARROW_SIZE = 6
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(
+        self,
+        parent: Optional[QWidget] = None,
+        theme_manager: Optional["ThemeManager"] = None,
+    ) -> None:
         super().__init__(parent)
         self.setWindowFlags(
             Qt.WindowType.ToolTip
@@ -42,17 +51,23 @@ class CalloutTooltip(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self._text = ""
         self._tokens: Optional[ThemeTokens] = None
+        self._logger = get_logger(__name__)
+        self._theme_manager = resolve_theme_manager(theme_manager, "CalloutTooltip")
 
     def _get_tokens(self) -> ThemeTokens:
         if self._tokens is not None:
             return self._tokens
-        try:
-            from app_context import get_theme_manager
-            mgr = get_theme_manager()
-            if mgr is not None:
+        mgr = self._theme_manager
+        if mgr is not None:
+            try:
                 return mgr.tokens()
-        except Exception:
-            pass
+            except (AttributeError, RuntimeError, TypeError) as exc:
+                warn_once(
+                    self._logger,
+                    "CalloutTooltip:theme_tokens_failed",
+                    "CalloutTooltip: failed to read theme tokens, fallback to LIGHT_TOKENS.",
+                    exc_info=exc,
+                )
         return LIGHT_TOKENS
 
     def set_tokens(self, tokens: ThemeTokens) -> None:

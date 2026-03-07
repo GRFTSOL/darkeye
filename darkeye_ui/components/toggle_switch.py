@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt, QSize, Signal, Property, QPropertyAnimation
 from PySide6.QtGui import QPainter, QColor, QBrush
 from PySide6.QtWidgets import QWidget
 
+from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import ThemeTokens, LIGHT_TOKENS
 
 if TYPE_CHECKING:
@@ -28,12 +29,7 @@ class ToggleSwitch(QWidget):
         self.setFixedSize(width, height)
         self._checked = False
         # 未传入时尝试从应用上下文获取全局 ThemeManager，使主题切换时颜色能更新
-        if theme_manager is None:
-            try:
-                from app_context import get_theme_manager
-                theme_manager = get_theme_manager()
-            except Exception:
-                pass
+        theme_manager = resolve_theme_manager(theme_manager, "ToggleSwitch")
         self._theme_manager = theme_manager
 
         # 动画用属性
