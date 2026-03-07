@@ -13,10 +13,121 @@
 #include <algorithm>
 #include <mutex>
 
+namespace {
+
+int addNodeToPhysicsState(PhysicsState& state, float x, float y)
+{
+    const int newIndex = state.nNodes++;
+    state.pos.resize(2 * state.nNodes);
+    state.vel.resize(2 * state.nNodes);
+    state.mass.push_back(1.0f);
+    state.dragging.push_back(0);
+    state.renderPosA.resize(2 * state.nNodes);
+    state.renderPosB.resize(2 * state.nNodes);
+    state.dragPos.resize(2 * state.nNodes);
+
+    state.pos[2 * newIndex] = x;
+    state.pos[2 * newIndex + 1] = y;
+    state.vel[2 * newIndex] = 0.0f;
+    state.vel[2 * newIndex + 1] = 0.0f;
+    state.renderPosA[2 * newIndex] = x;
+    state.renderPosA[2 * newIndex + 1] = y;
+    state.renderPosB[2 * newIndex] = x;
+    state.renderPosB[2 * newIndex + 1] = y;
+    state.dragPos[2 * newIndex] = x;
+    state.dragPos[2 * newIndex + 1] = y;
+    return newIndex;
+}
+
+bool removeNodeFromPhysicsState(PhysicsState& state, int index)
+{
+    if (index < 0 || index >= state.nNodes) return false;
+
+    const int last = state.nNodes - 1;
+    const bool moved = (index != last);
+    if (moved) {
+        state.pos[2 * index]         = state.pos[2 * last];
+        state.pos[2 * index + 1]     = state.pos[2 * last + 1];
+        state.vel[2 * index]         = state.vel[2 * last];
+        state.vel[2 * index + 1]     = state.vel[2 * last + 1];
+        state.mass[index]            = state.mass[last];
+        state.dragging[index]        = state.dragging[last];
+        state.renderPosA[2 * index]     = state.renderPosA[2 * last];
+        state.renderPosA[2 * index + 1] = state.renderPosA[2 * last + 1];
+        state.renderPosB[2 * index]     = state.renderPosB[2 * last];
+        state.renderPosB[2 * index + 1] = state.renderPosB[2 * last + 1];
+        state.dragPos[2 * index]     = state.dragPos[2 * last];
+        state.dragPos[2 * index + 1] = state.dragPos[2 * last + 1];
+    }
+
+    state.nNodes--;
+    state.pos.resize(2 * state.nNodes);
+    state.vel.resize(2 * state.nNodes);
+    state.mass.resize(state.nNodes);
+    state.dragging.resize(state.nNodes);
+    state.renderPosA.resize(2 * state.nNodes);
+    state.renderPosB.resize(2 * state.nNodes);
+    state.dragPos.resize(2 * state.nNodes);
+
+    std::vector<int> newEdges;
+    newEdges.reserve(state.edges.size());
+    const int newN = state.nNodes;
+    for (size_t i = 0; i + 1 < state.edges.size(); i += 2) {
+        int u = state.edges[i];
+        int v = state.edges[i + 1];
+
+        if (u == index || v == index) continue;
+
+        if (moved) {
+            if (u == last) u = index;
+            if (v == last) v = index;
+        }
+
+        if (u < 0 || v < 0 || u >= newN || v >= newN || u == v) continue;
+        newEdges.push_back(u);
+        newEdges.push_back(v);
+    }
+    state.edges.swap(newEdges);
+    return true;
+}
+
+bool addEdgeToPhysicsState(PhysicsState& state, int u, int v)
+{
+    if (u < 0 || u >= state.nNodes || v < 0 || v >= state.nNodes || u == v) return false;
+
+    for (size_t i = 0; i < state.edges.size(); i += 2) {
+        if ((state.edges[i] == u && state.edges[i + 1] == v) ||
+            (state.edges[i] == v && state.edges[i + 1] == u)) {
+            return false;
+        }
+    }
+
+    state.edges.push_back(u);
+    state.edges.push_back(v);
+    return true;
+}
+
+bool removeEdgeFromPhysicsState(PhysicsState& state, int u, int v)
+{
+    if (u < 0 || u >= state.nNodes || v < 0 || v >= state.nNodes) return false;
+
+    for (size_t i = 0; i < state.edges.size(); i += 2) {
+        if ((state.edges[i] == u && state.edges[i + 1] == v) ||
+            (state.edges[i] == v && state.edges[i + 1] == u)) {
+            state.edges.erase(state.edges.begin() + i, state.edges.begin() + i + 2);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+} // namespace
+
 bool ForceViewOpenGL::removeNodeInternal(int indexToRemove)
 {
     const int lastNodeIndex = m_physicsState->nNodes - 1;
-    if (!m_physicsState->removeNode(indexToRemove)) return false;
+    if (!removeNodeFromPhysicsState(*m_physicsState, indexToRemove)) return false;
 
     if (indexToRemove != lastNodeIndex && lastNodeIndex >= 0 && lastNodeIndex < m_ids.size()) {
         m_ids[indexToRemove] = m_ids[lastNodeIndex];
@@ -52,7 +163,7 @@ void ForceViewOpenGL::add_node_runtime(const QString& nodeId, float x, float y,
         if (existingId == nodeId) return;
     }
 
-    int newIndex = m_physicsState->addNode(x, y);
+    addNodeToPhysicsState(*m_physicsState, x, y);
 
     m_ids.append(nodeId);
     m_labels.append(label.isEmpty() ? nodeId : label);
@@ -162,7 +273,7 @@ void ForceViewOpenGL::add_edge_runtime(const QString& uNodeId, const QString& vN
 
     if (u < 0 || v < 0 || u == v) return;
 
-    bool added = m_physicsState->addEdge(u, v);
+    bool added = addEdgeToPhysicsState(*m_physicsState, u, v);
     if (!added) return;
 
     m_neighbors[u].push_back(v);
@@ -199,7 +310,7 @@ void ForceViewOpenGL::remove_edge_runtime(const QString& uNodeId, const QString&
 
     if (u < 0 || v < 0) return;
 
-    bool removed = m_physicsState->removeEdge(u, v);
+    bool removed = removeEdgeFromPhysicsState(*m_physicsState, u, v);
     if (!removed) return;
 
     auto removeFromNeighbors = [&](int node, int neighbor) {
@@ -286,7 +397,7 @@ void ForceViewOpenGL::apply_diff_runtime(const QVariantList& diffList)
             const int u = idToIndex.value(uId, -1);
             const int v = idToIndex.value(vId, -1);
             if (u < 0 || v < 0) continue;
-            m_physicsState->removeEdge(u, v);
+            removeEdgeFromPhysicsState(*m_physicsState, u, v);
         }
     }
 
@@ -345,7 +456,7 @@ void ForceViewOpenGL::apply_diff_runtime(const QVariantList& diffList)
         const QVariant colorVar = getAttr(m, QStringLiteral("color"));
         const QColor color = parseColor(colorVar);
 
-        m_physicsState->addNode(static_cast<float>(x), static_cast<float>(y));
+        addNodeToPhysicsState(*m_physicsState, static_cast<float>(x), static_cast<float>(y));
         m_ids.append(nodeId);
         m_labels.append(label);
         m_showRadiiBase.append(static_cast<float>(radiusD));
@@ -362,7 +473,7 @@ void ForceViewOpenGL::apply_diff_runtime(const QVariantList& diffList)
             const int u = idToIndex.value(uId, -1);
             const int v = idToIndex.value(vId, -1);
             if (u < 0 || v < 0) continue;
-            m_physicsState->addEdge(u, v);
+            addEdgeToPhysicsState(*m_physicsState, u, v);
         }
     }
 
