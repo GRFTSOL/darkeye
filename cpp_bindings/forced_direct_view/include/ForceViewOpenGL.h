@@ -180,11 +180,13 @@ private:
     static constexpr float kInitialLayoutScaleFactor   = 25.0f;
     static constexpr float kInitialLayoutBaseOffset    = 50.0f;
     static constexpr float kContentPaddingRatio        = 0.1f;
+    static constexpr float kContentPaddingAbs          = 20.0f;
     static constexpr float kViewPadding                = 50.0f;
 
     static constexpr float kFitViewScaleMargin         = 0.9f;
     static constexpr float kFitViewZoomMin             = 0.01f;
-    static constexpr float kFitViewZoomMax             = 1000.0f;
+    static constexpr float kFitViewZoomMax             = 10.0f;
+    static constexpr float kFitViewMaxNodeRadiusPx     = 22.0f;
 
     static constexpr float kZoomMin                    = 0.1f;
     static constexpr float kZoomMax                    = 10.0f;

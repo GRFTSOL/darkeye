@@ -6,6 +6,7 @@
 #include <QSurfaceFormat>
 #include <QFileInfo>
 
+#include <algorithm>
 #include <cmath>
 #include <chrono>
 #include <thread>
@@ -255,29 +256,97 @@ QRectF ForceViewOpenGL::getContentRect() const
 {
     if (!m_physicsState || m_physicsState->nNodes == 0) return QRectF();
     const float* pos = m_physicsState->renderPosData();
-    int N = m_physicsState->nNodes;
-    float minX = pos[0], maxX = pos[0], minY = pos[1], maxY = pos[1];
+    if (!pos) return QRectF();
+
+    const int N = m_physicsState->nNodes;
+    const bool useScaledRadii = (m_showRadii.size() == N);
+    const bool useBaseRadii = (!useScaledRadii && m_showRadiiBase.size() == N);
+    auto radiusAt = [&](int i) -> float {
+        float r = kDefaultNodeRadius;
+        if (useScaledRadii) {
+            r = m_showRadii[i];
+        } else if (useBaseRadii) {
+            r = m_showRadiiBase[i] * m_radiusFactor;
+        }
+        if (!std::isfinite(r) || r <= 0.0f) r = kDefaultNodeRadius;
+        return r;
+    };
+
+    float r0 = radiusAt(0);
+    float minX = pos[0] - r0;
+    float maxX = pos[0] + r0;
+    float minY = pos[1] - r0;
+    float maxY = pos[1] + r0;
     for (int i = 1; i < N; ++i) {
-        float x = pos[2*i], y = pos[2*i+1];
-        if (x < minX) minX = x; if (x > maxX) maxX = x;
-        if (y < minY) minY = y; if (y > maxY) maxY = y;
+        float x = pos[2 * i];
+        float y = pos[2 * i + 1];
+        float r = radiusAt(i);
+        if (x - r < minX) minX = x - r;
+        if (x + r > maxX) maxX = x + r;
+        if (y - r < minY) minY = y - r;
+        if (y + r > maxY) maxY = y + r;
     }
     float w = maxX - minX;
     float h = maxY - minY;
-    float mx = w * kContentPaddingRatio;
-    float my = h * kContentPaddingRatio;
-    return QRectF(minX - mx, minY - my, w + 2*mx, h + 2*my);
+    float mx = std::max(w * kContentPaddingRatio, kContentPaddingAbs);
+    float my = std::max(h * kContentPaddingRatio, kContentPaddingAbs);
+    return QRectF(minX - mx, minY - my, w + 2 * mx, h + 2 * my);
 }
 
 void ForceViewOpenGL::fitViewToContent()
 {
+    if (!m_physicsState || m_physicsState->nNodes <= 0) return;
     QRectF r = getContentRect();
     if (r.isEmpty() || m_viewportW <= 0 || m_viewportH <= 0) return;
+
     float w = static_cast<float>(r.width());
     float h = static_cast<float>(r.height());
     if (w <= 0.0f || h <= 0.0f) return;
-    float z = std::min(static_cast<float>(m_viewportW) / w, static_cast<float>(m_viewportH) / h) * kFitViewScaleMargin;
-    z = std::max(kFitViewZoomMin, std::min(kFitViewZoomMax, z));
+
+    const int N = m_physicsState->nNodes;
+    float margin = kFitViewScaleMargin;
+    if (N <= 2) {
+        margin = 0.65f;
+    } else if (N <= 10) {
+        margin = 0.75f;
+    } else if (N <= 50) {
+        margin = 0.85f;
+    }
+
+    float z = std::min(static_cast<float>(m_viewportW) / w,
+                       static_cast<float>(m_viewportH) / h) * margin;
+
+    float fitZoomUpper = kFitViewZoomMax;
+    if (N <= 2) {
+        fitZoomUpper = std::min(fitZoomUpper, 1.2f);
+    } else if (N <= 10) {
+        fitZoomUpper = std::min(fitZoomUpper, 1.8f);
+    } else if (N <= 50) {
+        fitZoomUpper = std::min(fitZoomUpper, 2.8f);
+    }
+
+    if (N <= 50) {
+        float maxNodeRadius = 0.0f;
+        if (m_showRadii.size() == N) {
+            for (int i = 0; i < N; ++i) {
+                const float rNode = m_showRadii[i];
+                if (std::isfinite(rNode) && rNode > maxNodeRadius) maxNodeRadius = rNode;
+            }
+        } else if (m_showRadiiBase.size() == N) {
+            for (int i = 0; i < N; ++i) {
+                const float rNode = m_showRadiiBase[i] * m_radiusFactor;
+                if (std::isfinite(rNode) && rNode > maxNodeRadius) maxNodeRadius = rNode;
+            }
+        }
+        if (maxNodeRadius > 0.0f) {
+            const float radiusZoomUpper = kFitViewMaxNodeRadiusPx / maxNodeRadius;
+            fitZoomUpper = std::min(fitZoomUpper, radiusZoomUpper);
+        }
+    }
+
+    fitZoomUpper = std::max(kFitViewZoomMin, fitZoomUpper);
+    z = std::max(kFitViewZoomMin, std::min(fitZoomUpper, z));
+
     m_zoom = z;
     m_panX = static_cast<float>(r.center().x());
     m_panY = static_cast<float>(r.center().y());
