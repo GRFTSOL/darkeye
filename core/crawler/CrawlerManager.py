@@ -1,6 +1,7 @@
 import logging
 import random
 import asyncio
+import traceback
 from PySide6.QtCore import QObject, Signal, QThreadPool, Slot, Qt,QTimer
 from core.crawler.Worker import Worker
 from typing import Dict, Optional
@@ -196,28 +197,29 @@ class CrawlerManager2(QObject):
     @Slot(str, str, dict)
     def on_result_received(self, source, serial, data):
         '''这个目前是在主线程接收回调'''
+        try:
+            task = self.tasks.get(serial)#取这个任务
+            if not task: 
+                logging.error(f"未找到任务 {serial}")
+                return
 
-        task = self.tasks.get(serial)#取这个任务
-        if not task: 
-            logging.error(f"未找到任务 {serial}")
-            return
+            # 存结果（Worker 异常时 data 为 None，归一化为 {} 避免 _merge_results 崩溃）
+            task.results[source] = data if isinstance(data, dict) else {}
+            task.pending_sources.discard(source)
+            logging.info(f"已接收 {source} 的结果:\n 剩余待处理: {task.pending_sources}")
+            key = (source, serial)
+            if key in self._relays:
+                del self._relays[key]
 
-        # 存结果
-        task.results[source] = data
-        task.pending_sources.discard(source)
-        logging.info(f"已接收 {source} 的结果:/n 剩余待处理: {task.pending_sources}")
-        key = (source, serial)
-        if key in self._relays:
-            del self._relays[key]
-
-        
-        if not task.pending_sources:  # 全部完成，仅在工作线程做合并+翻译；DataUpdate 必须在主线程创建以便下载器信号槽正常
-            worker = Worker(lambda: self._do_merge_only(serial))
-            worker.signals.finished.connect(
-                self._on_merge_worker_finished,
-                Qt.ConnectionType.QueuedConnection,
-            )
-            QThreadPool.globalInstance().start(worker)
+            if not task.pending_sources:  # 全部完成，仅在工作线程做合并+翻译；DataUpdate 必须在主线程创建以便下载器信号槽正常
+                worker = Worker(lambda: self._do_merge_only(serial))
+                worker.signals.finished.connect(
+                    self._on_merge_worker_finished,
+                    Qt.ConnectionType.QueuedConnection,
+                )
+                QThreadPool.globalInstance().start(worker)
+        except Exception as e:
+            logging.error(f"on_result_received 崩溃 [source={source} serial={serial}]: {e}\n{traceback.format_exc()}")
 
     def _do_merge_only(self, serial: str):
         """在工作线程中执行：合并结果（含同步翻译）。返回 final_data，不创建 DataUpdate。"""
@@ -229,44 +231,51 @@ class CrawlerManager2(QObject):
     @Slot(object)
     def _on_merge_worker_finished(self, result):
         """合并工作线程结束后的回调（主线程）：在主线程创建 DataUpdate，保证 SequentialDownloader 与下载完成槽在主线程执行。"""
-        if result is None:
-            return
-        final_data: CrawledWorkData = result
-        serial = final_data.serial_number
-        task = self.tasks.get(serial)
-        if not task:
-            return
-        DataUpdate(final_data, self, withGUI=task.withGUI)
+        try:
+            if result is None:
+                return
+            final_data: CrawledWorkData = result
+            serial = final_data.serial_number
+            task = self.tasks.get(serial)
+            if not task:
+                return
+            DataUpdate(final_data, self, withGUI=task.withGUI)
+        except Exception as e:
+            logging.error(f"_on_merge_worker_finished 崩溃: {e}\n{traceback.format_exc()}")
 
     @timeit
     def _merge_results(self, results:Dict[str, dict],serial:str)-> CrawledWorkData:
         '''合并所有爬虫的结果,返回标准爬虫标准model'''
         #logging.info(f"开始合并结果\n{results}")
 
-        javlib_result = results.get("javlib", {})
-        javtxt_result = results.get("javtxt", {})
-        avdanyuwiki_result = results.get("avdanyuwiki", {})
-        fanza_result = results.get("fanza", {})
-        
+        # 防御：Worker 异常时 emit(None)，results 中可能存 None，.get(k, {}) 仍会返回 None
+        javlib_result = results.get("javlib") or {}
+        javtxt_result = results.get("javtxt") or {}
+        avdanyuwiki_result = results.get("avdanyuwiki") or {}
+        fanza_result = results.get("fanza") or {}
 
         release_date=javlib_result.get("release_date", avdanyuwiki_result.get("release_date", ""))
 
         director=avdanyuwiki_result.get("director", javlib_result.get("director", ""))
 
         video_length=javlib_result.get("length", avdanyuwiki_result.get("length", ""))
-        actress_list=avdanyuwiki_result.get("actress_list", javlib_result.get("actress", []))
+        actress_list=avdanyuwiki_result.get("actress_list") or javlib_result.get("actress") or []
 
         # 封面的优先级是javlib,avdanyuwiki,missav
-        cover_list=[javlib_result.get("image", [])]
-        avdanurl=avdanyuwiki_result.get("cover", "")
-        if avdanurl!="":
+        def _urls(x):
+            if x is None: return []
+            return [x] if isinstance(x, str) else (x if isinstance(x, list) else [])
+        cover_list = [u for u in _urls(javlib_result.get("image")) if u and isinstance(u, str)]
+        avdanurl = avdanyuwiki_result.get("cover") or ""
+        if avdanurl:
             cover_list.append(avdanurl)
+        serial_number = self.tasks[serial].serial.lower()
+        cover_list.append("https://fourhoi.com/" + serial_number + "/cover-n.jpg")
 
-        serial_number=self.tasks[serial].serial.lower()
-        missavurl="https://fourhoi.com/"+serial_number+"/cover-n.jpg"
-        cover_list.append(missavurl)
-
-        genre_list = list(set(avdanyuwiki_result.get("tag_list", []) + javlib_result.get("genre", [])))
+        tag_list = avdanyuwiki_result.get("tag_list") or []
+        genre_jav = javlib_result.get("genre") or []
+        genre_raw = (tag_list if isinstance(tag_list, list) else []) + (genre_jav if isinstance(genre_jav, list) else [])
+        genre_list = list(set(str(g) for g in genre_raw if g is not None))
 
         jp_title=javlib_result.get("title", javtxt_result.get("jp_title", ""))  
 
@@ -276,7 +285,7 @@ class CrawlerManager2(QObject):
             "director": director,
             "video_length": video_length,
             "actress_list": actress_list,
-            "actor_list": avdanyuwiki_result.get("actor_list", []),
+            "actor_list": avdanyuwiki_result.get("actor_list") or [],
             "genre_list": genre_list,
             "cn_title": javtxt_result.get("cn_title", ""),
             "jp_title": jp_title,
@@ -289,18 +298,27 @@ class CrawlerManager2(QObject):
 
         #下面是预处理
         # 空缺的cn_title与cn_story用jp_title与jp_story的翻译
-        if  work_merge["cn_title"]=="" and work_merge["jp_title"]!="":
-            work_merge["cn_title"]=translate_text_sync(work_merge["jp_title"], fallback="empty")
-        if  work_merge["cn_story"]=="" and work_merge["jp_story"]!="":
-            work_merge["cn_story"]=translate_text_sync(work_merge["jp_story"], fallback="empty")
+        try:
+            if work_merge["cn_title"] == "" and work_merge["jp_title"] != "":
+                work_merge["cn_title"] = translate_text_sync(work_merge["jp_title"], fallback="empty")
+            if work_merge["cn_story"] == "" and work_merge["jp_story"] != "":
+                work_merge["cn_story"] = translate_text_sync(work_merge["jp_story"], fallback="empty")
+        except Exception as e:
+            logging.warning(f"_merge_results 翻译失败，使用原文: {e}\n{traceback.format_exc()}")
 
         logging.info(f"基本聚合结果: {work_merge}")
+
+        # vlength 必须为 int，video_length 可能为 "" 或 "120" 等字符串
+        try:
+            vlength_val = int(work_merge["video_length"]) if work_merge["video_length"] else 0
+        except (ValueError, TypeError):
+            vlength_val = 0
 
         crawled_work_data=CrawledWorkData(
             serial_number=work_merge["serial_number"],
             director=work_merge["director"],
             release_date=work_merge["release_date"],
-            vlength=work_merge["video_length"],
+            vlength=vlength_val,
             cn_title=work_merge["cn_title"],
             jp_title=work_merge["jp_title"],
             cn_story=work_merge["cn_story"],

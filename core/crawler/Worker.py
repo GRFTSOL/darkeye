@@ -1,8 +1,10 @@
 
 import time
+import traceback
 from PySide6.QtCore import QRunnable, QThreadPool, Signal, Slot, QObject,QThread
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget
-import logging,threading
+import logging
+import threading
 
 # 定义信号类（用于线程间通信）
 class WorkerSignals(QObject):
@@ -27,16 +29,13 @@ class Worker(QRunnable):
 
     def run(self):
         try:
-            #logging.info("开启一个后台线程")
-            thread_name = self.func.__name__  # 假设func有名字
+            thread_name = getattr(self.func, "__name__", "<lambda>")
             current_qt_thread = QThread.currentThread()
-            current_qt_thread.setObjectName(thread_name)
-            
-            print(f"开始任务 - Python线程名: {threading.current_thread().name}, 线程对象: {current_qt_thread}")
+            current_qt_thread.setObjectName(str(thread_name))
+            logging.info(f"Worker 开始: {thread_name} (线程 {threading.current_thread().name})")
             self.result = self.func(*self.args, **self.kwargs)
-            self.signals.finished.emit(self.result)#把爬虫后返回结果传回去
-            #logging.info(f"线程完成任务，信号发射，返回结果{self.result}")
-            print(f"结束任务 - {threading.current_thread().name}")
+            logging.info(f"Worker 完成: {thread_name}，即将 emit")
+            self.signals.finished.emit(self.result)
         except Exception as e:
-            logging.warning(f"出错误:{e}")
+            logging.error(f"Worker 异常: {e}\n{traceback.format_exc()}")
             self.signals.finished.emit(None)
