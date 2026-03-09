@@ -19,6 +19,7 @@ from core.database.query import (
     get_actorname,
     get_serial_number,
     get_maker_name,
+    get_workid_by_serialnumber,
 )
 from ui.basic import HorizontalScrollArea
 from ui.widgets import CompleterLineEdit
@@ -184,6 +185,28 @@ class ShelfPage(QWidget):
         global_signals.actor_data_changed.connect(self.actor_input.reload_items)
 
         self.btn_eraser.clicked.connect(self._clear_all_search)
+
+    def load_with_params(self, work_id=None, serial_number=None, **kwargs):
+        target_work_id = work_id
+        if target_work_id is None and serial_number:
+            try:
+                target_work_id = get_workid_by_serialnumber(str(serial_number).strip())
+            except Exception:
+                logging.exception("ShelfPage: failed to resolve work_id from serial_number")
+                return
+        if target_work_id is None:
+            return
+
+        try:
+            target_work_id = int(target_work_id)
+        except (TypeError, ValueError):
+            return
+
+        if self.shelf_view.loadworkid(target_work_id):
+            return
+
+        # Delay one event-loop tick so a freshly lazy-loaded page can finish applying its initial data.
+        QTimer.singleShot(0, lambda wid=target_work_id: self.shelf_view.loadworkid(wid))
 
     @Slot()
     def _clear_all_search(self) -> None:

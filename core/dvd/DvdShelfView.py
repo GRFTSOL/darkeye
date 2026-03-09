@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import perf_counter
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot, QTimer
 from PySide6.QtGui import QCursor, QColor
@@ -44,7 +45,12 @@ MAX_RANGE = 60  # 可见范围最大 item 数，超出时从远端收缩
 WINDOW_RANGE = min(MAX_RANGE, VISIBLE_MARGIN * 2 + 1)
 MAX_SHIFT_PER_UPDATE = 10  # 单次最多平移 10 个索引，避免一次性大幅跳动
 UPDATE_INTERVAL_MS = 16  # 约 60FPS：滚动时节流刷新而非停止后防抖
+SELECT_OPEN_DELAY_MS = 550
 DVD_SPACING = 0.0145
+CAMERA_SMOOTH_TIME_S = 0.11
+CAMERA_MAX_SPEED = DVD_SPACING * 96
+CAMERA_SETTLE_EPSILON = DVD_SPACING * 0.02
+CAMERA_SETTLE_VELOCITY = DVD_SPACING * 0.1
 DVD_QML = "Dvd.qml"
 DVD_SCENE = "dvd_scene.qml"
 
@@ -53,6 +59,7 @@ class DvdBridge(QObject):
     """QML 与 Python 的桥接，cameraX 为 3D 坐标，由滚轮控制，Python 根据其计算可见范围。"""
 
     cameraXChanged = Signal(float)
+    cameraTargetXChanged = Signal(float)
     expandedWorkFavoritedChanged = Signal()
     expandedWorkTitleChanged = Signal()
     expandedWorkStoryChanged = Signal()
@@ -68,6 +75,7 @@ class DvdBridge(QObject):
         super().__init__()
         self._view = view
         self._camera_x = 0.0
+        self._camera_target_x = 0.0
         self._expanded_favorited = False
         self._expanded_work_title = ""
         self._expanded_work_story = ""
@@ -88,6 +96,21 @@ class DvdBridge(QObject):
             self.cameraXChanged.emit(v)
 
     cameraX = Property(float, _get_camera_x, _set_camera_x, notify=cameraXChanged)
+
+    def _get_camera_target_x(self) -> float:
+        return self._camera_target_x
+
+    def _set_camera_target_x(self, v: float) -> None:
+        if abs(self._camera_target_x - v) > 1e-9:
+            self._camera_target_x = v
+            self.cameraTargetXChanged.emit(v)
+
+    cameraTargetX = Property(
+        float,
+        _get_camera_target_x,
+        _set_camera_target_x,
+        notify=cameraTargetXChanged,
+    )
 
     def _get_expanded_favorited(self) -> bool:
         return self._expanded_favorited
@@ -238,7 +261,11 @@ class DvdBridge(QObject):
 
     @Slot(float)
     def setCameraX(self, v: float) -> None:
-        self._set_camera_x(v)
+        self._view.set_camera_target(v)
+
+    @Slot(float, float)
+    def scrollCameraBy(self, delta: float, max_camera_x: float) -> None:
+        self._view.scroll_camera_by(delta, max_camera_x)
 
     @Slot(str)
     def copyToClipboard(self, text: str) -> None:
@@ -305,10 +332,17 @@ class DvdShelfView(QWidget):
         self._dvd_dir = Path(__file__).resolve().parent.parent.parent / "core" / "dvd"
 
         self._bridge = DvdBridge(self)
+        self._camera_target_x = 0.0
+        self._camera_velocity_x = 0.0
+        self._last_camera_animation_ts = perf_counter()
+        self._camera_animation_timer = QTimer(self)
+        self._camera_animation_timer.setSingleShot(False)
+        self._camera_animation_timer.setInterval(UPDATE_INTERVAL_MS)
         self._update_timer = QTimer(self)
         self._update_timer.setSingleShot(False)
         self._update_timer.setInterval(UPDATE_INTERVAL_MS)
         self._pending_camera_x: float | None = None
+        self._programmatic_open_token = 0
         self._quick_widget = QQuickWidget(self)
         self._quick_widget.setResizeMode(QQuickWidget.SizeRootObjectToView)
         self._quick_widget.setMinimumHeight(min_height)
@@ -336,7 +370,7 @@ class DvdShelfView(QWidget):
         ctx.setContextProperty("dvdVisibleStart", 0)
         ctx.setContextProperty("dvdShelfLength", 0.0)
         ctx.setContextProperty("dvdSpacing", DVD_SPACING)
-        ctx.setContextProperty("cameraDistance", 0.3)
+        ctx.setContextProperty("cameraDistance", 0.25)
         ctx.setContextProperty("selectedDvdDistance", 0.2)
         ctx.setContextProperty("showWireframe", False)
         ctx.setContextProperty("dvdBridge", self._bridge)
@@ -353,12 +387,16 @@ class DvdShelfView(QWidget):
             QUrl.fromLocalFile(str(HDR_PATH)).toString().rstrip("/") + "/",
         )
         self._quick_widget.setSource(QUrl.fromLocalFile(str(qml_path)))
+        self._camera_animation_timer.timeout.connect(self._advance_camera_animation)
         self._update_timer.timeout.connect(self._apply_pending_camera_update)
 
     def work_count(self) -> int:
         return len(self._work_ids)
 
     def set_work_ids(self, work_ids: list[int]) -> None:
+        '''这里一次性设置好所有的work_ids'''
+        self._programmatic_open_token += 1
+        self._reset_scene_interaction_state()
         self._work_ids = work_ids
         self._load_start = -1
         self._load_end = -2
@@ -371,15 +409,103 @@ class DvdShelfView(QWidget):
         self._bridge.expandedWorkActors = []
         self._bridge.expandedWorkDirector = ""
         self._bridge.expandedWorkStudio = ""
+        self._jump_camera_to(0.0)
 
         N = len(self._work_ids)
         if N == 0:
             self._update_qml(0, [], 0, 0.0)
             return
 
-        self._bridge.setCameraX(0.0)
         self._pending_camera_x = 0.0
         self._apply_pending_camera_update()
+
+    @staticmethod
+    def _smooth_damp(
+        current: float,
+        target: float,
+        current_velocity: float,
+        smooth_time: float,
+        max_speed: float,
+        delta_time: float,
+    ) -> tuple[float, float]:
+        smooth_time = max(1e-4, smooth_time)
+        delta_time = max(1e-4, delta_time)
+        omega = 2.0 / smooth_time
+        x = omega * delta_time
+        exp = 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
+
+        change = current - target
+        original_target = target
+        max_change = max_speed * smooth_time
+        change = max(-max_change, min(max_change, change))
+        target = current - change
+
+        temp = (current_velocity + omega * change) * delta_time
+        new_velocity = (current_velocity - omega * temp) * exp
+        output = target + (change + temp) * exp
+
+        if (original_target - current > 0.0) == (output > original_target):
+            output = original_target
+            new_velocity = 0.0
+
+        return output, new_velocity
+
+    def _jump_camera_to(self, camera_x: float) -> None:
+        camera_x = max(0.0, float(camera_x))
+        self._camera_animation_timer.stop()
+        self._camera_target_x = camera_x
+        self._camera_velocity_x = 0.0
+        self._last_camera_animation_ts = perf_counter()
+        self._bridge._set_camera_target_x(camera_x)
+        self._bridge._set_camera_x(camera_x)
+
+    def set_camera_target(self, camera_x: float) -> None:
+        camera_x = max(0.0, float(camera_x))
+        self._camera_target_x = camera_x
+        self._bridge._set_camera_target_x(camera_x)
+
+        if (
+            abs(self._bridge._get_camera_x() - camera_x) <= CAMERA_SETTLE_EPSILON
+            and abs(self._camera_velocity_x) <= CAMERA_SETTLE_VELOCITY
+        ):
+            self._camera_velocity_x = 0.0
+            self._bridge._set_camera_x(camera_x)
+            return
+
+        if not self._camera_animation_timer.isActive():
+            self._last_camera_animation_ts = perf_counter()
+            self._camera_animation_timer.start()
+
+    def scroll_camera_by(self, delta: float, max_camera_x: float) -> None:
+        target = max(0.0, min(float(max_camera_x), self._camera_target_x + float(delta)))
+        self.set_camera_target(target)
+
+    def _advance_camera_animation(self) -> None:
+        now = perf_counter()
+        delta_time = min(0.05, max(0.001, now - self._last_camera_animation_ts))
+        self._last_camera_animation_ts = now
+
+        current_x = self._bridge._get_camera_x()
+        next_x, next_velocity = self._smooth_damp(
+            current_x,
+            self._camera_target_x,
+            self._camera_velocity_x,
+            CAMERA_SMOOTH_TIME_S,
+            CAMERA_MAX_SPEED,
+            delta_time,
+        )
+        self._camera_velocity_x = next_velocity
+
+        if (
+            abs(self._camera_target_x - next_x) <= CAMERA_SETTLE_EPSILON
+            and abs(self._camera_velocity_x) <= CAMERA_SETTLE_VELOCITY
+        ):
+            self._camera_animation_timer.stop()
+            self._camera_velocity_x = 0.0
+            self._bridge._set_camera_x(self._camera_target_x)
+            return
+
+        self._bridge._set_camera_x(next_x)
 
     def _on_camera_x_changed(self, camera_x: float) -> None:
         N = len(self._work_ids)
@@ -489,6 +615,88 @@ class DvdShelfView(QWidget):
         ctx.setContextProperty("dvdCount", dvd_count)
         ctx.setContextProperty("dvdVisibleStart", visible_start)
         ctx.setContextProperty("dvdShelfLength", shelf_length)
+
+    def _root_scene_object(self) -> QObject | None:
+        return self._quick_widget.rootObject()
+
+    def _set_scene_selection_state(
+        self, selected_delegate_index: int, expanded_delegate_index: int
+    ) -> None:
+        root = self._root_scene_object()
+        if root is None:
+            return
+        root.setProperty("selectedDelegateIndex", selected_delegate_index)
+        root.setProperty("expandedDelegateIndex", expanded_delegate_index)
+
+    def _reset_scene_interaction_state(self) -> None:
+        root = self._root_scene_object()
+        if root is None:
+            return
+        root.setProperty("hoveredDelegateIndex", -1)
+        root.setProperty("pressedDelegateIndex", -1)
+        root.setProperty("pressedObjectHit", None)
+        root.setProperty("fullyExpandedDelegateIndex", -1)
+        root.setProperty("_pendingCollapseSelectedIndex", -1)
+        root.setProperty("_pendingCollapseCloseSpeedMultiplier", 1.0)
+        root.setProperty("_frozenSelectedDelegateIndex", -1)
+        root.setProperty("_frozenSelectedVirtualIndex", -1)
+        root.setProperty("selectedDelegateIndex", -1)
+        root.setProperty("expandedDelegateIndex", -1)
+
+    def _expand_delegate_if_token_matches(self, delegate_index: int, token: int) -> None:
+        if token != self._programmatic_open_token:
+            return
+        root = self._root_scene_object()
+        if root is None:
+            return
+        current_selected = int(root.property("selectedDelegateIndex"))
+        if current_selected != delegate_index:
+            return
+        root.setProperty("expandedDelegateIndex", delegate_index)
+
+    def _select_and_open_virtual_index_if_token_matches(
+        self, virtual_index: int, token: int
+    ) -> None:
+        if token != self._programmatic_open_token:
+            return
+        if not (self._load_start <= virtual_index <= self._load_end):
+            return
+        delegate_index = virtual_index - self._load_start
+        root = self._root_scene_object()
+        if root is None:
+            return
+        root.setProperty("selectedDelegateIndex", delegate_index)
+        root.setProperty("expandedDelegateIndex", -1)
+        QTimer.singleShot(
+            SELECT_OPEN_DELAY_MS,
+            lambda idx=delegate_index, current_token=token:
+                self._expand_delegate_if_token_matches(idx, current_token),
+        )
+
+    @Slot(int, result=bool)
+    def loadworkid(self, work_id: int) -> bool:
+        try:
+            virtual_index = self._work_ids.index(int(work_id))
+        except (ValueError, TypeError):
+            return False
+
+        target_camera_x = virtual_index * DVD_SPACING
+        self._programmatic_open_token += 1
+        token = self._programmatic_open_token
+
+        self._reset_scene_interaction_state()
+        self._load_start = -1
+        self._load_end = -2
+        self._update_timer.stop()
+        self._jump_camera_to(target_camera_x)
+        self._pending_camera_x = target_camera_x
+        self._apply_pending_camera_update()
+        QTimer.singleShot(
+            0,
+            lambda idx=virtual_index, current_token=token:
+                self._select_and_open_virtual_index_if_token_matches(idx, current_token),
+        )
+        return True
 
     def show_video_menu_for_index(self, virtual_index: int) -> None:
         """点击 CD 后弹出视频菜单供选择，复用 SingleWorkPage 的 show_video_menu 逻辑。"""

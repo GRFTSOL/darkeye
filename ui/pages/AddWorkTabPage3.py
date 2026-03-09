@@ -556,7 +556,8 @@ class ViewModel(QObject):
         '''跳转到显示页面'''
         work_id = get_workid_by_serialnumber(self.get_serial_number().strip())
         if work_id:
-            Router.instance().push("work", work_id=work_id)
+            #Router.instance().push("work", work_id=work_id)
+            Router.instance().push("shelf", work_id=work_id)
 
     def appendTags(self,tag_list:list[int]):
         '''添加tag,不重复'''

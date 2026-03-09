@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtCore
 import QtQuick3D
 import QtQuick3D.AssetUtils
@@ -25,10 +25,29 @@ View3D {
     property var actionAnchorByIndex: ({})
     // 展开态 title/story 的 front 面锚点映射，key=delegate index。
     property var frontInfoAnchorByIndex: ({})
+    property int _pendingCollapseSelectedIndex: -1
+    property real _pendingCollapseCloseSpeedMultiplier: 1.0
+    property real wheelCloseAnimationSpeedMultiplier: 3.0
+    property int _frozenSelectedDelegateIndex: -1
+    property int _frozenSelectedVirtualIndex: -1
 
-    // 完全展开后的 delegate 索引（开盒动画 350ms 完成后才 >= 0；折叠时立即 -1）。
+    Timer {
+        id: wheelFreezeHoldTimer
+        interval: 140
+        repeat: false
+    }
+
+    function nlerpQuaternion(from, to, factor) {
+        var t = Math.max(0, Math.min(1, factor))
+        var end = to
+        if (from.dotProduct(end) < 0)
+            end = end.times(-1)
+        return from.times(1 - t).plus(end.times(t)).normalized()
+    }
+
+    // 完全展开后的 delegate 索引（开盒动画完成后才 >= 0；折叠时立即 -1）。Dvd.qml 当前动画时长为 500ms。
     property int fullyExpandedDelegateIndex: -1
-    readonly property int _expandAnimMs: 350
+    readonly property int _expandAnimMs: 500
     Timer {
         id: fullyExpandedTimer
         interval: view3d._expandAnimMs
@@ -46,6 +65,38 @@ View3D {
     // 将可见窗口内索引映射回全量列表索引。
     function expandedVirtualIndexFor(delegateIndex) {
         return (typeof dvdVisibleStart !== "undefined" ? dvdVisibleStart : 0) + delegateIndex
+    }
+
+    function cancelPendingCollapseAfterClose() {
+        _pendingCollapseSelectedIndex = -1
+        _pendingCollapseCloseSpeedMultiplier = 1.0
+    }
+
+    function requestCollapseAfterClose(closeSpeedMultiplier) {
+        if (_pendingCollapseSelectedIndex >= 0)
+            return
+        var speedMultiplier = (typeof closeSpeedMultiplier === "number" && isFinite(closeSpeedMultiplier))
+            ? Math.max(0.1, closeSpeedMultiplier)
+            : 1.0
+        if (expandedDelegateIndex >= 0 && selectedDelegateIndex === expandedDelegateIndex) {
+            _pendingCollapseSelectedIndex = selectedDelegateIndex
+            _pendingCollapseCloseSpeedMultiplier = speedMultiplier
+            expandedDelegateIndex = -1
+            return
+        }
+        _pendingCollapseSelectedIndex = -1
+        _pendingCollapseCloseSpeedMultiplier = 1.0
+        selectedDelegateIndex = -1
+    }
+
+    function finishPendingCollapseAfterClose(delegateIndex) {
+        if (_pendingCollapseSelectedIndex !== delegateIndex)
+            return
+        if (expandedDelegateIndex >= 0 || selectedDelegateIndex !== delegateIndex)
+            return
+        _pendingCollapseSelectedIndex = -1
+        _pendingCollapseCloseSpeedMultiplier = 1.0
+        selectedDelegateIndex = -1
     }
 
     // 场景环境：天空盒、探针、抗锯齿与 AO。
@@ -77,7 +128,7 @@ View3D {
 
         PerspectiveCamera {
             id: orbitCamera
-            position: Qt.vector3d((typeof dvdBridge !== "undefined" && dvdBridge) ? dvdBridge.cameraX : view3d.cameraX, 0, cameraDistance)
+            position: Qt.vector3d((typeof dvdBridge !== "undefined" && dvdBridge) ? dvdBridge.cameraX : view3d.cameraX, 0.1, cameraDistance)
             eulerRotation.x: view3d.orbitRotationX
             eulerRotation.y: view3d.orbitRotationY
             clipNear: 0.001
@@ -88,11 +139,15 @@ View3D {
             // 相机前方固定点：选中时用于把 DVD 拉到镜头前。
             Node {
                 id: cameraFront
-                position: Qt.vector3d(0, 0, -(typeof selectedDvdDistance !== "undefined" ? selectedDvdDistance : 1.5))
+                position: Qt.vector3d(0, -0.09, -(typeof selectedDvdDistance !== "undefined" ? selectedDvdDistance : 1.5))
+
+                Node {
+                    id: phase2TargetAnchor
+                    rotation: Quaternion.fromEulerAngles(0, -90, 0)
+                }
             }
         }
     }
-
 
     // 主光。
     DirectionalLight {
@@ -107,7 +162,6 @@ View3D {
         shadowMapFar: 50
     }
 
-
     // 补光。
     DirectionalLight {
         id: fillLight
@@ -117,7 +171,6 @@ View3D {
         ambientColor: Qt.rgba(0.05, 0.06, 0.1, 1.0)
         brightness: 0.8
     }
-
 
     // 轮廓光。
     DirectionalLight {
@@ -131,60 +184,108 @@ View3D {
     // 3D 场景根节点。
     Node {
         id: sceneRoot
-
-
-
-
-
         // DVD 虚拟化可见窗口：只渲染 dvdCount 个可见项。
         Repeater3D {
             id: dvdRepeater
             model: dvdCount
             delegate: Node {
-                // virtualIndex 是全量 work 列表索引；index 是可见窗口索引。
-                property int virtualIndex: (typeof dvdVisibleStart !== "undefined" ? dvdVisibleStart : 0) + index
-                // 每个 DVD 的封面纹理；缺失时回退默认贴图。
-                property string tex: (dvdTextureSources && index < dvdTextureSources.length)
-                    ? dvdTextureSources[index] : ((typeof mapsPath !== "undefined" ? mapsPath : "maps/") + "0.png")
+                readonly property int _visibleStart: (typeof dvdVisibleStart !== "undefined" ? dvdVisibleStart : 0)
+                readonly property int _visibleEnd: _visibleStart + Math.max(0, dvdCount - 1)
+                readonly property int _reservedLocalOffset: view3d._frozenSelectedVirtualIndex - _visibleStart
+                readonly property int _nonSelectedRank: index < view3d._frozenSelectedDelegateIndex ? index : index - 1
+                readonly property bool _shouldReserveFrozenSlot: view3d._frozenSelectedDelegateIndex >= 0
+                    && index !== view3d._frozenSelectedDelegateIndex
+                    && view3d._frozenSelectedVirtualIndex >= _visibleStart
+                    && view3d._frozenSelectedVirtualIndex <= _visibleEnd
+                readonly property int _targetSourceIndex: _shouldReserveFrozenSlot
+                    ? _nonSelectedRank + (_nonSelectedRank >= _reservedLocalOffset ? 1 : 0)
+                    : index
+                // targetVirtualIndex 是当前可见窗口映射出的全量 work 列表索引；index 是可见窗口索引。
+                property int targetVirtualIndex: _visibleStart + _targetSourceIndex
+                // 每个 DVD 的目标封面纹理；缺失时回退默认贴图。
+                property string targetTex: (dvdTextureSources
+                    && _targetSourceIndex >= 0
+                    && _targetSourceIndex < dvdTextureSources.length)
+                    ? dvdTextureSources[_targetSourceIndex]
+                    : ((typeof mapsPath !== "undefined" ? mapsPath : "maps/") + "0.png")
                 property bool selected: view3d.selectedDelegateIndex === index
                 // Selected item ignores hover to avoid z-jitter during animation.
                 property bool hovered: !selected && view3d.hoveredDelegateIndex === index
-                property real _phase2YawTarget: 90
-                property bool _phase2YawLocked: false
                 property real selectionProgress: selected ? 1 : 0
                 Behavior on selectionProgress { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
+                property bool _contentFrozen: false
+                property bool _freezeCaptured: false
+                property bool _freezeReleasePending: false
+                property int _frozenVirtualIndex: targetVirtualIndex
+                property string _frozenTex: targetTex
+                // Freeze content identity while selected/closing/returning so scroll doesn't swap the art mid-animation.
+                property int virtualIndex: _contentFrozen ? _frozenVirtualIndex : targetVirtualIndex
+                property string tex: _contentFrozen ? _frozenTex : targetTex
 
                 readonly property real _shelfX: virtualIndex * dvdSpacing
                 readonly property real _shelfZ: hovered ? 0.03 : 0
                 readonly property real _pullOutZ: (typeof dvdPullOutDistance !== "undefined" ? dvdPullOutDistance : 0.14)
                 readonly property real _phase1Factor: Math.min(1, selectionProgress * 2)
                 readonly property real _phase2Factor: Math.max(0, selectionProgress * 2 - 1)
-
-                onSelectedChanged: {
-                    if (!selected)
-                        return
+                readonly property vector3d _phase2TargetPos: sceneRoot.mapPositionFromScene(phase2TargetAnchor.scenePosition)
+                readonly property quaternion _phase2TargetRotation: sceneRoot.sceneRotation.inverted().times(phase2TargetAnchor.sceneRotation).normalized()
+                readonly property real _tiltRad: 5 * Math.PI / 180
+                readonly property quaternion _tiltQuat: Qt.quaternion(Math.cos(_tiltRad/2), 0,0, Math.sin(_tiltRad/2))
+                
+                Timer {
+                    id: freezeReleaseTimer
+                    interval: 16
+                    repeat: false
+                    onTriggered: {
+                        if (selectionProgress > 0.001) {
+                            _freezeReleasePending = false
+                            return
+                        }
+                        if (wheelFreezeHoldTimer.running) {
+                            restart()
+                            return
+                        }
+                        if (view3d._frozenSelectedDelegateIndex === index) {
+                            view3d._frozenSelectedDelegateIndex = -1
+                            view3d._frozenSelectedVirtualIndex = -1
+                        }
+                        _freezeReleasePending = false
+                        _freezeCaptured = false
+                        _contentFrozen = false
+                        _frozenVirtualIndex = targetVirtualIndex
+                        _frozenTex = targetTex
+                    }
                 }
 
                 onSelectionProgressChanged: {
-                    if (!selected && selectionProgress <= 0.001) {
-                        _phase2YawLocked = false
-                        _phase2YawTarget = 90
-                        return
+                    if (selectionProgress > 0.001) {
+                        if (!_freezeCaptured) {
+                            _frozenVirtualIndex = targetVirtualIndex
+                            _frozenTex = targetTex
+                            _freezeCaptured = true
+                        }
+                        _contentFrozen = true
+                        _freezeReleasePending = false
+                        freezeReleaseTimer.stop()
+                        view3d._frozenSelectedDelegateIndex = index
+                        view3d._frozenSelectedVirtualIndex = _frozenVirtualIndex
+                    } else {
+                        if (_contentFrozen && !_freezeReleasePending) {
+                            _freezeReleasePending = true
+                            freezeReleaseTimer.restart()
+                        } else if (!_contentFrozen) {
+                            _freezeCaptured = false
+                            _frozenVirtualIndex = targetVirtualIndex
+                            _frozenTex = targetTex
+                        }
                     }
-                    if (!selected || _phase2YawLocked || _phase2Factor <= 0)
-                        return
-                    // Pick the equivalent front-facing target angle nearest to current start yaw.
-                    var startYaw = -lookAtNode._yawContinuous
-                    var k = Math.round((startYaw - 90) / 360)
-                    _phase2YawTarget = 90 + 360 * k
-                    _phase2YawLocked = true
                 }
 
                 // Phase-1: z only pull-out. Phase-2: move to camera front.
-                x: _shelfX + (cameraFront.scenePosition.x - _shelfX) * _phase2Factor
-                y: cameraFront.scenePosition.y * _phase2Factor
+                x: _shelfX + (_phase2TargetPos.x - _shelfX) * _phase2Factor
+                y: _phase2TargetPos.y * _phase2Factor
                 z: _shelfZ + _pullOutZ * _phase1Factor
-                    + (cameraFront.scenePosition.z - _shelfZ - _pullOutZ) * _phase2Factor
+                    + (_phase2TargetPos.z - _shelfZ - _pullOutZ) * _phase2Factor
 
                 // 旋转中心，避免旋转时出现“飘移”。
                 pivot: Qt.vector3d(0, 0, 0)
@@ -193,93 +294,60 @@ View3D {
                 Behavior on z { enabled: selectionProgress <= 0.001; NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
 
-                // 选中时让 DVD 面向相机；未选中恢复书架朝向。
-                LookAtNode {
-                    id: lookAtNode
-                    target: selectionProgress > 0 ? orbitCamera : null
-                    property bool _yawTrackReady: false
-                    property real _yawRawPrev: 0
-                    property real _yawContinuous: 0
-
-                    function _normalizeDelta(deg) {
-                        var d = deg
-                        while (d > 180) d -= 360
-                        while (d < -180) d += 360
-                        return d
-                    }
-
-                    onTargetChanged: {
-                        if (target) {
-                            _yawRawPrev = eulerRotation.y
-                            _yawContinuous = eulerRotation.y
-                            _yawTrackReady = true
-                        } else {
-                            _yawTrackReady = false
-                            _yawRawPrev = 0
-                            _yawContinuous = 0
+                // 二阶段直接插值到镜头前目标坐标系，保证 front 面与镜头平面一致。
+                Node {
+                    // Rotate around spine axis.
+                    pivot: Qt.vector3d(-0.006707, 0, -0.000293)
+                    rotation: selectionProgress > 0
+                        ? view3d.nlerpQuaternion(Qt.quaternion(1, 0, 0, 0), _phase2TargetRotation.times(_tiltQuat), _phase2Factor)
+                        : Qt.quaternion(1, 0, 0, 0)
+                    Loader3D {
+                        id: dvdLoader
+                        source: dvdQmlUrl
+                        scale: Qt.vector3d(modelScale, modelScale, modelScale)
+                        onStatusChanged: {
+                            if (status === Loader3D.Error) console.warn("Dvd.qml load error")
                         }
-                    }
-
-                    onEulerRotationChanged: {
-                        if (!_yawTrackReady)
-                            return
-                        var rawYaw = eulerRotation.y
-                        var delta = _normalizeDelta(rawYaw - _yawRawPrev)
-                        _yawContinuous += delta
-                        _yawRawPrev = rawYaw
-                    }
-
-                    Binding {
-                        target: lookAtNode
-                        property: "eulerRotation"
-                        value: Qt.vector3d(0, 0, 0)
-                        when: selectionProgress <= 0
-                    }
-                    Node {
-                        // Rotate around spine axis.
-                        pivot: Qt.vector3d(-0.006707, 0, -0.000293)
-                        eulerRotation: selectionProgress > 0
-                            ? Qt.vector3d(
-                                -lookAtNode.eulerRotation.x * (1 - _phase2Factor),
-                                -lookAtNode._yawContinuous * (1 - _phase2Factor) + (_phase2YawTarget * _phase2Factor),
-                                -lookAtNode.eulerRotation.z * (1 - _phase2Factor))
-                            : Qt.vector3d(0, 0, 0)
-                        Loader3D {
-                            id: dvdLoader
-                            source: dvdQmlUrl
-                            scale: Qt.vector3d(modelScale, modelScale, modelScale)
-                            onStatusChanged: {
-                                if (status === Loader3D.Error) console.warn("Dvd.qml load error")
-                            }
-                            // item 变化时同步贴图、索引、锚点与 CD 点击回调。
-                            onItemChanged: {
-                                view3d.actionAnchorByIndex[index] = null
-                                view3d.frontInfoAnchorByIndex[index] = null
-                                if (item) {
-                                    if (typeof item.textureSource !== "undefined") item.textureSource = tex
-                                    if (typeof item.delegateIndex !== "undefined") item.delegateIndex = index
-                                    if (typeof item.actionAnchorNode !== "undefined")
-                                        view3d.actionAnchorByIndex[index] = item.actionAnchorNode
-                                    if (typeof item.frontInfoAnchorNode !== "undefined")
-                                        view3d.frontInfoAnchorByIndex[index] = item.frontInfoAnchorNode
-                                    if (typeof item.cdClicked !== "undefined") {
-                                        item.cdClicked.connect(function() {
-                                            var vIdx = (typeof dvdVisibleStart !== "undefined" ? dvdVisibleStart : 0) + index
-                                            if (typeof dvdBridge !== "undefined" && dvdBridge)
-                                                dvdBridge.onCdClicked(vIdx)
-                                        })
-                                    }
+                        // item 变化时同步贴图、索引、锚点与 CD 点击回调。
+                        onItemChanged: {
+                            view3d.actionAnchorByIndex[index] = null
+                            view3d.frontInfoAnchorByIndex[index] = null
+                            if (item) {
+                                if (typeof item.textureSource !== "undefined") item.textureSource = tex
+                                if (typeof item.delegateIndex !== "undefined") item.delegateIndex = index
+                                if (typeof item.actionAnchorNode !== "undefined")
+                                    view3d.actionAnchorByIndex[index] = item.actionAnchorNode
+                                if (typeof item.frontInfoAnchorNode !== "undefined")
+                                    view3d.frontInfoAnchorByIndex[index] = item.frontInfoAnchorNode
+                                if (typeof item.cdClicked !== "undefined") {
+                                    item.cdClicked.connect(function() {
+                                        var vIdx = virtualIndex
+                                        if (typeof dvdBridge !== "undefined" && dvdBridge)
+                                            dvdBridge.onCdClicked(vIdx)
+                                    })
+                                }
+                                if (typeof item.closeAnimationFinished !== "undefined") {
+                                    item.closeAnimationFinished.connect(function() {
+                                        view3d.finishPendingCollapseAfterClose(index)
+                                    })
                                 }
                             }
-                            Binding {
-                                target: dvdLoader.item
-                                property: "expanded"
-                                value: view3d.expandedDelegateIndex === index
-                                // 将展开态同步给 Dvd.qml（开盒动画）。
-                                when: dvdLoader.item && typeof dvdLoader.item.expanded !== "undefined"
-                            }
                         }
-
+                        Binding {
+                            target: dvdLoader.item
+                            property: "closeAnimationSpeedMultiplier"
+                            value: view3d._pendingCollapseSelectedIndex === index
+                                ? view3d._pendingCollapseCloseSpeedMultiplier
+                                : 1.0
+                            when: dvdLoader.item && typeof dvdLoader.item.closeAnimationSpeedMultiplier !== "undefined"
+                        }
+                        Binding {
+                            target: dvdLoader.item
+                            property: "expanded"
+                            value: view3d.expandedDelegateIndex === index
+                            // 将展开态同步给 Dvd.qml（开盒动画）。
+                            when: dvdLoader.item && typeof dvdLoader.item.expanded !== "undefined"
+                        }
                     }
                 }
                 // 可见窗口复用时，贴图变化需同步到现有 item。
@@ -297,21 +365,6 @@ View3D {
             }
         }
 
-        // 兜底模型加载器：当没有 DVD 列表时显示外部模型。
-        RuntimeLoader {
-            id: modelLoader
-            visible: dvdQmlUrl === "" || dvdCount === 0
-            source: modelUrl
-            scale: Qt.vector3d(modelScale, modelScale, modelScale)
-
-            onStatusChanged: {
-                if (status === RuntimeLoader.Error) {
-                    console.warn("Model load error:", errorString)
-                }
-            }
-        }
-
-
     }
 
 
@@ -325,6 +378,16 @@ View3D {
             n = n.parent
         }
         return -1
+    }
+
+    function findAncestorWithCdClicked(obj) {
+        var n = obj
+        while (n) {
+            if (typeof n.cdClicked !== "undefined")
+                return n
+            n = n.parent
+        }
+        return null
     }
 
     // 统一鼠标交互层：滚轮平移书架，右键拖拽旋转，左键点选/展开/DVD-CD 点击。
@@ -344,14 +407,26 @@ View3D {
 
         // 滚轮：沿书架 X 方向移动相机，并收起选中/展开态。
         onWheel: function(wheel) {
-            view3d.selectedDelegateIndex = -1
-            view3d.expandedDelegateIndex = -1
+            wheelFreezeHoldTimer.restart()
+            view3d.requestCollapseAfterClose(view3d.wheelCloseAnimationSpeedMultiplier)
             var shelfLen = (typeof dvdShelfLength !== "undefined" && dvdShelfLength > 0) ? dvdShelfLength : 1.5
             var step = (typeof dvdSpacing !== "undefined" ? dvdSpacing : 0.0145) * 3
-            var delta = wheel.angleDelta.y > 0 ? -step : step
+            var scrollUnits = 0
+            if (wheel.pixelDelta.y !== 0)
+                scrollUnits = wheel.pixelDelta.y / 40
+            else if (wheel.angleDelta.y !== 0)
+                scrollUnits = wheel.angleDelta.y / 120
+            var delta = -scrollUnits * step
             if (typeof dvdBridge !== "undefined" && dvdBridge) {
-                var newVal = Math.max(0, Math.min(shelfLen, dvdBridge.cameraX + delta))
-                dvdBridge.setCameraX(newVal)
+                if (typeof dvdBridge.scrollCameraBy !== "undefined")
+                    dvdBridge.scrollCameraBy(delta, shelfLen)
+                else {
+                    var baseCameraX = (typeof dvdBridge.cameraTargetX !== "undefined")
+                        ? dvdBridge.cameraTargetX
+                        : dvdBridge.cameraX
+                    var newVal = Math.max(0, Math.min(shelfLen, baseCameraX + delta))
+                    dvdBridge.setCameraX(newVal)
+                }
             } else {
                 view3d.cameraX = Math.max(0, Math.min(shelfLen, view3d.cameraX + delta))
             }
@@ -413,11 +488,11 @@ View3D {
                 return
             }
             if (view3d.pressedDelegateIndex >= 0) {
+                view3d.cancelPendingCollapseAfterClose()
                 var idx = view3d.pressedDelegateIndex
                 var hitCd = view3d.pressedObjectHit && view3d.pressedObjectHit.objectName === "cD"
                 if (hitCd) {
-
-                    var root = view3d.pressedObjectHit.parent
+                    var root = view3d.findAncestorWithCdClicked(view3d.pressedObjectHit)
                     if (root && typeof root.cdClicked !== "undefined")
                         root.cdClicked()
                 } else {
@@ -430,8 +505,7 @@ View3D {
                     }
                 }
             } else {
-                view3d.selectedDelegateIndex = -1
-                view3d.expandedDelegateIndex = -1
+                view3d.requestCollapseAfterClose(1.0)
             }
             view3d.pressedDelegateIndex = -1
             view3d.pressedObjectHit = null
@@ -880,4 +954,5 @@ View3D {
             }
         }
     }
+
 }
