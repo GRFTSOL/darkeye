@@ -94,7 +94,7 @@
                 });
                 if (response && response.results) {
                     Object.entries(response.results).forEach(([id, exists]) => {
-                        console.log("DarkEye:更新UI");
+                        console.log("DarkEye:更新UI", id);
                         this.updateUI(id, exists);
                     });
                 }
