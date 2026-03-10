@@ -28,9 +28,7 @@ class ActressCard(QWidget):
                 font-size: 14px;           /* 字号 */
                 font-family: 'Microsoft YaHei';      /* 字体 */
                 font-weight: bold;         /* 粗体，可选 normal、bold、100-900 */
-                color: grey;
-                background-color: rgba(0, 0, 0, 0);
-            }                      
+            }
         """)
 
         self.image_label.setFixedSize(self._d, self._d)  # 封面尺寸

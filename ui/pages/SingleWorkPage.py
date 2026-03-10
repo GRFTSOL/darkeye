@@ -1,14 +1,18 @@
 #单部作品详细页面
-from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel,QGraphicsOpacityEffect,QSizePolicy,QVBoxLayout,QLayoutItem
+from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel,QGraphicsOpacityEffect,QSizePolicy,QVBoxLayout,QLayoutItem,QMenu
 from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor,QFont
 from PySide6.QtCore import Qt, QPointF,Signal,Slot
 import logging
 
-from ui.basic import VerticalTextLabel,VLabel,VFlowLayout,HeartLabel,IconPushButton
+from darkeye_ui.components import TokenVLabel
+from darkeye_ui.layouts import VFlowLayout
+from darkeye_ui.components.heart_label import HeartLabel
 from config import WORKCOVER_PATH,ICONS_PATH
 from ui.widgets.text.VerticalTagLabel2 import VerticalActressLabel,VerticalTagLabel,VerticalActorLabel
-from ui.base import LazyWidget
-
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.vertical_text_label import VerticalTextLabel
+from darkeye_ui.components.transparent_widget import TransparentWidget
+from darkeye_ui.components.icon_push_button import IconPushButton
 #渐变层纯绘图层
 class GradientOverlay(QWidget):
     #上面的渐变层
@@ -42,11 +46,13 @@ class GradientOverlay(QWidget):
         grad_right.setColorAt(1, QColor(0, 0, 0, 0))    # 中间透明
         painter.setBrush(grad_right)
         painter.drawRect(window_width-0.1*window_height,0,window_width,window_height)
+        painter.end()
 
 class Cover(QLabel):
     def __init__(self,parent=None):
         super().__init__(parent)
         self._path=None
+        self.setAlignment(Qt.AlignRight | Qt.AlignTop)
 
     def load_cover(self):
         '''加载'''
@@ -87,11 +93,6 @@ class Cover(QLabel):
         )
 
         self.setPixmap(scaled_pixmap)#这里才是真正的设置了图片，并显示
-        
-        target_x = window_width - scaled_pixmap.width()
-        target_y = 0
-        #logging.debug(f"{target_x}, {target_y}")
-        self.move(target_x, target_y)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -105,7 +106,7 @@ class Cover(QLabel):
         self.update_background_image()
 
 
-class WorkInfo(QWidget):
+class WorkInfo(TransparentWidget):
     def __init__(self,parent=None):
         super().__init__(parent)
         from controller.MessageService import MessageBoxService
@@ -117,33 +118,33 @@ class WorkInfo(QWidget):
         self.title.setFixedHeight(550)
         self.title.setTextColor("#FFFFFF")
         self.title.setFont(QFont("Microsoft YaHei", 24))
-        self.title.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.title.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
         self.story=VerticalTextLabel()
         self.story.setFixedHeight(550)
         self.story.setTextColor("#FFFFFF")
         self.story.setFont(QFont("Microsoft YaHei", 12))
-        self.story.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.story.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
-        self.serial_number_label=VLabel("番号",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.serial_number=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.serial_number_label=TokenVLabel("番号",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.serial_number=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         #self.serial_number.setTextColor("#FFFFFF")
 
-        self.release_date_label=VLabel("发行日期",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.release_date=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.release_date_label=TokenVLabel("发行日期",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.release_date=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         #self.release_date.setTextColor("#FFFFFF")
 
         #这些东西都要动态添加，有些是空的就会有大问题
-        self.director_label=VLabel("导演",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.director=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
+        self.director_label=TokenVLabel("导演",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.director=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
 
-        self.studio_label=VLabel("制作商",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
-        self.studio=VLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
-        self.label_tag=VLabel("作品标签",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.studio_label=TokenVLabel("制作商",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        self.studio=TokenVLabel(" ",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")#这个有bug，不能是空的
+        self.label_tag=TokenVLabel("作品标签",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
 
-        self.actress=QWidget()
-        self.label=QWidget()
-        self.label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.actress = TransparentWidget(self)
+        self.label = TransparentWidget(self)
+        self.label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.actress.setFixedHeight(550)
         self.label.setFixedHeight(550)
         self.actress_layout=VFlowLayout(self.actress,spacing=5)#这个要改
@@ -153,8 +154,16 @@ class WorkInfo(QWidget):
         self.label_layout.addWidget(self.label_tag)
 
         self.heart=HeartLabel()
-
-        self.trash=IconPushButton("trash-2.png",24,24)
+        self.trash=IconPushButton(icon_name="trash_2",icon_size=24,out_size=32,hoverable=True,inverted=True)
+        self.modify=IconPushButton(icon_name="square_pen",icon_size=24,out_size=32,hoverable=True,inverted=True)
+        self.watch=IconPushButton(icon_name="tv",icon_size=24,out_size=32,hoverable=True,inverted=True)
+        
+        tool_v_layout=QVBoxLayout()
+        tool_v_layout.addWidget(self.heart,0,Qt.AlignCenter)
+        tool_v_layout.addWidget(self.trash,0,Qt.AlignCenter)
+        tool_v_layout.addWidget(self.modify,0,Qt.AlignCenter)
+        tool_v_layout.addWidget(self.watch,0,Qt.AlignCenter)
+        tool_v_layout.addStretch()
         
         serialnumber_v_layout=QVBoxLayout()
 
@@ -171,26 +180,38 @@ class WorkInfo(QWidget):
         director_v_layout.addWidget(self.studio)
         director_v_layout.addStretch()
 
-        #最外侧拼装
-        mainlayout=QHBoxLayout(self)
-        mainlayout.setSpacing(5)
-        mainlayout.setContentsMargins(0,0,0,0)
+        # 内容行：所有列打包到一个容器，容器只占内容宽度，避免被拉宽产生列间空隙（透明容器）
+        content_row = TransparentWidget(self)
+        content_row.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        content_row.setFixedHeight(550)
 
+        row_layout = QHBoxLayout(content_row)
+        row_layout.setSpacing(5)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.addStretch()  # 把整块内容压到右侧
+        row_layout.addLayout(tool_v_layout)
+        row_layout.addWidget(self.label)
+        row_layout.addWidget(self.actress)
+        row_layout.addLayout(director_v_layout)
+        row_layout.addWidget(self.story, 0, Qt.AlignLeft | Qt.AlignTop)
+        row_layout.addLayout(serialnumber_v_layout)
+        row_layout.addWidget(self.title, 0, Qt.AlignLeft | Qt.AlignTop)
+
+        # 最外侧：左侧弹性空间 + 内容行
+        mainlayout = QHBoxLayout(self)
+        mainlayout.setSpacing(0)
+        mainlayout.setContentsMargins(0, 0, 0, 0)
         mainlayout.addStretch()
-        mainlayout.addWidget(self.trash,0,Qt.AlignRight|Qt.AlignTop)
-        mainlayout.addWidget(self.heart,0,Qt.AlignRight|Qt.AlignTop)
-        mainlayout.addWidget(self.label)
-        mainlayout.addWidget(self.actress)
-        mainlayout.addLayout(director_v_layout)
-        mainlayout.addWidget(self.story, 0, Qt.AlignLeft|Qt.AlignTop)  # stretch改为0，让它根据内容决定宽度
-        mainlayout.addLayout(serialnumber_v_layout)
-        mainlayout.addWidget(self.title, 0, Qt.AlignLeft|Qt.AlignTop)
+        mainlayout.addWidget(content_row)
+        
 
         self.signal_connect()
         
     def signal_connect(self):
         self.heart.clicked.connect(self.on_clicked_heart)
         self.trash.clicked.connect(self.on_clicked_delete)
+        self.modify.clicked.connect(self.on_modify_clicked)
+        self.watch.clicked.connect(self.show_video_menu)
         
     
     def update_actress(self, actress_list:list[dict],actor_list:list[dict]):
@@ -213,7 +234,7 @@ class WorkInfo(QWidget):
             #self.actress.deleteLater()
             return
 
-        label_actress=VLabel("女优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        label_actress=TokenVLabel("女优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         self.actress_layout.addWidget(label_actress)
         # 2. 动态创建按钮并添加女优列表
         for actress in actress_list:
@@ -227,7 +248,7 @@ class WorkInfo(QWidget):
         if actor_list is None:
             return
         #添加男优的标签
-        label_actor=VLabel("男优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
+        label_actor=TokenVLabel("男优",text_color="#FFFFFF",background_color="#00000000",border_color="#FFFFFF")
         self.actress_layout.addWidget(label_actor)
 
         for actor in actor_list:
@@ -255,8 +276,23 @@ class WorkInfo(QWidget):
 
     def set_info(self,info:dict):
         '''更新信息'''
-        self.title.setText(info["cn_title"])
-        self.story.setText(info["cn_story"])
+        if info["cn_title"] is not None:
+            if len(info["cn_title"])<=35:
+                titletext=info["cn_title"]
+            else:
+                titletext=info["cn_title"][:35]+"..."
+        else:
+            titletext=""
+        if info["cn_story"] is not None:
+            if len(info["cn_story"])<=120:
+                storytext=info["cn_story"]
+            else:
+                storytext=info["cn_story"][:120]+"..."
+        else:
+            storytext=""
+
+        self.title.setText(titletext)
+        self.story.setText(storytext)
         self.release_date.setTextDynamic(info["release_date"])
         self.serial_number.setTextDynamic(info["serial_number"])
         self.director.setTextDynamic(info["director"])
@@ -287,11 +323,49 @@ class WorkInfo(QWidget):
         from controller.GlobalSignalBus import global_signals
         global_signals.like_work_changed.emit()
 
+    @Slot()
+    def on_modify_clicked(self):
+        '''点击了修改按钮'''
+        #from controller.GlobalSignalBus import global_signals
+        if self._work_id is None:
+            return
+        #global_signals.modify_work_clicked.emit(self.serial_number.text().strip())
+        serial_number=self.serial_number.text().strip()
+        from ui.navigation.router import Router
+        Router.instance().push("work_edit", serial_number=serial_number)
+
+    @Slot()
+    def show_video_menu(self):
+        """点击按钮后即时弹出菜单供选择"""
+        from pathlib import Path
+        from utils.utils import find_video,play_video
+        from config import get_video_path
+        self.video_paths=find_video(self.serial_number.text().strip(),get_video_path())
+        if not self.video_paths:
+            self.msg.show_info("提示", "没有可播放的视频")
+            return
+
+        # 创建 QMenu（轻量、非模态、即时弹出）
+        menu = QMenu(self)
+
+        for path in self.video_paths:
+            action = menu.addAction(path.name)  # 显示文件名（更友好）
+            action.setData(str(path))           # 存储完整路径
+
+        # 在按钮位置弹出菜单
+        button_pos = self.watch.mapToGlobal(self.watch.rect().bottomLeft())
+        chosen_action = menu.exec(button_pos)
+
+        if chosen_action:
+            selected_path = Path(chosen_action.data())
+            play_video(selected_path)
+        
+
     def update(self,work_id):
-        from core.database.query import get_workinfo_by_workid,findActressFromWorkID,get_worktaginfo_by_workid,query_work,findActorFromWorkID
+        from core.database.query import get_workinfo_by_workid, get_actress_from_work_id, get_worktaginfo_by_workid, query_work, get_actor_from_work_id
         self._work_id=work_id
         self.set_info(get_workinfo_by_workid(work_id))
-        self.update_actress(findActressFromWorkID(work_id),findActorFromWorkID(work_id))
+        self.update_actress(get_actress_from_work_id(work_id), get_actor_from_work_id(work_id))
         self.update_tag(get_worktaginfo_by_workid(work_id))
 
         #更新爱心状态
@@ -305,6 +379,9 @@ class SingleWork(QWidget):
 
     def __init__(self):
         super().__init__()
+        # 父层不填充背景，WorkInfo 的透明才能透出下面的 Cover / GradientOverlay
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAutoFillBackground(False)
 
         self._h=self.height()
         #背景图片层
@@ -349,7 +426,7 @@ class SingleWork(QWidget):
 
 
 class SingleWorkPage(LazyWidget):
-    '''这个才是最主要的，总装在这里'''
+    '''单个作品的展示页面，这个才是最主要的，总装在这里'''
     def __init__(self):
         super().__init__()
         
@@ -357,16 +434,14 @@ class SingleWorkPage(LazyWidget):
         logging.info("----------加载单独作品界面----------")
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
-        mainlayout.addSpacing(70)
+        #mainlayout.addSpacing(70)
 
         self.cover=SingleWork()
 
         mainlayout.addWidget(self.cover)
 
-
-
     def update(self,work_id):
         '''传入一个work_id并更新整个页面'''
-        from core.database.query import get_coveriamgeurl
+        from core.database.query import get_cover_image_url
         self.cover.work_info.update(work_id)
-        self.cover.bg_label.set_cover(get_coveriamgeurl(work_id))
+        self.cover.bg_label.set_cover(get_cover_image_url(work_id))

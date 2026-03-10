@@ -1,11 +1,33 @@
+# Python 3.14.x is required
+#要开发的话下面三个版本和QtC++的版本要一致
+pyside6==6.10.1
+shiboken6==6.10.1
+shiboken6-generator==6.10.1
+
 numpy
+uvicorn[standard]
+fastapi
+pydantic
+anyio
+pyinstaller
+nuitka==2.8.9
+pytest
+psutil
+
 matplotlib
-pyside6
+networkx
+opencv-python-headless
 bs4
 requests
-pyinstaller
+
+googletrans
+wordcloud
+
+#PySideSix-Frameless-Window
+# 这个很重要，这个绑定要求shiboken6==6.10.1
+#PySide6-QtAds==4.5.0
+
+# Documentation
 mkdocs
 mkdocs-material
 mkdocstrings[python]
-opencv[python]
-PySideSix-Frameless-Window

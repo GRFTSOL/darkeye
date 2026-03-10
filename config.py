@@ -73,38 +73,43 @@ PRIVATE_DATABASE=get_PATH("Paths/PrivateDatabase","resources/private/private.db"
 PRIVATE_DATABASE_BACKUP_PATH=get_PATH("Paths/PrivateDatabaseBackups","resources/private/private_backup/")#私有数据库库备份地址
 
 SENSITIVE_WORDS_PATH=get_PATH("Paths/SensitiveWords","resources/config/sensitive_words.txt")#敏感词文件地址
-
 TAG_MAP_PATH=get_PATH("Paths/TagMap","resources/config/tag_map.json")#敏感词文件地址
+USER_SHORTCUT_PATH=get_PATH("Paths/ShortcutMap","resources/config/shortcuts.json")#用户快捷键列表文件地址
 
 SQLPATH=get_PATH("Paths/Sql","resources/sql/")
 ICONS_PATH = get_PATH("Paths/Icons","resources/icons/")#软件图标的地址
 TEMP_PATH=get_PATH("Paths/Temp","resources/temp/")#存一些临时文件，包括图片等等
 LOG_FILE=get_PATH("Paths/LogFile","log/app.log")#log文件的位置
 QSS_PATH=get_PATH("Paths/QSS","styles/")#qss文件的位置
+MESHES_PATH=get_PATH("Paths/Meshes","resources/meshes/")#DVD 模型 mesh 文件目录
+MAPS_PATH=get_PATH("Paths/Maps","resources/maps/")#DVD 贴图目录
+HDR_PATH=get_PATH("Paths/Hdr","resources/hdr/")#HDR 环境图目录
 
-def get_video_path():
-    '''获得视频地址，这个是用户自己填的绝对路径'''
+def get_video_path()->list[Path]:
+    '''获得视频地址，这个是用户自己填的绝对路径,可以有多个
+    .ini中的配置形式是 C:/,D:/ 中间用逗号隔开，默认为空
+    这里返回的是Path列表
+    '''
     key = "Paths/Videos"
-    default_value = "D:/AV/"#这个是绝对地址
-    path=settings.value(key)
+    path_value = settings.value(key, "")
+    if not path_value:
+        return []
+    path_list = [Path(p) for p in str(path_value).split(",") if p.strip()]
+    return path_list
 
-    if path==None:#配置中无地址，写入默认地址，结束函数
-        logging.info(f"Settings.ini文件中不存在{key}地址配置,写入默认地址")
-        settings.setValue(key, default_value)
-        settings.sync()
-        path = default_value
-        return Path(path)
+def update_video_path(new_paths:list[Path]):
+    '''更新视频地址,写入.ini文件'''
+    new_paths_strs = [str(p) for p in new_paths]
+    key = "Paths/Videos"
+    if len(new_paths) > 1:
+        value = ",".join(new_paths_strs)
+    else:
+        value = new_paths_strs[0]
+    logging.info(f"地址配置,更新视频地址")
+    settings.setValue(key, value)
+    settings.sync()
 
-    if not Path(path).exists():#配置中有地址，但是地址在电脑中是不存在的，也写入默认地址，并结束函数
-        logging.info(f"Settings.ini文件中存在{key}地址配置,{path}地址不存在于电脑中，覆盖写入默认地址")
-        settings.setValue(key, default_value)
-        settings.sync()
-        path = default_value
-        return Path(path)
-    
-    return Path(path)
 
-VIDEO_PATH=get_video_path()#视频文件地址
 
 def check_file():
     '''检查文件夹是否存在并建立'''
@@ -142,3 +147,29 @@ def is_first_lunch()->bool:
 def set_first_luch(value:bool):
     '''设置启动值'''
     settings.setValue("window/first_lunch", value)
+
+
+def get_theme_id() -> str:
+    '''从 .ini 读取主题 ID（ThemeId 的 name，如 LIGHT/DARK/RED），默认 LIGHT'''
+    return settings.value("App/Theme", "LIGHT", type=str)
+
+
+def set_theme_id(theme_id) -> None:
+    '''将主题 ID 写入 .ini，支持 ThemeId 或 str'''
+    from darkeye_ui.design import ThemeId
+    if isinstance(theme_id, ThemeId):
+        theme_id = theme_id.name
+    settings.setValue("App/Theme", theme_id)
+    settings.sync()
+
+
+def get_custom_primary() -> str | None:
+    '''从 .ini 读取自定义主色（仅亮色/暗色主题生效），不存在或为空则返回 None'''
+    val = settings.value("App/CustomPrimary", "", type=str)
+    return val if (val and val.strip()) else None
+
+
+def set_custom_primary(hex_color: str | None) -> None:
+    '''将自定义主色写入 .ini，传入 None 时清除'''
+    settings.setValue("App/CustomPrimary", hex_color or "")
+    settings.sync()

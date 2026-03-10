@@ -6,11 +6,22 @@ from config import LOG_FILE
 
 # 创建 logger
 logger = logging.getLogger()#全局唯一
+logger.handlers.clear() # 先清空所有已存在的handler，防止重复输出
 logger.setLevel(logging.DEBUG)  # 可调节 DEBUG/INFO/WARNING/...
+
+# 屏蔽第三方库的debug日志
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("hpack").setLevel(logging.WARNING)
+logging.getLogger("asyncio").setLevel(logging.WARNING)
+logging.getLogger("atrace").setLevel(logging.WARNING)
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
+logging.getLogger("numba").setLevel(logging.WARNING)
+logging.getLogger("matplotlib.font_manager").setLevel(logging.WARNING)
 
 # 控制台输出
 console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(funcName)s - %(message)s'))
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(funcName)s - %(name)s: %(message)s'))
 logger.addHandler(console_handler)
 
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -18,7 +29,7 @@ LOG_FILE.touch(exist_ok=True)  # 如果文件不存在则创建
 
 # 文件输出，按天分文件，最多保留7天
 file_handler = TimedRotatingFileHandler(LOG_FILE, when='midnight', backupCount=7, encoding='utf-8')
-file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s %(funcName)s - %(message)s'))
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s %(funcName)s - %(name)s:  %(message)s'))
 logger.addHandler(file_handler)
 
 logging.info("--------------------log配置完成--------------------")

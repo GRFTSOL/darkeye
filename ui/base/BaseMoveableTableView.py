@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex,Signal,Slot
 import logging
 from ui.basic import IconPushButton
 from .BaseMoveableTableModel import BaseMoveableTableModel
+from darkeye_ui.components.token_table_view import TokenTableView
 
 class BaseMovableTableView(QWidget):
     '''这个东西要抽象出通用的东西，而不是现在这个耦合非常的严重的'''
@@ -14,7 +15,7 @@ class BaseMovableTableView(QWidget):
         #self.setFixedWidth(550)
         # 创建模型和视图
         self.model:BaseMoveableTableModel = model_class()
-        self.tableView = QTableView()
+        self.tableView = TokenTableView()
         self.tableView.setModel(self.model)
         self.tableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.tableView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -38,10 +39,10 @@ class BaseMovableTableView(QWidget):
 
     def setup_buttons(self):
         """创建按钮"""
-        self.btn_up = IconPushButton("triangle-up.png")
-        self.btn_down = IconPushButton("triangle-down.png")
-        self.btn_add = IconPushButton("list-plus.png")
-        self.btn_delete = IconPushButton("list-x.png")
+        self.btn_up = IconPushButton("triangle-up.svg")
+        self.btn_down = IconPushButton("triangle-down.svg")
+        self.btn_add = IconPushButton("list-plus.svg")
+        self.btn_delete = IconPushButton("list-x.svg")
         self.btn_refresh = QPushButton("刷新")
         self.btn_save = QPushButton("保存")
         #self.btn_print = QPushButton("打印数据")

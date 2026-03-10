@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel,QVBoxLayout,QLineEdit,QComboBox
+from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget,QVBoxLayout,QLineEdit,QComboBox
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt,Signal,Slot,QTimer
 import sqlite3,logging
@@ -7,9 +7,13 @@ from config import DATABASE
 from core.database.query import get_actorname
 from core.database.db_utils import attach_private_db,detach_private_db
 from ui.widgets import ActorCard,CompleterLineEdit
-from ui.basic import LazyScrollArea,IconPushButton
-from ui.base import LazyWidget
+from darkeye_ui.components import LazyScrollArea
+from darkeye_ui import LazyWidget
 from utils.utils import timeit
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.rotate_button import RotateButton
+from darkeye_ui.components.shake_button import ShakeButton
+from darkeye_ui.components.combo_box import ComboBox
 
 class ActorPage(LazyWidget):
     def __init__(self):
@@ -23,31 +27,31 @@ class ActorPage(LazyWidget):
         self.order="添加逆序"#排序默认值
         self.cup=None
 
-        self.spacer_widget = QWidget()
-        self.spacer_widget.setFixedHeight(70)
+        #self.spacer_widget = QWidget()
+        #self.spacer_widget.setFixedHeight(70)
 
         self.filter_widget = QWidget()
-        self.filter_widget.setFixedHeight(26)
+        self.filter_widget.setFixedHeight(32)
         self.filter_layout = QHBoxLayout(self.filter_widget)  # 直接传入 widget
         self.filter_layout.setContentsMargins(10,0,10,0)
 
         self.actorname_input = CompleterLineEdit(get_actorname)
 
 
-        self.info=QLabel()#用来显示信息
+        self.info=Label()#用来显示信息
         self.info.setFixedWidth(100)
 
         self.actor_input = QLineEdit()
 
-        self.btn_eraser=IconPushButton("eraser.png")
-        self.btn_reload=IconPushButton("refresh-cw.png")
+        self.btn_eraser=ShakeButton(icon_name="eraser",icon_size=24,out_size=24)
+        self.btn_reload=RotateButton(icon_name="refresh_cw",icon_size=24,out_size=24)
         #排序选择器
-        self.order_combo = QComboBox()
-        self.order_combo.addItems(["添加顺序","添加逆序"])
+        self.order_combo = ComboBox()
+        self.order_combo.addItems(["添加顺序","添加逆序","封面优先"])
         self.order_combo.setCurrentText(self.order)
 
 
-        self.filter_layout.addWidget(QLabel("男优"))
+        self.filter_layout.addWidget(Label("男优"))
         self.filter_layout.addWidget(self.actorname_input)
 
 
@@ -63,7 +67,7 @@ class ActorPage(LazyWidget):
         #总体布局
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
-        mainlayout.addWidget(self.spacer_widget)
+        #mainlayout.addWidget(self.spacer_widget)
         mainlayout.addWidget(self.filter_widget)
         mainlayout.addWidget(self.lazy_area)
         
@@ -170,6 +174,8 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
                 order="ORDER BY actor.create_time \n"
             case "添加逆序":
                 order="ORDER BY actor.create_time DESC\n"
+            case "封面优先":
+                order="ORDER BY CASE WHEN actor.image_url IS NOT NULL AND actor.image_url != '' THEN 0 ELSE 1 END"
 
         if not count:
             query +=f"{order} LIMIT ? OFFSET ?"#最后拼这个
@@ -207,13 +213,13 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
             # 向下滚动，隐藏顶部
             if self.filter_widget.isVisible():
                 self.filter_widget.hide()
-                self.spacer_widget.hide()
+                #self.spacer_widget.hide()
 
         elif direction < -5:
             # 向上滚动，显示顶部
             if not self.filter_widget.isVisible():
                 self.filter_widget.show()
-                self.spacer_widget.show()
+                #self.spacer_widget.show()
 
         self.last_scroll_value = value
 

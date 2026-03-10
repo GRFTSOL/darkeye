@@ -4,8 +4,12 @@ from PySide6.QtGui import QIcon
 
 from config import ICONS_PATH
 from core.database.insert import insert_lovemaking_record
-from ui.basic import HeartRatingWidget
-from controller import MessageBoxService
+from darkeye_ui.components import HeartRatingWidget
+from controller.MessageService import MessageBoxService
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.input import TextEdit
+from darkeye_ui.components import TokenDateTimeEdit
+from darkeye_ui.components.button import Button
 
 class AddMakeLoveDialog(QDialog):
     def __init__(self):
@@ -15,14 +19,14 @@ class AddMakeLoveDialog(QDialog):
         self.resize(300, 300)
         self.msg=MessageBoxService(self)
 
-        self.label_rating=QLabel("评分")
+        self.label_rating=Label("评分")
         self.input_rating=HeartRatingWidget()
 
-        self.label_comment=QLabel("事后评价")
-        self.input_comment=QTextEdit()
+        self.label_comment=Label("事后评价")
+        self.input_comment=TextEdit()
 
-        self.label_time=QLabel("时间")
-        self.datetime_edit = QDateTimeEdit(self)
+        self.label_time=Label("时间")
+        self.datetime_edit = TokenDateTimeEdit(self)
         self.datetime_edit.setDisplayFormat("yy-MM-dd HH:mm")  # 设置显示格式
         self.datetime_edit.setDateTime(QDateTime.currentDateTime())  # 设置初始时间
         self.datetime_edit.setCalendarPopup(True)  # 启用日历下拉
@@ -31,7 +35,7 @@ class AddMakeLoveDialog(QDialog):
         self.datetime_edit.setTimeSpec(Qt.LocalTime)
 
         #提交
-        self.btn_commit=QPushButton("提交记录")
+        self.btn_commit=Button("提交记录")
         self.btn_commit.clicked.connect(self.commit)
 
         #分布

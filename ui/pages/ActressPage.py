@@ -1,5 +1,5 @@
 
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel,QVBoxLayout,QLineEdit,QComboBox
+from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget,QVBoxLayout,QLineEdit,QComboBox
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt,Signal,Slot,QTimer
 import sqlite3,logging
@@ -9,15 +9,16 @@ from config import DATABASE
 from core.database.query import get_actressname,get_cup_type
 from core.database.db_utils import attach_private_db,detach_private_db
 from ui.widgets import ActressCard,CompleterLineEdit
-from ui.basic import LazyScrollArea,IconPushButton
-from ui.base import LazyWidget
+from darkeye_ui.components import LazyScrollArea
+from darkeye_ui import LazyWidget
 from utils.utils import timeit
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.rotate_button import RotateButton
+from darkeye_ui.components.shake_button import ShakeButton
+from darkeye_ui.components.combo_box import ComboBox
 
-
-class FlashComboBox(QComboBox):
-    '''带刷新的comboBox,输入一个函数'''
-    def __init__(self,func):
-        super().__init__()
+class FlashComboBox(ComboBox):
+    '''带刷新的 ComboBox，通过 loader_func 加载选项列表'''
     def __init__(self, loader_func: Callable[[], list] = None, parent=None):
         """
         初始化
@@ -68,11 +69,11 @@ class ActressPage(LazyWidget):
         self.scope="公共库范围"
         self.cup=None
 
-        self.spacer_widget = QWidget()
-        self.spacer_widget.setFixedHeight(70)
+        #self.spacer_widget = QWidget()
+        #self.spacer_widget.setFixedHeight(70)
 
         self.filter_widget = QWidget()
-        self.filter_widget.setFixedHeight(26)
+        self.filter_widget.setFixedHeight(32)
         self.filter_layout = QHBoxLayout(self.filter_widget)  # 直接传入 widget
         self.filter_layout.setContentsMargins(10,0,10,0)
 
@@ -82,23 +83,23 @@ class ActressPage(LazyWidget):
 
         
 
-        self.info=QLabel()#用来显示信息
+        self.info=Label()#用来显示信息
         self.info.setFixedWidth(100)
         
-        #self.filter_btn =IconPushButton("search.png")
-        self.btn_eraser=IconPushButton("eraser.png")
-        self.btn_reload=IconPushButton("refresh-cw.png")
+        #self.filter_btn =IconPushButton("search.svg")
+        self.btn_eraser=ShakeButton(icon_name="eraser",icon_size=24,out_size=24)
+        self.btn_reload=RotateButton(icon_name="refresh_cw",icon_size=24,out_size=24)
         #排序选择器
-        self.order_combo = QComboBox()
-        self.order_combo.addItems(["年龄顺序", "年龄逆序","添加顺序","添加逆序","身高顺序","身高逆序","罩杯顺序","罩杯逆序"])
+        self.order_combo = ComboBox()
+        self.order_combo.addItems(["年龄顺序", "年龄逆序","出道顺序","出道逆序","添加顺序","添加逆序","身高顺序","身高逆序","罩杯顺序","罩杯逆序","腰臀比顺序","腰臀比逆序"])
         self.order_combo.setCurrentText(self.order)
-        self.scope_combo = QComboBox()
+        self.scope_combo = ComboBox()
         self.scope_combo.addItems(["公共库范围","收藏库范围"])
         self.scope_combo.setCurrentText(self.scope)
 
-        self.filter_layout.addWidget(QLabel("女优"))
+        self.filter_layout.addWidget(Label("女优"))
         self.filter_layout.addWidget(self.actressname_input)
-        self.filter_layout.addWidget(QLabel("罩杯"))
+        self.filter_layout.addWidget(Label("罩杯"))
         self.filter_layout.addWidget(self.cup_combo)
         #self.filter_layout.addWidget(self.filter_btn)
         self.filter_layout.addWidget(self.btn_reload)
@@ -113,7 +114,7 @@ class ActressPage(LazyWidget):
         #总体布局
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
-        mainlayout.addWidget(self.spacer_widget)
+        #mainlayout.addWidget(self.spacer_widget)
         mainlayout.addWidget(self.filter_widget)
         mainlayout.addWidget(self.lazy_area)
         
@@ -190,7 +191,7 @@ SELECT
     actress.actress_id
 FROM actress
         """
-        
+
         # 拼withsql
         if self.actress_name:
             withsql=f'''
@@ -221,6 +222,14 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
                 where="WHERE actress.birthday !=''AND actress.birthday is NOT NULL\n"
             case "年龄逆序":
                 where="WHERE actress.birthday !=''AND actress.birthday is NOT NULL\n"
+            case "出道顺序":
+                where="WHERE actress.debut_date !=''AND actress.debut_date is NOT NULL\n"
+            case "出道逆序":
+                where="WHERE actress.debut_date !=''AND actress.debut_date is NOT NULL\n"
+            case "腰臀比顺序":
+                where="WHERE actress.waist IS NOT NULL AND actress.hip IS NOT NULL AND actress.hip !=0\n"
+            case "腰臀比逆序":
+                where="WHERE actress.waist IS NOT NULL AND actress.hip IS NOT NULL AND actress.hip !=0\n"
 
         query+=where#比拼
 
@@ -247,6 +256,14 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
                 order="ORDER BY actress.cup \n"
             case "罩杯逆序":
                 order="ORDER BY actress.cup DESC\n"
+            case "出道顺序":
+                order="ORDER BY actress.debut_date \n"
+            case "出道逆序":
+                order="ORDER BY actress.debut_date DESC\n"
+            case "腰臀比顺序":
+                order="ORDER BY ROUND(actress.waist * 1.0 / NULLIF(actress.hip, 0), 2) \n"
+            case "腰臀比逆序":
+                order="ORDER BY ROUND(actress.waist * 1.0 / NULLIF(actress.hip, 0), 2) DESC\n"
 
         if not count:
             query +=f"{order} LIMIT ? OFFSET ?"#最后拼这个
@@ -287,13 +304,13 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
             # 向下滚动，隐藏顶部
             if self.filter_widget.isVisible():
                 self.filter_widget.hide()
-                self.spacer_widget.hide()
+                #self.spacer_widget.hide()
 
         elif direction < -5:
             # 向上滚动，显示顶部
             if not self.filter_widget.isVisible():
                 self.filter_widget.show()
-                self.spacer_widget.show()
+                #self.spacer_widget.show()
 
         self.last_scroll_value = value
 

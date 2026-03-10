@@ -1,11 +1,15 @@
-from PySide6.QtWidgets import QPushButton,QLabel,QGridLayout,QDialog,QDateTimeEdit,QTextEdit
+from PySide6.QtWidgets import QGridLayout,QDialog
 from PySide6.QtCore import Qt,QDateTime,QTime
 from PySide6.QtGui import QIcon
 
 
 from config import ICONS_PATH
 from core.database.insert import insert_sexual_arousal_record
-from controller import MessageBoxService
+from controller.MessageService import MessageBoxService
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.input import TextEdit
+from darkeye_ui.components.token_date_time_edit import TokenDateTimeEdit
+from darkeye_ui.components.button import Button
 
 class AddSexualArousalDialog(QDialog):
     def __init__(self):
@@ -16,11 +20,11 @@ class AddSexualArousalDialog(QDialog):
         self.msg=MessageBoxService(self)
 
         #设置评价的控件
-        label_comment=QLabel("事后评价")
-        self.input_comment=QTextEdit()
+        label_comment=Label("事后评价")
+        self.input_comment=TextEdit()
 
-        label_time=QLabel("时间")
-        self.datetime_edit = QDateTimeEdit(self)
+        label_time=Label("时间")
+        self.datetime_edit = TokenDateTimeEdit(self)
         self.datetime_edit.setDisplayFormat("yy-MM-dd HH:mm")  # 设置显示格式
         six_am_today = QDateTime.currentDateTime()
         six_am_today.setTime(QTime(6, 0))  # 设置为6:00:00
@@ -31,7 +35,7 @@ class AddSexualArousalDialog(QDialog):
         self.datetime_edit.setTimeSpec(Qt.LocalTime)
 
         #提交
-        btn_commit=QPushButton("提交记录")
+        btn_commit=Button("提交记录")
         btn_commit.clicked.connect(self.commit)
 
         #分布

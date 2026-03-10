@@ -1,12 +1,17 @@
+"""
+插入数据库的操作在这里。
 
-'''插入数据库的操作在这里'''
+【写操作后信号发射规范】
+写操作完成后，调用方负责 emit 对应的 global_signals.*_changed 信号。
+详见 docs/write_ops_signal_mapping.md 映射表。
+"""
 from sqlite3 import IntegrityError
 from config import DATABASE,PRIVATE_DATABASE
 import logging
 from .connection import get_connection
 
 def InsertNewActress(ch_name,jp_name)->bool:
-    '''插入女优数据'''
+    '''插入女优数据。调用后需 emit: global_signals.actress_data_changed'''
     conn = get_connection(DATABASE,False)
     cursor = conn.cursor()
     success=False
@@ -31,7 +36,7 @@ def InsertNewActress(ch_name,jp_name)->bool:
     return success
     
 def InsertNewActor(cn_name,jp_name)->bool:
-    '''插入男优数据'''
+    '''插入男优数据。调用后需 emit: global_signals.actor_data_changed'''
     conn = get_connection(DATABASE,False)
     cursor = conn.cursor()
     success=False
@@ -57,6 +62,7 @@ def InsertNewActor(cn_name,jp_name)->bool:
     return success
 
 def InsertNewWork(serial_number:str)->int:
+    '''添加新作品。调用后需 emit: global_signals.work_data_changed'''
     conn = get_connection(DATABASE,False)
     cursor = conn.cursor()
     success=False
@@ -79,6 +85,7 @@ def InsertNewWork(serial_number:str)->int:
     return success
 
 def InsertNewWorkByHand(serial_number,director,release_date,story,actress_ids,actor_ids,cn_title,cn_story,jp_title,jp_story,image_url,tag_ids)->bool:
+    '''手动添加新作品。调用后需 emit: global_signals.work_data_changed'''
     success=False
     try:
         conn = get_connection(DATABASE,False)
@@ -103,7 +110,8 @@ def InsertNewWorkByHand(serial_number,director,release_date,story,actress_ids,ac
         conn.close()
     return success
 
-def insert_tag(tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_redirect_tag_id:int,tag_alias:list[dict])->tuple[bool, str]:
+def insert_tag(tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_redirect_tag_id:int,tag_alias:list[dict])->tuple[bool, str,int|None]:
+    '''插入标签。调用后需 emit: global_signals.tag_data_changed'''
     success=False
     try:
         conn = get_connection(DATABASE,False)
@@ -112,7 +120,7 @@ def insert_tag(tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_red
         new_id = cursor.lastrowid
         conn.commit()
         logging.info(f"新插入的 tag_id 是: {new_id}")
-        return True, "插入成功"
+        return (True, "插入成功",new_id)
     
     except IntegrityError as e:
         if "UNIQUE constraint failed: tag.tag_name" in str(e):
@@ -122,12 +130,12 @@ def insert_tag(tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_red
         else:
             print(f"其他完整性错误: {e}")
         conn.rollback()
-        return False,message
+        return False,message,None
     
     except Exception as e:
         conn.rollback()
         logging.warning(f"插入失败:{e}")
-        return False, str(e) # 将错误信息转换为字符串返回
+        return False, str(e),None # 将错误信息转换为字符串返回
     finally:
         cursor.close()
         conn.close()
@@ -135,7 +143,7 @@ def insert_tag(tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_red
     return success
 
 def add_tag2work(work_id:int,tag_ids:list[int])->bool:
-    '''给作品添加标签,只添加没有的'''
+    '''给作品添加标签,只添加没有的,是直写入数据库。调用后需 emit: global_signals.work_data_changed'''
     success=False
     try:
         conn = get_connection(DATABASE,False)
@@ -165,10 +173,12 @@ def add_tag2work(work_id:int,tag_ids:list[int])->bool:
 def rename_save_image(_path:str,name:str,type:str):
     '''更改名字保存封面图片到库中，并且将相对地址写入数据库
     _path:一个图片的绝对地址
-    name:图片要更改的名字'''
+    name:图片要更改的名字
+    这个要带格式转换，将其他的格式转换成jpg格式保存，否则可能会有兼容性问题
+    '''
     from pathlib import Path
     from config import WORKCOVER_PATH,ACTRESSIMAGES_PATH,ACTORIMAGES_PATH
-    from utils.utils import delete_image
+    from utils.utils import delete_image,webp_to_jpg_pillow,png_to_jpg_pillow
     import shutil
     if type=="cover":
         dst_path:Path = Path(WORKCOVER_PATH) / name
@@ -188,7 +198,16 @@ def rename_save_image(_path:str,name:str,type:str):
     if src_path.resolve() == dst_path.resolve():
         return
     
-    shutil.copy(src_path, dst_path)
+    match src_path.suffix.lower():
+        case ".jpg"|".jpeg":
+            shutil.copy(src_path, dst_path)
+        case ".webp":
+            webp_to_jpg_pillow(src_path,dst_path)
+        case ".png":
+            png_to_jpg_pillow(src_path,dst_path)
+
+
+
     logging.info("图片复制成功，已保存位置为：%s",dst_path)
 
     #删除临时地址的文件
@@ -199,7 +218,7 @@ def rename_save_image(_path:str,name:str,type:str):
 
 def insert_masturbation_record(work_id,serial_number,start_time,rating,tool_name,comment)->bool:
     """
-    向自慰记录表 masturbation 插入一条新的记录。
+    向自慰记录表 masturbation 插入一条新的记录。调用后需 emit: global_signals.masterbation_changed
 
     参数:
     - work_id: 关联作品的ID（整数）
@@ -233,7 +252,7 @@ def insert_masturbation_record(work_id,serial_number,start_time,rating,tool_name
 
 def insert_lovemaking_record(event_time, rating, comment) -> bool:
     """
-    向做爱记录表 lovemaking 插入一条新的记录。
+    向做爱记录表 lovemaking 插入一条新的记录。调用后需 emit: global_signals.lovemaking_changed
 
     参数:
     - event_time: 做爱事件的时间，文本格式（如“YYYY-MM-DD HH:MM”）
@@ -265,7 +284,7 @@ def insert_lovemaking_record(event_time, rating, comment) -> bool:
 
 def insert_sexual_arousal_record(arousal_time, comment) -> bool:
     """
-    向晨勃记录表 sexual_arousal 插入一条新的记录。
+    向晨勃记录表 sexual_arousal 插入一条新的记录。调用后需 emit: global_signals.sexarousal_changed
 
     参数:
     - arousal_time: 晨勃时间，文本格式（如“YYYY-MM-DD HH:MM”）
@@ -295,7 +314,7 @@ def insert_sexual_arousal_record(arousal_time, comment) -> bool:
     return success
 
 def insert_liked_actress(actress_id)->bool:
-    '''向私库中添加喜欢的女优'''
+    '''向私库中添加喜欢的女优。调用后需 emit: global_signals.like_actress_changed'''
     from .db_utils import attach_private_db,detach_private_db
     success=False
     try:
@@ -329,7 +348,7 @@ WHERE actress_id=?
     return success
 
 def insert_liked_work(work_id)->bool:
-    '''向私库中添加喜欢的女优'''
+    '''向私库中添加喜欢的作品。调用后需 emit: global_signals.like_work_changed'''
     from .db_utils import attach_private_db,detach_private_db
     success=False
     try:
@@ -363,7 +382,7 @@ WHERE work_id=?
     return success
 
 def InsertAliasName(id,alias_chain:list[dict])->bool:
-    '''插入女优别名链'''
+    '''插入女优别名链。调用后需 emit: global_signals.actress_data_changed'''
     conn = get_connection(DATABASE,False)
     cursor = conn.cursor()
     success=False

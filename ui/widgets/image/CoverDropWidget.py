@@ -1,12 +1,17 @@
-from PySide6.QtWidgets import QLabel,QSizePolicy,QFileDialog,QMenu
-from PySide6.QtGui import QPixmap,QImage, QDragEnterEvent, QDropEvent,QMouseEvent,QAction
-from PySide6.QtCore import Qt,Signal,QRect,Slot
-import shutil,logging,os,subprocess
+from PySide6.QtWidgets import QLabel, QWidget, QSizePolicy, QFileDialog, QMenu
+from PySide6.QtGui import QPixmap, QImage, QDragEnterEvent, QDropEvent, QMouseEvent, QAction
+from PySide6.QtCore import Qt, Signal, QRect, Slot
+import shutil, logging, os, subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional
 
-from config import WORKCOVER_PATH,TEMP_PATH
-from controller import MessageBoxService
+from config import WORKCOVER_PATH, TEMP_PATH
+from controller.MessageService import MessageBoxService
+
+if TYPE_CHECKING:
+    from darkeye_ui.design.theme_manager import ThemeManager
+    from darkeye_ui.design.tokens import ThemeTokens
 
 
 def is_temp_path(path: str | Path) -> bool:
@@ -14,24 +19,56 @@ def is_temp_path(path: str | Path) -> bool:
     path_obj = Path(path) if isinstance(path, str) else path
     return "temp" in path_obj.parts  # 检查路径各部分是否包含'temp'
 
-class CoverDropWidget(QLabel):
-    '''可拖动式添加封面的QLabel'''
-    
-    cover_changed=Signal()
-    def __init__(self):
+
+def _container_qss_from_tokens(t: "ThemeTokens") -> str:
+    """根据设计令牌生成 #container 的 QSS，文字与边框颜色由令牌控制。"""
+    return (
+        f"#container {{"
+        f"border: {t.border_width} dashed {t.color_border};"
+        f"color: {t.color_text};"
+        f"font-family: {t.font_family_base};"
+        f"font-size: {t.font_size_base};"
+        f"padding: 0px;"
+        f"margin: 0px;"
+        f"}}"
+    )
+
+
+class _CoverDropLabel(QLabel):
+    """内部可拖放封面 QLabel，保持原有显示与拖放逻辑；文字与边框颜色由设计令牌控制。"""
+
+    cover_changed = Signal()
+
+    def __init__(self, theme_manager: Optional["ThemeManager"] = None):
         super().__init__()
-        self._aspect_ratio = 0.7 # 宽高比 
-        self.setMaximumHeight(800)
-        self.setScaledContents(False)  # 关闭默认拉伸
-        self.setAcceptDrops(True)  # 允许拖放
-        self.setText("把JAV封面拖进来")
+        self._aspect_ratio = 0.7  # 宽高比
+        self.setScaledContents(False)
+        self.setAcceptDrops(True)
+        self.setText("把封面拖进来或点击选择本地图片")
         self.setAlignment(Qt.AlignCenter)
-        self.setStyleSheet("border: 2px dashed gray; font-size: 16px; padding: 0px;margin: 0px;")
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) 
-        self._original_pixmap = None  # 保存原始图像,这个是个QPixmap对象
-        self._path=None #这个是核心，这是一个绝对的地址，可以是临时的，可以是正式数据库里的
-        #这个要实现双向绑定的状态，传进来图片地址,数据驱动，而不是手动去设置
-        self.msg=MessageBoxService(self)
+        self.setObjectName("container")
+        if theme_manager is None:
+            try:
+                from app_context import get_theme_manager
+                theme_manager = get_theme_manager()
+            except Exception:
+                theme_manager = None
+        self._theme_manager = theme_manager
+        self._apply_token_styles()
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._apply_token_styles)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self._original_pixmap = None
+        self._path = None
+        self.msg = MessageBoxService(self)
+
+    def _apply_token_styles(self) -> None:
+        """根据当前主题令牌刷新 #container 的边框与文字样式。"""
+        if self._theme_manager is not None:
+            t = self._theme_manager.tokens()
+            self.setStyleSheet(_container_qss_from_tokens(t))
+        else:
+            self.setStyleSheet("#container{border: 2px dashed gray; font-size: 16px; padding: 0px;margin: 0px;}")
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
@@ -65,7 +102,7 @@ class CoverDropWidget(QLabel):
 
         menu.exec(event.globalPos())
 
-    # ✅ 新增：打开图片所在文件夹
+    # 新增：打开图片所在文件夹
     def open_image_folder(self):
         if not self._path or not os.path.exists(self._path):
             self.msg.show_info("错误", "当前没有可打开的图片。")
@@ -165,12 +202,21 @@ class CoverDropWidget(QLabel):
 
     def resizeEvent(self, event):
         '''改变大小的事件'''
-        #w = self.width()
-        h = self.height()
-        w = int(h * self._aspect_ratio)
-        self.setFixedWidth(w)  # 或者你想 setFixedWidth(int(h * aspect_ratio))
+        container_w = self.width()
+        container_h = self.height()
+        current_container_ratio = container_w / container_h
+        if current_container_ratio > self._aspect_ratio:
+            # 宽度太宽了，高度拉满，宽度按比例缩放
+            target_h = container_h
+            target_w = int(target_h * self._aspect_ratio)
+        else:
+            # 高度太高了，宽度拉满，高度按比例缩放
+            target_w = container_w
+            target_h = int(target_w / self._aspect_ratio)
+
+        #self.setFixedWidth(w)  # 或者你想 setFixedWidth(int(h * aspect_ratio))
         if self._original_pixmap:
-            scaled = self._original_pixmap.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            scaled = self._original_pixmap.scaled(target_w,target_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             super().setPixmap(scaled)
         super().resizeEvent(event)
 
@@ -197,8 +243,40 @@ class CoverDropWidget(QLabel):
         self._show_right_harf()
         self.cover_changed.emit()
 
-    def get_image(self)->str:
-        '''返回现在的URL'''
+    def get_image(self) -> str:
+        """返回现在的 URL（绝对路径）。"""
         return self._path
 
 
+class CoverDropWidget(QWidget):
+    """可拖动式添加封面的控件，在父容器内按宽高比占满并居中，不产生滚动条。文字与边框由设计令牌控制。"""
+
+    cover_changed = Signal()
+
+    def __init__(self, aspect_ratio: float = 0.7, theme_manager: Optional["ThemeManager"] = None):
+        super().__init__()
+        self._aspect_ratio = aspect_ratio
+        self._inner = _CoverDropLabel(theme_manager=theme_manager)
+        self._inner._aspect_ratio = aspect_ratio
+        self._inner.setParent(self)
+        self._inner.cover_changed.connect(self.cover_changed.emit)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.setMinimumSize(0, 0)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        w, h = self.width(), self.height()
+        if h <= 0 or w <= 0:
+            return
+        if w / h >= self._aspect_ratio:
+            tw, th = int(h * self._aspect_ratio), h
+        else:
+            tw, th = w, int(w / self._aspect_ratio)
+        self._inner.setFixedSize(tw, th)
+        self._inner.move((w - tw) // 2, (h - th) // 2)
+
+    def set_image(self, relative_image_path: str | None):
+        self._inner.set_image(relative_image_path)
+
+    def get_image(self) -> str:
+        return self._inner.get_image()

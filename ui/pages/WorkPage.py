@@ -1,27 +1,32 @@
 
-from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel,QSizePolicy,QVBoxLayout,QLineEdit,QComboBox,QScrollArea
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QSizePolicy,QVBoxLayout,QLineEdit,QComboBox,QScrollArea
 from PySide6.QtCore import Signal,QThreadPool,Slot,Qt,QTimer
 import sqlite3,logging
-from ui.widgets import CompleterLineEdit,CoverCard,TagSelector4
-from ui.basic import LazyScrollArea,IconPushButton,HorizontalScrollArea
+from ui.widgets import CompleterLineEdit,CoverCard
+from darkeye_ui.components import LazyScrollArea
+from ui.basic import HorizontalScrollArea
 from config import DATABASE
-from core.database.query import get_actressname,getUniqueDirector,get_actorname,get_serial_number,get_maker_name
+from core.database.query import get_actressname, get_unique_director, get_actorname, get_serial_number, get_maker_name, get_actor_allname
 from core.database.db_utils import attach_private_db,detach_private_db
-from utils.utils import timeit
-from ui.base import LazyWidget
-
-
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.rotate_button import RotateButton
+from darkeye_ui.components.shake_button import ShakeButton
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.combo_box import ComboBox
 class WorkPage(LazyWidget):
-    '''主要是展示作品的页面，包括筛选的装置，比如标签筛选'''
+    '''主要是展示作品的页面，包括筛选的装置，比如标签筛选，包括滚动加载'''
     def __init__(self):
         super().__init__()
+        #这里后台执消耗时间的操作，比如首次数据的加载
+
         
     def _lazy_load(self):
         logging.info("----------加载作品界面----------")
 
-        pool = QThreadPool.globalInstance()
-        cpu_count = pool.maxThreadCount()
-        pool.setMaxThreadCount(cpu_count*3)  # 例如 I/O 密集型任务，3倍 CPU 核心
+        #pool = QThreadPool.globalInstance()
+        #cpu_count = pool.maxThreadCount()
+        #pool.setMaxThreadCount(cpu_count*3)  # 例如 I/O 密集型任务，3倍 CPU 核心
 
         self.last_scroll_value = 0  # 上一次滚动位置
         self.keyword=None
@@ -37,8 +42,8 @@ class WorkPage(LazyWidget):
         self.order="添加逆序"#排序的内在的值
         self.scope="公共库范围"
 
-        self.spacer_widget = QWidget()
-        self.spacer_widget.setFixedHeight(70)
+        #self.spacer_widget = QWidget()
+        #self.spacer_widget.setFixedHeight(70)
 
 
         #横向的区域
@@ -64,11 +69,11 @@ class WorkPage(LazyWidget):
     }
 """)
         
-        self.story_input = QLineEdit()
-        self.title_input=QLineEdit()
+        self.story_input = LineEdit()
+        self.title_input=LineEdit()
         self.serial_number_input=CompleterLineEdit(get_serial_number)
         self.actress_input = CompleterLineEdit(get_actressname)
-        self.director_input = CompleterLineEdit(getUniqueDirector)
+        self.director_input = CompleterLineEdit(get_unique_director)
         self.actor_input=CompleterLineEdit(get_actorname)
         self.maker_input=CompleterLineEdit(get_maker_name)
 
@@ -80,42 +85,42 @@ class WorkPage(LazyWidget):
         self.actor_input.setFixedWidth(120)
         self.maker_input.setFixedWidth(150)
 
-        filterlayout.addWidget(QLabel("番号："))
+        filterlayout.addWidget(Label("番号："))
         filterlayout.addWidget(self.serial_number_input)
-        filterlayout.addWidget(QLabel("女优"))
+        filterlayout.addWidget(Label("女优"))
         filterlayout.addWidget(self.actress_input)
-        filterlayout.addWidget(QLabel("标题包含："))
+        filterlayout.addWidget(Label("标题包含："))
         filterlayout.addWidget(self.title_input)
-        filterlayout.addWidget(QLabel("简短故事包含："))
+        filterlayout.addWidget(Label("简短故事包含："))
         filterlayout.addWidget(self.story_input)
-        filterlayout.addWidget(QLabel("导演"))
+        filterlayout.addWidget(Label("导演"))
         filterlayout.addWidget(self.director_input)
-        filterlayout.addWidget(QLabel("男优"))
+        filterlayout.addWidget(Label("男优"))
         filterlayout.addWidget(self.actor_input)
-        filterlayout.addWidget(QLabel("片商"))
+        filterlayout.addWidget(Label("片商"))
         filterlayout.addWidget(self.maker_input)
 
 
 
-        self.info=QLabel()#用来显示信息
+        self.info=Label()#用来显示信息
         self.info.setFixedWidth(100)
 
-        #self.filter_btn =IconPushButton("search.png")
-        self.btn_reload=IconPushButton("refresh-cw.png")
-        self.btn_eraser=IconPushButton("eraser.png")
+        #self.filter_btn =IconPushButton("search.svg")
+        self.btn_reload=RotateButton(icon_name="refresh_cw",icon_size=24,out_size=24)
+        self.btn_eraser=ShakeButton(icon_name="eraser",icon_size=24,out_size=24)
 
         #排序选择器
-        self.order_combo = QComboBox()
+        self.order_combo = ComboBox()
         self.order_combo.addItems(["添加逆序","添加顺序","更新时间顺序","更新时间逆序","发布时间逆序", "发布时间顺序", "拍摄年龄顺序","拍摄年龄逆序"])
         self.order_combo.setCurrentText(self.order)
 
 
-        self.scope_combo = QComboBox()
-        self.scope_combo.addItems(["公共库范围","收藏库范围","收藏未观看"])
+        self.scope_combo = ComboBox()
+        self.scope_combo.addItems(["公共库范围","收藏库范围","收藏未观看","已撸过"])
         self.scope_combo.setCurrentText(self.scope)
 
         self.filter_widget = QWidget()
-        self.filter_widget.setFixedHeight(26)
+        self.filter_widget.setFixedHeight(32)
         self.filter_layout = QHBoxLayout(self.filter_widget)  # 直接传入 widget
         self.filter_layout.setContentsMargins(10, 0, 10,0)
 
@@ -132,9 +137,9 @@ class WorkPage(LazyWidget):
         self.lazy_area = LazyScrollArea(column_width=220)
         self.lazy_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         #self.lazy_area.verticalScrollBar().valueChanged.connect(self.handle_scroll)
-
-        self.tagselector=TagSelector4()
-        self.tagselector.tag_receive_widget.setFixedWidth(84)
+        from ui.widgets.selectors.TagSelector5 import TagSelector5
+        self.tagselector=TagSelector5()
+        self.tagselector.left_view.setFixedWidth(84)
         self.tagselector.left_widget.setFixedWidth(108)
         self.hlayout=QHBoxLayout()#细分的layout
         self.hlayout.addWidget(self.tagselector,0)
@@ -143,7 +148,7 @@ class WorkPage(LazyWidget):
         #总体布局
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
-        mainlayout.addWidget(self.spacer_widget)
+
         mainlayout.addWidget(self.filter_widget)
         mainlayout.addLayout(self.hlayout)
 
@@ -192,6 +197,22 @@ class WorkPage(LazyWidget):
         global_signals.actor_data_changed.connect(self.actor_input.reload_items)
 
         self.btn_eraser.clicked.connect(self._clear_all_search)
+
+    def load_with_params(self, actor_id=None, tag_id=None, serial_number=None, **kwargs):
+        """
+        根据路由参数加载筛选条件（业务状态由页面自身管理，Router 只传参）
+        """
+        if actor_id is not None and hasattr(self, "actor_input"):
+            namelist = get_actor_allname(actor_id)
+            if namelist:
+                name = namelist[0].get("cn")
+                self.actor_input.setText(name or "")
+        if tag_id is not None and hasattr(self, "tagselector"):
+            self.tagselector.load_with_ids([tag_id])
+        if serial_number is not None and hasattr(self, "serial_number_input"):
+            self.serial_number_input.setText(serial_number)
+        if actor_id is not None or tag_id is not None or serial_number is not None:
+            self.apply_filter()
 
     @Slot()
     def _clear_all_search(self):
@@ -242,10 +263,14 @@ class WorkPage(LazyWidget):
 
     def update_info(self):
         '''更新查询到几条数据'''
-        if self.load_data(0,0,True) is None:
+        num=len(self.load_data(0,0,True))
+        if num is None:
             self.info.setText("没有查询到数据")
         else:
-            self.info.setText("过滤总数:"+str(len(self.load_data(0,0,True))))
+            #logging.debug(f"过滤总数:{num}")
+            self.info.setText("过滤总数:"+str(num))
+            
+
 
     def load_data(self, page_index: int, page_size: int,count:bool=False)->tuple:
         """返回一个页面的 CoverCard 所需要的数据,这个是非常的快的，不消耗时间"""
@@ -256,8 +281,8 @@ class WorkPage(LazyWidget):
         query=f'''
 SELECT 
     work.serial_number, 
-    cn_title, 
-    image_url,
+    work.cn_title, 
+    work.image_url,
     wtr.tag_id,
     work.work_id,
     CASE 
@@ -321,6 +346,10 @@ WHERE cn_name LIKE ? OR jp_name LIKE ?
         # 拼join----------------------------------------------------------------
         if self.scope=="收藏库范围"or self.scope=="收藏未观看":
             join="JOIN priv.favorite_work fav ON fav.work_id=work.work_id\n"
+            query+=join
+        
+        if self.scope=="已撸过":
+            join="JOIN priv.masturbation  ON priv.masturbation.work_id=work.work_id\n"
             query+=join
 
         if self.order=="拍摄年龄顺序"or self.order=="拍摄年龄逆序":
@@ -424,19 +453,19 @@ HAVING COUNT(DISTINCT wtr2.tag_id) = ?
         if not count:
             query +=f"{order} LIMIT ? OFFSET ?"#最后拼这个
             params.extend([page_size, offset])
-        #logging.debug(f"WorkPageExecute SQL\n{query}")
+        logging.debug(f"WorkPageExecute SQL\n{query}")
         #logging.debug(f"{params}")
 
         with sqlite3.connect(f"file:{DATABASE}?mode=ro",uri=True) as conn:
             cursor = conn.cursor()
-            if self.scope=="收藏库范围"or self.scope=="收藏未观看": attach_private_db(cursor)
+            if self.scope=="收藏库范围"or self.scope=="收藏未观看"or self.scope=="已撸过": attach_private_db(cursor)
             cursor.execute(query,params)
             results=cursor.fetchall()
-            if self.scope=="收藏库范围"or self.scope=="收藏未观看": detach_private_db(cursor)
+            if self.scope=="收藏库范围"or self.scope=="收藏未观看"or self.scope=="已撸过": detach_private_db(cursor)
 
         return results
 
-
+    
     def load_page(self, page_index: int, page_size: int) -> list[CoverCard]:
         """返回一个页面的 CoverCard 列表，在这里进行实际的构造"""
         data=self.load_data(page_index,page_size)
@@ -468,14 +497,14 @@ HAVING COUNT(DISTINCT wtr2.tag_id) = ?
             # 向下滚动，隐藏顶部
             if self.filter_widget.isVisible():
                 self.filter_widget.hide()
-                self.spacer_widget.hide()
+                #self.spacer_widget.hide()
                 self.tagselector.hide()
 
         elif direction < -5:
             # 向上滚动，显示顶部
             if not self.filter_widget.isVisible():
                 self.filter_widget.show()
-                self.spacer_widget.show()
+                #self.spacer_widget.show()
                 self.tagselector.show()
 
         self.last_scroll_value = value

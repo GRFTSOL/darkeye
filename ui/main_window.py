@@ -1,470 +1,312 @@
-import os,psutil,logging
-from PySide6.QtWidgets import QWidget,QStackedWidget,QPushButton,QHBoxLayout, QVBoxLayout,QLineEdit,QLabel
-from PySide6.QtCore import Qt,Signal,QTimer,Slot,QSize
-from PySide6.QtGui import QIcon,QKeySequence,QShortcut,QPainter,QColor
-from config import ICONS_PATH,set_size_pos,get_size_pos,is_max_window,set_max_window,is_first_lunch
-from ui.pages import WorkPage,ManagementPage,StatisticsPage,ActressPage,AvPage,SingleActressPage,SingleWorkPage,ModifyActressPage,ActorPage,ModifyActorPage
-from ui.pages import CoverBrowser
-from core.recommendation.Recommend import recommendStart,randomRec
-from qframelesswindow import FramelessWindow,StandardTitleBar
-from ui.basic import IconPushButton,ToggleSwitch
+from PySide6.QtWidgets import QWidget, QStackedWidget, QHBoxLayout, QMainWindow, QLabel
+from PySide6.QtCore import QTimer, Slot
+from PySide6.QtGui import QIcon
+import logging
+
+from config import ICONS_PATH,APP_VERSION,set_max_window
+from controller.ShortcutRegistry import ShortcutRegistry
+from controller.ShortcutBindings import setup_mainwindow_actions#这个准备数据的操作是可以放在后台的但是QAction一定要放主线程
+from darkeye_ui.components import Sidebar2
+from ui.navigation.router import Router
+from controller.GlobalSignalBus import global_signals
 
 
-class CustomTitleBar(StandardTitleBar):
-    """ Custom title bar 这个titlebar要求空32个像素的空间出来"""
-    help_signal=Signal()
-    setting_signal=Signal()
-    search_signal=Signal(str)#传递搜索信号
 
-    def __init__(self, parent):
-        super().__init__(parent)
+class MainWindow(QMainWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.setWindowTitle("暗之眼 "+"V"+APP_VERSION)
+        self.setWindowIcon(QIcon(str(ICONS_PATH / "logo.svg"))) 
+        self.resize(1200, 800)
+        self.open=False
 
-        # customize the style of title bar button
-        self.minBtn.setHoverColor(Qt.white)
-        self.minBtn.setHoverBackgroundColor(QColor(0, 100, 182))
-        self.minBtn.setPressedColor(Qt.white)
-        self.minBtn.setPressedBackgroundColor(QColor(54, 57, 65))
-        self.memlabel=QLabel()
-        self.hBoxLayout.insertWidget(3, self.memlabel, 0, Qt.AlignLeft)
-        self.hBoxLayout.insertStretch(4,1)
-        self.search=QLineEdit()
-        self.search.setFixedWidth(200)
+        #======================整体布局设置==========================
+        self.init_ui()
+        # self.stackPageConnectMenu() # 已在 init_router 中实现
+        self.init_router()
 
-        self.search.returnPressed.connect(lambda:self.search_signal.emit(self.search.text().strip()))
+        self.registry = ShortcutRegistry()
+        setup_mainwindow_actions(self, self.registry)
 
-        self.hBoxLayout.insertWidget(5, self.search, 0, Qt.AlignLeft)
-        
-        self.greenbutton=ToggleSwitch(width=40,height=20)
-        self.hBoxLayout.insertWidget(7,self.greenbutton,0,Qt.AlignLeft)
-        self.greenbutton.setToolTip("切换安全模式")
-        self.greenbutton.setChecked(False)
-        from controller.GlobalSignalBus import global_signals
-
-        self.greenbutton.toggled.connect(global_signals.green_mode_changed.emit)#转发信号
-
-        
-
-        self.btn_help=IconPushButton("circle-question-mark.png",iconsize=20,outsize=24)
-        
-        self.hBoxLayout.insertWidget(7,self.btn_help,0,Qt.AlignRight)
-        self.btn_help.clicked.connect(self.help_signal.emit)
-
-        self.btn_setting=IconPushButton("settings.png",iconsize=20,outsize=24)
-        self.hBoxLayout.insertWidget(7,self.btn_setting,0,Qt.AlignRight)
-        self.btn_setting.clicked.connect(self.setting_signal.emit)
-
-        # use qss to customize title bar button
-        self.maxBtn.setStyleSheet("""
-            TitleBarButton {
-                qproperty-hoverColor: white;
-                qproperty-hoverBackgroundColor: rgb(0, 100, 182);
-                qproperty-pressedColor: white;
-                qproperty-pressedBackgroundColor: rgb(54, 57, 65);
-            }
-        """)
-        
-        #内存显示每秒刷新
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_memory)
-        self.timer.start(1000)  # 每秒更新
+        self.timer.start(1000)  # 1秒更新一次，减少标题栏重绘
 
-    def update_memory(self):
-        '''更新内存'''
-        process = psutil.Process(os.getpid())
-        mem = process.memory_info().rss / 1024 ** 2  # 转换为MB
-        self.memlabel.setText(f"MEMORY: {mem:.2f} MB")
+        self.signal_connect()
 
-class MainWindow(FramelessWindow):
-    '''主程序'''
-    def __init__(self):
-        super().__init__()
-        self.setTitleBar(CustomTitleBar(self))
-        self.titleBar:CustomTitleBar
-        from config import APP_VERSION
-        self.setWindowTitle("暗之眼 "+"V"+APP_VERSION)
-        self.setWindowIcon(QIcon(str(ICONS_PATH / "jav.png"))) 
-        
-        self.setMinimumSize(1200,800)
+        # 延后到窗口 show / event loop 启动后再初始化爬虫管理器，避免 import/构造阻塞主窗口首帧
+        QTimer.singleShot(0, self._ensure_crawler_manager_initialized)
 
-        self.resize(1200,800)
-        self.center()
+    @Slot()
+    def _ensure_crawler_manager_initialized(self) -> None:
+        # 必须在主线程首次创建（CrawlerManager.get_manager 内部会校验）
+        from core.crawler.CrawlerManager import get_manager
+        self._crawler_manager = get_manager()
 
 
-
-
-        # 恢复上次打开时的窗口大小
-        #QTimer.singleShot(0, self.restore_window_settings)
-        # === 主容器 ===
-        #self.central = QWidget()
-        #self.setCentralWidget(self.central)
-
-        # === 页面堆叠区域 ===
-        self.stack = QStackedWidget()
-        #self.stack.setStyleSheet("QStackedWidget {background-color: #181818;}")
-        #self.stack.setStyleSheet("border: 2px solid red;")#测试框
-        self.page_home=CoverBrowser(randomRec())
-        self.page_management=ManagementPage()
-        self.page_statistics=StatisticsPage()
-        self.page_work=WorkPage()
-        self.page_actress=ActressPage()
-        self.page_actor=ActorPage()
-        self.page_av=AvPage()
-        self.page_single_actress=SingleActressPage()
-        self.page_single_work=SingleWorkPage()
-        self.page_modify_actress=ModifyActressPage()
-        self.page_modify_actor=ModifyActorPage()
-
-        self.stack.addWidget(self.page_home)
-        self.stack.addWidget(self.page_management)
-        self.stack.addWidget(self.page_statistics)
-        self.stack.addWidget(self.page_work)
-        self.stack.addWidget(self.page_actress)
-        self.stack.addWidget(self.page_actor)
-        self.stack.addWidget(self.page_av)
-        self.stack.addWidget(self.page_single_actress)
-        self.stack.addWidget(self.page_single_work)
-        self.stack.addWidget(self.page_modify_actress)
-        self.stack.addWidget(self.page_modify_actor)
-
-        # 让 QStackedWidget 自动填满整个 self.central
-        central_layout = QVBoxLayout(self)
-        central_layout.setContentsMargins(0, 32, 0, 0)
-        central_layout.setSpacing(0)
-        central_layout.addWidget(self.stack)
-
-        # 悬浮菜单栏
-        self.MenuBar()
-
-        #快捷键设置
-        self.ShoutcutSetting()
-
-        #集中跳转设置
-        self.jump_connect()
-
-    def center(self):
-        """一个通用的居中方法"""
-        # 获取代表屏幕的矩形（考虑多显示器情况，获取当前窗口所在的屏幕）
-        screen_geometry = self.screen().availableGeometry()
-        # 获取窗口自身的矩形
-        window_geometry = self.frameGeometry()
-        #print(window_geometry)
-        # 将窗口矩形的中心点移动到屏幕矩形的中心点
-        window_geometry.moveCenter(screen_geometry.center())
-        # 将窗口的左上角移动到窗口矩形的左上角，实现居中
-        self.move(window_geometry.topLeft())
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        #painter.fillRect(self.rect(), QColor("#ffffff"))  # 深灰色背景
-
-    def MenuBar(self):
-        # === 悬浮菜单栏 ===
-        self.menu_bar = QWidget(self)
-        #self.menu_bar.setGeometry(0, 0, self.width(), 50)
-        
-        self.menu_bar.setStyleSheet("""
-                                    QWidget {
-                                        background-color: rgba(0, 0, 0, 0);
-                                        padding: 0px 0px;
-                                        border-radius: 20px;
-                                    }
-                                    QWidget:hover {
-                                        background-color: rgba(05, 0, 0, 200);
-                                    }
-                                    """)
-
-        menu_layout = QHBoxLayout(self.menu_bar)
-        menu_layout.setContentsMargins(10, 5, 10, 5)
-
-
-        self.ql_logo=IconPushButton("jav_w.png",iconsize=40,outsize=40,hoverable=False)
-
-
-        self.ql_logo.clicked.connect(lambda:self.switch_page(0))
+    def init_ui(self) -> None:
+        '''初始化UI'''
+        central = QWidget()
+        self.setCentralWidget(central)
         
 
-        menu_layout.addWidget(self.ql_logo)
-
-        # 定义菜单项（你可以轻松修改名称或添加图标、样式等）
-        menu_items = [
-            {"name": "管理"},
-            {"name": "统计"},
-            {"name": "影片"},
-            {"name": "女优"},
-            {"name": "男优"},
-            {"name": "暗黑界"}
+        main_layout = QHBoxLayout(central)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0) 
+        
+        menu_defs = [  # 内置图标名或 .svg 外部文件
+            ("forward", "前进到下一页", "chevron_up"),
+            ("back", "返回上一页", "chevron_down"),
+            ("home", "首页", "house"),
+            ("database", "管理", "database"),
+            ("work", "作品", "film"),
+            ("chart", "统计", "chart_line"),
+            ("actress", "女优", "venus"),
+            ("actor", "男优", "mars"),
+            ("graph", "关系图", "share_2"),
+            ("shelf", "书架", "library_big"),
+            ("av", "暗黑界", "scroll_text"),
+            ("setting", "设置", "settings"),
+            ("help", "帮助", "circle_question_mark"),
+            ("bell", "通知", "bell"),
         ]
-        self.buttons = []
+        self.sidebar = Sidebar2(menu_defs=menu_defs)#侧边栏的按钮在这里改
 
-        for idx, item in enumerate(menu_items):
-            btn = QPushButton(item["name"])
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setCheckable(True)
-            btn.setStyleSheet("""
-                QPushButton {
-                    color: white;
-                    background-color: transparent;
-                    border: none;
-                    padding: 0px 0px;
-                    font-weight: bold; 
-                    font-size: 16px; 
-                    font-family: 'Microsoft YaHei';
-                    text-align: center; /* 水平居中 */
-                }
-                QPushButton:hover {
-                    background-color: rgba(255, 255, 255, 40);
-                }
-                QPushButton:checked {
-                background-color: rgba(255, 0, 0, 150);  /* 选中状态变红色 */
-                }
-            """)
-            btn.clicked.connect(lambda _, i=idx: self.on_menu_button_clicked(i))
-            btn.setFixedSize(80,50)
-            self.buttons.append(btn)
-            menu_layout.addWidget(btn)
+        self.stack = QStackedWidget()
 
-        menu_layout.addStretch()
-        #定义搜索框
-        self.QLE=QLineEdit()
-        self.QLE.setClearButtonEnabled(True)
-        self.QLE.setMaximumWidth(200)
-        self.QLE.setStyleSheet("""
-            QLineEdit {
-                color: white;  
-                background-color: transparent;  /* 可选：背景透明或其他颜色 */
-                border: 1px solid white;        /* 白色边框 */ 
-            }
-        """)
-        #定义搜索按钮
-        self.btn_search=QPushButton("搜索")
-        self.btn_search.setCursor(Qt.PointingHandCursor)
-        self.btn_search.setFixedSize(60,30)
-        self.btn_search.setStyleSheet("""
-            QPushButton {
-                color: white;
-                background-color: red;
-                border: none;
-                font-weight: bold; 
-                padding: 0px 0px;
-                font-size: 13px; 
-                border-radius: 10px;  
-                text-align: center; /* 水平居中 */     
-            }
-        """)
+
+        # 左右两栏布局
+        main_layout.addWidget(self.sidebar)
+        main_layout.addWidget(self.stack)
+
+
+
+    def init_router(self) -> None:
+        '''配置路由'''
+        self.router = Router(self.stack, self.sidebar)
         
-        #menu_layout.addWidget(self.QLE)
-        #menu_layout.addWidget(self.btn_search)
-        self.menu_bar.raise_()# 确保悬浮在最上层
+        # 1. 定义工厂函数
+        def create_home():
+            #from ui.pages.CoverBrowser import CoverBrowser
+            #from core.recommendation.Recommend import randomRec
+            #return CoverBrowser(randomRec())
+            from ui.pages.HomePage import HomePage
+            return HomePage()
 
-    def on_menu_button_clicked(self, index):
-        # 取消其他按钮的选中状态
-        for i, btn in enumerate(self.buttons):
-            btn.setChecked(i == index)
+        def create_test_page():
+            from ui.pages.DashboardPage import DashboardPage
+            return DashboardPage()
+
+        _management_page = None
+        def create_management():
+            nonlocal _management_page
+            if _management_page is None:
+                from ui.pages.ManagementPage import ManagementPage
+                _management_page = ManagementPage()
+            return _management_page
+            
+        def create_statistics():
+            from ui.pages.StatisticsPage import StatisticsPage
+            return StatisticsPage()
+            
+        def create_work():
+            from ui.pages.WorkPage import WorkPage
+            return WorkPage()
+            
+        def create_actress():
+            from ui.pages.ActressPage import ActressPage
+            return ActressPage()
+            
+        def create_actor():
+            from ui.pages.ActorPage import ActorPage
+            return ActorPage()
+            
+        def create_av():
+            from ui.pages.AvPage import AvPage
+            return AvPage()
+            
+        def create_graph():
+            from ui.pages.ForceDirectPage import ForceDirectPage
+            return ForceDirectPage()
+            
+        def create_shelf():
+            from ui.pages.ShelfPage import ShelfPage
+            return ShelfPage()
+
+        def create_workspace_demo():
+            from ui.pages.WorkspaceDemoPage import WorkspaceDemoPage
+            return WorkspaceDemoPage()
+            
+        def create_single_work():
+            from ui.pages.SingleWorkPage import SingleWorkPage
+            return SingleWorkPage()
+            
+        def create_single_actress():
+            from ui.pages.SingleActressPage import SingleActressPage
+            return SingleActressPage()
+            
+        def create_modify_actress():
+            from ui.pages.ModifyActressPage import ModifyActressPage
+            return ModifyActressPage()
+            
+        def create_modify_actor():
+            from ui.pages.ModifyActorPage import ModifyActorPage
+            return ModifyActorPage()
+            
+        def create_setting():
+            from ui.pages.SettingPage import SettingPage
+            return SettingPage()
         
-        # 切换页面
-        self.switch_page(index + 1)    
+        def create_help():
+            from ui.pages.HelpPage import HelpPage
+            return HelpPage()
 
-    def switch_page(self, index):
-        for i, btn in enumerate(self.buttons):
-            btn.setChecked(i == index - 1)  # index-1，因为 index=0 是 logo，不对应按钮
-        if index==0:
-            self.menu_bar.setStyleSheet("""
-                                QWidget {
-                                    background-color: rgba(0, 0, 0, 0);  /* 半透明黑色背景 */
-                                    padding: 0px 0px;
-                                    border-radius: 20px;
-                                }
-                                QWidget:hover {
-                                    background-color: rgba(0, 0, 0, 200);
-                                }
-                                """)
-        else:
-            self.menu_bar.setStyleSheet("""
-                    QWidget {
-                        background-color: rgba(0, 0, 0, 150);  /* 半透明黑色背景 */
-                        padding: 0px 0px;
-                        border-radius: 20px;
-                    }
-                    """)
-        self.stack.setCurrentIndex(index)
+        # 2. 注册路由 (route_name, factory, menu_id)
+        # 侧边栏主菜单页面
+        # 保留旧首页作为隐藏入口，新的 Dashboard 绑定到侧边栏的“首页”按钮
+        self.router.register("home", create_home, "home")
+        self.router.register("test_page", create_test_page, None)
+        self.router.register("database", create_management, "database")
+        self.router.register("chart", create_statistics, "chart")
+        self.router.register("mutiwork", create_work, "work") # 作品列表
+        self.router.register("actress", create_actress, "actress") # 女优列表
+        self.router.register("actor", create_actor, "actor") # 男优列表
+        self.router.register("av", create_av, "av")
+        self.router.register("graph", create_graph, "graph")
+        
+        # 详情页/编辑页/其他页面
+        self.router.register("shelf", create_shelf, "shelf")
+        self.router.register("workspace_demo", create_workspace_demo, None)
+        self.router.register("work", create_single_work, "work") # 作品详情
+        self.router.register("single_actress", create_single_actress, "actress") # 女优详情
+        self.router.register("actress_edit", create_modify_actress, "actress")
+        self.router.register("actor_edit", create_modify_actor, "actor")
+        self.router.register("work_edit", create_management, "database") # 注意：这里如果想跳到管理页的特定tab，router需要特殊处理
+        self.router.register("setting", create_setting, "setting")
+        self.router.register("help",create_help,"help")
+        
+        # 3. 建立菜单到路由的映射 (供 Sidebar 点击使用)
+        self._menu_to_route = {
+            "home": "home",
+            "database": "database",
+            "chart": "chart",
+            "work": "mutiwork",
+            "actress": "actress",
+            "actor": "actor",
+            "graph": "graph",
+            "shelf": "shelf",
+            "av": "av",
+            "setting": "setting",
+            "help": "help"
+        }
+        self.sidebar.itemClicked.connect(self._on_sidebar_clicked)
+        
+        '''
+        ### 什么时候有必要手动加单例？
+        判断标准非常简单，只有满足以下 任意一点 时才需要：
 
-    def resizeEvent(self, event):
-        """菜单栏始终靠左上角，宽度为窗口一半"""
-        super().resizeEvent(event)
-        #self.stack.setGeometry(0, 0, self.width(), self.height())
-        self.menu_bar.setGeometry(20, 42, self.width()-40, 60)
+    1. 多路由复用 ：像这次一样，你有多个不同的 route_name （如 view 和 edit ），但逻辑上它们应该显示同一个物理页面实例。
+    2. 全局资源独占 ：页面内部持有了必须全局唯一的资源（比如绑定了某个特定的 WebSocket 连接、硬件端口），绝对不允许被实例化两次。
+        '''
+        # 延后到 show 之后再加载首页，主窗口先显示框架，缩短“主窗口显示完成”耗时
+        QTimer.singleShot(0, lambda: self.router.push("home"))
 
-    def restore_window_settings(self):
-        '''这个现在不需要了'''
-        logging.debug("还原上次打开的窗口大小")
-        if is_max_window():
-            self.showMaximized()
-        else:
-            pass
-            #还原窗口状态
-            #size,pos=get_size_pos()
-            #self.resize(size)
-            #self.move(pos)
 
-    def closeEvent(self, event):
+    def signal_connect(self) -> None:
+        '''信号连接'''
+        from server.bridge import bridge
+        bridge.capture_received.connect(self.handle_capture_data)
+        
+
+
+    def closeEvent(self, event) -> None:
         logging.info("--------------------程序关闭--------------------")
         set_max_window(self.isMaximized())
         #if not self.isMaximized():
             #set_size_pos(self.size(), self.pos())
         super().closeEvent(event)
-        #数据库
-        from core.database.connection import QSqlDatabaseManager
-        #这个QSqlDatabase是长连接，最后关闭
-        db_manager = QSqlDatabaseManager()
-        db_manager.close_all()
         from core.database.db_utils import clear_temp_folder
-        clear_temp_folder()#退出时清理临时数据
+        clear_temp_folder()  # 退出时清理临时数据
 
-
-    def ShoutcutSetting(self):
-        #快捷键设置
-        logging.info("---快捷键设置---")
-        self.shortcutM = QShortcut(QKeySequence("M"), self)
-        self.shortcutM.activated.connect(self.page_management.openAddMasturbationDialog)
-
-        self.shortcutW = QShortcut(QKeySequence("W"), self)
-        self.shortcutW.activated.connect(self.page_management.openAddQuickWorkDialog)   
-
-        self.shortcutA = QShortcut(QKeySequence("A"), self)
-        self.shortcutA.activated.connect(self.page_management.openAddSexualArousalDialog) 
-
-        self.shortcutL = QShortcut(QKeySequence("L"), self)
-        self.shortcutL.activated.connect(self.page_management.openAddMakeLoveDialog) 
-
-        self.shortcutH = QShortcut(QKeySequence("H"), self)
-        self.shortcutH.activated.connect(self.on_help)
-
-        self.shortcutC = QShortcut(QKeySequence("C"), self)
-        self.shortcutC.activated.connect(self.handle_capture) 
-
-        self.titleBar.help_signal.connect(self.on_help)#这个为什么没有提示
-        self.titleBar.setting_signal.connect(self.on_setting)
-        self.titleBar.search_signal.connect(self.search)
-
-    @Slot(str)
-    def search(self,serial_number):
-        '''跳转并搜索'''
-        logging.debug("跳转到作品页面")
-        self.stack.setCurrentWidget(self.page_work)
-        self.update_menu_highlight("影片")
-        self.page_work.serial_number_input.setText(serial_number)
-
-
-
-    def jump_connect(self):
-        '''转发信号'''
-        from controller.GlobalSignalBus import global_signals
-
-        global_signals.modify_actress_clicked.connect(self.show_modify_actress)
-        global_signals.modify_work_clicked.connect(self.show_modify_work_page)
-        global_signals.work_clicked.connect(self.show_single_work_page)
-        global_signals.actress_clicked.connect(self.show_single_actress)
-        global_signals.tag_clicked.connect(self.search_work_by_tag)
-        global_signals.modify_actor_clicked.connect(self.show_modify_actor)
-        global_signals.actor_clicked.connect(self.show_single_actor)
-
-    @Slot(int)
-    def show_single_actor(self,actor_id:int):
-        logging.debug("跳转到男优过滤页")
-        self.stack.setCurrentWidget(self.page_work)
-        self.update_menu_highlight("影片")
-        from core.database.query import get_actor_allname
-        namelist=get_actor_allname(actor_id)
-        name=namelist[0].get("cn")
-        self.page_work.actor_input.setText(name)
-
-    @Slot(int)
-    def show_modify_actor(self,actor_id:int):
-        logging.debug("跳转到修改男优信息页")
-        self.stack.setCurrentWidget(self.page_modify_actor)
-        self.page_modify_actor.update(actor_id)
-        self.update_menu_highlight("男优")
-
-    @Slot(int)
-    def search_work_by_tag(self,tag_id:int):
-        '''跳转到作品搜索页面并添加tag_id'''
-        logging.debug("跳转到作品页面")
-        self.stack.setCurrentWidget(self.page_work)
-        self.update_menu_highlight("影片")
-        self.page_work.tagselector.load_with_ids([tag_id])
-
-    @Slot(int)
-    def show_modify_actress(self,actress_id:int):
-        '''跳转到编辑女优界面'''
-        self.stack.setCurrentWidget(self.page_modify_actress)
-        self.page_modify_actress.update(actress_id)
-        self.update_menu_highlight("女优")
-
-    @Slot(int)
-    def show_single_work_page(self,work_id:int):
-        '''跳转到单个作品的界面'''
-        self.stack.setCurrentWidget(self.page_single_work)
-        self.page_single_work.update(work_id)
-        self.update_menu_highlight("影片")
-
-    @Slot(str)
-    def show_modify_work_page(self,serial_number:str):#跳转到编辑界面
-        '''跳转到管理的界面，然后展示出来'''
-        self.stack.setCurrentWidget(self.page_management)
-        self.page_management.tab_widget.setCurrentWidget(self.page_management.worktab)
-        self.page_management.worktab.input_serial_number.setText(serial_number)
-        self.page_management.worktab.btn_load_form_db.click()
-        self.update_menu_highlight("管理")  
-
-    @Slot(int)
-    def show_single_actress(self,actress_id:int):
-        '''跳转到单独的女优界面'''
-        self.stack.setCurrentWidget(self.page_single_actress)
-        self.page_single_actress.update(actress_id)
-        self.update_menu_highlight("女优")  
-
-    def update_menu_highlight(self, target_name: str):
-        '''跳转后应的菜单栏也要更改状态'''
-        for btn in self.menu_bar.findChildren(QPushButton):  # 或 QToolButton
-            # 根据按钮的 objectName 或 text 来判断
-            if btn.text() == target_name or btn.property("page") == target_name:
-                btn.setChecked(True)
-            else:
-                btn.setChecked(False)
-
-        self.menu_bar.setStyleSheet("""
-        QWidget {
-            background-color: rgba(0, 0, 0, 200);  /* 半透明黑色背景 */
-            padding: 0px 0px;
-            border-radius: 20px;
-        }
-        QWidget:hover {
-            background-color: rgba(0, 0, 0, 200);
-        }
-        """)
-
-    def handle_capture(self):
+    @Slot()
+    def handle_capture(self) -> None:
         logging.debug("触发快捷键C")
-        cur_page=self.stack.currentWidget()
+        cur_route = self.router.get_current_route()
+        cur_page = self.stack.currentWidget()
+        if not cur_page: return
+        
         from utils.utils import capture_full
-        match cur_page:
-            case self.page_home:
-                capture_full(self.page_home)
-            case self.page_work:  
-                capture_full(self.page_work.lazy_area.widget())
-            case self.page_actress:
-                capture_full(self.page_actress.lazy_area.widget())
-            case self.page_single_actress:
-                capture_full(self.page_single_actress.single_actress_info)
+        
+        match cur_route:
+            case "home":
+                capture_full(cur_page)
+            case "mutiwork":  
+                # 需要确认 cur_page 是否有 lazy_area 属性，因为现在是动态加载的
+                if hasattr(cur_page, "lazy_area"):
+                    capture_full(cur_page.lazy_area.widget())
+            case "actress":
+                if hasattr(cur_page, "lazy_area"):
+                    capture_full(cur_page.lazy_area.widget())
+            case "single_actress":
+                if hasattr(cur_page, "single_actress_info"):
+                    capture_full(cur_page.single_actress_info)
 
     @Slot()
-    def on_help(self):
-        from ui.dialogs.HelpDialog import HelpDialog
-        dialog=HelpDialog(self)
-        dialog.exec()
+    def update_memory(self) -> None:
+        """更新内存（仅在前台时更新标题，降低开销）"""
+        if not self.isVisible() or not self.isActiveWindow():
+            return
+        import psutil
+        import os
+        process = psutil.Process(os.getpid())
+        mem_main: int = process.memory_info().rss
+        main_mb: float = mem_main / 1024 ** 2
+        self.setWindowTitle("暗之眼 " + "V" + APP_VERSION + f" 内存使用: {main_mb:.2f} MB")
 
     @Slot()
-    def on_setting(self):
-        from ui.dialogs import SettingDialog
-        dialog=SettingDialog(self)
-        dialog.exec()
+    def update_thread_count(self) -> None:
+        """更新状态栏显示后台线程数量"""
+        from PySide6.QtCore import QThreadPool
+        active = QThreadPool.globalInstance().activeThreadCount()
+
+        self.thread_count_label.setText(f"后台线程: {active}")
+
+    @Slot(str)
+    def _on_sidebar_clicked(self, menu_id: str) -> None:
+        """处理侧边栏点击事件：通过路由跳转"""
+
+        # 1. 前两个：历史后退 / 前进（不通过路由表跳转）
+        if menu_id == "back":
+            Router.instance().back()
+            return
+
+        if menu_id == "forward":
+            Router.instance().forward()
+            return
+        route_name = self._menu_to_route.get(menu_id)
+        if route_name:
+            self.router.push(route_name)
+
+    @Slot(dict)
+    def handle_capture_data(self, data: dict) -> None:
+        """
+        处理来自插件的抓取数据
+        """
+        logging.info(f"Main thread received capture data: {data.get('url')}")
+        self.myStatusBar.showMessage(f"收到抓取数据: {data.get('title', 'Unknown')}", 5000)
+        
+        content_str = data.get("content", "")
+        
+        # 解析番号数组，去除空白并过滤空字符串
+        serial_numbers = [s.strip() for s in content_str.split(',') if s.strip()]
+        
+        logging.info(f"收到抓取数据,标题: {data.get('title')}\nURL: {data.get('url')}\n番号列表({len(serial_numbers)}个): {serial_numbers}")
+        
+        if serial_numbers:
+            from ui.dialogs.AddQuickWork import AddQuickWork
+            dialog = AddQuickWork()
+            dialog.load_serials(serial_numbers)
+            dialog.exec()
+
+
+ 

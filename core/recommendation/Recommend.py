@@ -1,12 +1,11 @@
 #推荐算法，
 #目标是根据算法推荐每次打开软件的时候运算，推荐7部片子在首页，然后有缓存机制
-import sqlite3
 from config import DATABASE
+from core.database.connection import get_connection
 
 def randomRec()->list[dict]:
     '''读数据库的所有的片子，然后随机选7部，返回作品的基本数据的字典列表'''
 
-    
     query='''
     SELECT 
         work_id,serial_number,story,release_date,image_url,cn_title,cn_story 
@@ -15,7 +14,7 @@ def randomRec()->list[dict]:
     ORDER BY RANDOM()
     LIMIT 7
     '''
-    with sqlite3.connect(DATABASE) as conn:
+    with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
         rows = cursor.fetchall()
@@ -44,7 +43,7 @@ def recommendStart()->list[dict]:
     '''
     # 4. 执行查询
 
-    with sqlite3.connect(f"file:{DATABASE}?mode=ro",uri=True) as conn:
+    with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, SerialNumber)
         rows = cursor.fetchall()

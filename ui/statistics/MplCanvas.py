@@ -1,13 +1,14 @@
+# 所有的画图的函数
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.cm as cm
 import logging
-logging.getLogger("matplotlib.font_manager").setLevel(logging.WARNING)
+
 from matplotlib import rcParams
 rcParams['font.family'] = 'SimHei'        # 设置全局字体为黑体
 rcParams['axes.unicode_minus'] = False    # 解决负号显示为方块的问题
 import numpy as np
-from core.database.query import getActressByPlane,getActressBodyData
+from core.database.query import get_actress_by_plane, get_actress_body_data
 
 
 def weighted_percentile(data:list, weights:list, percentile:float):
@@ -77,8 +78,8 @@ class MplCanvas(FigureCanvas):
         super().__init__(self.fig)
 
 
-    #绘制作品的拍摄年龄的分布，频率图
     def plotWorkActressAge(self, scope):
+        '''绘制作品的拍摄年龄的分布，频率图'''
         from core.database.query import fetch_work_actress_avg_age
         tuple_list = fetch_work_actress_avg_age(scope)
         age = np.array([item[0] for item in tuple_list])
@@ -126,22 +127,86 @@ class MplCanvas(FigureCanvas):
         self.ax.legend()
         self.draw()
 
-    #画女优的3维的散点图，颜色代表罩杯
+    def plotWorkReleaseYear(self,scope):
+        '''绘制作品发行年份分布直方图'''
+        from core.database.query import fetch_work_release_by_year_by_scope
+        data = fetch_work_release_by_year_by_scope(scope)
+        logging.debug(f"发行年份数据：{data}")
+        # 分离年份和数量
+        years = [item[0] for item in data]      # ['2000', '2001', ...]
+        counts = [item[1] for item in data]     # [1, 2, 5, ...]
+
+        self.fig.clf()
+        self.ax = self.fig.add_subplot(111)
+
+        # 创建柱状图
+
+        bars = self.ax.bar(years, counts, color='skyblue', edgecolor='navy', linewidth=1.2)
+        # 在每个柱子上方显示具体数值
+        for bar in bars:
+            height = bar.get_height()
+            self.ax.text(bar.get_x() + bar.get_width()/2., height + max(counts)*0.01,
+                    f'{int(height)}',
+                    ha='center', va='bottom', fontsize=10, fontweight='bold')
+
+
+        # 美化
+        self.ax.set_title('每年数量统计', fontsize=16, fontweight='bold', pad=20)
+        self.ax.set_xlabel('年份', fontsize=12)
+        self.ax.set_ylabel('数量', fontsize=12)
+        self.draw()
+
+    def plotActressDebutYear(self,scope):
+        '''女优出道年份的分布直方图'''
+        from core.database.query import fetch_actress_debut_by_year_by_scope
+        data = fetch_actress_debut_by_year_by_scope(scope)
+        logging.debug(f"女优出道年份统计：{data}")
+        # 分离年份和数量
+        years = [item[0] for item in data]      # ['2000', '2001', ...]
+        counts = [item[1] for item in data]     # [1, 2, 5, ...]
+
+        self.fig.clf()
+        self.ax = self.fig.add_subplot(111)
+
+        # 创建柱状图
+
+        bars = self.ax.bar(years, counts, color='skyblue', edgecolor='navy', linewidth=1.2)
+        # 在每个柱子上方显示具体数值
+        for bar in bars:
+            height = bar.get_height()
+            self.ax.text(bar.get_x() + bar.get_width()/2., height + max(counts)*0.01,
+                    f'{int(height)}',
+                    ha='center', va='bottom', fontsize=10, fontweight='bold')
+
+
+        # 美化
+        self.ax.set_title('每年数量统计', fontsize=16, fontweight='bold', pad=20)
+        self.ax.set_xlabel('年份', fontsize=12)
+        self.ax.set_ylabel('数量', fontsize=12)
+        self.draw()
+
     def Draw3DsizeDis(self):
+        '''画女优的3维的散点图，颜色代表罩杯'''
         #这个现在有问题后面再改
-        bodyData=getActressBodyData()
+        bodyData=get_actress_body_data()
         cup_colors = {
-            'A': '#d0d1e6',  # 浅蓝灰
-            'B': '#a6bddb',  # 淡蓝
-            'C': '#74a9cf',  # 中淡蓝
-            'D': '#3690c0',  # 中蓝
-            'E': '#0570b0',  # 深蓝
-            'F': '#045a8d',  # 深靛蓝
-            'G': '#023858',  # 更深蓝
-            'H': '#238b45',  # 绿调混入（大）
-            'I': '#006d2c',  # 深绿（巨）
-            'J': '#00441b'   # 极深绿黑（超巨）
-        }
+    # 使用蓝紫渐变到橙红的完整色系，确保15个级别都有良好区分度
+    'A': '#F7FBFF',  # 极淡蓝色（几乎白）
+    'B': '#E3EFF9',  # 非常浅蓝
+    'C': '#C6DBEF',  # 浅天蓝
+    'D': '#9ECAE1',  # 淡蓝
+    'E': '#6BAED6',  # 柔和蓝
+    'F': '#4292C6',  # 标准蓝
+    'G': '#2171B5',  # 中蓝
+    'H': '#08519C',  # 深蓝
+    'I': '#08306B',  # 深靛蓝
+    'J': '#6A51A3',  # 蓝紫色（过渡开始）
+    'K': '#8C6BB1',  # 紫
+    'L': '#8C6BB1',  # 中紫
+    'M': '#CC6677',  # 紫红色
+    'N': '#E6553E',  # 橙红
+    'O': '#FD8D3C'   # 亮橙
+}
 
         # 2. 映射颜色列表（DataFrame中要先填充空值或剔除）
         colors = [
@@ -353,7 +418,7 @@ class MplCanvas(FigureCanvas):
 
     #最喜欢的女优
     def draw_mostlikeActress(self):
-        tuple_list=getActressByPlane()
+        tuple_list=get_actress_by_plane()
         actress=[item[0] for item in tuple_list]
         num = [item[1] for item in tuple_list]
         actress.reverse()
@@ -438,4 +503,150 @@ class MplCanvas(FigureCanvas):
         
         #self.ax.grid(axis='x', linestyle='--', alpha=0.6,fontname='SimHei')
         #self.fig.tight_layout()
+        self.draw()
+
+
+    def draw_addTimeDistribution(self):
+        '''作品数量按添加时间的分布
+        横轴时间，纵轴总数量
+        未来加上从0开始，类似github的starhistory那种样子的，包括手工样式
+        '''
+        from datetime import datetime, timedelta
+        #读数据
+        from core.database.query import get_all_work_addtime
+        time_list:list[datetime]=get_all_work_addtime()
+        time_list.sort()
+
+        # 步骤2：按天统计累计数量（取每个月的最后一天作为该月代表点）
+        daily_cumulative = {}  # key: "YYYY-MM-dd", value: 该日结束时的统计量
+
+        cumulative_count = 0
+        for dt in time_list:
+            month_key = datetime.strptime(dt.strftime("%Y-%m-%d"),"%Y-%m-%d")  # 如 "2024-01"
+            cumulative_count += 1
+            daily_cumulative[month_key] = cumulative_count
+
+        # 统计出的结果是不连续的
+
+        # 1. 获取最小和最大日期
+        dates = sorted(daily_cumulative.keys())
+        if not dates:
+            print("无数据")
+            # 退出或处理空情况
+
+        start_date = dates[0]
+        end_date = dates[-1]
+
+        # 2. 生成完整的连续日期序列（包括中间缺失的日子）
+        current_date = start_date
+        continuous_dates:list[datetime] = []
+        while current_date <= end_date:
+            continuous_dates.append(current_date)
+            current_date += timedelta(days=1)
+
+        # 3. 填充累计数量（缺失日期保持前一天的累计值）
+        continuous_counts = []
+        prev_count = 0
+        for d in continuous_dates:
+            if d in daily_cumulative:
+                prev_count = daily_cumulative[d]
+            continuous_counts.append(prev_count)
+
+        #产生连续的数据
+
+        # 4. 准备数据进行平滑处理
+
+        x_data = np.arange(len(continuous_dates))  # 0, 1, 2, ...
+        y_data = np.array(continuous_counts)
+
+        dates = sorted(daily_cumulative.keys())
+
+        x_original = np.array(continuous_dates)
+
+        # 4. 使用简单移动平均进行平滑，避免依赖 scipy
+        window = max(1, min(30, len(y_data) // 10 or 1))  # 自适应窗口大小
+        kernel = np.ones(window) / window
+        y_smooth = np.convolve(y_data, kernel, mode='same')
+
+        x_smooth_dates = continuous_dates
+
+        # 5. 绘图（平滑曲线）
+        self.fig.clf()
+        self.ax = self.fig.add_subplot(111)
+        self.ax.plot(x_smooth_dates, y_smooth, linewidth=2, color='steelblue')
+        self.ax.set_title("添加到数据库中作品数量随时间分布", fontsize=16)
+        self.ax.set_xlabel("Date", fontsize=14)
+        self.ax.set_ylabel("Nums", fontsize=14)
+        '''
+        days = sorted(daily_cumulative.keys())  # 自动按日期排序
+        
+        x_labels = [day for day in days]
+        y_data = [daily_cumulative[day] for day in days]
+        #self.fig.clf()
+        #self.ax = self.fig.add_subplot(111)
+
+        self.ax.plot(x_labels, y_data, marker=None, linestyle='-',linewidth=1, color='red')
+        '''
+        self.draw()
+
+    def draw_workTagCloud(self,scope:int):
+        '''绘制词云
+        用wordcloud库
+        '''
+        from core.database.query import get_tag_frequence
+        from config import TEMP_PATH
+        from pathlib import Path
+        tag_freq=get_tag_frequence(scope)
+        from wordcloud import WordCloud
+        import matplotlib.pyplot as plt
+
+        wc = WordCloud(
+    font_path='simhei.ttf',  # 中文字体路径，如黑体
+    width=1600,
+    height=900,
+    background_color='white'
+)
+        wc.generate_from_frequencies(tag_freq)
+        self.fig.clf()
+        self.ax = self.fig.add_subplot(111)
+        self.ax.imshow(wc, interpolation='bilinear')
+        self.ax.axis('off')
+        self.draw()
+        file=Path(TEMP_PATH)/"tag_cloud_1600x900.png"
+        wc.to_file(file)# 保存到临时文件
+
+    def plotActressDebutAge(self):
+        '''绘制女优出道年龄的分布，频率图'''
+        from core.database.query import fetch_actress_debut_age
+        tuple_list = fetch_actress_debut_age()
+        
+        age = np.array([item[0] for item in tuple_list])
+        weight = np.array([item[1] for item in tuple_list])
+
+        low = weighted_percentile(age, weight, 0.05)
+        high = weighted_percentile(age, weight, 0.95)
+        mid = (low + high) / 2
+
+        self.fig.clf()
+        self.ax = self.fig.add_subplot(111)
+
+        # 画直方图
+        counts, bins, _ = self.ax.hist(age, bins=40, weights=weight, color='skyblue', edgecolor='#7D9CE8', density=True)
+
+        # KDE 平滑频率曲线
+        grid = np.linspace(min(age), max(age), 500)
+        bandwidth = 1.0  # 控制平滑程度，值越大越平滑
+        kde_vals = gaussian_kde_manual(age, weight, grid, bandwidth)
+        self.ax.plot(grid, kde_vals, color='blue', linewidth=2, label='频率曲线 (KDE)')
+        # 辅助线
+        ymin, ymax = self.ax.get_ylim()
+        self.ax.axvline(low, color='red', linestyle='--', label='5th percentile')
+        self.ax.axvline(high, color='red', linestyle='--', label='95th percentile')
+        self.ax.text(mid, ymax * 0.9, '90%区间', ha='center', fontsize=12, color='black', fontname='SimHei')
+
+        # 标题设置
+        self.ax.set_title("公共库内女优平均出道年龄分布(以出道日期减半年计算)", fontname='SimHei')
+        self.ax.set_xlabel("出道年龄", fontname='SimHei')
+        self.ax.set_ylabel("频率", fontname='SimHei')
+        self.ax.legend()
         self.draw()

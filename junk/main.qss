@@ -1,0 +1,301 @@
+
+
+QLineEdit,QTextEdit,QPlainTextEdit {
+    background-color: #ffffff;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    padding: 2px 2px;
+    selection-background-color: #87CEFA;
+    font-size: 12px;
+}
+
+QLineEdit:focus,QTextEdit:focus,QPlainTextEdit:focus {
+    border: 2px solid #00aaff;
+    background-color: #f0faff;
+}
+
+QLineEdit:disabled,QTextEdit:disabled,QPlainTextEdit:disabled {
+    background-color: #eee;
+    border: 2px solid #ddd;
+    color: #999;
+}
+
+QLineEdit::placeholder,QTextEdit::placeholder,QPlainTextEdit::placeholder {
+    color: #bbb;
+    font-style: italic;
+}
+
+QComboBox {
+    background-color: #ffffff;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    padding: 2px 8px;
+    font-size: 12px;
+    min-width: 100px;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 25px;
+    border-left-width: 1px;
+    border-left-color: #ffffff;
+    border-left-style: solid;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+QComboBox::down-arrow {
+    image: url('resources/icons/arrow-down.svg'); /* 可换成自己的箭头图标 */
+    width: 12px;
+    height: 12px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #ffffff;
+    border: 1px solid #ccc;
+    selection-background-color: #00aaff;
+    selection-color: #fff;
+    outline: 0;
+}
+
+QComboBox:editable {
+    background: #fff;
+}
+
+QComboBox:focus {
+    border: 2px solid #00aaff;
+}
+
+QComboBox:hover {
+    border: 2px solid #00aaff;
+}
+
+QPushButton {
+    background-color: #ffffff;
+    color: #333;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    padding: 4px 5px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #00aaff;
+    color: #000000;
+    border: 2px solid #00aaff;
+}
+
+QPushButton:pressed {
+    background-color: #0088cc;
+    border: 2px solid #0088cc;
+}
+
+QPushButton:disabled {
+    background-color: #eee;
+    color: #999;
+    border: 2px solid #ddd;
+}
+
+QCheckBox {
+    spacing: 8px;
+    font-size: 14px;
+    color: #333;
+}
+
+QCheckBox::indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 5px;
+    border: 2px solid #ccc;
+    background-color: #fff;
+}
+
+QCheckBox::indicator:hover {
+    border: 2px solid #00aaff;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #00aaff;
+    border: 2px solid #00aaff;
+}
+
+
+QCheckBox::indicator:disabled {
+    background-color: #eee;
+    border: 2px solid #ddd;
+}
+
+
+/* 垂直滚动条 */
+QScrollBar:vertical {
+    background: #e0e0e0;       /* 滚动条背景 */
+    width: 10px;
+    border-radius: 5px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #a0a0a0;       /* 滑块颜色 */
+    min-height: 20px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #808080;       /* 悬停颜色 */
+}
+
+QScrollBar::handle:vertical:pressed {
+    background: #606060;       /* 按下颜色 */
+}
+
+/* 水平滚动条 */
+QScrollBar:horizontal {
+    background: #e0e0e0;
+    height: 10px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #a0a0a0;
+    min-width: 20px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #808080;
+}
+
+QScrollBar::handle:horizontal:pressed {
+    background: #606060;
+}
+
+/* 隐藏箭头和分页区域 */
+QScrollBar::add-line, QScrollBar::sub-line,
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
+    border: none;
+    width: 0px;
+    height: 0px;
+}
+
+
+QListView {
+    background-color: #f0f0f0;       /* 背景色 */
+    border: 1px solid #ccc;           /* 边框 */
+    border-radius: 8px;               /* 圆角 */
+    padding: 4px;
+    outline: none;                     /* 去掉选中虚线 */
+}
+
+QListView::item {
+    background-color: transparent;
+    color: #333;                       /* 字体颜色 */
+    padding: 0px 5px;                 /* 内边距 */
+    border-radius: 6px;
+}
+
+QListView::item:hover {
+    background-color: #d0d0d0;         /* 悬停颜色 */
+}
+
+QListView::item:selected {
+    background-color: #a0a0a0;         /* 选中颜色 */
+    color: white;                       /* 选中字体颜色 */
+}
+
+
+QToolBox {
+    background: #f5f5f5;      /* 整体背景 */
+    border: 1px solid #cccccc;
+    border-radius: 6px;
+}
+
+QToolBox::tab {
+    background: #e0e0e0;      /* 默认 tab 背景 */
+    border: none;
+    border-bottom: 1px solid #cccccc;
+    padding: 6px 10px;
+    font-weight: bold;
+    color: #333333;
+}
+
+QToolBox::tab:selected {
+    background: #ffffff;      /* 选中 tab 背景 */
+    color: #000000;
+    border-left: 5px solid #0078d7; /* 左侧高亮条 */
+}
+
+QToolBox::tab:hover {
+    background: #dcdcdc;      /* 悬停 */
+}
+
+
+
+
+
+
+/* 1. 整个 TabBar 的背景，去掉原生边框（仅 QTabWidget 内的 TabBar；工作区 PaneWidget 的 TabBar 保持原生） */
+QTabWidget QTabBar {
+    background-color: transparent;
+    border: none;
+}
+
+/* 2. 基础 Tab 样式：控制间距、颜色、字体 */
+QTabWidget QTabBar::tab {
+    background-color: transparent;
+    color: #888888;              /* 未选中时为灰色 */
+    padding: 5px 0px;          /* 字与字的间距通过 padding 保持一致 */
+    margin-right: 20px;          /* 每个标签之间的额外间距 */
+    font-size: 14px;
+    border: none;
+}
+
+/* 3. 鼠标悬停时的样式（提升交互感） */
+QTabWidget QTabBar::tab:hover {
+    color: #555555;
+}
+
+/* 4. 选中状态：变黑、加粗、显示底线 */
+QTabWidget QTabBar::tab:selected {
+    color: #000000;              /* 选中时为黑色 */
+    font-weight: bold;           /* 加粗 */
+    /* 实现底线：通过底部边框模拟 */
+    border-bottom: 2px solid #000000; 
+}
+
+/* 5. 解决原生 QTabWidget 的边框线问题 */
+QTabWidget::pane {
+    border: none;               /* 去掉下方内容区域的顶部边线 */
+    top: -1px;                  /* 视觉微调，让底线看起来贴合内容 */
+}
+
+
+/* 6. 工作区 PaneWidget 的 TabBar 恢复原生：AddWorkTabPage3 作为 QTabWidget 的 tab 时其内 QTabBar 会被上面规则匹配，此处用 objectName 覆盖 */
+QTabBar#WorkspaceDemoTabBar {
+    background-color: palette(base);
+    border: 1px solid palette(mid);
+}
+QTabBar#WorkspaceDemoTabBar::tab {
+    background-color: palette(button);
+    color: palette(window-text);
+    padding: 4px 12px;
+    margin-right: 2px;
+    font-size: 13px;
+    font-weight: normal;
+    border: 1px solid palette(mid);
+    border-bottom: none;
+}
+QTabBar#WorkspaceDemoTabBar::tab:hover {
+    background-color: palette(midlight);
+    color: palette(window-text);
+}
+QTabBar#WorkspaceDemoTabBar::tab:selected {
+    background-color: palette(base);
+    color: palette(window-text);
+    font-weight: normal;
+    border-bottom: 1px solid palette(base);
+}
+
+

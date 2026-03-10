@@ -1,14 +1,16 @@
 #专门给 Model 和QTableView 用的搜索器
-from PySide6.QtWidgets import QTableView, QPushButton,QWidget,QHBoxLayout,QMessageBox,QLineEdit,QLabel
-from PySide6.QtSql import QSqlRelationalTableModel
+from PySide6.QtWidgets import QWidget,QHBoxLayout
 from PySide6.QtCore import Qt,Slot,QSize,Signal
-from PySide6.QtGui import QIcon,QKeyEvent
-from config import ICONS_PATH
-from ui.basic.IconPushButton import IconPushButton
+from PySide6.QtGui import QKeyEvent
+
 from typing import List, Callable
 import logging
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.icon_push_button import IconPushButton
 
-class MyLineEdit(QLineEdit):
+class MyLineEdit(LineEdit):
     # 自定义信号
     shiftReturnPressed = Signal()
     returnPressedEx = Signal()  # 和普通 Enter 区分开的版本
@@ -47,21 +49,21 @@ class SearchLineBase(QWidget):
         searchlayout=QHBoxLayout(self)
         self.search_input=MyLineEdit()
         self.search_input.setClearButtonEnabled(True)
-        self.search_input.setMinimumWidth(100)
+        self.search_input.setMinimumWidth(50)
         self.search_input.setPlaceholderText("搜索")
 
-        self.btn_prev=IconPushButton("arrow-up.png")
+        self.btn_prev=IconPushButton(icon_name="arrow_up")
         self.btn_prev.setWhatsThis("向前搜索")
         self.btn_prev.setToolTip("向前搜索(Shift+Enter)")
 
-        self.btn_next=IconPushButton("arrow-down.png")
+        self.btn_next=IconPushButton(icon_name="arrow_down")
         self.btn_next.setWhatsThis("向后搜索")
         self.btn_next.setToolTip("向后搜索(Enter)")
 
         self.btn_prev.setEnabled(False)
         self.btn_next.setEnabled(False)
 
-        self.result_label = QLabel("无搜索结果")
+        self.result_label = Label("无搜索结果")
         self.result_label.setFixedWidth(70)
 
         searchlayout.addWidget(self.search_input)

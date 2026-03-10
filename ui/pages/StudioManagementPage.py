@@ -1,11 +1,19 @@
-from PySide6.QtWidgets import QTableView, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox,QAbstractItemView,QDataWidgetMapper,QFormLayout,QLineEdit,QComboBox,QLabel,QSplitter
-from PySide6.QtCore import Slot,Qt
-from PySide6.QtSql import QSqlRelation,QSqlRelationalTableModel,QSqlRelationalDelegate,QSqlQueryModel,QSqlTableModel,QSqlDatabase
+from PySide6.QtCore import Qt, Slot
+from PySide6.QtWidgets import QAbstractItemView, QDataWidgetMapper, QFormLayout, QHBoxLayout, QMessageBox, QPushButton, QSplitter, QTableView, QVBoxLayout, QWidget
 import logging
 
-from config import BASE_DIR,DATABASE,INI_FILE
+from config import DATABASE
 from ui.basic import ModelSearch
-from ui.base import LazyWidget
+from ui.base.SqliteEditableTableModel import SqliteEditableTableModel
+from ui.base.SqliteQueryTableModel import SqliteQueryTableModel
+from ui.base.MakerComboDelegate import MakerComboDelegate
+from darkeye_ui import LazyWidget
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.token_table_view import TokenTableView
+from darkeye_ui.components.button import Button
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.combo_box import ComboBox
+
 
 class StudioManagementPage(LazyWidget):
     #StudioManagementPage
@@ -23,86 +31,84 @@ class StudioManagementPage(LazyWidget):
         self.current_active_view=self.view1#默认选择
 
     def config(self):
-        '''配置model与view'''
-        # 模型
-        db_public = QSqlDatabase.database("public")
-        self.model1 = QSqlRelationalTableModel(self,db_public)
-        self.model1.setTable("prefix_maker_relation")  # 绑定表
-        self.model1.setEditStrategy(QSqlRelationalTableModel.OnManualSubmit)  # 手动提交
+        """配置 model 与 view"""
+        # 表格用 delegate（parent=view1）；mapper 用独立 delegate（parent=None），
+        # 避免 "editor does not belong to this view" 警告
+        self.maker_delegate = MakerComboDelegate(self.view1, DATABASE, maker_col_index=2)
+        self.mapper_maker_delegate = MakerComboDelegate(None, DATABASE, maker_col_index=2)
 
-        # 设置关系字段
-        studio_idx = self.model1.fieldIndex("maker_id")#这个表中的这个是外键
+        # model1: prefix_maker_relation
+        self.model1 = SqliteEditableTableModel(
+            "prefix_maker_relation",
+            DATABASE,
+            self,
+            relation_config={2: ("maker", "maker_id", "cn_name")},
+            header_overrides={0: "ID", 1: "番号前缀", 2: "制作商"},
+        )
+        if not self.model1.refresh():
+            QMessageBox.critical(self, "错误", f"加载表 prefix_maker_relation 失败: {self.model1.lastError().text()}")
+            return
 
-        self.model1.setRelation(studio_idx,QSqlRelation("maker","maker_id","cn_name"))
-        self.model1.select()#这个后就会锁库
-        self.model1.submitAll()
-        # 设置表头
-        self.model1.setHeaderData(0, Qt.Horizontal, "ID")
-        self.model1.setHeaderData(1, Qt.Horizontal, "番号前缀")
-        self.model1.setHeaderData(2, Qt.Horizontal, "制作商")
-
-        # 视图设置
         self.view1.setModel(self.model1)
-        self.view1.setSelectionMode(QAbstractItemView.SingleSelection)#只能选一个
+        self.view1.setSelectionMode(QAbstractItemView.SingleSelection)
         self.view1.setSelectionBehavior(QTableView.SelectRows)
-        self.view1.setColumnHidden(0, True)  # 隐藏 ID 列（主键）
-        self.view1.setItemDelegate(QSqlRelationalDelegate(self.view1))#这样会产生下拉框
+        self.view1.setColumnHidden(0, True)
+        self.view1.setColumnWidth(1, 180)
+        self.view1.setColumnWidth(2, 180)
+        self.view1.setItemDelegate(self.maker_delegate)
 
-        # 设置组合框的关系模型（外键关联）
-        self.studio.setModel(self.model1.relationModel(studio_idx))
-        self.studio.setModelColumn(self.model1.relationModel(studio_idx).fieldIndex("cn_name"))
+        # studio ComboBox 数据源
+        self.maker_combo_model = SqliteQueryTableModel("SELECT maker_id, cn_name FROM maker", DATABASE)
+        self.maker_combo_model.refresh()
+        self.studio.setModel(self.maker_combo_model)
+        self.studio.setModelColumn(1)  # 显示 cn_name
 
-        # 创建数据窗口映射器
         self.mapper1 = QDataWidgetMapper(self)
         self.mapper1.setModel(self.model1)
-        self.mapper1.setItemDelegate(QSqlRelationalDelegate(self.view1))
-        self.mapper1.addMapping(self.serial_number, self.model1.fieldIndex("prefix"))
-        self.mapper1.addMapping(self.studio, studio_idx)
+        self.mapper1.setItemDelegate(self.mapper_maker_delegate)
+        self.mapper1.addMapping(self.serial_number, 1)  # prefix
+        self.mapper1.addMapping(self.studio, 2)  # maker_id
 
         selection_model1 = self.view1.selectionModel()
-        selection_model1.currentRowChanged.connect(self.mapper1.setCurrentModelIndex)#模型映射
+        selection_model1.currentRowChanged.connect(self.mapper1.setCurrentModelIndex)
 
+        # model2: maker
+        self.model2 = SqliteEditableTableModel(
+            "maker",
+            DATABASE,
+            self,
+            header_overrides={0: "ID", 1: "中文名", 2: "日文名", 3: "别名"},
+        )
+        if not self.model2.refresh():
+            QMessageBox.critical(self, "错误", f"加载表 maker 失败: {self.model2.lastError().text()}")
+            return
 
-        # 配置表2
-        self.model2 = QSqlTableModel(self,db_public)
-        self.model2.setTable("maker")  # 绑定表
-        self.model2.setEditStrategy(QSqlRelationalTableModel.OnManualSubmit)  # 手动提交
-
-        # 设置关系字段
-        self.model2.select()
-        self.model2.submitAll()
-        # 设置表头
-        self.model2.setHeaderData(0, Qt.Horizontal, "ID")
-        self.model2.setHeaderData(1, Qt.Horizontal, "中文名")
-        self.model2.setHeaderData(2, Qt.Horizontal, "日文名")
-        self.model2.setHeaderData(3, Qt.Horizontal, "别名")
-
-        # 视图设置
         self.view2.setModel(self.model2)
-        self.view2.setSelectionMode(QAbstractItemView.SingleSelection)#只能选一个
+        self.view2.setSelectionMode(QAbstractItemView.SingleSelection)
         self.view2.setSelectionBehavior(QTableView.SelectRows)
-        self.view2.setColumnHidden(0, True)  # 隐藏 ID 列（主键）
+        self.view2.setColumnHidden(0, True)
+        self.view2.setColumnWidth(1, 180)
+        self.view2.setColumnWidth(2, 180)
 
         self.mapper2 = QDataWidgetMapper(self)
         self.mapper2.setModel(self.model2)
-        self.mapper2.addMapping(self.cn_name, self.model2.fieldIndex("cn_name"))
-        self.mapper2.addMapping(self.jp_name, self.model2.fieldIndex("jp_name"))
-        self.mapper2.addMapping(self.alias, self.model2.fieldIndex("aliases"))
+        self.mapper2.addMapping(self.cn_name, 1)  # cn_name
+        self.mapper2.addMapping(self.jp_name, 2)  # jp_name
+        self.mapper2.addMapping(self.alias, 3)  # aliases
 
         selection_model2 = self.view2.selectionModel()
-        selection_model2.currentRowChanged.connect(self.mapper2.setCurrentModelIndex)#模型映射
+        selection_model2.currentRowChanged.connect(self.mapper2.setCurrentModelIndex)
 
-        self.searchWidget.set_model_view(self.model1,self.view1)#搜索框连接功能
+        self.searchWidget.set_model_view(self.model1, self.view1)
 
-        # 安装事件过滤器
         self.view1.installEventFilter(self)
         self.view2.installEventFilter(self)
 
     def init_ui(self):
-        self.view1 = QTableView()
-        self.view2 =QTableView()
+        self.view1 = TokenTableView()
+        self.view2 = TokenTableView()
 
-        self.status_label=QLabel("")
+        self.status_label=Label("")
         # 表格区域 - 使用分割器
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.view1)
@@ -110,11 +116,11 @@ class StudioManagementPage(LazyWidget):
         splitter.setMinimumHeight(400)
 
         # 按钮
-        self.btn_add = QPushButton("新增行")
-        self.btn_delete = QPushButton("删除行")
-        self.btn_save = QPushButton("保存修改")
-        self.btn_revert = QPushButton("撤销修改")
-        self.btn_refresh=QPushButton("读数据库数据")
+        self.btn_add = Button("新增行")
+        self.btn_delete = Button("删除行")
+        self.btn_save = Button("保存修改")
+        self.btn_revert = Button("撤销修改")
+        self.btn_refresh=Button("读数据库数据")
 
         # 布局
         button_layout = QHBoxLayout()
@@ -125,20 +131,21 @@ class StudioManagementPage(LazyWidget):
         button_layout.addWidget(self.btn_refresh)
         button_layout.addWidget(self.status_label)
 
-        self.serial_number=QLineEdit()
-        self.studio=QComboBox()
+        self.serial_number=LineEdit()
+        self.studio=ComboBox()
 
         formlayout1=QFormLayout()
-        formlayout1.addRow("番号前缀",self.serial_number)
-        formlayout1.addRow("制作商",self.studio)
+        formlayout1.addRow(Label("番号前缀"),self.serial_number)
+        formlayout1.addRow(Label("制作商"),self.studio)
 
-        self.cn_name=QLineEdit()
-        self.jp_name=QLineEdit()
-        self.alias=QLineEdit()
+        self.cn_name=LineEdit()
+        self.jp_name=LineEdit()
+        self.alias=LineEdit()
         formlayout2=QFormLayout()
-        formlayout2.addRow("中文名",self.cn_name)
-        formlayout2.addRow("日文名",self.jp_name)
-        formlayout2.addRow("别名",self.alias)
+        formlayout2.addRow(Label("中文名"),self.cn_name)
+        formlayout2.addRow(Label("日文名"),self.jp_name)
+        formlayout2.addRow(Label("别名"),self.alias)
+
 
         self.searchWidget=ModelSearch()
         hlayout=QHBoxLayout()
@@ -146,7 +153,7 @@ class StudioManagementPage(LazyWidget):
         hlayout.addLayout(formlayout2)
 
         layout = QVBoxLayout(self)
-        layout.addWidget(splitter)
+        layout.addWidget(splitter, 1)  # stretch=1 让 splitter 占据剩余空间
         layout.addWidget(self.searchWidget)
         layout.addLayout(button_layout)
         layout.addLayout(hlayout)
@@ -227,7 +234,7 @@ class StudioManagementPage(LazyWidget):
 
     @Slot()
     def save_changes(self):
-        """保存修改到数据库,这个要改成sqlite3写"""
+        """保存修改到数据库"""
         model, view = self.get_current_model_and_view()
         if model and view:
             if not model.submitAll():
@@ -235,7 +242,7 @@ class StudioManagementPage(LazyWidget):
             else:
                 QMessageBox.information(self, "提示", "保存成功")
                 from controller.GlobalSignalBus import global_signals
-                global_signals.work_data_changed.emit()#发信号让
+                #global_signals.work_data_changed.emit()#发信号,这个以后可能会用到
 
     @Slot()
     def revert_changes(self):
@@ -247,25 +254,19 @@ class StudioManagementPage(LazyWidget):
 
     @Slot()
     def refresh_data(self):
-        """简单的刷新方法"""
-        """刷新方法"""
+        """刷新数据"""
+        if not self.model1.refresh():
+            QMessageBox.critical(self, "刷新错误", f"刷新 prefix_maker_relation 失败: {self.model1.lastError().text()}")
+            return
+        if not self.model2.refresh():
+            QMessageBox.critical(self, "刷新错误", f"刷新 maker 失败: {self.model2.lastError().text()}")
+            return
 
-        self.model1.select()
-        self.model2.select()
-        # 刷新 relationModel（关键一步）
-        #studio_idx = self.model1.fieldIndex("maker_id")#这个找不到index
-        #relation_model=self.model1.relationModel(studio_idx)
-
-        relation_model=self.model1.relationModel(2)#这样手工弄列就有用了,这个以后要改
-
-        if relation_model:
-            relation_model.select()
-            self.studio.setModel(relation_model)
-            self.studio.setModelColumn(relation_model.fieldIndex("cn_name"))
-            logging.debug("刷新")
-
-        # 保持 mapper 正常
-                # 刷新 model1, model2
+        self.maker_combo_model.refresh()
+        self.studio.setModel(self.maker_combo_model)
+        self.studio.setModelColumn(1)
+        self.maker_delegate.refresh_maker_model()
+        self.mapper_maker_delegate.refresh_maker_model()
 
         self.mapper1.toFirst()
         self.mapper2.toFirst()

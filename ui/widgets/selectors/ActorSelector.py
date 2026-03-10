@@ -1,24 +1,29 @@
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel,QVBoxLayout,QLineEdit,QListView
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QLineEdit
 from PySide6.QtGui import QStandardItemModel,QStandardItem
 from PySide6.QtCore import Qt,QItemSelection,Signal,Slot
 import sqlite3
-from config import DATABASE
-from ui.dialogs.AddActorDialog import AddActorDialog
 import logging
-from controller import MessageBoxService
-from ui.basic import IconPushButton
+from config import DATABASE
+from controller.MessageService import MessageBoxService
+
+from darkeye_ui.components.label import Label
+from darkeye_ui.components.input import LineEdit
+from darkeye_ui.components.icon_push_button import IconPushButton
+from darkeye_ui.components.token_list_view import TokenListView
+
 class ActorSelector(QWidget):
     '''男演员选择器'''
-    #像这种需要动态从数据库读取的，在添加数据库中的东西改变后这里要接受信号，然后刷新，否则就会有问题
     selection_changed=Signal()#下方被选择的列表改变了
+
     def __init__(self):
         super().__init__()
-        self.setFixedWidth(170)
-        self.msg=MessageBoxService(self)
+
+        # 主要逻辑是实例化后的Item移来移去
         # 数据初始化
         self.choose_actor_all_items = self.load_actor_from_db()
         self.choose_actor_items = list(self.choose_actor_all_items)
         self.receive_actor_items = []
+        self.msg=MessageBoxService(self)
 
         # 模型初始化
         self.receive_actor_model = QStandardItemModel()
@@ -27,31 +32,41 @@ class ActorSelector(QWidget):
         self.update_model(self.choose_actor_model, self.choose_actor_items)
         self.update_model(self.receive_actor_model, self.receive_actor_items)
 
-        self.init_ui()
-        self.signal_connect()
-
-    def init_ui(self):
         # 右侧搜索框和视图和按钮
-        self.search_box = QLineEdit()
+
+        self.search_box = LineEdit()
         self.search_box.setPlaceholderText("搜索中文名或日文名")
         self.search_box.setClearButtonEnabled(True)
-        
-        self.choose_actor_view = QListView()
+        self.search_box.textChanged.connect(self.filter_choose_actor_items)
+
+        self.choose_actor_view = TokenListView()
         self.choose_actor_view.setModel(self.choose_actor_model)
 
-        self.receive_actor_view = QListView()
-        self.receive_actor_view.setModel(self.receive_actor_model)
-
-        self.label_actor=QLabel("参演男优")
+        self.label_actor=Label("参演男优")
         self.label_actor.setAlignment(Qt.AlignCenter)
 
+        self.receive_actor_view = TokenListView()
+        self.receive_actor_view.setModel(self.receive_actor_model)
+
+        # 连接选中信号
+        self.receive_actor_view.selectionModel().selectionChanged.connect(
+            lambda selected, _: self.clear_other_selection(self.choose_actor_view, selected)
+        )
+        self.choose_actor_view.selectionModel().selectionChanged.connect(
+            lambda selected, _: self.clear_other_selection(self.receive_actor_view, selected)
+        )
+
         # 按钮
-        self.btn_to_left = IconPushButton("arrow-down.png")
+        self.btn_to_left = IconPushButton(icon_name="arrow_down")
         self.btn_to_left.setToolTip("选择参演男优")
-        self.btn_to_right = IconPushButton("arrow-up.png")
+        self.btn_to_right = IconPushButton(icon_name="arrow_up")
         self.btn_to_right.setToolTip("移除参演男优")
-        self.btn_add_actor=IconPushButton("circle-plus.png")
+        self.btn_add_actor=IconPushButton(icon_name="circle_plus")
         self.btn_add_actor.setToolTip("添加男优并选择")
+
+        self.btn_to_left.clicked.connect(self.move_to_left)
+        self.btn_to_right.clicked.connect(self.move_to_right)
+        self.btn_add_actor.clicked.connect(self.add_actor_dialog)
 
         # 男优中间按钮布局
         btn_actor_layout = QHBoxLayout()
@@ -72,22 +87,8 @@ class ActorSelector(QWidget):
         main_layout.addLayout(btn_actor_layout)
         main_layout.addWidget(self.receive_actor_view)
 
-    def signal_connect(self):
         from controller.GlobalSignalBus import global_signals
         global_signals.actor_data_changed.connect(self.refresh_right_list)
-        self.search_box.textChanged.connect(self.filter_choose_actor_items)
-        # 连接选中信号
-        self.receive_actor_view.selectionModel().selectionChanged.connect(
-            lambda selected, _: self.clear_other_selection(self.choose_actor_view, selected)
-        )
-
-        self.choose_actor_view.selectionModel().selectionChanged.connect(
-            lambda selected, _: self.clear_other_selection(self.receive_actor_view, selected)
-        )
-
-        self.btn_to_left.clicked.connect(self.move_to_left)
-        self.btn_to_right.clicked.connect(self.move_to_right)
-        self.btn_add_actor.clicked.connect(self.add_actor_dialog)
 
     def load_actor_from_db(self,exclude_ids=None):
         exclude_ids=exclude_ids or []
@@ -128,8 +129,9 @@ JOIN actor_name ON actor_name.actor_id=a.actor_id
             logging.warning("读取男优数据库失败%s",e)
             return []
 
+    @Slot()
     def move_to_left(self):
-        #index = self.choose_actor_view.currentIndex()
+        '''移动到选择侧'''
         index=self.choose_actor_view.selectionModel().selectedIndexes()
         if not index:
             return
@@ -146,8 +148,9 @@ JOIN actor_name ON actor_name.actor_id=a.actor_id
 
         self.selection_changed.emit()#发射信号
 
+    @Slot()
     def move_to_right(self):
-        #index = self.receive_actor_view.currentIndex()
+        '''移动到待选侧'''
         index=self.receive_actor_view.selectionModel().selectedIndexes()#找到选择的index
         if not index:
             return
@@ -155,15 +158,15 @@ JOIN actor_name ON actor_name.actor_id=a.actor_id
 
         self.receive_actor_items.remove(item)
         item_copy=item.clone()
-        #self.choose_actor_all_items.append(item_copy)
         self.choose_actor_all_items.insert(0,item_copy)
-        self.filter_choose_actor_items(self.search_box.text())
+
         self.update_model(self.receive_actor_model, self.receive_actor_items)
+        self.filter_choose_actor_items(self.search_box.text())
 
         self.selection_changed.emit()#发射信号
-        
-    def refresh_right_list(self):#这个有bug要改，在新添加后就有bug
-        '''重新从数据库里加载数据'''
+
+    def refresh_right_list(self):
+        '''这个是新添加男优后才刷新已选择侧列表'''
         #刷新待选列表
         # 获取左侧所有已选ID
         left_ids = [self.receive_actor_model.item(i).data() for i in range(self.receive_actor_model.rowCount())]
@@ -190,30 +193,31 @@ JOIN actor_name ON actor_name.actor_id=a.actor_id
             ]
         self.update_model(self.choose_actor_model, self.choose_actor_items)
 
+    @Slot()
     def add_actor_dialog(self):
+        from ui.dialogs.AddActorDialog import AddActorDialog
         dialog = AddActorDialog()
         dialog.success.connect(self.handle_actor_result)
         dialog.exec()  # 模态显示对话框，阻塞主窗口直到关闭
 
-    def handle_actor_result(self,success):
-        #接受添加男成功的信号后进行操作
-        if success:
-            self.refresh_right_list()
-            old_text=self.search_box.text()
-            self.search_box.clear()
-            #选中右侧最上面
-            if self.choose_actor_model.rowCount() > 0:
-                index = self.choose_actor_model.index(0, 0)  # 第 0 行，第 0 列
-                self.choose_actor_view.setCurrentIndex(index)
-                self.choose_actor_view.scrollTo(index)       # 可选：自动滚动到该项
-            self.move_to_left()
-            self.search_box.setText(old_text)#保持输入框的文字
+    @Slot()
+    def handle_actor_result(self):
+        #接受添加男优成功的信号后进行操作
+        self.refresh_right_list()
+        old_text=self.search_box.text()
+        self.search_box.clear()
+        #选中右侧最上面
+        if self.choose_actor_model.rowCount() > 0:
+            index = self.choose_actor_model.index(0, 0)  # 第 0 行，第 0 列
+            self.choose_actor_view.setCurrentIndex(index)
+            self.choose_actor_view.scrollTo(index)       # 可选：自动滚动到该项
+        self.move_to_left()
+        self.search_box.setText(old_text)#保持输入框的文字
 
     def clear_other_selection(self,other_list, selected: QItemSelection):
         """当选中状态变化时，清除另一个列表的选中"""
         if selected.count() > 0:  # 如果有选中项
             other_list.selectionModel().clearSelection()
-    
 
     def find_item_by_id(self, target_id:int) -> QStandardItem | None:
         """通过ID在choose_actor_items中查找item"""
@@ -228,7 +232,7 @@ JOIN actor_name ON actor_name.actor_id=a.actor_id
         '''把接收器的部分全部移回去，回到初始状态'''
         self.search_box.setText(None)
         for item in self.receive_actor_items.copy():
-            logging.info(item.text())
+            #logging.info(item.text())
             self.receive_actor_items.remove(item)#危险操作注意
             item_copy=item.clone()
             self.choose_actor_all_items.insert(0,item_copy)
@@ -236,6 +240,13 @@ JOIN actor_name ON actor_name.actor_id=a.actor_id
         self.update_model(self.receive_actor_model, self.receive_actor_items)
         self.filter_choose_actor_items(self.search_box.text())
 
+    def get_selection_actor_name(self)->str:
+        '''获得当前选择的男优的姓名'''
+        index=self.choose_actor_view.selectionModel().selectedIndexes()
+        if not index:
+            return
+        item = self.choose_actor_model.itemFromIndex(index[0])
+        return item.text()
 
 #---------------------------------------------------
 #                 暴露在外面的接口
@@ -252,27 +263,22 @@ JOIN actor_name ON actor_name.actor_id=a.actor_id
         return ids
     
     @Slot('QList<int>')
-    def load_with_ids(self,ids:list):
+    def load_with_ids(self,ids:list[int]):
         '''通过ids列表加载到下面的选择器里
         不能重新加载，整个系统只是加载一次，然后就是不断的移动
         '''
-        #logging.debug("ActorSelector开始移到上面共:%s",str(len(self.receive_actor_items)))
         self.search_box.setText(None)
-        self.move_all_to_left()#先全移回去，回到初始的状态
+        self.move_all_to_left()
 
-        self.update_model(self.receive_actor_model, self.receive_actor_items)
-        #logging.debug("ActorSelector下面还剩下:%s",str(len(self.receive_actor_items)))
-
-        #logging.debug("ActorSelector开始移到下面共:%s",str(len(ids)))
         for id in ids:
-            #移动到下面
             item=self.find_item_by_id(id)
-            #logging.info(item.text())#这里有bug在新添加一个男优的时候，这个item就没有了
+            if item is None:
+                continue
             self.choose_actor_items.remove(item)
             self.choose_actor_all_items.remove(item)
             item_copy=item.clone()
             self.receive_actor_items.append(item_copy)
 
-            self.update_model(self.receive_actor_model, self.receive_actor_items)
+        self.update_model(self.receive_actor_model, self.receive_actor_items)
         self.filter_choose_actor_items(self.search_box.text())
         self.selection_changed.emit()

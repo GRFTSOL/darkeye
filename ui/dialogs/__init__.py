@@ -7,7 +7,6 @@ from .AddMasturbationDialog import AddMasturbationDialog
 from .AddSexualArousalDialog import AddSexualArousalDialog
 from .AddActorDialog import AddActorDialog
 from .AddQuickWork import AddQuickWork
-from .HelpDialog import HelpDialog
-from .SettingDialog import SettingDialog
+
 from .TagTypeModifyDialog import TagTypeModifyDialog
 from .TermsDialog import TermsDialog

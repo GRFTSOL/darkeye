@@ -6,6 +6,12 @@ import re
 import logging
 import shutil
 from pathlib import Path
+import asyncio
+import random
+import threading
+from collections import OrderedDict
+import sqlite3
+from config import DATABASE
 
 #番号相关
 def is_valid_serialnumber(code: str) -> bool:
@@ -36,6 +42,31 @@ def serial_number_equal(A:str,B:str)->bool:
         return s.lower().replace('-', '00')
 
     return normalize(A) == normalize(B)
+
+def convert_special_serialnumber(serial_number:str)->str:
+    # 转换为小写
+    lower_code = serial_number.lower()
+    # 删除 - 
+    converted_code = lower_code.replace('-', '')
+    return converted_code
+
+
+def extract_serial_from_string(text: str) -> str | None:
+    """从字符串中提取首个番号，支持 IPX-247 或 IPX247 格式，返回标准格式（如 IPX-247）"""
+    if not text or not text.strip():
+        return None
+    text = text.strip().upper()
+    # 优先匹配带横线的标准格式
+    m = re.search(r'[A-Z]{2,6}-\d{1,5}', text)
+    if m:
+        return m.group(0)
+    # 匹配无横线格式，如 IPX247
+    m = re.search(r'[A-Z]{2,6}\d{1,5}', text)
+    if m:
+        s = m.group(0)
+        return re.sub(r'^([A-Z]+)(\d+)$', r'\1-\2', s)
+    return None
+
 
 #图片相关
 def AlternativeQPixmap(image_path):
@@ -71,7 +102,7 @@ def delete_image(path):
 
 def conver2jpg(image_path):
     '''把图片转成jpg'''
-    
+
 
 def load_ini_ids(settings_config:str) -> list[int]:
     """从ini安全加载ID列表，处理以下情况：
@@ -129,14 +160,171 @@ def capture_full(widget:QWidget):
     pixmap.save(file_path)
     print("已保存 full_screenshot.png")
 
+def webp_to_jpg_pillow(input_path, output_path=None, quality=100):
+    """
+    使用Pillow将WebP转换为JPG
+    
+    Args:
+        input_path: 输入WebP文件路径
+        output_path: 输出JPG文件路径（可选）
+        quality: JPG质量，1-100，默认95
+    """
+    # 如果未指定输出路径，自动生成
+    if output_path is None:
+        output_path = input_path.rsplit('.', 1)[0] + '.jpg'
+    
+    try:
+        logging.debug("开始转换webp为jpg，输入路径:%s,输出路径:%s",input_path,output_path)
+        # 打开WebP图像
+        with Image.open(input_path) as img:
+            # 转换为RGB模式（去除Alpha通道）
+            if img.mode in ('RGBA', 'LA'):
+                # 创建白色背景
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[-1])
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # 保存为JPG
+            img.save(output_path, 'JPEG', quality=quality, optimize=True)
+            print(f"转换成功: {input_path} -> {output_path}")
+            
+    except Exception as e:
+        print(f"转换失败: {e}")
 
+def png_to_jpg_pillow(input_path, output_path=None, quality=95):
+    """
+    使用Pillow将PNG转换为JPG
+    
+    Args:
+        input_path: 输入PNG文件路径
+        output_path: 输出JPG文件路径（可选）
+        quality: JPG质量，1-100，默认95
+    """
+    # 如果未指定输出路径，自动生成
+    if output_path is None:
+        output_path = input_path.rsplit('.', 1)[0] + '.jpg'
+    
+    try:
+        # 打开PNG图像
+        with Image.open(input_path) as img:
+            # 转换为RGB模式（去除Alpha通道）
+            if img.mode in ('RGBA', 'LA'):
+                # 创建白色背景
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[-1])
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # 保存为JPG
+            img.save(output_path, 'JPEG', quality=quality, optimize=True)
+            print(f"转换成功: {input_path} -> {output_path}")
+            
+    except Exception as e:
+        print(f"转换失败: {e}")
 
 
 from googletrans import Translator
-async def translate_text(text:str, dest="zh-CN"):
-    translator = Translator()
-    result = await translator.translate(text, dest=dest)  # 使用 await
-    return result.text
+
+_TRANSLATION_CACHE_MAXSIZE = 512
+_translation_cache: "OrderedDict[tuple[str, str], str]" = OrderedDict()
+_translation_cache_lock = threading.Lock()
+
+def _translation_cache_get(key: tuple[str, str]) -> str | None:
+    with _translation_cache_lock:
+        value = _translation_cache.get(key)
+        if value is None:
+            return None
+        # LRU
+        _translation_cache.move_to_end(key)
+        return value
+
+def _translation_cache_set(key: tuple[str, str], value: str) -> None:
+    with _translation_cache_lock:
+        _translation_cache[key] = value
+        _translation_cache.move_to_end(key)
+        while len(_translation_cache) > _TRANSLATION_CACHE_MAXSIZE:
+            _translation_cache.popitem(last=False)
+
+async def translate_text(
+    text: str,
+    dest: str = "zh-CN",
+    *,
+    timeout_s: float = 12.0,
+    retries: int = 2,
+    backoff_base_s: float = 0.6,
+    fallback: str = "empty",   # "empty" or "source"
+    use_cache: bool = True,
+) -> str:
+    """
+    调用 googletrans 异步翻译（不稳定，做超时/重试/缓存/降级）。
+
+    - **fallback="empty"**: 失败返回空字符串（避免把日文写进中文字段）
+    - **fallback="source"**: 失败返回原文（适合手动按钮场景）
+    """
+    src = (text or "").strip()
+    if not src:
+        return ""
+
+    cache_key = (dest, src)
+    if use_cache:
+        cached = _translation_cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+    last_exc: Exception | None = None
+    for attempt in range(max(0, retries) + 1):
+        try:
+            translator = Translator()
+            coro = translator.translate(src, dest=dest)
+            result = await asyncio.wait_for(coro, timeout=timeout_s)
+            out = (getattr(result, "text", "") or "").strip()
+            if out:
+                if use_cache:
+                    _translation_cache_set(cache_key, out)
+                return out
+            last_exc = RuntimeError("Empty translate result")
+        except Exception as e:
+            last_exc = e
+            logging.warning(
+                "translate_text失败 attempt=%s/%s dest=%s err=%s",
+                attempt + 1,
+                max(0, retries) + 1,
+                dest,
+                repr(e),
+            )
+
+        if attempt < max(0, retries):
+            # 指数退避 + 抖动
+            await asyncio.sleep(backoff_base_s * (2 ** attempt) + random.uniform(0.0, 0.2))
+
+    if fallback == "source":
+        return src
+    # fallback == "empty"
+    if last_exc is not None:
+        logging.warning("translate_text最终失败，已降级返回空字符串: %s", repr(last_exc))
+    return ""
+
+def translate_text_sync(
+    text: str,
+    dest: str = "zh-CN",
+    **kwargs,
+) -> str:
+    """
+    同步包装，避免调用处直接 asyncio.run(...)。
+    若当前线程已存在运行中的 event loop，则直接降级返回空字符串。
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        # 没有运行中的 loop，安全使用 asyncio.run
+        return asyncio.run(translate_text(text, dest=dest, **kwargs))
+    else:
+        logging.warning("translate_text_sync在运行中的event loop里被调用，已降级返回空字符串")
+        return ""
+
 
 def get_text_color_from_background(new_color: QColor)->str:
     """
@@ -215,7 +403,8 @@ def timeit(func):
         start = time.perf_counter()
         result = func(*args, **kwargs)
         end = time.perf_counter()
-        logging.debug(f"⏱ {func.__name__} 执行耗时: {end - start:.4f} 秒")
+        #logging.debug(f"⏱ {func.__name__} 执行耗时: {end - start:.4f} 秒")
+        print(f"⏱ {func.__name__} 执行耗时: {end - start:.4f} 秒")
         return result
     return wrapper
 
@@ -292,6 +481,34 @@ def export_view_to_csv(tableView: QTableView, csv_file_path: str):
         QMessageBox.critical(tableView, "导出错误", f"导出失败，发生错误：\n{e}")
         return False
 
+
+def export_sql_to_csv(sql: str, csv_file_path: str, db_path: str | Path = DATABASE) -> bool:
+    """
+    使用 sqlite3 执行给定 SQL，将结果完整导出为 CSV。
+    不依赖 Qt 的模型/视图，只根据 SQL 查询数据库。
+    """
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cur = conn.cursor()
+        cur.execute(sql)
+
+        # 获取列名
+        headers = [d[0] for d in (cur.description or [])]
+
+        with open(csv_file_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if headers:
+                writer.writerow(headers)
+            for row in cur.fetchall():
+                writer.writerow(row)
+
+        conn.close()
+        logging.info("export_sql_to_csv 成功写入: %s", csv_file_path)
+        return True
+    except Exception as e:
+        logging.exception("export_sql_to_csv 失败: %s", e)
+        return False
+
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtCore import Qt
 
@@ -324,7 +541,7 @@ def mosaic_qimage(img: QImage, pixel_size=20) -> QImage:
 import re
 
 
-
+# 敏感词相关
 def load_sensitive_words()->list[str]:
     from config import SENSITIVE_WORDS_PATH
     words = []
@@ -364,3 +581,135 @@ def sort_dict_list_by_keys(data: list[dict], key_order: list[str]) -> list[dict]
         ordered_dict = {key: d.get(key) for key in key_order}
         ordered_data.append(ordered_dict)
     return ordered_data
+
+
+
+
+#视频相关
+def get_video_names_from_paths(video_paths: list[Path], video_extensions: list[str] = None) -> list[str]:
+    '''获取指定路径下所有视频文件的番号列表。
+    对每个视频文件提取番号（如 IPX-247），返回去重后的列表。
+    '''
+    if video_extensions is None:
+        video_extensions = [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".rmvb", ".ts"]
+
+    result: set[str] = set()
+
+    for folder in video_paths:
+        try:
+            for root, dirs, files in os.walk(folder):
+                for file in files:
+                    file_path = Path(root) / file
+                    if file_path.is_file() and file_path.suffix.lower() in video_extensions:
+                        name = file_path.stem  # 去除后缀
+                        name = re.sub(r'\[.*?\]', '', name)  # 去除 [] 及其中的内容
+                        serial = extract_serial_from_string(name)
+                        if serial:
+                            result.add(serial)
+                        else:
+                            logging.warning(f"无法提取番号: {name}")
+        except PermissionError:
+            print(f"  无权限访问：{folder}")
+
+    return list(result)
+
+
+def find_video(serial_number:str, video_paths:list[Path], video_extensions:list[str]=None)->list[Path]|None:
+    '''在指定的视频路径列表中查找对应番号的视频文件
+    如果找到则返回Path，否则返回None
+    video_extensions: 视频文件后缀列表，默认常见格式
+    输入标准番号格式如 ABP-123，IPX-247
+    搜索的时候忽略大小写而且也可以忽略中间的-符号
+    '''
+    if video_extensions is None:
+        video_extensions = [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".rmvb",".ts"]
+    
+    serial_number_list=[serial_number,covert_fanza(serial_number),convert_special_serialnumber(serial_number)]
+
+    find_video_path=[]
+
+    found = False
+    for folder in video_paths:
+        print(f"\n正在搜索：{folder}")
+        try:
+            for root, dirs, files in os.walk(folder):
+                for file in files:
+                    file_path = Path(root) / file
+                    # 判断是否是文件（不是文件夹）
+                    if file_path.is_file():
+                        for serial_number in serial_number_list:#对不同格式的番号进行匹配
+                            # 判断文件名是否包含番号,忽略大小写
+                            if serial_number.lower() in file_path.name.lower():
+                                # 判断是否是视频文件
+                                if file_path.suffix.lower() in video_extensions:
+                                    print(f"找到！{file_path}")
+                                    found = True
+                                    find_video_path.append(file_path)
+
+        except PermissionError:
+            print(f"  无权限访问：{folder}")
+
+    if not found:
+        print("所有文件夹搜索完毕，未找到视频文件")
+        return None
+    else:
+        print("搜索完成！")
+        return find_video_path
+
+
+def play_video_with_default_player(self):
+    '''打开指定的地址选择一个文件，开始用默认的播放器播放视频'''
+    from config import get_video_path
+    file_dialog = QFileDialog()
+    file_dialog.setNameFilter("视频文件 (*.mp4 *.avi *.mkv *.mov)")
+    video_paths = get_video_path()
+    file_dialog.setDirectory(str(video_paths[0]))
+    if file_dialog.exec():
+        selected_files = file_dialog.selectedFiles()
+        video_path = selected_files[0]
+        os.startfile(video_path)
+
+def play_video(video_path: Path):
+    """用系统默认播放器打开视频"""
+    os.startfile(video_path)
+
+
+def load_tag_map_from_json()->dict:
+    '''从json格式里读要映射的tag_map表'''
+    from core.database.query import get_tagid_by_keyword
+    from core.database.insert import add_tag2work
+    import json
+    from config import TAG_MAP_PATH
+    with open(TAG_MAP_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+    
+
+def text2tag_id_list(text:str)->list:
+    '''检测输入的文字，根据tag_map映射表去匹配相应的tag_id输出匹配的列表'''
+    from core.database.query import get_tagid_by_keyword
+    from core.database.insert import add_tag2work
+
+    from utils.utils import load_tag_map_from_json
+    tag_map=load_tag_map_from_json()
+
+    tag_id_set=set()#空集
+    for key,value in tag_map.items():
+        match=False#标记
+        if '|' in key:#有多个关键字
+            match=True#默认是成功的，有一个关键词找不到就是失败
+            for k in key.split('|'):
+                if k not in text:
+                    match=False
+                    break
+        else:#单个关键字
+            if key in text:#找到了，写入
+                match=True
+
+        if match:
+            for v in (value if isinstance(value,list) else [value]):
+                tag_id = get_tagid_by_keyword(v, match_hole_word=True)
+                if tag_id is not None:
+                    tag_id_set.add(tag_id)
+
+    return list(tag_id_set)
+

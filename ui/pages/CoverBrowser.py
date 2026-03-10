@@ -4,9 +4,9 @@ import logging
 from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel,QGraphicsOpacityEffect,QSizePolicy,QVBoxLayout,QFileDialog
 from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor,QIcon
 from PySide6.QtCore import Qt, QPointF, QPropertyAnimation, QEasingCurve,QParallelAnimationGroup,QSize,Signal,QTimer
-from config import WORKCOVER_PATH,ICONS_PATH,VIDEO_PATH
+from config import WORKCOVER_PATH,ICONS_PATH
 
-from ..basic.FlowLayout import FlowLayout
+from darkeye_ui.layouts import FlowLayout
 
 
 #渐变层纯绘图层
@@ -47,6 +47,7 @@ class GradientOverlay(QWidget):
         grad_right.setColorAt(1, QColor(0, 0, 0, 0))    # 中间透明
         painter.setBrush(grad_right)
         painter.drawRect(window_width-0.1*self._scaled_width,0,window_width,window_height)
+        painter.end()
 
 #信息层
 class InfoOverlay(QWidget):
@@ -157,9 +158,6 @@ class InfoOverlay(QWidget):
         """)
         self.btn_start.setFixedSize(60,30)
         self.btn_start.setCursor(Qt.PointingHandCursor)
-        self.btn_start.clicked.connect(self.play_video_with_default_player)
-
-
 
 
         self.h_layout=QHBoxLayout()
@@ -274,16 +272,7 @@ class InfoOverlay(QWidget):
             self.tag_layout.addWidget(btn)
             btn.raise_()
 
-    def play_video_with_default_player(self):
-        '''打开指定的地址选择一个文件，开始用默认的播放器播放视频'''
-        file_dialog = QFileDialog()
-        file_dialog.setNameFilter("视频文件 (*.mp4 *.avi *.mkv *.mov)")
-        
-        file_dialog.setDirectory(str(VIDEO_PATH))
-        if file_dialog.exec():
-            selected_files = file_dialog.selectedFiles()
-            video_path = selected_files[0]
-            os.startfile(video_path)
+
 
 
     def resizeEvent(self, event):
@@ -343,6 +332,7 @@ class CoverBrowser(QWidget):
 
     def createbuttons(self):
         '''这个是按钮层'''
+        from utils.image import create_colored_icon_vector
         self.prev_button = QPushButton()
         self.next_button = QPushButton()
 
@@ -358,8 +348,10 @@ class CoverBrowser(QWidget):
             QSizePolicy.Expanding
         )
         self.next_button.setCursor(Qt.PointingHandCursor) 
+
         
-        self.next_button.setIcon(QIcon(str(ICONS_PATH / "chevron-right.png")))
+
+        self.next_button.setIcon(create_colored_icon_vector(str(ICONS_PATH / "chevron-right.svg"),"#CCCCCC",48,48))
         self.next_button.setIconSize(QSize(48,48))
         self.next_button.setStyleSheet("""
             QPushButton {
@@ -375,7 +367,7 @@ class CoverBrowser(QWidget):
             QSizePolicy.Expanding
         )
         self.prev_button.setCursor(Qt.PointingHandCursor) 
-        self.prev_button.setIcon(QIcon(str(ICONS_PATH / "chevron-left.png")))
+        self.prev_button.setIcon(create_colored_icon_vector(str(ICONS_PATH / "chevron-left.svg"),"#CCCCCC",48,48))
         self.prev_button.setIconSize(QSize(48,48))
         self.prev_button.setStyleSheet("""
             QPushButton {
@@ -412,14 +404,21 @@ class CoverBrowser(QWidget):
         work = self.works[self.current_index]
         self.info_overlay.serial_number.setText(work["serial_number"])
         self.info_overlay.time.setText(work["release_date"])
-        self.info_overlay.story.setText(work["cn_story"][:150])
-        self.info_overlay.work_name.setText(work["cn_title"][:50])
+
+        if  work["cn_story"] is not None and len(work["cn_story"]) > 150:
+            self.info_overlay.story.setText(work["cn_story"][:150] + "...")
+        else:
+            self.info_overlay.story.setText(work["cn_story"])
+        if  work["cn_title"] is not None and len(work["cn_title"]) > 50:
+            self.info_overlay.work_name.setText(work["cn_title"][:50] + "...")
+        else:
+            self.info_overlay.work_name.setText(work["cn_title"])
 
     def update_actress(self):
         '''更新女优的信息'''
-        from core.database.query import findActressFromWorkID
+        from core.database.query import get_actress_from_work_id
         work_id = self.works[self.current_index]["work_id"]
-        self.info_overlay.update_actress_buttons(findActressFromWorkID(work_id))
+        self.info_overlay.update_actress_buttons(get_actress_from_work_id(work_id))
         #根据这个id去找女优
 
     def update_tag(self):
@@ -548,8 +547,11 @@ class CoverTagButton(QPushButton):
         self.clicked.connect(self.emit_with_id)
         
     def emit_with_id(self):
-        from controller.GlobalSignalBus import global_signals
-        global_signals.tag_clicked.emit(self.tag_id)#发送给那些需要重新加载的东西
+        #from controller.GlobalSignalBus import global_signals
+        #global_signals.tag_clicked.emit(self.tag_id)#发送给那些需要重新加载的东西
+        from ui.navigation.router import Router
+        Router.instance().push("mutiwork", tag_id=self.tag_id)
+
 
 # 自定义按钮，带演员id和名字
 class ActressButton(QPushButton):
@@ -579,6 +581,8 @@ class ActressButton(QPushButton):
         """)
 
     def emit_with_id(self):
-        from controller.GlobalSignalBus import global_signals
-        global_signals.actress_clicked.emit(self.actress_id)
+
+        from ui.navigation.router import Router
+        Router.instance().push("single_actress",actress_id=self.actress_id)
+
         #跳转到单个女优的页面

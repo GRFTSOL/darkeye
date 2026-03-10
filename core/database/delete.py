@@ -1,10 +1,17 @@
+"""
+删除数据库的操作在这里。
+
+【写操作后信号发射规范】
+写操作完成后，调用方负责 emit 对应的 global_signals.*_changed 信号。
+详见 docs/write_ops_signal_mapping.md 映射表。
+"""
 import sqlite3
 from config import DATABASE,PRIVATE_DATABASE
 import logging
 from .connection import get_connection
 
 def delete_favorite_actress(actress_id)->bool:
-    '''删除私有库中喜欢的女优记录'''
+    '''删除私有库中喜欢的女优记录。调用后需 emit: global_signals.like_actress_changed'''
     success=False
     try:
         conn = sqlite3.connect(PRIVATE_DATABASE)
@@ -25,7 +32,7 @@ def delete_favorite_actress(actress_id)->bool:
     return success
 
 def delete_favorite_work(work_id)->bool:
-    '''删除私有库中喜欢的作品记录'''
+    '''删除私有库中喜欢的作品记录。调用后需 emit: global_signals.like_work_changed'''
     success=False
     try:
         conn = sqlite3.connect(PRIVATE_DATABASE)
@@ -46,7 +53,7 @@ def delete_favorite_work(work_id)->bool:
     return success
 
 def delete_work(work_id:int)->bool:
-    '''彻底删除作品'''
+    '''彻底删除作品。调用后需 emit: global_signals.work_data_changed'''
     from utils.utils import delete_image
     try:
         conn = get_connection(DATABASE)
@@ -78,7 +85,7 @@ def delete_work(work_id:int)->bool:
         cursor.close()
 
 def delete_actress(actress_id:int)->tuple[bool,str]:
-    '''删除某个女优，包括名字'''
+    '''删除某个女优，包括名字。调用后需 emit: global_signals.actress_data_changed'''
     from utils.utils import delete_image
     try:
         conn = get_connection(DATABASE)
@@ -120,7 +127,7 @@ def delete_actress(actress_id:int)->tuple[bool,str]:
         cursor.close()
 
 def delete_actor(actor_id:int)->tuple[bool,str]:
-    '''删除某个男优，包括名字'''
+    '''删除某个男优，包括名字。调用后需 emit: global_signals.actor_data_changed'''
     from utils.utils import delete_image
     try:
         conn = get_connection(DATABASE)
@@ -164,7 +171,7 @@ def delete_actor(actor_id:int)->tuple[bool,str]:
 
 
 def delete_tag(tag_id:int)->tuple[bool,str]:
-    '''删除某个tag'''
+    '''删除某个tag。调用后需 emit: global_signals.tag_data_changed'''
 
     message=""
     try:

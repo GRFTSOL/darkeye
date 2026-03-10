@@ -1,11 +1,15 @@
 
-from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel,QVBoxLayout,QGridLayout,QSizePolicy
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QGridLayout,QSizePolicy
 from PySide6.QtCore import Qt,Slot
 from PySide6.QtGui import QPainter,QPen
-from ui.statistics import RadarChartWidget
+from darkeye_ui.components import RadarChartWidget
 import logging
-from ui.basic import HeartLabel,OctImage
+from darkeye_ui.components.heart_label import HeartLabel
 from ui.widgets import ClickableLabel
+from ui.widgets.image.ActressAvatar import ActressAvatar
+from darkeye_ui.components.oct_image import OctImage
+from config import ACTRESSIMAGES_PATH
+from darkeye_ui.components.label import Label
 
 class SingleActressInfo(QWidget):
     '''单女优的信息数据显示'''
@@ -33,17 +37,22 @@ class SingleActressInfo(QWidget):
         self.name_widget_layout.addWidget(self.heart,alignment=Qt.AlignBottom)
         self.name_widget_layout.addStretch()
 
-        self.birthday=QLabel("出生日期xxxx年xx月xx日")
-        label_birthday=QLabel("生日")
+        self.birthday=Label("xxxx年xx月xx日")
+        self.debutday=Label("xxxx年xx月xx日")
+        label_birthday=Label("生日")
+        label_debutday=Label("出道日期")
         #试一下的是动态信息，包括曾用名，等等
 
-        self.pic=OctImage()#这个已经固定大小了
+        #self.pic=OctImage()#这个没有跳转到编辑界面的功能
+        self.pic=ActressAvatar(None,None)#这个有跳转功能
         self.radar=RadarChartWidget()
         self.radar.setFixedSize(250,220)
 
         self.dyna_layout=QGridLayout()
         self.dyna_layout.addWidget(label_birthday,0,0)
         self.dyna_layout.addWidget(self.birthday,0,1)
+        self.dyna_layout.addWidget(label_debutday,1,0)
+        self.dyna_layout.addWidget(self.debutday,1,1)
 
 
         info_layout=QHBoxLayout()
@@ -71,9 +80,10 @@ class SingleActressInfo(QWidget):
         rect = self.rect()
         rect.adjust(1, 1, -1, -1)  # 避免超出控件边缘
         painter.drawRect(rect)
+        painter.end()
 
     def beaute(self):
-        '''对控件美化'''
+        '''对控件美化。ClickableLabel 颜色由主题 Label#DesignLabel 控制，此处只设字体，避免写死 color 以随主题变色。'''
         #self.name_widget.setStyleSheet("background-color:#FFFFFF ;")
 
         self.cn_name.setStyleSheet("""
@@ -82,19 +92,18 @@ class SingleActressInfo(QWidget):
 """)
         self.jp_name.setStyleSheet("""
         font-size:16px;
-        color: #333333; /* 深灰色 */
 """)
         self.en_name.setStyleSheet("""
         font-size:16px;
-        color: #333333; /* 深灰色 */
 """)
         self.kana_name.setStyleSheet("""
         font-size:16px;
-        color: #333333; /* 深灰色 */
 """)
         self.birthday.setStyleSheet("""
         font-size:16px;
-        color: #333333; /* 深灰色 */
+""")
+        self.debutday.setStyleSheet("""
+        font-size:16px;
 """)
 
     def update(self,actress_id):
@@ -114,6 +123,7 @@ class SingleActressInfo(QWidget):
         self.kana_name.setText(actress['kana'])
         self.en_name.setText(actress['en'])
         self.birthday.setText(convert_date(actress['birthday']))
+        self.debutday.setText(convert_date(actress['debut_date']))
 
         #更新雷达图
         values=self.calc_radar_value(actress,data)
@@ -128,23 +138,27 @@ class SingleActressInfo(QWidget):
         else:
             self.heart.set_statue(False)
 
-        #更新头像
-        self.pic.update_image(actress["image_urlA"])
-
+        #更新头像（image_urlA 为相对路径，需拼上 ACTRESSIMAGES_PATH 才能正确加载）
+        image_url_a = actress.get("image_urlA")
+        if image_url_a:
+            self.pic.update_image(str(ACTRESSIMAGES_PATH / image_url_a))
+        else:
+            self.pic.update_image(None)
+        self.pic._actress_id = actress_id
         #更新动态的别名
         chain=self.calc_chain(actress_id)
         chain.pop()
         #logging.debug(chain)
         
-        while self.dyna_layout.count()>2:#先清除layout中的元素
-            item = self.dyna_layout.takeAt(2)
+        while self.dyna_layout.count()>4:#先清除layout中的元素
+            item = self.dyna_layout.takeAt(4)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()  # 删除控件
         if chain:
             for name in chain:
-                label=QLabel(name)
-                label_alias=QLabel("别名")
+                label=Label(name)
+                label_alias=Label("别名")
                 self.dyna_layout.addWidget(label_alias)
                 self.dyna_layout.addWidget(label)
 
@@ -215,12 +229,14 @@ class SingleActressInfo(QWidget):
             "H":27.5,
             "I":30,
             "J":32.5,
-            "L":35,
-            "M":37.5,
-            "N":40,
-            "O":42.5
+            "K":35,
+            "L":37.5,
+            "M":40,
+            "N":42.5,
+            "O":45,
+            "P":47.5
         }
-        cup_map_cn={#B杯是10-12.5
+        cup_map_cn={#A杯是7.5-10，B杯是10-12.5
             "A":10,
             "B":12.5,
             "C":15,
@@ -231,9 +247,9 @@ class SingleActressInfo(QWidget):
             "H":27.5,
             "I":30,
             "J":32.5,
-            "L":35,
-            "M":37.5,
-            "N":40
+            "K":35,
+            "L":37.5,
+            "M":40
         }
         cup_list:list[str]=[row["cup"] for row in data]
         cup_diff_list=[cup_map_jp.get(cup.upper(), None) for cup in cup_list]
@@ -288,9 +304,11 @@ class SingleActressInfo(QWidget):
     def on_clicked_heart(self):
         from core.database.insert import insert_liked_actress
         from core.database.delete import delete_favorite_actress
+        from controller.GlobalSignalBus import global_signals
         if self.heart.get_statue():
             '''添加到喜欢'''
             insert_liked_actress(self._actress_id)
         else:
             '''删除'''
             delete_favorite_actress(self._actress_id)
+        global_signals.like_actress_changed.emit()

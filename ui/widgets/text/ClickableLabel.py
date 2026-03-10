@@ -1,13 +1,13 @@
-from PySide6.QtWidgets import QLabel,QApplication,QSizePolicy
-from PySide6.QtCore import Qt, Signal,QTimer,QPoint,QSize,Slot
+from PySide6.QtWidgets import QApplication,QSizePolicy
+from PySide6.QtCore import Qt, Signal,QTimer,QPoint,QSize,Slot,QThreadPool
 from PySide6.QtGui import QMouseEvent
+from controller.GlobalSignalBus import global_signals
+from darkeye_ui.components.label import Label
 
-
-class ClickableLabel(QLabel):
-    '''可点击并复制内容到剪贴板，并且有提示的label控件，
-    专门给那些名字使用，提供复制功能
-    还有右键跳转功能
-    '''
+class ClickableLabel(Label):
+    '''可点击并复制内容到剪贴板，并且有提示的 label 控件，
+    专门给那些名字使用，提供复制功能，还有右键跳转功能。
+    样式由主题 QLabel#DesignLabel 驱动，会随主题变色；若在外部对本品 setStyleSheet，避免写死 color，否则会覆盖主题颜色。'''
     clicked = Signal()
 
     def __init__(self, text="xxx",actress_jump=False,parent=None):
@@ -25,6 +25,7 @@ class ClickableLabel(QLabel):
         if event.button() == Qt.LeftButton:
             clipboard = QApplication.clipboard()
             clipboard.setText(self.text())
+            #global_signals.status_msg_changed.emit("复制文本到剪贴板")
             self.show_copy_tip()
         if self.actress_jump:
             if event.button() == Qt.RightButton:
@@ -43,11 +44,12 @@ class ClickableLabel(QLabel):
 
     def searchActressinfo(self,id):
         #开始后台线程
-        from core.crawler.SearchActressInfo import SearchSingleActressInfo
-        from core.crawler.CrawlerThreadResult import CrawlerThreadResult
-        self.thread:CrawlerThreadResult=CrawlerThreadResult(lambda id=id:SearchSingleActressInfo(id,self.text()))#传一个函数名进去
-        self.thread.finished.connect(self.on_result)
-        self.thread.start()
+        from core.crawler.minnanoav import SearchSingleActressInfo
+        from core.crawler.Worker import Worker
+        worker=Worker(lambda id=id:SearchSingleActressInfo(id,self.text()))#传一个函数名进去
+        worker.signals.finished.connect(self.on_result)
+        QThreadPool.globalInstance().start(worker)
+        
 
     @Slot(object)
     def on_result(self,result:str):#Qsignal回传信息
@@ -66,13 +68,11 @@ class ClickableLabel(QLabel):
         main_window = self.window()
 
         # 创建提示标签（设为 main_window 的子控件）
-        self._copy_tip = QLabel("复制成功", main_window)
+        self._copy_tip = Label("复制成功", main_window)
         self._copy_tip.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
         self._copy_tip.setAttribute(Qt.WA_TranslucentBackground)
         self._copy_tip.setStyleSheet("""
             QLabel {
-                background-color: rgba(50, 50, 50, 100);
-                color: white;
                 font-weight: bold;
                 font-size: 20px;
                 padding: 10px 20px;

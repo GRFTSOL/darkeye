@@ -16,28 +16,48 @@
 - [x] 撸管记录的手动添加，增删查改
 - [x] 做爱记录的手动添加，增删查改
 - [x] 晨勃记录的手动添加，增删查改
-- [x] 分析图表
+- [x] 分析图表,数据展示
+- [x] 拟物化dvd展示
+- [x] 筛选作品页面
+- [x] firefox爬虫插件，沉浸式摘取信息，支持javtxt,javlib,javdb
+- [x] 力导向图，查看关联
+- [x] 搜索本地视频，进入爬虫列表
+- [ ] 备份系统
 - [ ] 科普知识
 - [ ] 插件化网页跳转
 - [ ] 插件化爬虫
 - [ ] 绿色模式
 
-<img width="3840" height="2283" alt="workpage" src="https://github.com/user-attachments/assets/95355235-b408-409e-aff1-2b57ee0ba342" />
+
 
 # 快速开始
 #使用下面创建虚拟环境
-conda create -n avlite python=3.12
+conda create -n avlite python=3.14
 conda activate avlite
 
 pip install -r requirements.txt
 
 下载后请复制public基本数据包到resource/文件夹下面
+
 ## 运行
+vscode解释器选择
+Ctrl + Shift + P
+
+```
+Python: Select Interpreter
+```
+avlite
 python main.py
+
+
+# 使用
+打开就知道了
+
+
 
 # 打包发布
 在powershell里，刚刚创建的conda 虚拟环境中，运行build-pyinstaller.ps1
-打包后的结构，一个绿色的可移动的文件夹，运行main.exe就能运行
+打包后的结构，一个绿色的可移动的文件夹，运行main.exe就能运行，这个pyinstaller是高度精简后的，如果要多加库，需要改里面的文件
 
 
 # 文档的构建

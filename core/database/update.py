@@ -1,4 +1,10 @@
-'''更新数据库的操作都在这里'''
+"""
+更新数据库的操作都在这里。
+
+【写操作后信号发射规范】
+写操作完成后，调用方负责 emit 对应的 global_signals.*_changed 信号。
+详见 docs/write_ops_signal_mapping.md 映射表。
+"""
 import logging
 from config import DATABASE
 from .connection import get_connection
@@ -8,7 +14,7 @@ from sqlite3 import Cursor,IntegrityError
 #----------------------------------------------------------------------------------------------------------
 
 def update_tag_type(tag_type_data:list[dict])->bool:
-    '''更新tag_type'''
+    '''更新tag_type。调用后需 emit: global_signals.tag_data_changed'''
     #1.计算需要删除的部分然后删除
     #获得当前所有的tag_type_id的集合
     conn = get_connection(DATABASE,False)
@@ -47,7 +53,7 @@ def update_tag_type(tag_type_data:list[dict])->bool:
 
 #需要外键检查的
 def UpdateWorkTags(work_id, new_tag_ids)->bool:
-    """更高效地更新作品标签关系（只删除不再需要的，只添加新的）"""
+    """更高效地更新作品标签关系（只删除不再需要的，只添加新的）。调用后需 emit: global_signals.work_data_changed"""
     try:
         conn = get_connection(DATABASE,False)
         cursor = conn.cursor()
@@ -158,7 +164,7 @@ def _update_worktag(cursor:Cursor,work_id:int,tag_ids:list):
         )
 
 def update_work_byhand(work_id,director,release_date, story, actress_ids,actor_ids,cn_title, cn_story, jp_title, jp_story,image_url,tag_ids)->bool:
-    '''更新作品的信息，默认番号是不会出错的'''
+    '''更新作品的信息，默认番号是不会出错的。调用后需 emit: global_signals.work_data_changed'''
     try:
         conn = get_connection(DATABASE,False)
         cursor:Cursor = conn.cursor()
@@ -194,9 +200,9 @@ def update_work_byhand(work_id,director,release_date, story, actress_ids,actor_i
 
 def update_work_byhand_(work_id: int, **fields) -> bool:
     """
-    动态更新作品的信息，传入什么字段就更新什么字段,只能更新最基本的
-    例如：
-        update_work_byhand(1, director="A", cn_title="标题")
+    动态更新作品的信息，传入什么字段就更新什么字段,只能更新最基本的。
+    例如：update_work_byhand(1, director="A", cn_title="标题")
+    调用后需 emit: global_signals.work_data_changed
     """
     if not fields:
         return False  # 没有字段传入，不更新
@@ -253,7 +259,7 @@ def update_work_byhand_(work_id: int, **fields) -> bool:
 
 
 def update_work_actor(work_id:int,actor_ids:list)->bool:
-    '''更新作品的信息，默认番号是不会出错的'''
+    '''更新作品的男优关系。调用后需 emit: global_signals.work_data_changed'''
     try:
         conn = get_connection(DATABASE,False)
         cursor = conn.cursor()
@@ -280,7 +286,7 @@ def check_workcover_integrity():
     return
 
 def update_db_actress(id:int,data:dict):
-    '''更新女优名字，身材信息数据，写入数据库的表中，一条一条写'''
+    '''更新女优名字，身材信息数据。调用后需 emit: global_signals.actress_data_changed'''
 
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
@@ -309,7 +315,7 @@ def update_db_actress(id:int,data:dict):
     return 0
 
 def update_actress_image(id:int,image_url):
-    '''更新女优头像地址写入数据库的表中，一条一条写'''
+    '''更新女优头像地址。调用后需 emit: global_signals.actress_data_changed'''
 
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
@@ -332,6 +338,7 @@ def update_actress_image(id:int,image_url):
     return 0
 
 def update_actress_minnano_id(id,minnano_actress_id):
+    '''更新女优 minnano 信息。调用后需 emit: global_signals.actress_data_changed（若影响展示）'''
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
     cursor=conn.cursor()
@@ -353,7 +360,7 @@ def update_actress_minnano_id(id,minnano_actress_id):
     return 0
 
 def update_work_javtxt(id,javtxt_id):
-    '''写入javtxt_id的缓存数据'''
+    '''写入javtxt_id的缓存数据。通常无需 emit（内部缓存）'''
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
     cursor=conn.cursor()
@@ -375,7 +382,7 @@ def update_work_javtxt(id,javtxt_id):
     return 0
 
 def update_titlestory(serial_number,cn_title,jp_title,cn_story,jp_story):
-    '''更新故事进去'''
+    '''更新故事进去。调用后需 emit: global_signals.work_data_changed'''
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
     cursor=conn.cursor()
@@ -397,7 +404,7 @@ def update_titlestory(serial_number,cn_title,jp_title,cn_story,jp_story):
     return 0
 
 def update_tag_color(tag_ids:list,color):
-    '''更新tag的color'''
+    '''更新tag的color。调用后需 emit: global_signals.tag_data_changed'''
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
     cursor=conn.cursor()
@@ -418,7 +425,7 @@ def update_tag_color(tag_ids:list,color):
     return 0
 
 def update_fanza_cover_url(work_id:int,fcover_url:str):
-    '''更新'''
+    '''更新作品 FANZA 封面 URL。通常无需 emit（内部缓存）'''
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
     cursor=conn.cursor()
@@ -441,7 +448,7 @@ def update_fanza_cover_url(work_id:int,fcover_url:str):
 
 
 def update_on_dan(work_id:int,on_dan:int):
-    '''更新一部作品能否在avdan上找到0找不到，1 找到'''
+    '''更新一部作品能否在avdan上找到。通常无需 emit（内部状态）'''
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
     cursor=conn.cursor()
@@ -463,6 +470,8 @@ def update_on_dan(work_id:int,on_dan:int):
 
 def update_tag(tag_id:int,tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_redirect_tag_id:int,tag_alias:list[dict])->bool:
     '''
+    更新标签信息。调用后需 emit: global_signals.tag_data_changed
+    参数示例:
             "tag_id": self._tag_id,
             "tag_name":self._tag_name,
             "tag_type":self._tag_type,
@@ -537,8 +546,7 @@ WHERE redirect_tag_id=?''', (tag_id,))
             )
 
 def mark_delete(work_id)->bool:
-    '''将作品标记为未删除
-    '''
+    '''将作品标记为已删除。调用后需 emit: global_signals.work_data_changed'''
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
     cursor=conn.cursor()
@@ -560,8 +568,7 @@ def mark_delete(work_id)->bool:
         conn.close()
 
 def mark_undelete(work_id)->bool:
-    '''将作品标记为未删除
-    '''
+    '''将作品标记为未删除。调用后需 emit: global_signals.work_data_changed'''
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
     cursor=conn.cursor()
@@ -639,7 +646,8 @@ def update_actress_name(cursor:Cursor,actress_name:list[dict],actress_id)->bool:
 
 
 def update_actress_byhand(actress_id,height,cup,birthday,hip,waist,bust,debut_date,need_update,image_urlA,actress_name):
-    ''' {
+    '''更新女优信息。调用后需 emit: global_signals.actress_data_changed
+    参数示例: {
             "actress_id": self._actress_id,
             "height": self._height,
             "cup": self._cup,
@@ -677,9 +685,7 @@ def update_actress_byhand(actress_id,height,cup,birthday,hip,waist,bust,debut_da
 
 
 def update_actor_byhand(actor_id,handsome,fat,image_url,actor_name):
-    ''' {
-
-        }'''
+    '''更新男优信息。调用后需 emit: global_signals.actor_data_changed'''
     
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
@@ -751,3 +757,41 @@ def update_actor_name(cursor:Cursor,actor_name:list[dict],actor_id)->bool:
                 "UPDATE actor_name SET name_type = ?, cn = ?, jp = ?, en = ?, kana = ? WHERE actor_name_id = ?",
                 (name_type, name_data['cn'], name_data['jp'], name_data['en'], name_data['kana'], name_data['actor_name_id'])
             )
+
+def redirect_tag_121(tag_id0,tag_id1):
+    '''标签重定向,1对1。调用后需 emit: global_signals.tag_data_changed
+    tag_id0是需要被删除的标签
+    tag_id1是被指向的标签
+    '''
+    conn=get_connection(DATABASE,False)
+    logging.info("数据库打开成功")
+    cursor=conn.cursor()
+    try:
+        # 1. 更新标签重定向指针
+        cursor.execute("UPDATE tag SET redirect_tag_id=? WHERE tag_id=?",(tag_id1,tag_id0))
+        # 2. 把旧的关联的tag也要重定向
+        cursor.execute("UPDATE tag SET redirect_tag_id=? WHERE redirect_tag_id=?",(tag_id1,tag_id0))
+        # 2. 迁移作品关联 (核心修改)
+        # 将所有关联了旧标签的作品，赋予新标签。如果有冲突(已存在)，则忽略
+        # 2. 先处理冲突：如果作品已经有了新标签，就直接删除旧标签记录（因为不需要合并了）
+        cursor.execute("""
+            DELETE FROM work_tag_relation 
+            WHERE tag_id = ? 
+            AND work_id IN (
+                SELECT work_id FROM work_tag_relation WHERE tag_id = ?
+            )
+        """, (tag_id0, tag_id1))
+
+        # 3. 更新剩余记录：剩下的旧标签记录都可以安全地变更为新标签
+        cursor.execute("UPDATE work_tag_relation SET tag_id = ? WHERE tag_id = ?", (tag_id1, tag_id0))
+        conn.commit()
+        logging.info("更新成功")
+        print("更新成功")
+        return True
+    except Exception as e:
+        conn.rollback()
+        logging.info(f"更新标签数据失败{e}")
+        return False
+    finally:
+        cursor.close()
+        conn.close()

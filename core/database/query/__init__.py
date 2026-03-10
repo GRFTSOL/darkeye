@@ -1,0 +1,171 @@
+'''
+查询与数据库交互的函数，按业务域拆分为多个子模块。
+此处聚合导出，保持与原有 from core.database.query import xxx 的兼容。
+
+子模块职责：
+- work: 作品相关（番号、封面、导演、参演女优/男优、story 等）
+- actress: 女优相关（信息、存在性、别名、身材数据等）
+- actor: 男优相关（信息、存在性、别名等）
+- tag: 标签相关（类型、别名、关键词查询等）
+- dashboard: 仪表盘统计
+- statistics: 统计图表（年龄、身材分布、年份、导演/片商排行等）
+- private: 私有库（自慰/做爱/晨勃记录、按年/按天统计等）
+'''
+from .work import (
+    get_all_work_id,
+    get_work_ids_with_cover,
+    get_all_work_addtime,
+    query_studio,
+    get_workinfo_by_workid,
+    get_workcardinfo_by_workid,
+    get_actressid_by_workid,
+    get_works_for_dvd,
+    get_cover_image_url,
+    get_cover_image_url_by_serial,
+    get_actorid_by_workid,
+    get_worktaginfo_by_workid,
+    get_work_tags,
+    get_actress_from_work_id,
+    get_actor_from_work_id,
+    get_work_story_rows,
+    get_recent_work_story_rows,
+    get_serial_number_map,
+    get_workid_by_serialnumber,
+    get_javtxt_id_by_serialnumber,
+    get_serial_number,
+    get_unique_director,
+    get_unique_short_story,
+    get_maker_name,
+)
+from .actress import (
+    get_actress_info,
+    get_all_actress_data,
+    get_null_actress,
+    exist_actress,
+    exist_minnao_id,
+    get_actressname,
+    get_actress_allname,
+    get_cup_type,
+    get_actress_body_data,
+    get_all_actress_name,
+)
+from .actor import (
+    get_actor_info,
+    get_null_actor,
+    exist_actor,
+    get_actor_allname,
+    get_actorname,
+)
+from .tag import (
+    get_tag_type,
+    get_alias_tag,
+    get_tags,
+    get_taginfo_by_id,
+    get_tagid_by_keyword,
+    get_tag_name,
+    get_tag_type_dict,
+    get_unique_tag_type,
+)
+from .dashboard import get_dashboard_stats
+from .statistics import (
+    fetch_work_actress_avg_age,
+    fetch_actress_cup_distribution,
+    fetch_actress_height_with_weights,
+    fetch_actress_waist_hip_stats,
+    fetch_top_directors_by_scope,
+    fetch_top_studios_by_scope,
+    get_tag_frequence,
+    fetch_work_release_by_year_by_scope,
+    fetch_actress_debut_by_year_by_scope,
+    get_actress_by_plane,
+    get_top_actress_by_masturbation_count,
+    get_unmasturbated_work_count,
+    fetch_actress_debut_age,
+)
+from .private import (
+    query_actress,
+    query_work,
+    get_unique_tools_from_masturbation,
+    get_record_by_year,
+    get_record_count_in_days,
+    get_record_count_by_year,
+    get_record_early_year,
+)
+
+__all__ = [
+    # work
+    "get_all_work_id",
+    "get_work_ids_with_cover",
+    "get_all_work_addtime",
+    "query_studio",
+    "get_workinfo_by_workid",
+    "get_workcardinfo_by_workid",
+    "get_actressid_by_workid",
+    "get_works_for_dvd",
+    "get_cover_image_url",
+    "get_cover_image_url_by_serial",
+    "get_actorid_by_workid",
+    "get_worktaginfo_by_workid",
+    "get_work_tags",
+    "get_actress_from_work_id",
+    "get_actor_from_work_id",
+    "get_work_story_rows",
+    "get_recent_work_story_rows",
+    "get_serial_number_map",
+    "get_workid_by_serialnumber",
+    "get_javtxt_id_by_serialnumber",
+    "get_serial_number",
+    "get_unique_director",
+    "get_unique_short_story",
+    "get_maker_name",
+    # actress
+    "get_actress_info",
+    "get_all_actress_data",
+    "get_null_actress",
+    "exist_actress",
+    "exist_minnao_id",
+    "get_actressname",
+    "get_actress_allname",
+    "get_cup_type",
+    "get_actress_body_data",
+    "get_all_actress_name",
+    # actor
+    "get_actor_info",
+    "get_null_actor",
+    "exist_actor",
+    "get_actor_allname",
+    "get_actorname",
+    # tag
+    "get_tag_type",
+    "get_alias_tag",
+    "get_tags",
+    "get_taginfo_by_id",
+    "get_tagid_by_keyword",
+    "get_tag_name",
+    "get_tag_type_dict",
+    "get_unique_tag_type",
+    # dashboard
+    "get_dashboard_stats",
+    # statistics
+    "fetch_work_actress_avg_age",
+    "fetch_actress_cup_distribution",
+    "fetch_actress_height_with_weights",
+    "fetch_actress_waist_hip_stats",
+    "fetch_top_directors_by_scope",
+    "fetch_top_studios_by_scope",
+    "get_tag_frequence",
+    "fetch_work_release_by_year_by_scope",
+    "fetch_actress_debut_by_year_by_scope",
+    "get_actress_by_plane",
+    "get_top_actress_by_masturbation_count",
+    "get_unmasturbated_work_count",
+    "fetch_actress_debut_age",
+    # private
+    "query_actress",
+    "query_work",
+    "get_unique_tools_from_masturbation",
+    "get_record_by_year",
+    "get_record_count_in_days",
+    "get_record_count_by_year",
+    "get_record_early_year",
+]

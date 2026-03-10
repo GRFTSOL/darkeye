@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt,Signal,QRect,QThreadPool,QRunnable,SignalInstance,
 import logging
 from utils.utils import mosaic_qimage
 from controller.GlobalSignalBus import global_signals
+from ui.navigation.router import Router
 
 class ImageLoaderRunnable(QRunnable):
     '''QImage异步加载图片并裁剪，回到UI线程后显示'''
@@ -30,7 +31,7 @@ class ImageLoaderRunnable(QRunnable):
 
 class ImageLoaderRunnable2(QRunnable):
     '''QImage异步加载图片并裁剪，回到UI线程后显示'''
-    def __init__(self, path: str, aspect_ratio: float, target_size, callback_signal: Signal):
+    def __init__(self, path: str, aspect_ratio: float, target_size, callback_signal: SignalInstance):
         super().__init__()
         self.path = path
         self.target_size = target_size
@@ -117,8 +118,9 @@ class CoverImage(QLabel):
             logging.debug(f"跳转到修改作品界面")
             event.accept()  # 消费掉右键事件
         if event.button() == Qt.MouseButton.LeftButton:
-            from controller.GlobalSignalBus import global_signals
-            QTimer.singleShot(0, lambda: global_signals.work_clicked.emit(self._work_id))
+ 
+            QTimer.singleShot(0, lambda:Router.instance().push("work", work_id=self._work_id))
+            
             logging.debug(f"跳转单个作品界面：ID:{self._work_id}")
             event.accept()  # 消费掉左键事件
 

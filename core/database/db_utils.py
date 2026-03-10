@@ -147,6 +147,32 @@ def generate_standard_db():
         print("删除完成")
 
 
+
+def generate_mini_db():
+    '''制作标准库用于软件的开发与测试
+    包含50部影片+尽量少的男女优+空的私有库
+    '''
+    number=["IPX-247","IPX-177","MIDV-407","IPZZ-317","SONE-852","SSIS-798"]
+    #只留下上面50个番号，其他全部删除
+    from .query import get_workid_by_serialnumber,get_all_work_id
+    from .delete import delete_work
+    work_id_list=[]
+    for n in number:
+        work_id_list.append(get_workid_by_serialnumber(n))
+    #print(work_id_list)
+    print(work_id_list)
+    ids_delete=set(get_all_work_id())-set(work_id_list)
+    print(ids_delete)
+    error_list=[]
+    for id in ids_delete:
+        if not delete_work(id):
+            error_list.append(id)
+    if error_list:
+        print(f"删除失败的work_id{error_list}")
+    else:
+        print("删除完成")
+
+
 def clear_actress():
     '''清理多余的女优'''
     from core.database.query import get_null_actress

@@ -1,7 +1,7 @@
 
 #用于展示封面一半的图片+标题+番号
 
-from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout
 from PySide6.QtGui import QPainter,QColor,QPainterPath
 from PySide6.QtCore import Qt,Signal,Slot
 from config import WORKCOVER_PATH
@@ -10,6 +10,8 @@ import logging
 from ui.widgets.text.ClickableLabel import ClickableLabel
 from .CoverImage import CoverImage
 from utils.utils import replace_sensitive
+from ui.navigation.router import Router
+from darkeye_ui.components.label import Label
 
 
 class CoverCard(QWidget):
@@ -30,7 +32,7 @@ class CoverCard(QWidget):
         #logging.debug(f"卡片的绿色模式{green_mode}")
         self.image_label = CoverImage(self._path,self._work_id,standard,green_mode)
         
-        self.title_label = QLabel(title)
+        self.title_label = Label(title)
 
         if green_mode:#新创造的修改
             self.title_label.setText(replace_sensitive(title))
@@ -40,8 +42,6 @@ class CoverCard(QWidget):
                 font-size: 14px;           /* 字号 */
                 font-family: 'Microsoft YaHei';      /* 字体 */
                 font-weight: bold;         /* 粗体，可选 normal、bold、100-900 */
-                color: grey;
-                background-color: rgba(0, 0, 0, 0);
             }
         """)
         self.serial_number=serial_number
@@ -60,8 +60,6 @@ class CoverCard(QWidget):
                 font-size: 16px;           /* 字号 */
                 font-family: 'Microsoft YaHei';      /* 字体 */
                 font-weight: bold;         /* 粗体，可选 normal、bold、100-900 */
-                color: black;
-                background-color: rgba(0, 0, 0, 0);
             }
         """)
 
@@ -81,7 +79,8 @@ class CoverCard(QWidget):
 
     def signal_connect(self):
         '''信号转接'''
-        self.image_label.jump_to_modify_work.connect(lambda:global_signals.modify_work_clicked.emit(self.serial_number))
+        self.image_label.jump_to_modify_work.connect(lambda:Router.instance().push("work_edit", serial_number=self.serial_number))
+        
         from controller.GlobalSignalBus import global_signals
         global_signals.green_mode_changed.connect(self._update_green_mode)
         global_signals.work_data_changed.connect(self._update_card)
@@ -150,17 +149,20 @@ class CoverCard(QWidget):
         path.closeSubpath()
 
         painter.fillPath(path, QColor(self.background_color))  # 背景颜色
+        painter.end()  # 必须在 super() 之前结束，避免 QBackingStore::endPaint 报错
         super().paintEvent(event)
 
 
     @staticmethod
     def backgroundcolor_from_tagid(tag_id:int|None)->str:
+        #color_list=["#00d8f3","#79ec82","#fede2a"]
+        color_list=["#80B0F8","#ffa475","#ffeb28"]
         match tag_id:
             case 1:
-                return "#80B0F8"
+                return color_list[0]
             case 2:
-                return "#F88441"
+                return color_list[1]
             case 3:  
-                return "#FDEB48"
+                return color_list[2]
             case None:
                 return "#00000000"
