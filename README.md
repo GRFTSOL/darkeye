@@ -30,8 +30,21 @@
 - [ ] 插件化爬虫
 - [ ] 绿色模式
 
+拟物化的dvd
+![收藏](docs/assets/dvd.jpg)
+![展开](docs/assets/dvd2.jpg)
+![](docs/assets/actress.jpg)
 
-![收藏](docs/assets/dvd.PNG)
+图谱发现关系
+![力导向图](docs/assets/directforceview.jpg)
+分析研究数据
+![](docs/assets/chart.jpg)
+![](docs/assets/mutiwork.jpg)
+![编辑界面](docs/assets/edit.jpg)
+
+下面以javtxt为例展示爬虫插件，打开插件后，会与本地交互，可点击添加，自动启动爬虫爬取信息到本地，另外支持javlib与javdb，
+![](docs/assets/capture.JPG)
+
 
 
 # 快速开始
@@ -42,6 +55,15 @@ conda activate avlite
 pip install -r requirements.txt
 
 下载后请复制public基本数据包到resource/文件夹下面
+
+## 插件安装，在firefox中
+1. 打开临时加载界面
+在地址栏输入：about:debugging
+左边点 “This Firefox”（此 Firefox）
+
+在 “This Firefox” 页面中，点击 “Load Temporary Add-on…”（加载临时附加组件）
+在弹出的文件选择框里，选中extensions/firefox下的 manifest.json 文件
+确认后，插件会立即被加载，图标会出现在工具栏/扩展列表中
 
 ## 运行
 vscode解释器选择
