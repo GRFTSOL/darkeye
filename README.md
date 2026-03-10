@@ -1,9 +1,14 @@
-![Python](https://img.shields.io/badge/Python-3.14-blue.svg)
-![License](https://img.shields.io/github/license/de4321/darkeye)
+
 
 # DarkEye - 在暗黑界睁开一只眼
 一个使用PySide6 GUI开发，sqlite数据存储的暗黑影片数据存储与分析软件。
 
+![Python](https://img.shields.io/badge/Python-3.14-blue.svg)
+![License](https://img.shields.io/github/license/de4321/darkeye)
+![GitHub Repo stars](https://img.shields.io/github/stars/de4321/darkeye?style=social)
+![Platform](https://img.shields.io/badge/Platform-Windows)
+![GitHub release](https://img.shields.io/github/v/release/de4321/darkeye)
+![Downloads](https://img.shields.io/github/downloads/de4321/darkeye)
 
 # 开发方向
 1.0 基础工具的完善，包括力导向图探索影片之间的关系
@@ -56,7 +61,8 @@ pip install -r requirements.txt
 
 下载后请复制public基本数据包到resource/文件夹下面
 
-## 插件安装，在firefox中
+## 插件安装
+在firefox中
 1. 打开临时加载界面
 在地址栏输入：about:debugging
 左边点 “This Firefox”（此 Firefox）
