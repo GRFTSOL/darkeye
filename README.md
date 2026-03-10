@@ -6,9 +6,9 @@
 ![Python](https://img.shields.io/badge/Python-3.14-blue.svg)
 ![License](https://img.shields.io/github/license/de4321/darkeye)
 ![GitHub Repo stars](https://img.shields.io/github/stars/de4321/darkeye?style=social)
-![Platform](https://img.shields.io/badge/Platform-Windows)
-![GitHub release](https://img.shields.io/github/v/release/de4321/darkeye)
-![Downloads](https://img.shields.io/github/downloads/de4321/darkeye)
+![Platform](https://img.shields.io/badge/Platform-Windows-blue)
+
+
 
 # 开发方向
 1.0 基础工具的完善，包括力导向图探索影片之间的关系
