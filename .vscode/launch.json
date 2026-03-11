@@ -1,0 +1,45 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "正式环境启动主程序",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py"
+        },
+                {
+            "name": "开发环境启动主程序",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "args": [
+                "--env", "dev"
+            ]
+        },
+                        {
+            "name": "测试环境启动主程序",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+                        "args": [
+                "--env", "test"
+            ]
+        },
+                {
+            "name": "启动正式测试程序",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tests/test.py"
+        },
+                        {
+            "name": "启动快速测试程序",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/test3.py"
+        }
+
+    ]
+}
