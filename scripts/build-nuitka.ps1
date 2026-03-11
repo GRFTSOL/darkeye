@@ -26,9 +26,13 @@ $nuitkaArgs = @(
     "--standalone",
     "--show-progress",
     "--show-memory",
+    "--show-modules",
+    "--lto=yes",#开启lto优化
+    "--jobs=8",#开8个线程，不让电脑卡死
     # 打开控制台黑框便于调试
-    "--windows-console-mode=force",
+    #"--windows-console-mode=force",
     "--windows-icon-from-ico=resources/icons/logo.ico",
+
 
     # 对齐 main.spec 中的资源目录
     "--include-data-dir=resources/icons=resources/icons",
@@ -43,16 +47,13 @@ $nuitkaArgs = @(
     "--include-data-dir=core/dvd/icons=core/dvd/icons",
     "--include-data-file=core/dvd/dvd_scene.qml=core/dvd/dvd_scene.qml",
     "--include-data-file=core/dvd/Dvd.qml=core/dvd/Dvd.qml",
-    # C++ 绑定生成的扩展模块目录（仿照 main.spec 里的 collect_binding_dir）
-    #"--include-data-dir=cpp_bindings/forced_direct_view=cpp_bindings/forced_direct_view",
-    #"--include-data-dir=cpp_bindings/color_wheel=cpp_bindings/color_wheel",
-    "--include-data-files=cpp_bindings/forced_direct_view/*.pyd=cpp_bindings/forced_direct_view/",
+    # C++ 绑定：.pyd 由 Nuitka 作为扩展模块自动包含，再当 data 会冲突；只手动包含 .dll 依赖，这个.pyd好像对自动收集
     "--include-data-files=cpp_bindings/forced_direct_view/*.dll=cpp_bindings/forced_direct_view/",
-    "--include-data-files=cpp_bindings/color_wheel/*.pyd=cpp_bindings/color_wheel/",
     "--include-data-files=cpp_bindings/color_wheel/*.dll=cpp_bindings/color_wheel/",
 
     # 插件与压缩
     "--enable-plugin=pyside6",
+    "--include-qt-plugins=qml",#要用qml的时候一定要把这个加上
     # 如需使用 UPX，可取消下面两行注释并确保路径正确
     # "--enable-plugin=upx",
     # "--upx-binary=C:/upx-5.0.2-win64",
@@ -60,6 +61,7 @@ $nuitkaArgs = @(
     # 额外包含的模块/包（对应 main.spec 的 hiddenimports）
     "--include-module=sqlite3",
     "--include-module=matplotlib.backends.backend_agg",
+    "--include-module=matplotlib.backends.backend_qtagg",
     "--include-module=PySide6.QtCore",
     "--include-module=PySide6.QtGui",
     "--include-module=PySide6.QtWidgets",
@@ -73,12 +75,12 @@ $nuitkaArgs = @(
     # 这两个模块在当前环境中不可作为 Python 模块导入，先不强制包含
     # "--include-module=PyForceView",
     # "--include-module=PyColorWheel",
-    "--include-package=core",
-    "--include-package=ui",
-    "--include-package=controller",
+    #"--include-package=core",
+    #"--include-package=ui",
+    #"--include-package=controller",
 
     # 排除/不跟随导入（对应 main.spec 的 excludes）
-    "--nofollow-import-to=opencv",
+    "--nofollow-import-to=cv2",
     "--nofollow-import-to=PySide6.QtWebEngine",
     "--nofollow-import-to=PySide6.QtMultimedia",
     "--nofollow-import-to=PySide6.QtBluetooth",
@@ -151,7 +153,7 @@ $nuitkaArgs = @(
     "--nofollow-import-to=wheel",
     "--nofollow-import-to=virtualenv",
     "--nofollow-import-to=doctest",
-    "--nofollow-import-to=unittest",
+    #"--nofollow-import-to=unittest",#这个东西会用到，不能排除
     "--nofollow-import-to=pdb",
     "--nofollow-import-to=trace",
     "--nofollow-import-to=distutils",
@@ -164,11 +166,69 @@ $nuitkaArgs = @(
     "--nofollow-import-to=_osx_support",
     "--nofollow-import-to=ossaudiodev",
 
+    #不要移动的dll
+    "--noinclude-dlls=qt6web*.dll"
+    "--noinclude-dlls=qt6pdf*.dll",
+    "--noinclude-dlls=qt63d*.dll",
+    "--noinclude-dlls=qt6sensors*.dll",
+    "--noinclude-dlls=qt6quickcontrols2*.dll",
+    "--noinclude-dlls=qt6positioning*.dll",
+    "--noinclude-dlls=qt6multimedia*.dll",
+    "--noinclude-dlls=qt6location*.dll",
+    "--noinclude-dlls=qt6datavisualization*.dll",   
+    "--noinclude-dlls=qt6labs*.dll",   
+    "--noinclude-dlls=qt6remoteobjects*.dll",
+    "--noinclude-dlls=qt6virtualkeyboard*.dll",
+    "--noinclude-dlls=qt6chartsqml.dll",
+    "--noinclude-dlls=qt6quickdialogs2*.dll",
+    "--noinclude-dlls=qt6graphs.dll",
+    "--noinclude-dlls=qt6spatialaudio.dll",
+    "--noinclude-dlls=qt6statemachine*.dll",
+    "--noinclude-dlls=qt6texttospeech.dll",
+    "--noinclude-dlls=qt6test.dll",
+
+
+    #后面是输出的地址和文件名
     "--output-dir=dist",
     "--output-filename=DarkEye.exe"
 )
 
 nuitka @nuitkaArgs main.py
+
+
+
+#手动删除
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtMultimedia" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtGraphs" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtLocation" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtPositioning" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtSensors" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtTest" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtTextToSpeech" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtWebChannel" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtWebEngine" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtWebSockets" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtWebView" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtRemoteObjects" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtScxml" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtDataVisualization" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\Qt" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\Qt5Compat" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\Qt3D" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtCharts" -Recurse -Force -ErrorAction SilentlyContinue
+
+
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtQuick\Controls" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtQuick\VirtualKeyboard" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtQuick\NativeStyle" -Recurse -Force -ErrorAction SilentlyContinue
+
+Remove-Item ".\dist\DarkEye\_internal\PySide6\plugins\tls" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\plugins\styles" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\plugins\qmltooling" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\plugins\generic" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\plugins\networkinformation" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item ".\dist\DarkEye\_internal\PySide6\plugins\platforminputcontexts" -Recurse -Force -ErrorAction SilentlyContinue
+
 
 
 Write-Host "Build complete."
