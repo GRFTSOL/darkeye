@@ -123,6 +123,7 @@ Remove-Item -Path ".\dist\DarkEye\_internal\PySide6\plugins\platforms\qoffscreen
 
 
 Remove-Item ".\dist\DarkEye\_internal\cv2" -Recurse -Force -ErrorAction SilentlyContinue
+
 Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtMultimedia" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtGraphs" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtLocation" -Recurse -Force -ErrorAction SilentlyContinue
@@ -141,7 +142,6 @@ Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\Qt" -Recurse -Force -ErrorActi
 Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\Qt5Compat" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\Qt3D" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtCharts" -Recurse -Force -ErrorAction SilentlyContinue
-
 
 
 Remove-Item ".\dist\DarkEye\_internal\PySide6\qml\QtQuick\Controls" -Recurse -Force -ErrorAction SilentlyContinue
