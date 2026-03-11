@@ -110,3 +110,7 @@ compile_commands.json
 **/moc_*.h
 **/qrc_*.cpp
 
+#
+.cursor/
+.continue/
+

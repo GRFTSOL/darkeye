@@ -1,4 +1,4 @@
-# Python 3.14.x is required
+# Python 3.13.x is required
 #要开发的话下面三个版本和QtC++的版本要一致
 pyside6==6.10.1
 shiboken6==6.10.1
