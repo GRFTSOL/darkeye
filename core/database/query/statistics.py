@@ -329,7 +329,7 @@ def fetch_top_directors_by_scope(scope: int) -> list[tuple]:
                 director
             ORDER BY
                 num DESC
-            Limit 10
+            Limit 20
             '''
         case 1:
             query = f'''WITH {masturbationsql}
@@ -345,7 +345,7 @@ def fetch_top_directors_by_scope(scope: int) -> list[tuple]:
                 director
             ORDER BY
                 num DESC
-            Limit 10
+            Limit 20
             '''
         case 2:
             query = f'''WITH {masturbationsql}
@@ -361,7 +361,7 @@ def fetch_top_directors_by_scope(scope: int) -> list[tuple]:
                 director
             ORDER BY
                 num DESC
-            Limit 10
+            Limit 20
             '''
         case -1:
             query = '''
@@ -376,7 +376,7 @@ def fetch_top_directors_by_scope(scope: int) -> list[tuple]:
                 director
             ORDER BY
                 num DESC
-            Limit 10
+            Limit 20
             '''
     logging.debug(f"Executing SQL:\n{query}")
     with get_connection(DATABASE, True) as conn:
@@ -419,7 +419,7 @@ def fetch_top_studios_by_scope(scope: int) -> list[tuple]:
                 studio
             ORDER BY
                 num DESC
-            LIMIT 10
+            LIMIT 20
             '''
         case 1:
             query = f'''WITH {masturbationsql}
@@ -435,7 +435,7 @@ def fetch_top_studios_by_scope(scope: int) -> list[tuple]:
                 studio
             ORDER BY
                 num DESC
-            LIMIT 10
+            LIMIT 20
             '''
         case 2:
             query = f'''
@@ -453,7 +453,7 @@ GROUP BY
     studio
 ORDER BY
     num DESC
-LIMIT 10
+LIMIT 20
 '''
         case -1:
             query = '''
@@ -468,7 +468,7 @@ LIMIT 10
                 studio
             ORDER BY
                 num DESC
-            LIMIT 10
+            LIMIT 20
             '''
     logging.debug(f"Executing SQL:\n{query}")
     with get_connection(DATABASE, True) as conn:

@@ -252,7 +252,6 @@ def export_maker_prefix_json(json_path: str | Path) -> Path:
     JSON 结构示例（列表，每个元素是一个片商及其前缀列表）：
     [
       {
-        "maker_id": 1,
         "cn_name": "...",
         "jp_name": "...",
         "aliases": "...",
@@ -299,7 +298,6 @@ def export_maker_prefix_json(json_path: str | Path) -> Path:
         maker = makers.get(maker_id)
         if maker is None:
             maker = {
-                "maker_id": maker_id,
                 "cn_name": cn_name,
                 "jp_name": jp_name,
                 "aliases": aliases,
@@ -323,7 +321,7 @@ def export_maker_prefix_json(json_path: str | Path) -> Path:
 def import_maker_prefix_json(json_path: str | Path) -> None:
     """
     从 JSON 文件导入片商与前缀数据，覆盖当前的 maker / prefix_maker_relation。
-    期望的 JSON 结构与 export_maker_prefix_json 导出的格式一致。
+    期望的 JSON 结构与 export_maker_prefix_json 导出的格式一致（不包含 maker_id，由数据库自增生成）。
     """
     path = Path(json_path)
     if not path.exists():
@@ -349,7 +347,6 @@ def import_maker_prefix_json(json_path: str | Path) -> None:
                 if not isinstance(item, dict):
                     continue
 
-                maker_id = item.get("maker_id")
                 cn_name = item.get("cn_name")
                 jp_name = item.get("jp_name")
                 aliases = item.get("aliases")
@@ -357,25 +354,15 @@ def import_maker_prefix_json(json_path: str | Path) -> None:
                 logo_url = item.get("logo_url")
                 prefixes = item.get("prefixes") or []
 
-                if maker_id is None:
-                    # 不指定 maker_id，由 SQLite 自增
-                    cursor.execute(
-                        """
-                        INSERT INTO maker (cn_name, jp_name, aliases, detail, logo_url)
-                        VALUES (?, ?, ?, ?, ?)
-                        """,
-                        (cn_name, jp_name, aliases, detail, logo_url),
-                    )
-                    maker_id = cursor.lastrowid
-                else:
-                    # 显式带上 maker_id，保持与导出时一致
-                    cursor.execute(
-                        """
-                        INSERT INTO maker (maker_id, cn_name, jp_name, aliases, detail, logo_url)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                        """,
-                        (maker_id, cn_name, jp_name, aliases, detail, logo_url),
-                    )
+                # 始终由 SQLite 自增 maker_id，忽略 JSON 中可能存在的 maker_id
+                cursor.execute(
+                    """
+                    INSERT INTO maker (cn_name, jp_name, aliases, detail, logo_url)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (cn_name, jp_name, aliases, detail, logo_url),
+                )
+                maker_id = cursor.lastrowid
 
                 for prefix in prefixes:
                     if not prefix:
