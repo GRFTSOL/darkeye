@@ -33,7 +33,7 @@ def jump_to_javdb(serial_number):
         # 4. 发送请求
         send_crawler_request(web, serial_number)
         
-        # 5. 阻塞等待 (超时 60 秒)
+        # 5. 阻塞等待 (超时 20 秒)
         is_set = event.wait(timeout=20)
         
         if not is_set:

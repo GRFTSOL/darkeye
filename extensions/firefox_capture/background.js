@@ -243,11 +243,11 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {//è¿™ä
             console.log("DarkEye: ID sent to server", data);
             // Close the tab after successful send
 
-            //if (sender.tab && sender.tab.id) {
-            //    setTimeout(() => {
-            //        browser.tabs.remove(sender.tab.id);
-            //    }, 5000);
-            //}
+            if (sender.tab && sender.tab.id) {
+                setTimeout(() => {
+                    browser.tabs.remove(sender.tab.id);
+                }, 10000);
+            }
         })
         .catch(error => {
             console.error("DarkEye: Failed to send data", error);

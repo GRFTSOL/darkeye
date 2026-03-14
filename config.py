@@ -85,6 +85,7 @@ QSS_PATH=get_PATH("Paths/QSS","styles/")#qss文件的位置
 MESHES_PATH=get_PATH("Paths/Meshes","resources/meshes/")#DVD 模型 mesh 文件目录
 MAPS_PATH=get_PATH("Paths/Maps","resources/maps/")#DVD 贴图目录
 HDR_PATH=get_PATH("Paths/Hdr","resources/hdr/")#HDR 环境图目录
+AVWIKI_PATH=get_PATH("Paths/AvWiki","resources/avwiki/")#AV 知识库 md 根目录
 
 def get_video_path()->list[Path]:
     '''获得视频地址，这个是用户自己填的绝对路径,可以有多个
