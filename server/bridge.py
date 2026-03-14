@@ -12,6 +12,8 @@ class ServerBridge(QObject):
     captureone_received = Signal(str)
     javlib_finished = Signal(dict)
     fanza_finished=Signal(dict)
+    javdb_finished=Signal(dict)
+    
     _instance = None
 
     def __new__(cls):

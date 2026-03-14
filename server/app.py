@@ -221,7 +221,7 @@ async def receive_crawler_result(data: Dict[str, Any]):
             #logging.info(f"收到的javlib数据为{data.get('data',{})}")
             bridge.javlib_finished.emit(data.get('data',{}))
         elif web == 'javdb':
-            pass
+            bridge.javdb_finished.emit(data.get('data', {}))
         elif web == 'fanza':
             pass
         else:

@@ -43,7 +43,7 @@
                 url: link ? link.href : ""
             };
         });
-        const filtered = results.filter(item => !item.title.includes("ブルーレイディスク"));
+        const filtered = results.filter(item => !item.title.includes("ブルーレイディスク"));//这个是过滤掉蓝光碟的
         let targetUrl = null;
         if (filtered.length > 0) {
             targetUrl = filtered[0].url;

@@ -141,7 +141,7 @@ class CrawlerManager2(QObject):
     def _execute_crawl(self, serial_number,withGUI=False):
         """真正发起爬虫请求（原start_crawl逻辑）"""
         # 创建任务状态
-        task = CrawlerTask(serial_number, ["javlib","javtxt","avdanyuwiki"],withGUI)
+        task = CrawlerTask(serial_number, ["javlib","javtxt","avdanyuwiki","javdb"],withGUI)
         self.tasks[serial_number]= task
         #目前这里开3个线程
 
@@ -174,7 +174,13 @@ class CrawlerManager2(QObject):
         elif source == "fanza":
             pass
         elif source == "javdb":
-            pass
+            from core.crawler.javdb import jump_to_javdb
+            worker=Worker(lambda:jump_to_javdb(serial))
+            relay = ResultRelay(self, "javdb", serial)
+            self._relays[("javdb", serial)] = relay
+            worker.signals.finished.connect(relay.handle, Qt.ConnectionType.QueuedConnection)
+            QThreadPool.globalInstance().start(worker)
+            print(f"已发送javdb请求，serial:{serial}")
         elif source == "javtxt":
             from core.crawler.javtxt import fetch_javtxt_movie_info
             worker=Worker(lambda:fetch_javtxt_movie_info(serial))
@@ -253,15 +259,21 @@ class CrawlerManager2(QObject):
         javtxt_result = results.get("javtxt") or {}
         avdanyuwiki_result = results.get("avdanyuwiki") or {}
         fanza_result = results.get("fanza") or {}
+        javdb_result = results.get("javdb") or {}
 
-        release_date=javlib_result.get("release_date", avdanyuwiki_result.get("release_date", ""))
+        #合并日期，优先级javlib,avdanyuwiki,javdb
+        release_date=javlib_result.get("release_date", avdanyuwiki_result.get("release_date", javdb_result.get("release_date", "")))
 
-        director=avdanyuwiki_result.get("director", javlib_result.get("director", ""))
+        #合并导演，优先级avdanyuwiki,javlib,javdb
+        director=avdanyuwiki_result.get("director", javlib_result.get("director", javdb_result.get("director", "")))
 
-        video_length=javlib_result.get("length", avdanyuwiki_result.get("length", ""))
-        actress_list=avdanyuwiki_result.get("actress_list") or javlib_result.get("actress") or []
+        #合并视频长度，优先级javlib,avdanyuwiki,javdb
+        video_length=javlib_result.get("length", avdanyuwiki_result.get("length", javdb_result.get("length", "")))
 
-        # 封面的优先级是javlib,avdanyuwiki,missav
+        #合并女优，优先级avdanyuwiki,javlib,javdb
+        actress_list=avdanyuwiki_result.get("actress_list") or javlib_result.get("actress") or javdb_result.get("actress") or []
+
+        # 封面的优先级是javlib,avdanyuwiki,missav,不要javdb的封面有水印
         def _urls(x):
             if x is None: return []
             return [x] if isinstance(x, str) else (x if isinstance(x, list) else [])
@@ -270,11 +282,13 @@ class CrawlerManager2(QObject):
         if avdanurl:
             cover_list.append(avdanurl)
         serial_number = self.tasks[serial].serial.lower()
-        cover_list.append("https://fourhoi.com/" + serial_number + "/cover-n.jpg")
+        cover_list.append("https://fourhoi.com/" + serial_number + "/cover-n.jpg")#missav的封面的规律
 
+        #合并标签，优先级avdanyuwiki,javlib,javdb
         tag_list = avdanyuwiki_result.get("tag_list") or []
         genre_jav = javlib_result.get("genre") or []
-        genre_raw = (tag_list if isinstance(tag_list, list) else []) + (genre_jav if isinstance(genre_jav, list) else [])
+        genre_javdb = javdb_result.get("genre") or []
+        genre_raw = (tag_list if isinstance(tag_list, list) else []) + (genre_jav if isinstance(genre_jav, list) else []) + (genre_javdb if isinstance(genre_javdb, list) else [])
         genre_list = list(set(str(g) for g in genre_raw if g is not None))
 
         jp_title=javlib_result.get("title", javtxt_result.get("jp_title", ""))  
