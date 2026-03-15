@@ -57,9 +57,10 @@ https://de4321.github.io/darkeye-webpage/
 
 # 快速开始
 ## 下载
-[![下载 Windows 版本](https://img.shields.io/badge/⬇️%20下载-Windows%20(.exe)-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.1.1/DarkEye.7z)
+[![下载 Windows 版本](https://img.shields.io/badge/%20下载-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.1.1/DarkEye.7z)
 下载程序，解压,打开exe即可使用
-[![下载FireFox插件](https://img.shields.io/badge/⬇️%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.1/firefox_capture.7z)
+
+[![下载FireFox插件](https://img.shields.io/badge/%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.1/firefox_capture.7z),按照下面的插件安装，否则爬虫收集功能将不可用。
 
 ## 插件安装
 在firefox中
@@ -72,7 +73,7 @@ https://de4321.github.io/darkeye-webpage/
 确认后，插件会立即被加载，图标会出现在工具栏/扩展列表中
 
 ## 使用
-装好浏览器插件，启动软件，然后上javdb,点击收录开始采集
+装好浏览器插件，启动软件，然后上javdb或者javlibrary或者javtxt,点击收录开始采集
 
 如果本地有片，可以在设置->视频里添加片的位置，然后在管理->批量操作->查找本地视频并录入添加，爬虫会慢慢启动爬取。速度很慢设置了20s一次。
 
