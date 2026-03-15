@@ -30,10 +30,10 @@ https://de4321.github.io/darkeye-webpage/
 - [x] firefox爬虫插件，沉浸式摘取信息，支持javtxt,javlib,javdb
 - [x] 力导向图，查看关联
 - [x] 搜索本地视频，进入爬虫列表
-- [ ] graph系统的更改
-- [ ] 备份系统，按私库重建喜欢的番号
-- [ ] 科普知识
-- [ ] 插件化网页跳转
+- [ ] graph系统的更改，关联算法
+- [x] 备份系统，按私库重建喜欢的番号
+- [x] 科普知识
+- [x] json驱动外链跳转
 - [ ] 插件化爬虫
 - [ ] 绿色模式
 
@@ -55,13 +55,8 @@ https://de4321.github.io/darkeye-webpage/
 
 
 # 快速开始
-#使用下面创建虚拟环境
-conda create -n avlite python=3.14
-conda activate avlite
-
-pip install -r requirements.txt
-
-下载后请复制public基本数据包到resource/文件夹下面
+## 下载
+下载程序，解压,打开exe即可使用
 
 ## 插件安装
 在firefox中
@@ -73,6 +68,24 @@ pip install -r requirements.txt
 在弹出的文件选择框里，选中extensions/firefox下的 manifest.json 文件
 确认后，插件会立即被加载，图标会出现在工具栏/扩展列表中
 
+## 使用
+装好浏览器插件，启动软件，然后上javdb,点击收录开始采集
+
+如果本地有片，可以在设置->视频里添加片的位置，然后在管理->批量操作->查找本地视频并录入添加，爬虫会慢慢启动爬取。速度很慢设置了20s一次。
+
+快捷键w手动添加番号
+
+# 开发
+
+```
+conda create -n venv python=3.13
+conda activate venv
+pip install -e ".[docs]"
+```
+
+下载后请复制public基本数据包到resource/文件夹下面
+
+
 ## 运行
 vscode解释器选择
 Ctrl + Shift + P
@@ -80,22 +93,18 @@ Ctrl + Shift + P
 ```
 Python: Select Interpreter
 ```
-avlite
+venv
 python main.py
 
+或者直接按F5
 
-# 使用
-装好浏览器插件，启动软件，然后上javdb,点击收录开始采集
-
-如果本地有片，可以在设置->视频里添加片的位置，然后在管理->批量操作->查找本地视频并录入添加，爬虫会慢慢启动爬取。速度很慢设置了20s一次。
-
-快捷键w手动添加番号
-
-
-
-# 打包发布
+## 打包发布
 在powershell里，刚刚创建的conda 虚拟环境中，运行build-pyinstaller.ps1
 打包后的结构，一个绿色的可移动的文件夹，运行main.exe就能运行，这个pyinstaller是高度精简后的，如果要多加库，需要改里面的文件
+
+
+
+
 
 
 # 文档的构建
