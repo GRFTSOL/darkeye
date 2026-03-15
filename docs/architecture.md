@@ -1,241 +1,200 @@
-# 图模块架构 (core/graph)
+# DarkEye 项目架构说明
 
-本文档描述关系图（ForceView）的整体架构，包括图数据生成、过滤系统、绘制系统与业务逻辑。
-
----
-
-## 1. 整体数据流
-
-```
-数据库 (actress / work / work_actress_relation / work story)
-        ↓
-graph.py（图数据生成）
-        ↓
-GraphManager（单例，维护总图 G）
-        ↓ graph_diff_signal（增量变更时）
-GraphViewSession（过滤层，维护子图 sub_G）
-        ↓ data_ready（全量） / diff_changed（增量）
-ForceDirectedViewWidget（编排层）
-        ↓ setGraph / apply_diff_runtime
-ForceViewOpenGL（C++ 力导向绘制）
-        ↓ 节点点击 / 悬停
-Router 跳转、ImageOverlayWidget 封面/头像
-```
+> 基于代码与现有文档整理，描述整体分层、模块职责与关键数据流。
 
 ---
 
-## 2. 分层职责
+## 一、项目概述
 
-### 2.1 图数据生成 (`graph.py`)
+**DarkEye（暗眼）** 是一款 PC 端本地化、隐私导向的暗黑影片元数据管理与分析软件。技术要点：
 
-| 函数 | 说明 |
-|------|------|
-| `generate_graph()` | **主入口**。从数据库拉取女优、作品、参演关系，构造 NetworkX 无向图。节点：`a{actress_id}`（女优）、`w{work_id}`（作品）；边：参演关系。 |
-| `generate_random_graph()` | 测试用，泊松分布随机图。 |
-| `generate_similar_graph()` | 基于标签余弦相似度构建作品相似图（当前未接入 GraphManager 主流程）。 |
+- **GUI**：PySide6 (Qt6) + Qt Quick 3D（拟物 DVD 等）
+- **存储**：SQLite 双库（公共库 public.db + 私有库 private.db）
+- **采集**：Firefox 插件 + 本地 FastAPI 接口 + 多源爬虫
+- **关系发现**：力导向图（C++ 加速，Shiboken6 绑定）
 
-节点属性示例：`label`（名称/番号）、`group`（`"actress"` / `"work"`）。边可带 `type`（如 `"reference"` 表示 story 引用）。
-
-### 2.2 总图管理 (`graph_manager.py`)
-
-- **单例**：`GraphManager.instance()`，全局唯一。
-- **职责**：
-  - 后台线程初始化：调用 `generate_graph()` 得到基图，再通过 `_augment_with_story_relations()` 解析作品简介中的 `[[]]` 引用，添加 `type='reference'` 的边。
-  - 维护总图 `G`，对外只读接口 `get_graph()`。
-  - 监听 `work_data_changed`（GlobalSignalBus），对最近变更的作品做增量更新（节点/边的增删），并发出 **`graph_diff_signal`**，payload 为操作列表：`add_node` / `del_node` / `add_edge` / `remove_edge` 等。
-- **信号**：`graph_diff_signal`、`initialization_finished`。
-
-### 2.3 过滤系统 (`graph_filter.py`)
-
-| 类 | 说明 |
-|----|------|
-| `GraphFilter` | 抽象基类，定义 `filter_node(graph, node_id)` 与 `filter_edge(graph, u, v)`。 |
-| `EmptyFilter` | 全部过滤掉。 |
-| `PassThroughFilter` | 全部保留（默认）。 |
-| `EgoFilter` | 以指定节点为中心、给定半径内的 ego 子图，用于「片关系图」等场景。 |
-
-扩展新视图时，可实现新的 `GraphFilter` 子类。
-
-### 2.4 会话/业务层 (`graph_session.py`)
-
-- **GraphViewSession**：每个视图一个实例，介于 GraphManager 与 UI 之间。
-- **职责**：
-  - 持有当前 `GraphFilter`，从 GraphManager 取总图 `G`，经 `apply_filter(G)` 得到子图 `sub_G`。
-  - **全量加载**：`new_load()` → 计算 sub_G → 发出 `data_ready`，payload 含 `{"cmd": "load_graph", "graph": sub_G, "modify": False}`。
-  - **增量更新**：订阅 `graph_diff_signal`，在 `_on_global_diff` 中按当前 filter 重算 sub_G，与旧 sub_G 做 diff，发出 **`diff_changed`**（仅会话内可见的增量操作列表）。
-  - **EgoFilter 深度切换**：`fast_calc_diff(new_deepth)` 只计算半径变化带来的节点/边差异，避免整图重算，然后发出 `diff_changed`。
-- **信号**：`data_ready`、`diff_changed`。
-
-### 2.5 绘制与编排 (`ForceDirectedViewWidget.py`)
-
-- **组合**：内嵌 `ForceViewOpenGL`（C++）、`GraphViewSession`、`ForceViewSettingsPanel`、`ImageOverlayWidget`、设置按钮等。
-- **职责**：
-  - 连接 Session 的 `data_ready` / `diff_changed` 到 `_on_graph_data_ready` / `_on_graph_diff_changed`。
-  - 将 `nx.Graph` 转为 C++ 所需格式（节点数、边索引、位置、id、label、半径、颜色），调用 `view.setGraph(...)` 或 `view.apply_diff_runtime(ops)`。
-  - 节点颜色：按 `group` / 节点 id 前缀（`a`/`w`）及是否为中心节点（EgoFilter）计算，中心节点可高亮（如金色）。
-  - 节点点击：根据 id 前缀 `a`/`w` 调用 `Router.instance().push("single_actress", ...)` 或 `push("work", ...)`。
-  - 图模式切换（`_switch_graph`）：`all`（PassThroughFilter）、`favorite`（EgoFilter，需传入 center_id）、`test`（随机图，不经过 GraphManager）。
-  - 控制图片叠加层开关、悬停时通过 `nodeHoveredWithInfo` 驱动 `ImageOverlayWidget` 显示封面/头像。
-
-### 2.6 OpenGL 视图 (C++ `ForceViewOpenGL`)
-
-- 位置：`cpp_bindings/forced_direct_view/`，Python 通过 `PyForceView` 绑定调用。
-- **职责**：力导向仿真、节点/边渲染、拖拽、缩放、平移；`setGraph` 全量设置图，`add_node_runtime` / `remove_node_runtime` / `add_edge_runtime` / `remove_edge_runtime` 及 `apply_diff_runtime` 支持增量更新。
-- **信号**：如 `nodeLeftClicked(str)`、`nodeHoveredWithInfo(str, float, float, float, float, bool)`、`scaleChanged`、`fpsUpdated` 等，供上层连接。
-
-### 2.7 设置面板 (`ForceViewSettingsPanel.py`)
-
-- 纯 UI + 信号：物理参数（斥力、向心力、链接强度/距离）、显示参数（半径系数、连线宽度、文字阈值、箭头、图邻居深度）、模拟控制（暂停/恢复/重启、适应内容）、图类型单选、测试用加减点/边。
-- 不直接依赖 GraphManager/Session，由父控件 `ForceDirectedViewWidget` 将信号连接到 View 与 Session。
-
-### 2.8 辅助模块
-
-| 文件 | 说明 |
-|------|------|
-| `text_parser.py` | `parse_wikilinks(text)` 解析 `[[target]]` / `[[target\|alias]]`，供 GraphManager 从 story 中抽取作品引用。 |
-| `async_image_loader.py` | 异步加载女优头像、作品封面，带缓存；`ImageOverlayWidget` 根据节点 id（`a*`/`w*`）取图并显示。 |
+详见 [README](../README.md)、[PRD](PRD.md)。
 
 ---
 
-## 3. 结构示意
+## 二、技术栈概览
+
+| 类别     | 技术 |
+|----------|------|
+| 语言     | Python 3.13、C++17（力导向图）、JavaScript（浏览器插件） |
+| GUI      | PySide6 6.10、Qt Quick 3D、OpenGL |
+| 数据库   | SQLite（WAL、外键）、双库分离 |
+| 本地 API | FastAPI、Uvicorn、Pydantic |
+| 爬虫/解析 | asyncio、Worker 线程池、BS4、requests |
+| 图/可视化 | NetworkX、C++ ForceView（Shiboken6）、matplotlib |
+| 打包     | PyInstaller / Nuitka |
+| 文档     | MkDocs、MkDocs Material |
+
+---
+
+## 三、整体架构分层
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│ForceDirectedViewWidget                                              │
-│   ├── ForceViewOpenGL (C++)            ← 力导向绘制、交互             │
-│   ├── ForceViewSettingsPanel           ← 物理/显示/图模式/调试        │
-│   ├── ImageOverlayWidget               ← 节点悬停显示封面/头像        │
-│   └── GraphViewSession                 ← 过滤 + 子图 + 增量 diff     │
-│       ├── GraphFilter (PassThrough / Ego / ...)                     │
-│       └── GraphManager.instance()    ← 总图 G + graph_diff_signal    │
-│           └── graph.generate_graph() + story [[]] 增强               │
-└──────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│  入口：main.py                                                           │
+│  （日志、性能分析、Qt/OpenGL 设置、数据库初始化、样式、主窗口、延迟启动 API）  │
+└─────────────────────────────────────────────────────────────────────────┘
+                                      │
+        ┌─────────────────────────────┼─────────────────────────────┐
+        ▼                             ▼                             ▼
+┌───────────────┐           ┌───────────────────┐           ┌───────────────┐
+│ config.py     │           │ app_context.py    │           │ 资源路径       │
+│ 路径/版本/    │           │ ThemeManager 单例 │           │ settings.ini  │
+│ settings.ini  │           │ 全局注入          │           │ resources/    │
+└───────────────┘           └───────────────────┘           └───────────────┘
+        │                             │
+        └─────────────────────────────┼─────────────────────────────────────┐
+                                      ▼                                     │
+┌─────────────────────────────────────────────────────────────────────────┐
+│  UI 层：ui/                                                              │
+│  MainWindow → Sidebar2 + QStackedWidget → Router（懒加载页面工厂）         │
+│  pages/（HomePage, WorkPage, ActressPage, ForceDirectPage, ShelfPage…）   │
+│  widgets/, basic/, dialogs/, navigation/, statistics/                     │
+└─────────────────────────────────────────────────────────────────────────┘
+        │
+        │ 依赖
+        ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  设计系统与组件库：darkeye_ui/                                            │
+│  ThemeManager / tokens / 主题切换；Button、ToggleSwitch、FlowLayout 等     │
+└─────────────────────────────────────────────────────────────────────────┘
+        │
+        │ 依赖
+        ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  控制器层：controller/                                                    │
+│  ShortcutRegistry、ShortcutBindings；GlobalSignalBus（数据变更信号）       │
+└─────────────────────────────────────────────────────────────────────────┘
+        │
+        │ 依赖
+        ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  核心层：core/                                                           │
+│  database/（连接、init、migrations、query、insert、update、delete、备份） │
+│  graph/（GraphManager、力导向视图、过滤、异步图数据加载）                   │
+│  crawler/（CrawlerManager、Worker、多源爬虫、结果合并）                    │
+│  dvd/（Qt Quick 3D 拟物 DVD）                                             │
+│  recommendation/、utils/、schema/                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+        │
+        │ 可选 C++ 加速
+        ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  C++ 绑定：cpp_bindings/                                                 │
+│  forced_direct_view：力导向物理仿真 + 渲染（PyForceView）                  │
+│  color_wheel：取色等                                                      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  服务层：server/                                                          │
+│  FastAPI app（后台线程）←→ ServerBridge（Qt 信号）←→ 主线程 GUI            │
+│  供 Firefox 插件、本地前端调用                                            │
+└─────────────────────────────────────────────────────────────────────────┘
+        ▲
+        │ HTTP
+        │
+┌─────────────────────────────────────────────────────────────────────────┐
+│  扩展：extensions/firefox_capture/                                        │
+│  WebExtension：popup、content scripts、background；站点脚本 javdb/javlib 等 │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. 核心设计点
+## 四、模块说明
 
-- **单例总图**：所有数据以 GraphManager 的 `G` 为唯一真相源，视图仅通过 filter 得到子图，避免多份图数据不一致。
-- **增量优先**：数据变更时发 diff 列表，Session 裁剪后转发，View 用 `apply_diff_runtime` 更新，减少全图重算与闪烁。
-- **过滤可插拔**：通过替换 `GraphFilter` 实现不同视图（全图、ego、后续可扩展按标签/时间等）。
-- **线程安全**：GraphManager 初始化在后台线程，信号连接通过 `_connect_signals_requested` 投递到主线程，避免跨线程创建 Qt 对象。
+### 4.1 入口与启动（main.py）
 
----
+- 设置 `QSG_RHI_BACKEND=opengl`、Qt 属性、OpenGL SurfaceFormat。
+- 初始化日志（`core.utils.log_config`）、性能分析（`core.utils.profiler`）。
+- 可选首次启动协议（TermsDialog）。
+- **数据库**：`init_private_db` → `check_and_upgrade_private_db` → `check_and_upgrade_public_db` → `init_database`（见 [SCHEMA](SCHEMA.md)）。
+- **图**：`GraphManager.instance().initialize()` 异步建图。
+- **样式**：`load_app_stylesheet(app)` 注册 `ThemeManager` 到 `app_context`。
+- 创建并显示 `MainWindow`；`QTimer.singleShot(0, start_server)` 延迟启动 API，避免阻塞首帧。
 
-## 5. 与项目其他部分的关系
+### 4.2 配置与上下文
 
-- **启动**：`main.py` 中调用 `GraphManager.instance().initialize()`，后台建图；首屏不一定打开关系图页，由 Router 懒加载 `ForceDirectPage`。
-- **数据变更**：作品/女优的增删改通过 `GlobalSignalBus.work_data_changed` 通知，GraphManager 的 `update_recent_changes` 据此更新图并发 `graph_diff_signal`。
-- **路由**：节点点击由 `ForceDirectedViewWidget._on_node_clicked` 调用 `Router.instance().push("work", ...)` / `push("single_actress", ...)`，与主导航一致。
+- **config.py**：`resource_path` 兼容打包；从 `settings.ini` 读取路径（数据库、公/私库备份、女优/男优/封面图、SQL、敏感词、快捷键、爬虫导航按钮等）；`REQUIRED_PUBLIC_DB_VERSION` / `REQUIRED_PRIVATE_DB_VERSION` 用于迁移。
+- **app_context.py**：全局 `ThemeManager` 的 get/set，供各页面与 darkeye_ui 组件使用。
 
----
+### 4.3 核心层（core/）
 
-## 6. 文件清单 (core/graph)
+| 子模块 | 职责 |
+|--------|------|
+| **database/** | `connection.get_connection()` 统一 SQLite 连接（WAL、外键）；`init` 建库；`migrations` 版本检测与升级、重建私有库链接、maker 前缀导入导出；`query/` 按领域拆分（work、actress、actor、tag、statistics、dashboard、private）；`insert`/`update`/`delete` 写操作，并在完成后由调用方 emit `GlobalSignalBus` 对应信号（见 [write_ops_signal_mapping](write_ops_signal_mapping.md)）；`backup_utils` 备份/还原与资源快照；`db_utils` 附件私有库、图片一致性、清理临时文件等。 |
+| **graph/** | `GraphManager` 单例维护总图 G，基于元数据/标签等生成节点与边；发出 `graph_diff_signal`、`initialization_finished`；`ForceDirectedViewWidget` 等与 C++ `PyForceView` 或 Python 实现对接；`graph_filter`、`async_image_loader`、`text_parser`（wikilink 等）支撑图展示与筛选。 |
+| **crawler/** | `CrawlerManager`（含 CrawlerManager2）单例：任务队列、定时调度、多源（javlib、javdb、javtxt、fanza、avdanyuwiki 等）；`Worker` 执行单次爬取；结果经 `ResultRelay`/`MergeRelay` 回主线程；与 `server.bridge.captureone_received` 连接，实现「插件推送番号 → 自动开始爬取」。 |
+| **dvd/** | Qt Quick 3D 拟物 DVD 展示（QML、DvdShelfView 等）。 |
+| **recommendation/** | 推荐逻辑（如随机推荐、养生模式，见 PRD）。 |
+| **utils/** | 日志、性能分析、通用工具。 |
+| **schema/** | 爬虫结果等数据结构（如 Pydantic/CrawledWorkData）。 |
 
-| 文件 | 职责概要 |
-|------|----------|
-| `graph.py` | 图数据生成（DB → NetworkX）。 |
-| `graph_manager.py` | 总图单例、初始化、story 增强、增量更新与信号。 |
-| `graph_filter.py` | 过滤器抽象及 Empty / PassThrough / Ego 实现。 |
-| `graph_session.py` | 视图会话、过滤、全量/增量 diff 与信号。 |
-| `ForceDirectedViewWidget.py` | 图页主控件，编排 Session / View / Panel / Overlay。 |
-| `ForceViewSettingsPanel.py` | 力导向图设置面板 UI 与信号。 |
-| `text_parser.py` | 解析 story 中 `[[]]` 引用。 |
-| `async_image_loader.py` | 异步图片加载与缓存。 |
+### 4.4 UI 层（ui/）
 
-关系图页面入口：`ui/pages/ForceDirectPage.py`（懒加载并创建 `ForceDirectedViewWidget`）。  
-C++ 力导向实现：`cpp_bindings/forced_direct_view/`（参见项目内该目录及 `docs/force-graph-render-sim.md` 等）。
+- **main_window.py**：`QMainWindow`，侧边栏 `Sidebar2` + `QStackedWidget`，`Router` 注册路由与懒加载工厂，菜单与路由映射；快捷键通过 `ShortcutRegistry`/`setup_mainwindow_actions` 绑定；`server.bridge.capture_received` 处理插件抓取数据；延后初始化 `CrawlerManager`。
+- **navigation/router.py**：`Router` 单例，`register(route_name, factory, menu_id)`，`push`/`back` 维护历史栈并切换 stack 页面；`_get_page_instance` 懒加载页面。
+- **pages/**：各功能页（HomePage、WorkPage、ActressPage、ActorPage、ForceDirectPage、ShelfPage、SettingPage、ManagementPage、StatisticsPage、AvPage 等），以及单条详情/编辑（SingleWorkPage、SingleActressPage、ModifyActressPage 等）。
+- **widgets/**、**basic/**、**dialogs/**：可复用控件与对话框。
+- **darkeye_ui/**：独立设计系统与组件库（主题、Token、Button、ToggleSwitch、FlowLayout、WaterfallLayout 等），被主 UI 与设置页主题切换使用。
 
----
+### 4.5 控制器层（controller/）
 
-## 7. 验收标准
+- **ShortcutRegistry / ShortcutBindings**：统一注册与绑定主窗口及全局快捷键。
+- **GlobalSignalBus**：全局 Qt 信号（`work_data_changed`、`actress_data_changed`、`tag_data_changed`、撸管/做爱/晨勃/喜欢作品/喜欢女优、`status_msg_changed`、`gui_update` 等），用于写操作后刷新列表/选择器/图等（见 write_ops_signal_mapping）。
 
-以下验收标准与第 2～6 节架构与功能一一对应，用于确认图模块行为正确、可交付。
+### 4.6 服务层（server/）
 
-### 7.1 图数据生成 (graph.py)
+- **launcher.py**：在后台线程启动 Uvicorn 运行 FastAPI，不阻塞主线程。
+- **bridge.py**：`ServerBridge` 单例（主线程创建），信号如 `capture_received`、`captureone_received`、`javlib_finished` 等；FastAPI 路由通过 `bridge.xxx.emit()` 与 Qt 主线程通信（必要时使用 `QueuedConnection`）。
+- **app**：FastAPI 应用，提供浏览器插件与本地调用的 HTTP API（如接收番号、抓取结果等）。
 
-| 编号 | 验收项 | 通过标准 |
-|------|--------|----------|
-| G1 | 主入口图生成 | `generate_graph()` 从数据库正确拉取女优、作品、参演关系，生成 NetworkX 无向图；节点 id 为 `a{actress_id}` / `w{work_id}`，边表示参演关系。 |
-| G2 | 节点属性 | 节点具备 `label`（名称/番号）、`group`（`"actress"` / `"work"`）。 |
-| G3 | 随机图 | `generate_random_graph()` 可生成泊松分布随机图，用于测试/调试。 |
-| G4 | 相似图 | `generate_similar_graph()` 能基于标签余弦相似度构建作品相似图（可不接入主流程）。 |
+### 4.7 扩展（extensions/firefox_capture）
 
-### 7.2 总图管理 (graph_manager.py)
+- Firefox WebExtension：manifest、popup、content scripts、background。
+- 站点脚本适配 javdb、javlibrary、fanza、minnano 等；与本地 `server` API 通信，推送番号或抓取数据。
 
-| 编号 | 验收项 | 通过标准 |
-|------|--------|----------|
-| M1 | 单例 | `GraphManager.instance()` 全局唯一，多次调用返回同一实例。 |
-| M2 | 后台初始化 | 初始化在后台线程执行，调用 `generate_graph()` 并完成 story 增强，不阻塞主线程。 |
-| M3 | Story 增强 | `_augment_with_story_relations()` 正确解析作品简介中的 `[[]]` 引用，添加 `type='reference'` 的边。 |
-| M4 | 只读总图 | `get_graph()` 返回当前总图 G，外部无法直接修改。 |
-| M5 | 增量更新 | 监听 `GlobalSignalBus.work_data_changed`，对最近变更的作品做节点/边增删，并发出 `graph_diff_signal`，payload 为 `add_node` / `del_node` / `add_edge` / `remove_edge` 等操作列表。 |
-| M6 | 信号 | 初始化完成后发出 `initialization_finished`；增量变更时发出 `graph_diff_signal`。 |
-| M7 | 线程安全 | 信号连接等需在主线程执行的操作通过 `_connect_signals_requested` 等机制投递到主线程，无跨线程创建 Qt 对象。 |
+### 4.8 C++ 绑定（cpp_bindings/）
 
-### 7.3 过滤系统 (graph_filter.py)
-
-| 编号 | 验收项 | 通过标准 |
-|------|--------|----------|
-| F1 | 抽象接口 | `GraphFilter` 定义 `filter_node(graph, node_id)` 与 `filter_edge(graph, u, v)`，子类可实现具体逻辑。 |
-| F2 | EmptyFilter | 过滤后子图为空（无节点、无边）。 |
-| F3 | PassThroughFilter | 过滤后子图与输入图一致（全部保留）。 |
-| F4 | EgoFilter | 以指定节点为中心、给定半径内的 ego 子图正确；半径变化时节点/边集合随之变化。 |
-
-### 7.4 会话层 (graph_session.py)
-
-| 编号 | 验收项 | 通过标准 |
-|------|--------|----------|
-| S1 | 过滤子图 | 从 GraphManager 取总图 G，经当前 `GraphFilter` 得到 sub_G，与架构一致。 |
-| S2 | 全量加载 | `new_load()` 计算 sub_G 后发出 `data_ready`，payload 含 `{"cmd": "load_graph", "graph": sub_G, "modify": False}`。 |
-| S3 | 增量转发 | 订阅 `graph_diff_signal`，按当前 filter 重算 sub_G 并做 diff，仅对会话内可见的变更发出 `diff_changed`。 |
-| S4 | Ego 深度切换 | `fast_calc_diff(new_depth)` 仅根据半径变化计算节点/边差异并发出 `diff_changed`，不触发整图重算。 |
-
-### 7.5 绘制与编排 (ForceDirectedViewWidget)
-
-| 编号 | 验收项 | 通过标准 |
-|------|--------|----------|
-| V1 | 信号连接 | Session 的 `data_ready` / `diff_changed` 正确连接到 `_on_graph_data_ready` / `_on_graph_diff_changed`。 |
-| V2 | 数据转换 | 将 `nx.Graph` 转为 C++ 所需格式（节点数、边索引、位置、id、label、半径、颜色），能正确调用 `view.setGraph(...)` 与 `view.apply_diff_runtime(ops)`。 |
-| V3 | 节点颜色 | 按 `group`、节点 id 前缀（`a`/`w`）及是否为中心节点（EgoFilter）计算颜色，中心节点可高亮（如金色）。 |
-| V4 | 节点点击 | 点击节点后根据 id 前缀调用 `Router.instance().push("single_actress", ...)` 或 `push("work", ...)`，与主导航一致。 |
-| V5 | 图模式切换 | `_switch_graph` 支持 `all`（PassThroughFilter）、`favorite`（EgoFilter + center_id）、`test`（随机图，不经过 GraphManager），切换后视图与数据一致。 |
-| V6 | 图片叠加层 | 可开关叠加层；节点悬停时 `nodeHoveredWithInfo` 驱动 `ImageOverlayWidget` 正确显示封面/头像。 |
-
-### 7.6 OpenGL 视图 (C++ ForceViewOpenGL)
-
-| 编号 | 验收项 | 通过标准 |
-|------|--------|----------|
-| O1 | 全量设置 | `setGraph(...)` 能一次性设置整图并正确渲染。 |
-| O2 | 增量更新 | `add_node_runtime` / `remove_node_runtime` / `add_edge_runtime` / `remove_edge_runtime` 及 `apply_diff_runtime` 能正确增删节点/边，无错位或闪烁。 |
-| O3 | 交互 | 力导向仿真、拖拽、缩放、平移正常；`nodeLeftClicked(str)`、`nodeHoveredWithInfo(...)`、`scaleChanged`、`fpsUpdated` 等信号能正确发出并供上层使用。 |
-
-### 7.7 设置面板 (ForceViewSettingsPanel)
-
-| 编号 | 验收项 | 通过标准 |
-|------|--------|----------|
-| P1 | 物理参数 | 斥力、向心力、链接强度/距离等参数可调节，并通过信号影响 C++ 视图。 |
-| P2 | 显示参数 | 半径系数、连线宽度、文字阈值、箭头、图邻居深度等可调节并生效。 |
-| P3 | 模拟控制 | 暂停/恢复/重启、适应内容等操作可用且与 View 一致。 |
-| P4 | 图类型与调试 | 图类型单选（如全图/片关系图/测试）与测试用加减点/边可用；不直接依赖 GraphManager/Session，由父控件连接。 |
-
-### 7.8 辅助模块
-
-| 编号 | 验收项 | 通过标准 |
-|------|--------|----------|
-| A1 | text_parser | `parse_wikilinks(text)` 正确解析 `[[target]]` / `[[target\|alias]]`，供 GraphManager 从 story 抽取引用。 |
-| A2 | async_image_loader | 能按节点 id（`a*`/`w*`）异步加载女优头像、作品封面，带缓存；ImageOverlayWidget 能据此显示图片。 |
-
-### 7.9 集成与整体
-
-| 编号 | 验收项 | 通过标准 |
-|------|--------|----------|
-| I1 | 启动 | `main.py` 中调用 `GraphManager.instance().initialize()`，后台建图；首次进入关系图页（ForceDirectPage 懒加载）时能正常显示或等待初始化完成。 |
-| I2 | 数据变更 | 在别处增删改作品/女优后，通过 `work_data_changed` 驱动图增量更新，关系图视图能收到并应用 diff，无全图重载即可看到变更。 |
-| I3 | 路由一致 | 从关系图节点进入作品页/女优页后，与主导航的「作品」「女优」页行为一致（同一路由与参数）。 |
-| I4 | 单例与过滤 | 多窗口/多标签下总图仍为单例；各视图通过不同 Filter 得到不同 sub_G，互不串数据。 |
+- **forced_direct_view**：力导向图物理状态（PhysicsState）、力（CenterForce、LinkForce、ManyBodyForce）、仿真循环、`NodeLayer`（QGraphicsObject）、`ForceView`（QGraphicsView）；通过 Shiboken6 暴露为 `PyForceView`，供 Python 设置图数据并接收节点点击等信号。
+- **color_wheel**：取色等控件（bindings.xml 等）。
 
 ---
 
-# InBox模块架构
+## 五、数据流与通信要点
+
+1. **插件 → 桌面端**：浏览器 content/popup → HTTP 到 FastAPI → `ServerBridge.captureone_received` / `capture_received` → 主线程 CrawlerManager / MainWindow 处理。
+2. **写操作 → UI 刷新**：database 的 insert/update/delete 调用方负责 emit `global_signals` 对应信号；列表页、选择器、图等监听这些信号并刷新（见 write_ops_signal_mapping）。
+3. **图数据**：`GraphManager` 维护总图，异步初始化后通过 `graph_diff_signal` 或等价机制向力导向视图推送增量；视图层可过滤、按需加载图片与文案。
+4. **主题**：`ThemeManager` 在 main 中创建并 `set_theme_manager`；设置页切换主题时调用 `apply_theme(theme_id)`，重新 `set_theme(app, theme_id)` 并刷新依赖 token 的组件。
+
+---
+
+## 六、资源与部署
+
+- **资源路径**：由 config 从 settings.ini 解析，支持开发/打包（`resource_path`）；主要数据在 `resources/public`（公库、封面、女优/男优图）与 `resources/private`（私库、备份）。
+- **SQL**：`resources/sql/` 下建表（initTABLE.sql、initPrivateTable.sql）与迁移、ReBuild 脚本。
+- **文档**：MkDocs 配置在 `mkdocs.yml`，`mkdocs serve` / `mkdocs build`；架构、PRD、SCHEMA、API、写操作信号映射等见 `docs/`。
+- **打包**：PyInstaller（build-pyinstaller.ps1）或 Nuitka（build-nuitka.ps1）；需注意 OpenGL 与运行库依赖。
+
+---
+
+## 七、小结
+
+| 层次 | 目录/模块 | 核心职责 |
+|------|-----------|----------|
+| 入口 | main.py | 环境、数据库、图、样式、主窗口、延迟 API |
+| 配置 | config, app_context | 路径、版本、主题单例 |
+| UI | ui/, darkeye_ui | 主窗口、路由、页面、设计系统与组件 |
+| 控制 | controller | 快捷键、全局信号总线 |
+| 核心 | core/database, graph, crawler, dvd, … | 存储、图、爬虫、拟物 DVD、推荐 |
+| 服务 | server | FastAPI + Bridge，供插件与本地调用 |
+| 扩展 | extensions/firefox_capture | 浏览器端采集与推送 |
+| 加速 | cpp_bindings | 力导向图、取色等 C++ 实现 |
+
+整体为**单进程桌面应用**：主线程 Qt 事件循环，数据库与图在进程内，爬虫与 API 在子线程/异步中运行，通过 Qt 信号与 Bridge 与主线程安全通信。
