@@ -3,11 +3,12 @@
 # DarkEye - 在暗黑界睁开一只眼
 一个暗黑影片收藏软件，专注沉浸式采集与拟物化收藏。使用PySide6，qtquick3D做GUI，sqlite数据存储，firefox爬虫，C++加速力导向图。集采集，收藏，分析于一体的软件。
 
-![Python](https://img.shields.io/badge/Python-3.14-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.13-blue.svg)
 ![License](https://img.shields.io/github/license/de4321/darkeye)
 ![GitHub Repo stars](https://img.shields.io/github/stars/de4321/darkeye?style=social)
 ![Platform](https://img.shields.io/badge/Platform-Windows-blue)
 ![GitHub last commit](https://img.shields.io/github/last-commit/de4321/darkeye)
+![Framework](https://img.shields.io/badge/framework-PySide6%20(Qt6)-orange)
 
 https://de4321.github.io/darkeye-webpage/
 
@@ -56,7 +57,9 @@ https://de4321.github.io/darkeye-webpage/
 
 # 快速开始
 ## 下载
+[![下载 Windows 版本](https://img.shields.io/badge/⬇️%20下载-Windows%20(.exe)-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.1.1/DarkEye.7z)
 下载程序，解压,打开exe即可使用
+[![下载FireFox插件](https://img.shields.io/badge/⬇️%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.1/firefox_capture.7z)
 
 ## 插件安装
 在firefox中
