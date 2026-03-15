@@ -5,10 +5,10 @@
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue.svg)
 ![License](https://img.shields.io/github/license/de4321/darkeye)
-![GitHub Repo stars](https://img.shields.io/github/stars/de4321/darkeye?style=social)
 ![Platform](https://img.shields.io/badge/Platform-Windows-blue)
 ![GitHub last commit](https://img.shields.io/github/last-commit/de4321/darkeye)
 ![Framework](https://img.shields.io/badge/framework-PySide6%20(Qt6)-orange)
+![GitHub Repo stars](https://img.shields.io/github/stars/de4321/darkeye?style=social)
 
 https://de4321.github.io/darkeye-webpage/
 
@@ -123,6 +123,16 @@ python main.py
 
 现在的打包属于激进排除，几乎把不需要的dll文件全删除了，所以当需要用到新的东西时很可能少dll。需要重新修改打包的配置
 
-# 文档的构建
-mkdocs serve
-mkdocs build  构建的位置是在site
+# 文档
+
+[![Architecture](https://img.shields.io/badge/📐_Architecture-blue?style=for-the-badge)](docs/architecture.md)
+[![Development](https://img.shields.io/badge/🧰_Development-green?style=for-the-badge)](docs/development.md)
+[![Security](https://img.shields.io/badge/🔒_Security-red?style=for-the-badge)](docs/security.md)
+[![Changelog](https://img.shields.io/badge/📋_Changelog-orange?style=for-the-badge)](docs/CHANGELOG.md)
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](docs/architecture.md) | Overall architecture, module boundaries, data flow, key design decisions |
+| [Development](docs/development.md) | Dev environment, dependencies, build/package, debugging, code style, commit conventions |
+| [Security](docs/security.md) | Permissions, encryption, data storage locations, threat model |
+| [Changelog](docs/CHANGELOG.md) | All version release notes and changes |
