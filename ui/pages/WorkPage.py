@@ -111,7 +111,7 @@ class WorkPage(LazyWidget):
 
         #排序选择器
         self.order_combo = ComboBox()
-        self.order_combo.addItems(["添加逆序","添加顺序","更新时间顺序","更新时间逆序","发布时间逆序", "发布时间顺序", "拍摄年龄顺序","拍摄年龄逆序"])
+        self.order_combo.addItems(["添加逆序","添加顺序","番号顺序","番号逆序","制作商顺序","制作商逆序","更新时间顺序","更新时间逆序","发布时间逆序", "发布时间顺序", "拍摄年龄顺序","拍摄年龄逆序"])
         self.order_combo.setCurrentText(self.order)
 
 
@@ -446,6 +446,14 @@ HAVING COUNT(DISTINCT wtr2.tag_id) = ?
                 order="ORDER BY work.create_time DESC\n"
             case "添加顺序":
                 order="ORDER BY work.create_time\n"
+            case "番号顺序":
+                order="ORDER BY work.serial_number\n"
+            case "番号逆序":
+                order="ORDER BY work.serial_number DESC\n"
+            case "制作商顺序":
+                order="ORDER BY p.maker_id IS NULL, p.maker_id, work.serial_number\n"
+            case "制作商逆序":
+                order="ORDER BY p.maker_id IS NULL DESC, p.maker_id DESC, work.serial_number DESC\n"
             case "更新时间逆序":
                 order="ORDER BY work.update_time DESC\n"
             case "更新时间顺序":
