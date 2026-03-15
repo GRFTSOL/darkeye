@@ -2,8 +2,8 @@
 from darkeye_ui import LazyWidget
 
 from PySide6.QtWidgets import  QHBoxLayout,QVBoxLayout,QFileDialog,QGridLayout,QWidget,QFormLayout
-from PySide6.QtGui import QIcon,QKeySequence,QColor
-from PySide6.QtCore import Slot,Qt
+from PySide6.QtGui import QIcon, QKeySequence, QColor, QDesktopServices
+from PySide6.QtCore import Slot, Qt, QUrl
 import logging
 from config import ICONS_PATH
 from controller.MessageService import MessageBoxService
@@ -14,7 +14,11 @@ from config import get_video_path
 from config import APP_VERSION
 
 import logging
-from config import BASE_DIR,DATABASE,INI_FILE,ICONS_PATH,PRIVATE_DATABASE,DATABASE_BACKUP_PATH,PRIVATE_DATABASE_BACKUP_PATH
+from config import (
+    BASE_DIR, DATABASE, INI_FILE, ICONS_PATH, PRIVATE_DATABASE,
+    DATABASE_BACKUP_PATH, PRIVATE_DATABASE_BACKUP_PATH,
+    REQUIRED_PUBLIC_DB_VERSION, REQUIRED_PRIVATE_DB_VERSION,
+)
 from config import get_theme_id, set_theme_id, get_custom_primary, set_custom_primary
 from controller.ShortcutRegistry import ShortcutRegistry
 from pathlib import Path
@@ -201,6 +205,20 @@ class ClawerSettingPage(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(Label("<h3>爬虫相关设置</h3>"))
 
+def _get_detected_db_version(db_path) -> str:
+    """查询指定数据库文件当前记录的版本，失败返回「未检测到」。"""
+    try:
+        from core.database.connection import get_connection
+        from core.database.migrations import get_db_version
+        conn = get_connection(db_path, readonly=True)
+        v = get_db_version(conn)
+        conn.close()
+        return v if v is not None else "无版本"
+    except Exception as e:
+        logging.debug("get_detected_db_version failed: %s", e)
+        return "未检测到"
+
+
 class DBSettingPage(QWidget):
     '''这个是数据库相关设置页面'''
     def __init__(self):
@@ -210,6 +228,14 @@ class DBSettingPage(QWidget):
         path_label=Label(f"软件的工作文件夹{str(BASE_DIR)}")
         path_label2=Label(f"软件的公共数据库文件位置{str(DATABASE)}")
         path_label3=Label(f"ini文件的位置{INI_FILE}")
+
+        # 软件所需与当前检测到的数据库版本
+        req_public = REQUIRED_PUBLIC_DB_VERSION
+        req_private = REQUIRED_PRIVATE_DB_VERSION
+        cur_public = _get_detected_db_version(DATABASE)
+        cur_private = _get_detected_db_version(PRIVATE_DATABASE)
+        version_label_1 = Label(f"软件所需公共数据库版本：{req_public}  |  当前公共数据库版本：{cur_public}")
+        version_label_2 = Label(f"软件所需私有数据库版本：{req_private}  |  当前私有数据库版本：{cur_private}")
 
         self.btn_vacuum=Button("数据库清理碎片")#包括清理两个数据库
         self.btn_cover_check=Button("图片数据一致性检查")
@@ -276,6 +302,8 @@ class DBSettingPage(QWidget):
         layout.addWidget(path_label)
         layout.addWidget(path_label2)
         layout.addWidget(path_label3)
+        layout.addWidget(version_label_1)
+        layout.addWidget(version_label_2)
 
         self.signal_connect()
 
@@ -509,15 +537,29 @@ class LastPage(QWidget):
         githubLabel.setOpenExternalLinks(True)   # 关键
 
         layout1.addWidget(Label(f"当前版本{APP_VERSION}"))
-        layout1.addWidget(Button("检查更新"))
-        layout1.addWidget(Button("意见反馈"))
-        layout1.addWidget(Button("版本记录"))
+        btn_check_update = Button("检查更新")
+        btn_check_update.setEnabled(False)  # 功能未实现
+        layout1.addWidget(btn_check_update)
+        btn_feedback = Button("意见反馈")
+        btn_feedback.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl("https://github.com/de4321/darkeye/issues"))
+        )
+        layout1.addWidget(btn_feedback)
+        btn_changelog = Button("版本记录")
+        btn_changelog.setEnabled(False)  # 功能未实现
+        layout1.addWidget(btn_changelog)
 
-        layout2.addWidget(TokenRadioButton("自动更新"))
-        layout2.addWidget(TokenRadioButton("有新版本时提醒我"))
+        radio_auto_update = TokenRadioButton("自动更新")
+        radio_auto_update.setEnabled(False)  # 功能未实现
+        layout2.addWidget(radio_auto_update)
+        radio_notify = TokenRadioButton("有新版本时提醒我")
+        radio_notify.setEnabled(False)  # 功能未实现
+        layout2.addWidget(radio_notify)
 
         layout3.addWidget(Label("下载移动客户端"))
-        layout3.addWidget(Button("Android版"))
+        btn_android = Button("Android版")
+        btn_android.setEnabled(False)  # 功能未实现
+        layout3.addWidget(btn_android)
 
 
         form_layout.addRow(Label("GitHub地址"),githubLabel)
