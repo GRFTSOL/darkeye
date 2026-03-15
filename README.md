@@ -75,6 +75,13 @@ https://de4321.github.io/darkeye-webpage/
 
 快捷键w手动添加番号
 
+
+## 版本迁移
+
+在没有数据库迁移工具时只能手动复制主要的文件夹，resources/public和resources/private，把对应的文件夹移动到新版本的对应的位置就行了。
+
+有迁移工具后，点击备份私库与公库，然后选择电脑上的一个位置，用新的版本点击还原后选择对应的meta.json和.db文件然后重启软件。现在暂时做不到无缝，总有问题。
+
 # 开发
 
 ```
@@ -99,11 +106,9 @@ python main.py
 或者直接按F5
 
 ## 打包发布
-在powershell里，刚刚创建的conda 虚拟环境中，运行build-pyinstaller.ps1
+在powershell里，刚刚创建的conda 虚拟环境中，运行build-pyinstaller.ps1，这个是快速打包，大概打包时间200s，
+确定无问题后，可以用build-nuitka.ps1打包，这个打包后提升速度，但是包体大一点，打包时间3000s
 打包后的结构，一个绿色的可移动的文件夹，运行main.exe就能运行，这个pyinstaller是高度精简后的，如果要多加库，需要改里面的文件
-
-
-
 
 
 
