@@ -10,14 +10,14 @@
 ![GitHub Repo stars](https://img.shields.io/github/stars/de4321/darkeye?style=social)
 ![GitHub all releases](https://img.shields.io/github/downloads/de4321/darkeye/total)
 [![Homepage](https://img.shields.io/badge/homepage-darkeye-blue)](https://de4321.github.io/darkeye-webpage/)
-
+[![Discord](https://img.shields.io/discord/1482965984104153229?label=Discord&logo=discord)](https://discord.gg/3thnEguWUk)
 
 # 💡 快速开始
 ## 下载
 [![下载 Windows 版本](https://img.shields.io/badge/%20下载-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.1.1/DarkEye.7z)
 下载程序，解压,打开exe即可使用
 
-[![下载FireFox插件](https://img.shields.io/badge/%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.1/firefox_capture.7z),按照下面的插件安装，否则爬虫收集功能将不可用。
+[![下载FireFox插件](https://img.shields.io/badge/%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.1/firefox_capture.7z)按照下面的插件安装，否则爬虫收集功能将不可用。
 
 ## 插件安装
 在 Firefox 中
