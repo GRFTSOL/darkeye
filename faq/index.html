@@ -9,6 +9,8 @@
       
       
       
+        <link rel="prev" href="../future/">
+      
       
       
         
@@ -19,7 +21,7 @@
     
     
       
-        <title>收集数据 - DarkEye</title>
+        <title>常见问题 - DarkEye</title>
       
     
     
@@ -106,7 +108,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              收集数据
+              常见问题
             
           </span>
         </div>
@@ -332,9 +334,11 @@
   
   
   
+    
   
-    <li class="md-tabs__item">
-      <a href="../faq/" class="md-tabs__link">
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
         
   
   
@@ -573,10 +577,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../faq/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    常见问题
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -592,6 +623,37 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        版本迁移
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -616,6 +678,25 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        版本迁移
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -631,32 +712,12 @@
 
 
 
-<h1 id="_1">收集数据<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
-<p>爬虫</p>
-<p>问题来了很多的作品信息爬不到，还有就是像作品的名字和内容都是日文的无用的信息</p>
-<p>和服务器通信获得标准信息</p>
-<p>总表与分表的用法，一个广泛爬</p>
-<p>UGC数据汇总</p>
-<p>自动下片功能，收集整理，把种子放进去，自动调用bt下载</p>
-<p>用户评分？
-用户评论？</p>
-<p>jav爬虫项目非常的多，先用别人的爬虫爬，然后往自己的数据库里写
-https://github.com/Yuukiy/JavSP</p>
-<p>javDB的信息也只能用来辅助</p>
-<p>现在的问题，就是找一个网站爬封面，目前看是 https://www.javlibrary.com/cn
-另外就是一个网站爬信息，目前是 https://javtxt.com</p>
-<p>一手的信息源在哪里？
-FANZA，主要是FANZA没有太多的图片信息，只有封面，这个封面有时候还是不准，还是通过二手信息比较好
-一手信息的发售日很准，但是这东西大致准就行了
-导演准
-但是可以获得新的正规信息，老就就没有了AV随着女优的退了，就下了，而且这个也不是最全的，有的片商有自己的发行渠道比如SOD</p>
-<p>二手信息源
-javdb
-javtext
-javlibrary</p>
-<ul>
-<li>[ ] 线程池维护整个软件所有的爬虫行为</li>
-</ul>
+<h1 id="_1">常见问题<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
+<h2 id="_2">版本迁移<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<p>绿色版本迁移
+所有的数据库文件均在<code>resources/public</code>和<code>resources/private</code>这两个文件夹的下面</p>
+<p>在没有数据库迁移工具时只能手动复制主要的文件夹，<code>resources/public</code>和<code>resources/private</code>，把对应的文件夹移动到新版本的对应的位置就行了。</p>
+<p>有迁移工具后，点击备份私库与公库，然后选择电脑上的一个位置，用新的版本点击还原后选择对应的meta.json和.db文件然后重启软件。现在暂时做不到无缝，总有问题。</p>
 
 
 
