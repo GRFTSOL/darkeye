@@ -10,7 +10,7 @@
 ![GitHub Repo stars](https://img.shields.io/github/stars/de4321/darkeye?style=social)
 ![GitHub all releases](https://img.shields.io/github/downloads/de4321/darkeye/total)
 [![Homepage](https://img.shields.io/badge/homepage-darkeye-blue)](https://de4321.github.io/darkeye-webpage/)
-
+[![Discord](https://img.shields.io/discord/1482965984104153229?label=Discord&logo=discord)](https://discord.gg/3thnEguWUk)
 
 
 # 💡 快速开始
@@ -18,7 +18,7 @@
 [![下载 Windows 版本](https://img.shields.io/badge/%20下载-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.1.1/DarkEye.7z)
 下载程序，解压,打开exe即可使用
 
-[![下载FireFox插件](https://img.shields.io/badge/%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.1/firefox_capture.7z),按照下面的插件安装，否则爬虫收集功能将不可用。
+[![下载FireFox插件](https://img.shields.io/badge/%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.1/firefox_capture.7z)按照下面的插件安装，否则爬虫收集功能将不可用。
 
 ## 插件安装
 在 Firefox 中
@@ -27,6 +27,7 @@
 左边点 “This Firefox”（此 Firefox）
 
 2. 在 “This Firefox” 页面中，点击 “Load Temporary Add-on…”（加载临时附加组件）。在弹出的文件选择框里，选中解压后firefox_capture的 manifest.json 文件，确认后，插件会立即被加载，图标会出现在工具栏/扩展列表中。
+
 
 ## 使用
 启动后有闪一下属于正常现象，需要加载opengl环境，这个我目前无法解决这个闪一下的问题。
@@ -39,6 +40,11 @@
 
 当采集时会弹出firefox窗口，javlibrary第一次需要点击一次过cloudflare盾，大概这个过盾可以持续20分钟。
 
+采集女优数据，这个自动化会非常的不准，在点击女优栏后右键可以到编辑界面，点击爬虫直接更新，但是这个仅限于无重名女优。有重名女优需要用浏览器插件手动选择更新。
+
+更详细的使用说明参考[help](resources/help/help.md) 
+
+
 ## 版本迁移
 所有的数据库文件均在resources/public和resources/private这两个文件夹的下面
 
@@ -46,6 +52,18 @@
 
 有迁移工具后，点击备份私库与公库，然后选择电脑上的一个位置，用新的版本点击还原后选择对应的meta.json和.db文件然后重启软件。现在暂时做不到无缝，总有问题。
 
+# Community
+
+问题，想法？加入discord社区 https://discord.gg/3thnEguWUk
+
+- 新手支持
+“文档没看懂可以来问，现在文档属于没有状态”
+
+- 提前知道进展
+“新功能、开发进展、预发布版本会先在 Discord 讨论”
+
+- 参与方向讨论
+“想影响 roadmap，可以来参与讨论”
 
 # 🚀 开发方向
 - 1.0 基础工具的完善，包括力导向图探索影片之间的关系，收藏体验的增强
@@ -80,6 +98,7 @@
 - [ ] 编辑界面高级停靠系统的保存
 - [ ] 其他格式的信息导出功能，目前只能导.csv，还没想好怎么导出
 - [x] 部分截图功能，女优界面C键截图
+- [ ] 安装版本，减少换版本时手动切换数据库
 
 拟物化的dvd
 ![收藏](docs/assets/dvd.jpg)
