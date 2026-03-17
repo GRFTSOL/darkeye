@@ -552,28 +552,10 @@ class MplCanvas(FigureCanvas):
                 prev_count = daily_cumulative[d]
             continuous_counts.append(prev_count)
 
-        #产生连续的数据
-
-        # 4. 准备数据进行平滑处理
-
-        x_data = np.arange(len(continuous_dates))  # 0, 1, 2, ...
-        y_data = np.array(continuous_counts)
-
-        dates = sorted(daily_cumulative.keys())
-
-        x_original = np.array(continuous_dates)
-
-        # 4. 使用简单移动平均进行平滑，避免依赖 scipy
-        window = max(1, min(30, len(y_data) // 10 or 1))  # 自适应窗口大小
-        kernel = np.ones(window) / window
-        y_smooth = np.convolve(y_data, kernel, mode='same')
-
-        x_smooth_dates = continuous_dates
-
-        # 5. 绘图（平滑曲线）
+        # 4. 直接使用原始累计数据作图（不做平滑处理）
         self.fig.clf()
         self.ax = self.fig.add_subplot(111)
-        self.ax.plot(x_smooth_dates, y_smooth, linewidth=2, color='steelblue')
+        self.ax.plot(continuous_dates, continuous_counts, linewidth=2, color='steelblue')
         self.ax.set_title("添加到数据库中作品数量随时间分布", fontsize=16)
         self.ax.set_xlabel("Date", fontsize=14)
         self.ax.set_ylabel("Nums", fontsize=14)

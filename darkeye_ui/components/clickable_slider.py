@@ -58,6 +58,13 @@ class ClickableSlider(QSlider):
         theme_manager = resolve_theme_manager(theme_manager, "ClickableSlider")
         self._theme_manager = theme_manager
 
+        # 为高 DPI / 不同屏幕缩放预留足够空间，避免手柄在某些缩放下被裁剪
+        if self.orientation() == Qt.Orientation.Horizontal:
+            # 轨道 4px，高度至少 22px，确保 14px 圆形手柄有富余空间
+            self.setMinimumHeight(22)
+        else:
+            self.setMinimumWidth(22)
+
         self.setStyleFromTokens(LIGHT_TOKENS)
         if theme_manager is not None:
             theme_manager.themeChanged.connect(self._on_theme_changed)
