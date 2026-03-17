@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>DarkEye 项目架构评估与修改意见（在“可直接读写数据库”前提下） - JAV管理工具</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">JAV管理工具</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">首页</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../usage/" class="nav-link">使用方法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../ui-design/" class="nav-link">UI设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../db-design/" class="nav-link">数据库设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../develop/" class="nav-link">开发注意事项</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../api/" class="nav-link">API</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../bug/" class="nav-link">BUG</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../future/" class="nav-link">未来功能展望</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../data-collect/" class="nav-link">数据收集</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../recommendation/" class="nav-link">推荐算法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../av/" class="nav-link">AV知识</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#darkeye" class="nav-link">DarkEye 项目架构评估与修改意见（在“可直接读写数据库”前提下）</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#1" class="nav-link">1. 结论摘要</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#2" class="nav-link">2. 本次评估范围</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#3" class="nav-link">3. 架构现状评价</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#4" class="nav-link">4. 在“允许直接读写数据库”前提下的改造原则</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#5" class="nav-link">5. 修改建议（落地版）</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#6" class="nav-link">6. 建议验收标准（可量化）</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#7" class="nav-link">7. 最终建议</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="darkeye">DarkEye 项目架构评估与修改意见（在“可直接读写数据库”前提下）<a class="headerlink" href="#darkeye" title="Permanent link">&para;</a></h1>
+<h2 id="1">1. 结论摘要<a class="headerlink" href="#1" title="Permanent link">&para;</a></h2>
+<ul>
+<li>当前项目属于“桌面单体应用（PySide6）+ 内嵌 FastAPI + SQLite（公库/私库）+ 浏览器扩展 + C++ OpenGL 图引擎”的混合架构。</li>
+<li>方向可行，功能覆盖面广，但可维护性风险主要集中在三处：数据库初始化/迁移链路、数据访问方式不统一、跨线程/跨进程链路的契约不清晰。</li>
+<li>你已接受“直接读写数据库”，因此不建议强行上 ORM 或重服务化；建议走“保留直连 SQL + 统一连接契约 + 强迁移治理 + 关键链路补测试”的路线。</li>
+</ul>
+<h2 id="2">2. 本次评估范围<a class="headerlink" href="#2" title="Permanent link">&para;</a></h2>
+<ul>
+<li>文件扫描统计（项目内）：</li>
+<li><code>*.py</code>: 271</li>
+<li><code>*.cpp/*.h/*.hpp</code>: 31</li>
+<li><code>*.js</code>: 9</li>
+<li><code>*.sql</code>: 32</li>
+<li>重点阅读模块：</li>
+<li>入口/启动：<code>main.py</code>, <code>config.py</code>, <code>app_context.py</code></li>
+<li>UI/路由：<code>ui/main_window.py</code>, <code>ui/navigation/router.py</code>, <code>ui/pages/*</code></li>
+<li>服务端：<code>server/app.py</code>, <code>server/launcher.py</code>, <code>server/bridge.py</code></li>
+<li>爬虫链路：<code>core/crawler/*</code></li>
+<li>数据库：<code>core/database/*</code>, <code>core/database/query/*</code>, <code>resources/sql/*</code></li>
+<li>图模块：<code>core/graph/*</code>, <code>ui/pages/ForceDirectPage.py</code></li>
+<li>C++绑定：<code>cpp_bindings/forced_direct_view/*</code>, <code>cpp_bindings/color_wheel/*</code></li>
+<li>扩展：<code>extensions/firefox_capture/*</code></li>
+</ul>
+<h2 id="3">3. 架构现状评价<a class="headerlink" href="#3" title="Permanent link">&para;</a></h2>
+<h3 id="31">3.1 优点<a class="headerlink" href="#31" title="Permanent link">&para;</a></h3>
+<ul>
+<li>模块划分总体清晰：UI、数据库、爬虫、图渲染、扩展各自有目录边界。</li>
+<li>C++ <code>forced_direct_view</code> 组件分层较好（Simulation/Forces/Renderer/Text/Runtime 分文件），工程化程度高。</li>
+<li>浏览器扩展与本地 FastAPI 的通信链路完整（SSE + HTTP），端到端闭环可用。</li>
+<li>SQLite 查询层（<code>core/database/query/*</code>）内容丰富，统计能力较强。</li>
+</ul>
+<h3 id="32">3.2 主要问题<a class="headerlink" href="#32" title="Permanent link">&para;</a></h3>
+<h4 id="p0">P0（优先最高，影响稳定性）<a class="headerlink" href="#p0" title="Permanent link">&para;</a></h4>
+<ul>
+<li>数据库初始化与迁移链路存在“不可依赖”点：</li>
+<li><code>core/database/init.py</code> 中 <code>init_public_db</code> 仍为 <code>pass</code>。</li>
+<li><code>resources/sql/initTABLE.sql</code> 中存在明显结构问题（例如外键语法缺分隔、<code>prefix_maker_relation</code> 引用了 <code>maker</code> 但前文为 <code>manufacturer</code> 命名）。</li>
+<li><code>core/database/migrations.py</code> 升级逻辑偏样例化，缺少可追溯、可回放的真实迁移序列。</li>
+<li>数据访问路径不统一：</li>
+<li>同时存在 <code>get_connection(...)</code> 与多处 <code>sqlite3.connect(...)</code>（尤其 UI 页面层），连接策略（只读、<code>foreign_keys</code>、<code>busy_timeout</code>）不一致。</li>
+<li>服务/爬虫关键分支未收敛：</li>
+<li><code>server/app.py</code> 与 <code>core/crawler/CrawlerManager.py</code> 中仍有 <code>pass</code> 分支和 <code>print(...)</code> 路径，<code>javdb/fanza</code> 结果处理不完整。</li>
+</ul>
+<h4 id="p1">P1（中优先，影响维护成本）<a class="headerlink" href="#p1" title="Permanent link">&para;</a></h4>
+<ul>
+<li>UI 层直接承担了较多业务编排和数据访问，页面职责偏重，导致变更扩散。</li>
+<li>系统依赖多个全局/单例对象（Router、GraphManager、CrawlerManager、bridge、signal bus 等），降低可测试性。</li>
+<li>图模块跨线程复杂（Qt 主线程 + 渲染/仿真线程 + Python diff 推送），当前有锁但缺少明确“接口契约文档 + 回归用例”。</li>
+<li>Firefox 扩展对站点 DOM 结构耦合高，抗网站改版能力弱。</li>
+</ul>
+<h4 id="p2">P2（次优先，影响长期演进）<a class="headerlink" href="#p2" title="Permanent link">&para;</a></h4>
+<ul>
+<li>自动化测试覆盖不足：<code>tests</code> 仅少量用例，缺数据库迁移/服务接口/图运行时回归。</li>
+<li><code>junk/</code> 与 <code>manual_tests/</code> 体量较大，实验代码与主线边界不够清晰。</li>
+</ul>
+<h2 id="4">4. 在“允许直接读写数据库”前提下的改造原则<a class="headerlink" href="#4" title="Permanent link">&para;</a></h2>
+<ul>
+<li>不引入重型 ORM，不强制 Repository/Service 全量重构。</li>
+<li>保留 SQL 直写能力，但必须统一连接入口和事务策略。</li>
+<li>允许 UI 直接查询数据库，但要满足三条硬约束：</li>
+<li>统一连接工厂（只读/读写、PRAGMA、timeout 一致）。</li>
+<li>写操作走明确写接口（<code>insert/update/delete</code> 或约定写函数），避免页面内散落拼接写 SQL。</li>
+<li>迁移脚本版本化、可回放、可验证。</li>
+</ul>
+<h2 id="5">5. 修改建议（落地版）<a class="headerlink" href="#5" title="Permanent link">&para;</a></h2>
+<h3 id="51-p0-1-2">5.1 P0 先做（1-2 周）<a class="headerlink" href="#51-p0-1-2" title="Permanent link">&para;</a></h3>
+<ol>
+<li>修复 DB 启动基线</li>
+<li>完成 <code>init_public_db</code>，并把公库初始化纳入统一启动流程。</li>
+<li>
+<p>校验并修复 <code>resources/sql/initTABLE.sql</code> 的结构错误（外键/表名一致性/依赖顺序）。</p>
+</li>
+<li>
+<p>建立可执行迁移体系</p>
+</li>
+<li>建议新增：</li>
+<li><code>resources/sql/migrations/public/0001_*.sql</code></li>
+<li><code>resources/sql/migrations/private/0001_*.sql</code></li>
+<li>
+<p><code>core/database/migrations.py</code> 改为按版本顺序执行并记录（失败回滚、幂等检查、日志可追踪）。</p>
+</li>
+<li>
+<p>统一连接策略</p>
+</li>
+<li>约定：业务代码禁止直接 <code>sqlite3.connect(...)</code>（迁移/备份脚本可例外）。</li>
+<li>
+<p>全量改为 <code>get_connection(...)</code> 或统一封装（只读与读写明确分离）。</p>
+</li>
+<li>
+<p>收敛未完成分支</p>
+</li>
+<li><code>server/app.py</code>、<code>core/crawler/CrawlerManager.py</code> 的 <code>pass</code> 分支要么补全要么显式返回“不支持”。</li>
+<li>将 <code>print(...)</code> 全量替换为标准日志，保留结构化字段（serial/source/web/error）。</li>
+</ol>
+<h3 id="52-p1-2-4">5.2 P1 跟进（2-4 周）<a class="headerlink" href="#52-p1-2-4" title="Permanent link">&para;</a></h3>
+<ol>
+<li>页面减负但不“重服务化”</li>
+<li>保留页面直查 DB；把高复用查询下沉到 <code>core/database/query/*</code>，避免同类 SQL 在页面重复。</li>
+<li>
+<p>为“复杂写入流程”（如爬虫入库、多表联动）建立薄流程函数（不是重 Service 层）。</p>
+</li>
+<li>
+<p>图模块契约化</p>
+</li>
+<li>固化 <code>graph_diff</code> 数据结构文档（字段、op 类型、兼容策略）。</li>
+<li>
+<p>为 <code>apply_diff_runtime</code> 建立 Python 侧回归测试（增删节点/边、异常输入、并发触发）。</p>
+</li>
+<li>
+<p>扩展层稳健性</p>
+</li>
+<li>为 SSE 断连重连、DOM 查询失败、站点改版增加分级错误码与回退策略。</li>
+<li>把站点脚本抽象出统一适配层（最小限度，不做过度设计）。</li>
+</ol>
+<h3 id="53-p2">5.3 P2 持续改进（并行）<a class="headerlink" href="#53-p2" title="Permanent link">&para;</a></h3>
+<ol>
+<li>测试基线</li>
+<li>至少补齐：</li>
+<li>数据库初始化 + 迁移可回放测试</li>
+<li>Server 核心接口契约测试（<code>/health</code>, <code>/check_existence</code>, <code>/crawler-result</code>）</li>
+<li>
+<p>爬虫合并逻辑单测（多源冲突合并）</p>
+</li>
+<li>
+<p>目录治理</p>
+</li>
+<li>明确 <code>junk/</code>、<code>manual_tests/</code> 的生命周期：保留、迁移或归档，并在 README/开发文档中声明。</li>
+</ol>
+<h2 id="6">6. 建议验收标准（可量化）<a class="headerlink" href="#6" title="Permanent link">&para;</a></h2>
+<ul>
+<li>启动阶段数据库任务可在“空库 + 老库”两种场景稳定通过。</li>
+<li>业务层 <code>sqlite3.connect(...)</code> 数量显著收敛（迁移/备份脚本除外）。</li>
+<li>迁移脚本可从 <code>0001</code> 顺序回放到当前版本，失败时可定位具体脚本。</li>
+<li><code>server/crawler</code> 不再存在未处理 <code>pass</code> 主分支，关键错误均有日志。</li>
+<li>自动化测试覆盖 DB 初始化/迁移、Server 契约、核心合并逻辑。</li>
+</ul>
+<h2 id="7">7. 最终建议<a class="headerlink" href="#7" title="Permanent link">&para;</a></h2>
+<ul>
+<li>这套项目不需要“推倒重来”，也不需要为了架构“纯洁性”牺牲迭代速度。</li>
+<li>直接读写数据库的做法可以继续，但要尽快补齐“三件套”：</li>
+<li>统一连接</li>
+<li>可靠迁移</li>
+<li>关键链路测试</li>
+<li>只要先完成 P0，本项目可维护性会明显上一个台阶。</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

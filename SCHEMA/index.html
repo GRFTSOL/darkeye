@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>DarkEye 数据库 Schema - JAV管理工具</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">JAV管理工具</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">首页</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../usage/" class="nav-link">使用方法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../ui-design/" class="nav-link">UI设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../db-design/" class="nav-link">数据库设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../develop/" class="nav-link">开发注意事项</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../api/" class="nav-link">API</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../bug/" class="nav-link">BUG</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../future/" class="nav-link">未来功能展望</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../data-collect/" class="nav-link">数据收集</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../recommendation/" class="nav-link">推荐算法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../av/" class="nav-link">AV知识</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#darkeye-schema" class="nav-link">DarkEye 数据库 Schema</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#_1" class="nav-link">一、概览</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#publicdb" class="nav-link">二、公共库 (public.db)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#privatedb" class="nav-link">三、私有库 (private.db)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#init" class="nav-link">四、依赖表（未在上述 init 脚本中定义）</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_2" class="nav-link">五、实体关系简图</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_3" class="nav-link">六、跨库查询说明</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="darkeye-schema">DarkEye 数据库 Schema<a class="headerlink" href="#darkeye-schema" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>基于 <code>resources/sql/initTABLE.sql</code>（公共库）与 <code>resources/sql/initPrivateTable.sql</code>（私有库）整理。</p>
+</blockquote>
+<hr />
+<h2 id="_1">一、概览<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>数据库</th>
+<th>文件</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>public.db</strong></td>
+<td>initTABLE.sql</td>
+<td>作品、女优、男优、标签、制作商等公共元数据</td>
+</tr>
+<tr>
+<td><strong>private.db</strong></td>
+<td>initPrivateTable.sql</td>
+<td>收藏、撸管、做爱、晨勃等个人行为数据</td>
+</tr>
+</tbody>
+</table>
+<p><strong>注意</strong>：<code>tag</code> 表依赖 <code>tag_type</code>，<code>prefix_maker_relation</code> 依赖 <code>maker</code>。<code>tag_type</code> 与 <code>maker</code> 可能在种子数据或迁移脚本中创建。</p>
+<hr />
+<h2 id="publicdb">二、公共库 (public.db)<a class="headerlink" href="#publicdb" title="Permanent link">&para;</a></h2>
+<h3 id="21-work">2.1 work — 作品表<a class="headerlink" href="#21-work" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>work_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>serial_number</td>
+<td>TEXT</td>
+<td>NOT NULL, UNIQUE</td>
+<td>番号</td>
+</tr>
+<tr>
+<td>director</td>
+<td>TEXT</td>
+<td></td>
+<td>导演</td>
+</tr>
+<tr>
+<td>story</td>
+<td>TEXT</td>
+<td></td>
+<td>自定义剧情</td>
+</tr>
+<tr>
+<td>release_date</td>
+<td>TEXT</td>
+<td></td>
+<td>发布时间</td>
+</tr>
+<tr>
+<td>image_url</td>
+<td>TEXT</td>
+<td></td>
+<td>封面图片路径</td>
+</tr>
+<tr>
+<td>video_url</td>
+<td>TEXT</td>
+<td></td>
+<td>视频路径</td>
+</tr>
+<tr>
+<td>cn_title</td>
+<td>TEXT</td>
+<td></td>
+<td>中文标题</td>
+</tr>
+<tr>
+<td>jp_title</td>
+<td>TEXT</td>
+<td></td>
+<td>日文标题</td>
+</tr>
+<tr>
+<td>cn_story</td>
+<td>TEXT</td>
+<td></td>
+<td>中文剧情</td>
+</tr>
+<tr>
+<td>jp_story</td>
+<td>TEXT</td>
+<td></td>
+<td>日文剧情</td>
+</tr>
+<tr>
+<td>create_time</td>
+<td>TEXT</td>
+<td>DEFAULT now</td>
+<td>创建时间</td>
+</tr>
+<tr>
+<td>update_time</td>
+<td>TEXT</td>
+<td>DEFAULT now</td>
+<td>更新时间</td>
+</tr>
+<tr>
+<td>is_deleted</td>
+<td>INTEGER</td>
+<td>DEFAULT 0</td>
+<td>软删除标记</td>
+</tr>
+<tr>
+<td>javtxt_id</td>
+<td>INTEGER</td>
+<td></td>
+<td>JavTxt 关联 ID</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Trigger</strong>: <code>update_work_timestamp</code> — 更新时自动刷新 <code>update_time</code></p>
+<hr />
+<h3 id="22-actress">2.2 actress — 女优表<a class="headerlink" href="#22-actress" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actress_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>birthday</td>
+<td>TEXT</td>
+<td></td>
+<td>出生日期</td>
+</tr>
+<tr>
+<td>height</td>
+<td>INTEGER</td>
+<td></td>
+<td>身高 (cm)</td>
+</tr>
+<tr>
+<td>bust</td>
+<td>INTEGER</td>
+<td></td>
+<td>胸围</td>
+</tr>
+<tr>
+<td>waist</td>
+<td>INTEGER</td>
+<td></td>
+<td>腰围</td>
+</tr>
+<tr>
+<td>hip</td>
+<td>INTEGER</td>
+<td></td>
+<td>臀围</td>
+</tr>
+<tr>
+<td>cup</td>
+<td>TEXT</td>
+<td></td>
+<td>罩杯</td>
+</tr>
+<tr>
+<td>debut_date</td>
+<td>TEXT</td>
+<td></td>
+<td>出道日期</td>
+</tr>
+<tr>
+<td>need_update</td>
+<td>INTEGER</td>
+<td>DEFAULT 1</td>
+<td>1=需爬虫更新, 0=不需</td>
+</tr>
+<tr>
+<td>create_time</td>
+<td>TEXT</td>
+<td>DEFAULT now</td>
+<td>创建时间</td>
+</tr>
+<tr>
+<td>update_time</td>
+<td>TEXT</td>
+<td>DEFAULT now</td>
+<td>更新时间</td>
+</tr>
+<tr>
+<td>image_urlA</td>
+<td>TEXT</td>
+<td></td>
+<td>头像 A</td>
+</tr>
+<tr>
+<td>image_urlB</td>
+<td>TEXT</td>
+<td></td>
+<td>头像 B</td>
+</tr>
+<tr>
+<td>minnano_url</td>
+<td>TEXT</td>
+<td></td>
+<td>Minnano 链接</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Trigger</strong>: <code>update_actress_timestamp</code> — 更新时自动刷新 <code>update_time</code></p>
+<hr />
+<h3 id="23-actress_name">2.3 actress_name — 女优姓名表<a class="headerlink" href="#23-actress_name" title="Permanent link">&para;</a></h3>
+<p>支持多艺名与名字变更链。</p>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actress_name_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>actress_id</td>
+<td>INTEGER</td>
+<td>FK → actress</td>
+<td>女优 ID</td>
+</tr>
+<tr>
+<td>name_type</td>
+<td>INTEGER</td>
+<td></td>
+<td>1=主名, 0=非主名</td>
+</tr>
+<tr>
+<td>cn</td>
+<td>TEXT</td>
+<td></td>
+<td>中文名</td>
+</tr>
+<tr>
+<td>jp</td>
+<td>TEXT</td>
+<td></td>
+<td>日文名</td>
+</tr>
+<tr>
+<td>en</td>
+<td>TEXT</td>
+<td></td>
+<td>英文名</td>
+</tr>
+<tr>
+<td>kana</td>
+<td>TEXT</td>
+<td></td>
+<td>假名</td>
+</tr>
+<tr>
+<td>redirect_actress_name_id</td>
+<td>INTEGER</td>
+<td>FK → actress_name</td>
+<td>名字变更链，NULL 表示最新名</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="24-work_actress_relation-">2.4 work_actress_relation — 作品-女优关系表<a class="headerlink" href="#24-work_actress_relation-" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>work_actress_relation_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>work_id</td>
+<td>INTEGER</td>
+<td>FK → work, NOT NULL</td>
+<td>作品 ID</td>
+</tr>
+<tr>
+<td>actress_id</td>
+<td>INTEGER</td>
+<td>FK → actress, NOT NULL</td>
+<td>女优 ID</td>
+</tr>
+<tr>
+<td>job</td>
+<td>TEXT</td>
+<td></td>
+<td>角色/职业（如职员、上司）</td>
+</tr>
+<tr>
+<td>age</td>
+<td>TEXT</td>
+<td></td>
+<td>年龄段（如年轻）</td>
+</tr>
+<tr>
+<td>married</td>
+<td>TEXT</td>
+<td></td>
+<td>人设（如人妻、女友）</td>
+</tr>
+<tr>
+<td>state</td>
+<td>TEXT</td>
+<td></td>
+<td>状态（如主动）</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="25-manufacturer">2.5 manufacturer — 制作商表<a class="headerlink" href="#25-manufacturer" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>manufacturer_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>cn_name</td>
+<td>TEXT</td>
+<td></td>
+<td>中文名</td>
+</tr>
+<tr>
+<td>jp_name</td>
+<td>TEXT</td>
+<td></td>
+<td>日文名</td>
+</tr>
+<tr>
+<td>aliases</td>
+<td>TEXT</td>
+<td></td>
+<td>别名</td>
+</tr>
+<tr>
+<td>detail</td>
+<td>TEXT</td>
+<td></td>
+<td>其他信息</td>
+</tr>
+<tr>
+<td>logo_url</td>
+<td>TEXT</td>
+<td></td>
+<td>Logo 路径</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>注：迁移脚本中会迁移为 <code>maker</code> 表，<code>prefix_maker_relation</code> 引用 <code>maker</code>。</p>
+</blockquote>
+<hr />
+<h3 id="26-label">2.6 label — 厂牌表<a class="headerlink" href="#26-label" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>label_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>cn_name</td>
+<td>TEXT</td>
+<td></td>
+<td>中文名</td>
+</tr>
+<tr>
+<td>jp_name</td>
+<td>TEXT</td>
+<td></td>
+<td>日文名</td>
+</tr>
+<tr>
+<td>detail</td>
+<td>TEXT</td>
+<td></td>
+<td>其他信息</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="27-tag">2.7 tag — 标签表<a class="headerlink" href="#27-tag" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tag_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>tag_name</td>
+<td>TEXT</td>
+<td>NOT NULL, UNIQUE</td>
+<td>标签名</td>
+</tr>
+<tr>
+<td>tag_type_id</td>
+<td>INTEGER</td>
+<td>FK → tag_type</td>
+<td>标签类型 ID</td>
+</tr>
+<tr>
+<td>color</td>
+<td>TEXT</td>
+<td>DEFAULT '#cccccc'</td>
+<td>颜色（hex）</td>
+</tr>
+<tr>
+<td>redirect_tag_id</td>
+<td>INTEGER</td>
+<td>FK → tag</td>
+<td>重定向目标 tag_id</td>
+</tr>
+<tr>
+<td>detail</td>
+<td>TEXT</td>
+<td></td>
+<td>说明</td>
+</tr>
+<tr>
+<td>group_id</td>
+<td>INTEGER</td>
+<td></td>
+<td>互斥组标记</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="28-work_tag_relation-">2.8 work_tag_relation — 作品-标签关系表<a class="headerlink" href="#28-work_tag_relation-" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>work_tag_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>work_id</td>
+<td>INTEGER</td>
+<td>FK → work</td>
+<td>作品 ID</td>
+</tr>
+<tr>
+<td>tag_id</td>
+<td>INTEGER</td>
+<td>FK → tag</td>
+<td>标签 ID</td>
+</tr>
+</tbody>
+</table>
+<p><strong>UNIQUE</strong>(work_id, tag_id) — 防止重复关联</p>
+<hr />
+<h3 id="29-actor">2.9 actor — 男优表<a class="headerlink" href="#29-actor" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actor_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>birthday</td>
+<td>TEXT</td>
+<td></td>
+<td>出生年份</td>
+</tr>
+<tr>
+<td>height</td>
+<td>INTEGER</td>
+<td></td>
+<td>身高</td>
+</tr>
+<tr>
+<td>handsome</td>
+<td>INTEGER</td>
+<td></td>
+<td>颜值 0/1/2</td>
+</tr>
+<tr>
+<td>fat</td>
+<td>INTEGER</td>
+<td></td>
+<td>胖瘦 0/1/2</td>
+</tr>
+<tr>
+<td>need_update</td>
+<td>INTEGER</td>
+<td>DEFAULT 1</td>
+<td>是否需更新</td>
+</tr>
+<tr>
+<td>create_time</td>
+<td>TEXT</td>
+<td>DEFAULT now</td>
+<td>创建时间</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="210-actor_name">2.10 actor_name — 男优姓名表<a class="headerlink" href="#210-actor_name" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actor_name_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>actor_id</td>
+<td>INTEGER</td>
+<td>FK → actor</td>
+<td>男优 ID</td>
+</tr>
+<tr>
+<td>name_type</td>
+<td>INTEGER</td>
+<td></td>
+<td>1=主名, 0=非主名</td>
+</tr>
+<tr>
+<td>cn</td>
+<td>TEXT</td>
+<td></td>
+<td>中文名</td>
+</tr>
+<tr>
+<td>jp</td>
+<td>TEXT</td>
+<td></td>
+<td>日文名</td>
+</tr>
+<tr>
+<td>en</td>
+<td>TEXT</td>
+<td></td>
+<td>英文名</td>
+</tr>
+<tr>
+<td>kana</td>
+<td>TEXT</td>
+<td></td>
+<td>假名</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="211-work_actor_relation-">2.11 work_actor_relation — 作品-男优关系表<a class="headerlink" href="#211-work_actor_relation-" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>work_actor_relation_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>work_id</td>
+<td>INTEGER</td>
+<td>FK → work, NOT NULL</td>
+<td>作品 ID</td>
+</tr>
+<tr>
+<td>actor_id</td>
+<td>INTEGER</td>
+<td>FK → actor, NOT NULL</td>
+<td>男优 ID</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="212-prefix_maker_relation-">2.12 prefix_maker_relation — 番号前缀-片商关系表<a class="headerlink" href="#212-prefix_maker_relation-" title="Permanent link">&para;</a></h3>
+<p>通过番号前缀映射到制作商。</p>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>prefix_maker_relation_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>prefix</td>
+<td>TEXT</td>
+<td></td>
+<td>番号前缀（如 SSIS）</td>
+</tr>
+<tr>
+<td>maker_id</td>
+<td>INTEGER</td>
+<td>FK → maker</td>
+<td>片商 ID</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="privatedb">三、私有库 (private.db)<a class="headerlink" href="#privatedb" title="Permanent link">&para;</a></h2>
+<h3 id="31-db_version">3.1 db_version — 数据库版本表<a class="headerlink" href="#31-db_version" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>version</td>
+<td>TEXT</td>
+<td>NOT NULL</td>
+<td>版本号</td>
+</tr>
+<tr>
+<td>applied_at</td>
+<td>DATETIME</td>
+<td>DEFAULT now</td>
+<td>应用时间</td>
+</tr>
+<tr>
+<td>description</td>
+<td>TEXT</td>
+<td></td>
+<td>说明</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="32-favorite_actress">3.2 favorite_actress — 收藏女优表<a class="headerlink" href="#32-favorite_actress" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>favorite_actress_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>actress_id</td>
+<td>INTEGER</td>
+<td>UNIQUE, NOT NULL</td>
+<td>公共库 actress_id</td>
+</tr>
+<tr>
+<td>jp_name</td>
+<td>TEXT</td>
+<td>NOT NULL</td>
+<td>日文名备份</td>
+</tr>
+<tr>
+<td>added_time</td>
+<td>TEXT</td>
+<td>NOT NULL, DEFAULT now</td>
+<td>收藏时间</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="33-favorite_work">3.3 favorite_work — 收藏作品表<a class="headerlink" href="#33-favorite_work" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>favorite_work_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>work_id</td>
+<td>INTEGER</td>
+<td>UNIQUE, NOT NULL</td>
+<td>公共库 work_id</td>
+</tr>
+<tr>
+<td>serial_number</td>
+<td>TEXT</td>
+<td>UNIQUE, NOT NULL</td>
+<td>番号备份</td>
+</tr>
+<tr>
+<td>added_time</td>
+<td>TEXT</td>
+<td>NOT NULL, DEFAULT now</td>
+<td>收藏时间</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="34-love_making">3.4 love_making — 做爱记录表<a class="headerlink" href="#34-love_making" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>love_making_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>event_time</td>
+<td>TEXT</td>
+<td></td>
+<td>时间（精确到小时）</td>
+</tr>
+<tr>
+<td>rating</td>
+<td>INTEGER</td>
+<td>NOT NULL, CHECK(1-5)</td>
+<td>满意度 1–5</td>
+</tr>
+<tr>
+<td>comment</td>
+<td>TEXT</td>
+<td></td>
+<td>评价</td>
+</tr>
+<tr>
+<td>create_time</td>
+<td>TEXT</td>
+<td>DEFAULT now</td>
+<td>创建时间</td>
+</tr>
+<tr>
+<td>update_time</td>
+<td>TEXT</td>
+<td>DEFAULT now</td>
+<td>更新时间</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Trigger</strong>: <code>update_love_making_timestamp</code> — 更新时自动刷新 <code>update_time</code></p>
+<hr />
+<h3 id="35-masturbation">3.5 masturbation — 撸管记录表<a class="headerlink" href="#35-masturbation" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>masturbation_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>work_id</td>
+<td>INTEGER</td>
+<td></td>
+<td>关联作品 ID</td>
+</tr>
+<tr>
+<td>serial_number</td>
+<td>TEXT</td>
+<td></td>
+<td>番号冗余</td>
+</tr>
+<tr>
+<td>start_time</td>
+<td>TEXT</td>
+<td></td>
+<td>起飞时间（精确到分钟）</td>
+</tr>
+<tr>
+<td>tool_name</td>
+<td>TEXT</td>
+<td></td>
+<td>工具（手/飞机杯等）</td>
+</tr>
+<tr>
+<td>rating</td>
+<td>INTEGER</td>
+<td>NOT NULL, CHECK(1-5)</td>
+<td>满意度 1–5</td>
+</tr>
+<tr>
+<td>comment</td>
+<td>TEXT</td>
+<td></td>
+<td>评论</td>
+</tr>
+<tr>
+<td>create_time</td>
+<td>TEXT</td>
+<td>DEFAULT now</td>
+<td>创建时间</td>
+</tr>
+<tr>
+<td>update_time</td>
+<td>TEXT</td>
+<td>DEFAULT now</td>
+<td>更新时间</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="36-sexual_arousal">3.6 sexual_arousal — 晨勃记录表<a class="headerlink" href="#36-sexual_arousal" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>约束</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sexual_arousal_id</td>
+<td>INTEGER</td>
+<td>PK, AUTOINCREMENT</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>arousal_time</td>
+<td>TEXT</td>
+<td></td>
+<td>晨勃时间（精确到小时）</td>
+</tr>
+<tr>
+<td>comment</td>
+<td>TEXT</td>
+<td></td>
+<td>评论（可含梦境）</td>
+</tr>
+<tr>
+<td>create_time</td>
+<td>TEXT</td>
+<td>DEFAULT now</td>
+<td>创建时间</td>
+</tr>
+<tr>
+<td>update_time</td>
+<td>TEXT</td>
+<td>DEFAULT now</td>
+<td>更新时间</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Trigger</strong>: <code>update_sexual_arousal_timestamp</code> — 更新时自动刷新 <code>update_time</code></p>
+<hr />
+<h2 id="init">四、依赖表（未在上述 init 脚本中定义）<a class="headerlink" href="#init" title="Permanent link">&para;</a></h2>
+<p>以下表被引用，但未在 <code>initTABLE.sql</code> / <code>initPrivateTable.sql</code> 中定义，可能来自种子数据或迁移脚本：</p>
+<h3 id="tag_type">tag_type — 标签类型表<a class="headerlink" href="#tag_type" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tag_type_id</td>
+<td>INTEGER</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>tag_type_name</td>
+<td>TEXT</td>
+<td>类型名称</td>
+</tr>
+<tr>
+<td>tag_order</td>
+<td>INTEGER</td>
+<td>排序</td>
+</tr>
+</tbody>
+</table>
+<h3 id="maker-manufacturer">maker — 制作商表（由 manufacturer 迁移而来）<a class="headerlink" href="#maker-manufacturer" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>列名</th>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>maker_id</td>
+<td>INTEGER</td>
+<td>主键</td>
+</tr>
+<tr>
+<td>cn_name</td>
+<td>TEXT</td>
+<td>中文名</td>
+</tr>
+<tr>
+<td>jp_name</td>
+<td>TEXT</td>
+<td>日文名</td>
+</tr>
+<tr>
+<td>aliases</td>
+<td>TEXT</td>
+<td>别名</td>
+</tr>
+<tr>
+<td>detail</td>
+<td>TEXT</td>
+<td>说明</td>
+</tr>
+<tr>
+<td>logo_url</td>
+<td>TEXT</td>
+<td>Logo 路径</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_2">五、实体关系简图<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<pre><code>┌─────────┐       ┌──────────────────────┐       ┌─────────┐
+│  work   │───────│ work_actress_relation│───────│ actress │
+└────┬────┘       └──────────────────────┘       └────┬────┘
+     │                                                 │
+     │            ┌──────────────────────┐            │
+     └────────────│ work_tag_relation    │            │
+     │            └──────────┬───────────┘            │
+     │                       │                        │
+     │            ┌──────────▼───────────┐            │
+     │            │        tag           │            │
+     │            └──────────┬───────────┘            │
+     │                       │                        │
+     │            ┌──────────▼───────────┐     ┌──────▼──────┐
+     │            │     tag_type         │     │ actress_name│
+     │            └──────────────────────┘     └─────────────┘
+     │
+     │            ┌──────────────────────┐       ┌─────────┐
+     └────────────│ work_actor_relation  │───────│  actor  │
+                  └──────────────────────┘       └────┬────┘
+                                                      │
+                                               ┌──────▼──────┐
+     ┌──────────────────────┐                  │ actor_name │
+     │ prefix_maker_relation│──────────────────└─────────────┘
+     └──────────┬───────────┘
+                │
+     ┌──────────▼───────────┐
+     │       maker          │
+     └──────────────────────┘
+
+【私有库 - 引用公共库 ID】
+┌─────────────────┐     actress_id     ┌─────────┐
+│ favorite_actress│───────────────────→│ actress │
+└─────────────────┘                    └─────────┘
+
+┌─────────────────┐     work_id        ┌─────┐
+│ favorite_work   │───────────────────→│work │
+└─────────────────┘                    └─────┘
+
+┌──────────────┐    work_id (软引用)
+│ masturbation │ ────────────────────→ work
+└──────────────┘
+</code></pre>
+<hr />
+<h2 id="_3">六、跨库查询说明<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<p>私有库通过 <code>ATTACH DATABASE</code> 挂载为 <code>priv</code>，公共库为主库。查询示例：</p>
+<pre><code class="language-sql">-- 跨库：撸管记录关联作品
+SELECT m.*, w.serial_number
+FROM priv.masturbation m
+LEFT JOIN work w ON m.work_id = w.work_id;
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

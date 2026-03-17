@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>力导向图 C++ 模块架构分析 - JAV管理工具</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">JAV管理工具</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">首页</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../usage/" class="nav-link">使用方法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../ui-design/" class="nav-link">UI设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../db-design/" class="nav-link">数据库设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../develop/" class="nav-link">开发注意事项</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../api/" class="nav-link">API</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../bug/" class="nav-link">BUG</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../future/" class="nav-link">未来功能展望</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../data-collect/" class="nav-link">数据收集</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../recommendation/" class="nav-link">推荐算法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../av/" class="nav-link">AV知识</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#c" class="nav-link">力导向图 C++ 模块架构分析</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#_1" class="nav-link">一、模块总览</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_3" class="nav-link">二、架构问题与修改建议</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#bug" class="nav-link">三、Bug 清单</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_4" class="nav-link">四、性能优化建议</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_5" class="nav-link">五、总结与优先级</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="c">力导向图 C++ 模块架构分析<a class="headerlink" href="#c" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>分析范围：<code>cpp_bindings/forced_direct_view/include/*.h</code> 与 <code>cpp_bindings/forced_direct_view/src/*.cpp</code>
+分析时间：2026-03-04</p>
+</blockquote>
+<hr />
+<h2 id="_1">一、模块总览<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                      ForceViewOpenGL                            │
+│  (QOpenGLWidget — 主控类, 拆分为 6 个 .cpp 实现)                 │
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐    │
+│  │ PhysicsState │  │  Simulation  │  │  GraphRenderer     │    │
+│  │ (物理数据)    │  │ (仿真引擎)   │  │  (OpenGL 渲染)     │    │
+│  └──────┬───────┘  └──────┬───────┘  └────────────────────┘    │
+│         │                 │                                     │
+│         │          ┌──────┴───────┐                             │
+│         │          │   Forces     │                             │
+│         │          │ ┌──────────┐ │                             │
+│         │          │ │ Center   │ │                             │
+│         │          │ │ Link     │ │                             │
+│         │          │ │ ManyBody │──── QuadTree (Barnes-Hut)    │
+│         │          │ │Collision │ │                             │
+│         │          │ └──────────┘ │                             │
+│         │          └──────────────┘                             │
+│  ┌──────┴────────────────────────────────────────────────┐     │
+│  │              MSDF 文本渲染子系统                        │     │
+│  │  MsdfFontAtlas (字体图集)  +  MsdfTextRenderer (渲染)  │     │
+│  └───────────────────────────────────────────────────────┘     │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="_2">文件职责划分<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ForceViewOpenGL.h</code></td>
+<td>主控类声明，~390 行，包含全部成员变量</td>
+</tr>
+<tr>
+<td><code>ForceViewOpenGL.cpp</code></td>
+<td>构造/析构、定时器、仿真线程、GL 初始化/绘制</td>
+</tr>
+<tr>
+<td><code>ForceViewOpenGL_Simulation.cpp</code></td>
+<td><code>setGraph</code>、仿真控制、力参数、视觉参数、邻居 BFS</td>
+</tr>
+<tr>
+<td><code>ForceViewOpenGL_Input.cpp</code></td>
+<td>鼠标/滚轮事件处理</td>
+</tr>
+<tr>
+<td><code>ForceViewOpenGL_Geometry.cpp</code></td>
+<td>可见性裁剪、边/节点缓冲区构建、帧准备</td>
+</tr>
+<tr>
+<td><code>ForceViewOpenGL_Runtime.cpp</code></td>
+<td>运行时增删节点/边、批量 diff</td>
+</tr>
+<tr>
+<td><code>ForceViewOpenGL_Text.cpp</code></td>
+<td>MSDF 图集异步构建、标签布局缓存、文本顶点生成</td>
+</tr>
+<tr>
+<td><code>PhysicsState.h</code></td>
+<td>物理状态：位置/速度/边/拖拽的平面数组 + 双缓冲渲染位置</td>
+</tr>
+<tr>
+<td><code>Simulation.h/.cpp</code></td>
+<td>仿真引擎：Force 管理 + tick + alpha 冷却</td>
+</tr>
+<tr>
+<td><code>Forces.h/.cpp</code></td>
+<td>四种力：Center / Link / ManyBody / Collision</td>
+</tr>
+<tr>
+<td><code>QuadTree.h/.cpp</code></td>
+<td>Barnes-Hut 四叉树，用于 ManyBody 加速</td>
+</tr>
+<tr>
+<td><code>GraphRenderer.h/.cpp</code></td>
+<td>OpenGL 绘制：线段(quad)、节点(instancing + point sprite)</td>
+</tr>
+<tr>
+<td><code>MsdfFontAtlas.h/.cpp</code></td>
+<td>MSDF 字体图集生成（基于 msdfgen）</td>
+</tr>
+<tr>
+<td><code>MsdfTextRenderer.h/.cpp</code></td>
+<td>MSDF 文本 GPU 渲染</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_3">二、架构问题与修改建议<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h2>
+<h3 id="21-forceviewopengl-god-object">2.1 核心问题：ForceViewOpenGL 是上帝对象（God Object）<a class="headerlink" href="#21-forceviewopengl-god-object" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：<code>ForceViewOpenGL</code> 拥有约 <strong>80+ 个成员变量</strong>，承担了以下所有职责：</p>
+<ul>
+<li>仿真线程管理与生命周期</li>
+<li>OpenGL 初始化与绘制流水线</li>
+<li>鼠标/键盘输入处理</li>
+<li>图数据管理（节点、边、标签、颜色、半径）</li>
+<li>视图变换（平移/缩放）</li>
+<li>可见性裁剪与实例数据构建</li>
+<li>MSDF 字体图集的异步构建与管理</li>
+<li>悬停/选择/拖拽状态机</li>
+<li>邻居 BFS 计算</li>
+<li>运行时图结构增删改</li>
+</ul>
+<p><strong>建议</strong>：逐步拆分为独立组件：</p>
+<pre><code>ForceViewOpenGL
+├── GraphDataManager       — 图数据（节点/边/ID/标签/颜色/半径/邻居表）
+│                            及 ID→索引映射 (HashMap)
+├── SimulationController   — 仿真线程、PhysicsState、Simulation 的生命周期
+├── ViewTransform          — pan/zoom 状态 + 坐标转换
+├── InteractionHandler     — 鼠标事件 → 悬停/拖拽/选择状态机
+├── VisibilityCuller       — 视口裁剪 + 分组(dim/base/hover)
+├── EdgeBufferBuilder      — 边线/箭头顶点数据构建
+├── NodeBufferBuilder      — 节点实例数据构建
+└── TextSubsystem          — MsdfFontAtlas + MsdfTextRenderer + 布局缓存
+</code></pre>
+<p>优先级最高的拆分是 <strong>GraphDataManager</strong>（将 <code>m_ids</code>/<code>m_labels</code>/<code>m_nodeColors</code>/<code>m_showRadiiBase</code>/<code>m_neighbors</code> 和运行时增删逻辑抽出）和 <strong>SimulationController</strong>（将仿真线程和 mutex 封装）。</p>
+<hr />
+<h3 id="22-id-on">2.2 节点 ID 查找复杂度为 O(N)<a class="headerlink" href="#22-id-on" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：所有基于节点 ID (QString) 的操作都通过线性扫描 <code>m_ids</code> 来查找索引：</p>
+<pre><code class="language-cpp">// ForceViewOpenGL_Runtime.cpp — 每次操作都是 O(N)
+for (int i = 0; i &lt; m_ids.size(); ++i) {
+    if (m_ids[i] == nodeId) { ... }
+}
+</code></pre>
+<p>在 <code>getNodePosition</code>、<code>add_node_runtime</code>、<code>remove_node_runtime</code>、<code>add_edge_runtime</code>、<code>remove_edge_runtime</code> 中均出现此模式。对于大图（10000+ 节点），这是严重的性能瓶颈。</p>
+<p><strong>建议</strong>：维护 <code>QHash&lt;QString, int&gt; m_idToIndex</code>，在 <code>setGraph</code>、运行时增删时同步更新。<code>apply_diff_runtime</code> 中已有局部的 <code>buildIdToIndex()</code> lambda，应将其提升为持久化成员。</p>
+<hr />
+<h3 id="23-oe">2.3 边存在性检查复杂度为 O(E)<a class="headerlink" href="#23-oe" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：<code>PhysicsState::addEdge</code> 需线性扫描所有边判断是否已存在：</p>
+<pre><code class="language-cpp">for (size_t i = 0; i &lt; edges.size(); i += 2) {
+    if ((edges[i] == u &amp;&amp; edges[i + 1] == v) || ...)
+        return false;
+}
+</code></pre>
+<p><strong>建议</strong>：在 <code>GraphDataManager</code> 层维护 <code>std::unordered_set&lt;uint64_t&gt;</code> 的边集合（将 <code>(u,v)</code> 编码为 64 位键），O(1) 查重。</p>
+<hr />
+<h3 id="24">2.4 每帧重分配热路径内存<a class="headerlink" href="#24" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：<code>updateEdgeLineBuffers</code>、<code>buildNodeInstanceData</code>、<code>buildTextVertices</code> 在每帧调用 <code>clear()</code> + <code>reserve()</code> 重建顶点数据向量。虽然 <code>std::vector::clear()</code> 不释放内存，但 <code>reserve</code> 在容量不足时仍会重分配。</p>
+<p><strong>建议</strong>：
+- 使用 <code>resize()</code> + 手动管理写入偏移，避免反复 push_back
+- 或将这些缓冲区改为双缓冲（写完后 swap）
+- 对于 GPU 上传，考虑使用持久映射缓冲区 (persistent mapped buffer) 或环形缓冲</p>
+<hr />
+<h3 id="27">2.7 仿真线程信号发射的线程安全性<a class="headerlink" href="#27" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：<code>simLoop()</code> 在仿真线程中直接 emit Qt 信号：</p>
+<pre><code class="language-cpp">emit tickTimeUpdated(elapsed);
+emit alphaUpdated(alphaVal);
+emit simulationStopped();
+</code></pre>
+<p>若信号-槽使用默认 <code>AutoConnection</code>，跨线程时会自动排队，但这依赖于 ForceViewOpenGL 有正确的线程亲和性。</p>
+<p><strong>建议</strong>：
+- 显式使用 <code>Qt::QueuedConnection</code> 连接这些信号
+- 或改用线程安全的回调 + <code>QMetaObject::invokeMethod(this, ..., Qt::QueuedConnection)</code> 模式（如 <code>setGraph</code> 中已有的模式）</p>
+<hr />
+<h3 id="28-physicsstate">2.8 PhysicsState 职责过重<a class="headerlink" href="#28-physicsstate" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：<code>PhysicsState</code> 从一个纯数据结构膨胀为包含复杂运行时图操作的类（<code>addNode</code>、<code>removeNode</code>、<code>addEdge</code>、<code>removeEdge</code>），其中 <code>removeNode</code> 的 swap-last 逻辑约 60 行，且与上层（ForceViewOpenGL）的索引修复逻辑紧耦合。</p>
+<p><strong>建议</strong>：
+- <code>PhysicsState</code> 应保持为纯数据结构 + 简单的 init/accessor
+- 图结构修改操作提升到 <code>GraphDataManager</code> 层，统一处理物理数据和显示数据的同步</p>
+<hr />
+<h2 id="bug">三、Bug 清单<a class="headerlink" href="#bug" title="Permanent link">&para;</a></h2>
+<h3 id="bug-7physicsstateremovenode">Bug 7：<code>PhysicsState::removeNode</code> 的边自环过滤过于激进<a class="headerlink" href="#bug-7physicsstateremovenode" title="Permanent link">&para;</a></h3>
+<p><strong>位置</strong>：<code>PhysicsState.h</code> 第 206 行</p>
+<pre><code class="language-cpp">if (u &lt; 0 || v &lt; 0 || u &gt;= newN || v &gt;= newN || u == v) continue;
+</code></pre>
+<p><strong>问题</strong>：swap-last 后如果原来有一条边连接 <code>index</code> 和 <code>last</code>（假设 index != last），删除 <code>index</code> 节点时这条边应被移除（u == index 或 v == index 的检查已处理）。但如果原来有一条自环 <code>(last, last)</code>（虽然 addEdge 不允许），重映射后变成 <code>(index, index)</code>，会被 <code>u == v</code> 过滤掉。这不是实际 bug（因为 addEdge 阻止自环），但防御性检查 <code>u == v</code> 在 swap-last 语义下可能意外过滤掉合法边——需要确保这种情况不会发生。</p>
+<p><strong>现状</strong>：由于 <code>addEdge</code> 禁止自环，此处是安全的。但建议添加注释说明依赖关系。</p>
+<hr />
+<h2 id="_4">四、性能优化建议<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<h3 id="41-manybody-force">4.1 ManyBody Force 阈值调整<a class="headerlink" href="#41-manybody-force" title="Permanent link">&para;</a></h3>
+<p>当前 <code>N &lt; 1000</code> 使用 block-tiled O(N²)，<code>N &gt;= 1000</code> 使用 Barnes-Hut。建议：
+- 在 <code>500 ≤ N &lt; 1000</code> 范围增加 parallel block-tiled 路径（已声明 <code>applyParallel</code> 但未使用）
+- 考虑为 Barnes-Hut 实现 SIMD 加速</p>
+<h3 id="42-gpu-buffer">4.2 GPU Buffer 上传优化<a class="headerlink" href="#42-gpu-buffer" title="Permanent link">&para;</a></h3>
+<p>当前每帧通过 <code>glBufferData</code> 重新分配并上传全部顶点数据。建议：
+- 使用 <code>glBufferSubData</code> 在缓冲区大小不变时仅更新数据
+- 或使用 <code>GL_MAP_PERSISTENT_BIT</code> + triple-buffering 实现零拷贝</p>
+<h3 id="43">4.3 文本渲染按需更新<a class="headerlink" href="#43" title="Permanent link">&para;</a></h3>
+<p>当前每帧都调用 <code>buildTextVertices</code> 重建文本顶点。如果视图和节点位置没有变化，可以缓存结果并跳过重建。添加脏标记 <code>m_textVerticesDirty</code> 在仿真 tick、视图变换、悬停变化时置位。</p>
+<hr />
+<h2 id="_5">五、总结与优先级<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>优先级</th>
+<th>项目</th>
+<th>类型</th>
+<th>影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>P1</strong></td>
+<td>2.2: 节点 ID 查找 O(N) → O(1)</td>
+<td>性能</td>
+<td>大图操作卡顿</td>
+</tr>
+<tr>
+<td><strong>P1</strong></td>
+<td>2.1: 拆分 God Object</td>
+<td>架构</td>
+<td>可维护性</td>
+</tr>
+<tr>
+<td><strong>P3</strong></td>
+<td>2.4: 热路径内存分配</td>
+<td>性能</td>
+<td>帧时间抖动</td>
+</tr>
+</tbody>
+</table></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

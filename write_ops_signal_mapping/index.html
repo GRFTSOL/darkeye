@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>写操作 → 信号映射表 - JAV管理工具</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">JAV管理工具</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">首页</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../usage/" class="nav-link">使用方法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../ui-design/" class="nav-link">UI设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../db-design/" class="nav-link">数据库设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../develop/" class="nav-link">开发注意事项</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../api/" class="nav-link">API</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../bug/" class="nav-link">BUG</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../future/" class="nav-link">未来功能展望</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../data-collect/" class="nav-link">数据收集</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../recommendation/" class="nav-link">推荐算法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../av/" class="nav-link">AV知识</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#_1" class="nav-link">写操作 → 信号映射表</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#globalsignalbus" class="nav-link">信号列表（GlobalSignalBus）</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#insertpy" class="nav-link">insert.py</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#deletepy" class="nav-link">delete.py</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#updatepy" class="nav-link">update.py</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#emit" class="nav-link">内部辅助函数（无需单独 emit）</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="_1">写操作 → 信号映射表<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
+<p>写操作完成后，<strong>调用方负责</strong> emit 对应的 <code>global_signals.*_changed</code> 信号。本表便于排查遗漏。</p>
+<h2 id="globalsignalbus">信号列表（GlobalSignalBus）<a class="headerlink" href="#globalsignalbus" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>信号</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>work_data_changed</code></td>
+<td>作品数据变更</td>
+</tr>
+<tr>
+<td><code>actress_data_changed</code></td>
+<td>女优数据变更（刷新女优选择器等）</td>
+</tr>
+<tr>
+<td><code>actor_data_changed</code></td>
+<td>男优数据变更（刷新男优选择器等）</td>
+</tr>
+<tr>
+<td><code>tag_data_changed</code></td>
+<td>标签数据变更（刷新标签选择器等）</td>
+</tr>
+<tr>
+<td><code>masterbation_changed</code></td>
+<td>撸管记录变更</td>
+</tr>
+<tr>
+<td><code>lovemaking_changed</code></td>
+<td>做爱记录变更</td>
+</tr>
+<tr>
+<td><code>sexarousal_changed</code></td>
+<td>晨勃记录变更</td>
+</tr>
+<tr>
+<td><code>like_work_changed</code></td>
+<td>喜欢作品变更</td>
+</tr>
+<tr>
+<td><code>like_actress_changed</code></td>
+<td>喜欢女优变更</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="insertpy">insert.py<a class="headerlink" href="#insertpy" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>函数</th>
+<th>需 emit 的信号</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InsertNewActress</code></td>
+<td><code>actress_data_changed</code></td>
+</tr>
+<tr>
+<td><code>InsertNewActor</code></td>
+<td><code>actor_data_changed</code></td>
+</tr>
+<tr>
+<td><code>InsertNewWork</code></td>
+<td><code>work_data_changed</code></td>
+</tr>
+<tr>
+<td><code>InsertNewWorkByHand</code></td>
+<td><code>work_data_changed</code></td>
+</tr>
+<tr>
+<td><code>insert_tag</code></td>
+<td><code>tag_data_changed</code></td>
+</tr>
+<tr>
+<td><code>add_tag2work</code></td>
+<td><code>work_data_changed</code></td>
+</tr>
+<tr>
+<td><code>insert_masturbation_record</code></td>
+<td><code>masterbation_changed</code></td>
+</tr>
+<tr>
+<td><code>insert_lovemaking_record</code></td>
+<td><code>lovemaking_changed</code></td>
+</tr>
+<tr>
+<td><code>insert_sexual_arousal_record</code></td>
+<td><code>sexarousal_changed</code></td>
+</tr>
+<tr>
+<td><code>insert_liked_actress</code></td>
+<td><code>like_actress_changed</code></td>
+</tr>
+<tr>
+<td><code>insert_liked_work</code></td>
+<td><code>like_work_changed</code></td>
+</tr>
+<tr>
+<td><code>InsertAliasName</code></td>
+<td><code>actress_data_changed</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="deletepy">delete.py<a class="headerlink" href="#deletepy" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>函数</th>
+<th>需 emit 的信号</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>delete_favorite_actress</code></td>
+<td><code>like_actress_changed</code></td>
+</tr>
+<tr>
+<td><code>delete_favorite_work</code></td>
+<td><code>like_work_changed</code></td>
+</tr>
+<tr>
+<td><code>delete_work</code></td>
+<td><code>work_data_changed</code></td>
+</tr>
+<tr>
+<td><code>delete_actress</code></td>
+<td><code>actress_data_changed</code></td>
+</tr>
+<tr>
+<td><code>delete_actor</code></td>
+<td><code>actor_data_changed</code></td>
+</tr>
+<tr>
+<td><code>delete_tag</code></td>
+<td><code>tag_data_changed</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="updatepy">update.py<a class="headerlink" href="#updatepy" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>函数</th>
+<th>需 emit 的信号</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>update_tag_type</code></td>
+<td><code>tag_data_changed</code></td>
+</tr>
+<tr>
+<td><code>UpdateWorkTags</code></td>
+<td><code>work_data_changed</code></td>
+</tr>
+<tr>
+<td><code>update_work_byhand</code></td>
+<td><code>work_data_changed</code></td>
+</tr>
+<tr>
+<td><code>update_work_byhand_</code></td>
+<td><code>work_data_changed</code></td>
+</tr>
+<tr>
+<td><code>update_work_actor</code></td>
+<td><code>work_data_changed</code></td>
+</tr>
+<tr>
+<td><code>update_db_actress</code></td>
+<td><code>actress_data_changed</code></td>
+</tr>
+<tr>
+<td><code>update_actress_image</code></td>
+<td><code>actress_data_changed</code></td>
+</tr>
+<tr>
+<td><code>update_actress_minnano_id</code></td>
+<td><code>actress_data_changed</code>（若影响展示）</td>
+</tr>
+<tr>
+<td><code>update_work_javtxt</code></td>
+<td>通常无需（内部缓存）</td>
+</tr>
+<tr>
+<td><code>update_titlestory</code></td>
+<td><code>work_data_changed</code></td>
+</tr>
+<tr>
+<td><code>update_tag_color</code></td>
+<td><code>tag_data_changed</code></td>
+</tr>
+<tr>
+<td><code>update_fanza_cover_url</code></td>
+<td>通常无需（内部缓存）</td>
+</tr>
+<tr>
+<td><code>update_on_dan</code></td>
+<td>通常无需（内部状态）</td>
+</tr>
+<tr>
+<td><code>update_tag</code></td>
+<td><code>tag_data_changed</code></td>
+</tr>
+<tr>
+<td><code>mark_delete</code></td>
+<td><code>work_data_changed</code></td>
+</tr>
+<tr>
+<td><code>mark_undelete</code></td>
+<td><code>work_data_changed</code></td>
+</tr>
+<tr>
+<td><code>update_actress_byhand</code></td>
+<td><code>actress_data_changed</code></td>
+</tr>
+<tr>
+<td><code>update_actor_byhand</code></td>
+<td><code>actor_data_changed</code></td>
+</tr>
+<tr>
+<td><code>redirect_tag_121</code></td>
+<td><code>tag_data_changed</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="emit">内部辅助函数（无需单独 emit）<a class="headerlink" href="#emit" title="Permanent link">&para;</a></h2>
+<p>以下函数由其他写函数内部调用，由调用方统一 emit 即可：</p>
+<ul>
+<li><code>_update_actor</code>, <code>_update_actress</code>, <code>_update_worktag</code>（由 <code>update_work_byhand</code> 等调用）</li>
+<li><code>update_actress_name</code>, <code>update_actor_name</code>, <code>update_tag_alias</code>（由 <code>update_*_byhand</code> 等调用）</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>数据层说明 - JAV管理工具</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">JAV管理工具</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">首页</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../usage/" class="nav-link">使用方法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../ui-design/" class="nav-link">UI设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../db-design/" class="nav-link">数据库设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../develop/" class="nav-link">开发注意事项</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../api/" class="nav-link">API</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../bug/" class="nav-link">BUG</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../future/" class="nav-link">未来功能展望</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../data-collect/" class="nav-link">数据收集</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../recommendation/" class="nav-link">推荐算法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../av/" class="nav-link">AV知识</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#_1" class="nav-link">数据层说明</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#1" class="nav-link">1. 架构决策</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#2" class="nav-link">2. 连接策略</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#3-query" class="nav-link">3. Query 模块职责</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#4-insertupdatedelete" class="nav-link">4. 写操作与 Insert/Update/Delete</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#5-emit" class="nav-link">5. 写操作后需 emit 的全局信号</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#6-ui" class="nav-link">6. UI 表格模型</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="_1">数据层说明<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
+<p>本文档描述 DarkEye 数据层的连接策略、模块职责与写操作后的信号约定。</p>
+<hr />
+<h2 id="1">1. 架构决策<a class="headerlink" href="#1" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>无 ORM</strong>：不使用 SQLAlchemy 等 ORM，直接使用 sqlite3。</li>
+<li><strong>无 Repository/Service 中间层</strong>：UI 直接调用 <code>core.database.query/insert/update/delete</code>。</li>
+<li><strong>统一连接</strong>：全部通过 <code>core.database.connection.get_connection</code> 获取连接。</li>
+</ul>
+<hr />
+<h2 id="2">2. 连接策略<a class="headerlink" href="#2" title="Permanent link">&para;</a></h2>
+<h3 id="21">2.1 获取连接<a class="headerlink" href="#21" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from core.database.connection import get_connection
+
+# 只读（查询、统计等）
+with get_connection(database, readonly=True) as conn:
+    cur = conn.execute(&quot;SELECT ...&quot;)
+
+# 可读写（插入、更新、删除）
+with get_connection(database, readonly=False) as conn:
+    conn.execute(&quot;INSERT ...&quot;)
+    conn.commit()
+</code></pre>
+<h3 id="22">2.2 参数说明<a class="headerlink" href="#22" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>database</code></td>
+<td>数据库路径（<code>config.DATABASE</code> 公共库、<code>config.PRIVATE_DATABASE</code> 私有库）</td>
+</tr>
+<tr>
+<td><code>readonly</code></td>
+<td><code>True</code> 只读模式（<code>mode=ro</code>），<code>False</code> 可读写（<code>mode=rwc</code>）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23">2.3 连接特性<a class="headerlink" href="#23" title="Permanent link">&para;</a></h3>
+<ul>
+<li>自动开启外键约束（<code>PRAGMA foreign_keys=ON</code>）</li>
+<li>设置 <code>busy_timeout=5000</code> 避免锁等待过长</li>
+<li>使用 <code>with</code> 确保连接正确关闭</li>
+</ul>
+<h3 id="24">2.4 私有库<a class="headerlink" href="#24" title="Permanent link">&para;</a></h3>
+<p>需要联合查询公共库与私有库时，使用 <code>db_utils.attach_private_db(cursor)</code> / <code>detach_private_db(cursor)</code> 做 ATTACH。</p>
+<hr />
+<h2 id="3-query">3. Query 模块职责<a class="headerlink" href="#3-query" title="Permanent link">&para;</a></h2>
+<p><code>core/database/query/</code> 按业务域拆分为子模块，由 <code>__init__.py</code> 聚合导出。</p>
+<table>
+<thead>
+<tr>
+<th>子模块</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>work.py</code></td>
+<td>作品相关：<code>get_workinfo_by_workid</code>、<code>get_actress_from_work_id</code>、<code>get_serial_number</code> 等</td>
+</tr>
+<tr>
+<td><code>actress.py</code></td>
+<td>女优相关：<code>get_actress_info</code>、<code>exist_actress</code>、<code>get_actressname</code> 等</td>
+</tr>
+<tr>
+<td><code>actor.py</code></td>
+<td>男优相关：<code>get_actor_info</code>、<code>exist_actor</code>、<code>get_actor_allname</code> 等</td>
+</tr>
+<tr>
+<td><code>tag.py</code></td>
+<td>标签相关：<code>get_tags</code>、<code>get_taginfo_by_id</code>、<code>get_tagid_by_keyword</code> 等</td>
+</tr>
+<tr>
+<td><code>dashboard.py</code></td>
+<td>仪表盘：<code>get_dashboard_stats</code></td>
+</tr>
+<tr>
+<td><code>statistics.py</code></td>
+<td>统计：<code>fetch_work_actress_avg_age</code>、<code>get_tag_frequence</code> 等</td>
+</tr>
+<tr>
+<td><code>private.py</code></td>
+<td>私有库：<code>query_actress</code>、<code>query_work</code>、<code>get_record_by_year</code> 等</td>
+</tr>
+</tbody>
+</table>
+<p><strong>调用方式</strong>：<code>from core.database.query import get_workinfo_by_workid, get_actress_info, ...</code></p>
+<hr />
+<h2 id="4-insertupdatedelete">4. 写操作与 Insert/Update/Delete<a class="headerlink" href="#4-insertupdatedelete" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>模块</th>
+<th>职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>core/database/insert.py</code></td>
+<td>新增：<code>InsertNewWork</code>、<code>InsertNewActress</code>、<code>insert_tag</code>、<code>insert_masturbation_record</code> 等</td>
+</tr>
+<tr>
+<td><code>core/database/update.py</code></td>
+<td>更新：<code>update_work_byhand</code>、<code>update_actress_byhand</code>、<code>mark_delete</code>、<code>update_tag</code> 等</td>
+</tr>
+<tr>
+<td><code>core/database/delete.py</code></td>
+<td>删除：<code>delete_work</code>、<code>delete_actress</code>、<code>delete_tag</code>、<code>delete_favorite_work</code> 等</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-emit">5. 写操作后需 emit 的全局信号<a class="headerlink" href="#5-emit" title="Permanent link">&para;</a></h2>
+<p><strong>约定</strong>：写操作完成后，<strong>调用方</strong>负责 emit 对应的 <code>global_signals.*_changed</code>，以通知其他 UI 组件刷新。</p>
+<h3 id="51">5.1 信号与写操作映射<a class="headerlink" href="#51" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>信号</th>
+<th>触发场景</th>
+<th>典型调用方</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>work_data_changed</code></td>
+<td>作品增删改、封面更新、标记删除/恢复</td>
+<td>AddWorkTabPage3、CrawlerManager、RecycleBinPage</td>
+</tr>
+<tr>
+<td><code>actress_data_changed</code></td>
+<td>女优增删改</td>
+<td>ModifyActressPage、AddActressDialog、CrawlerManager</td>
+</tr>
+<tr>
+<td><code>actor_data_changed</code></td>
+<td>男优增删改</td>
+<td>ModifyActorPage、AddActorDialog、CrawlerManager</td>
+</tr>
+<tr>
+<td><code>tag_data_changed</code></td>
+<td>标签增删改、颜色/重定向变更</td>
+<td>TagManagement、CrawlerManager</td>
+</tr>
+<tr>
+<td><code>like_work_changed</code></td>
+<td>喜欢/取消喜欢作品</td>
+<td>SingleWorkPage</td>
+</tr>
+<tr>
+<td><code>like_actress_changed</code></td>
+<td>喜欢/取消喜欢女优</td>
+<td>SingleActressInfo</td>
+</tr>
+<tr>
+<td><code>masterbation_changed</code></td>
+<td>自慰记录新增</td>
+<td>AddMasturbationDialog</td>
+</tr>
+<tr>
+<td><code>lovemaking_changed</code></td>
+<td>做爱记录新增</td>
+<td>AddMakeLoveDialog</td>
+</tr>
+<tr>
+<td><code>sexarousal_changed</code></td>
+<td>晨勃记录新增</td>
+<td>AddSexualArousalDialog</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52">5.2 其他信号（非数据变更）<a class="headerlink" href="#52" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>信号</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>status_msg_changed(str)</code></td>
+<td>状态栏文字</td>
+</tr>
+<tr>
+<td><code>download_success(str)</code></td>
+<td>图片下载完成</td>
+</tr>
+<tr>
+<td><code>gui_update(dict)</code></td>
+<td>通用 GUI 更新通知</td>
+</tr>
+<tr>
+<td><code>green_mode_changed(bool)</code></td>
+<td>绿色模式切换</td>
+</tr>
+</tbody>
+</table>
+<h3 id="53">5.3 示例<a class="headerlink" href="#53" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from core.database.update import update_tag
+from controller.GlobalSignalBus import global_signals
+
+# 更新标签后
+if update_tag(tag_id, ...):
+    global_signals.tag_data_changed.emit()
+</code></pre>
+<hr />
+<h2 id="6-ui">6. UI 表格模型<a class="headerlink" href="#6-ui" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>SqliteQueryTableModel</strong>：只读表格，传入 SQL 与 database，通过 <code>get_connection</code> 执行查询，<code>refresh()</code> 重新加载。</li>
+<li><strong>SqliteEditableTableModel</strong>：可编辑表格，传入表名与 database，支持 CRUD，同样使用 <code>get_connection</code>。</li>
+</ul>
+<p>两者均不依赖 Qt SQL 模块，直接使用 sqlite3。</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>DarkEye 整体架构修改建议 - JAV管理工具</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">JAV管理工具</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">首页</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../usage/" class="nav-link">使用方法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../ui-design/" class="nav-link">UI设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../db-design/" class="nav-link">数据库设计</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../develop/" class="nav-link">开发注意事项</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../api/" class="nav-link">API</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../bug/" class="nav-link">BUG</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../future/" class="nav-link">未来功能展望</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../data-collect/" class="nav-link">数据收集</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../recommendation/" class="nav-link">推荐算法</a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="../av/" class="nav-link">AV知识</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#darkeye" class="nav-link">DarkEye 整体架构修改建议</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#_1" class="nav-link">一、现状概览</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_4" class="nav-link">二、问题与改进建议</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_5" class="nav-link">三、推荐实施顺序</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_6" class="nav-link">四、架构演进目标示意</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_7" class="nav-link">五、小结</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="darkeye">DarkEye 整体架构修改建议<a class="headerlink" href="#darkeye" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>基于对项目代码的全面阅读，提出以下架构层面的改进建议，按优先级与实施难度排序。</p>
+</blockquote>
+<hr />
+<blockquote>
+<p><strong>⚠️ 架构决策更新（当前已采纳）</strong>：项目已明确采用 <strong>UI 直接 SQL 读写、无中间层</strong> 模式。以下建议中涉及 <strong>Service 层、Repository 迁移、UI 通过 Service 访问数据、依赖注入</strong> 的部分<strong>不再采纳</strong>，仅作历史参考。当前有效建议见 <code>docs/修改意见.md</code>。</p>
+</blockquote>
+<hr />
+<h2 id="_1">一、现状概览<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<h3 id="_2">当前架构分层<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<pre><code>main.py (入口)
+├── core/           # 核心业务：爬虫、数据库、图、推荐
+├── controller/     # 控制器：信号总线、任务管理、快捷键
+├── ui/             # 界面层：页面、组件、导航
+├── server/         # 本地 API（FastAPI）对接浏览器插件
+└── utils/          # 工具函数
+</code></pre>
+<h3 id="_3">数据流<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>UI → 数据库</strong>：页面直接 import <code>core.database.query/insert/update/delete</code>，跨层调用</li>
+<li><strong>跨线程通信</strong>：Server (FastAPI) → ServerBridge (Qt Signal) → MainWindow</li>
+<li><strong>事件通知</strong>：<code>global_signals</code> 在 30+ 文件中使用，用于数据变更后的 UI 刷新</li>
+</ul>
+<hr />
+<h2 id="_4">二、问题与改进建议<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<h3 id="1-query">1. 数据层：Query 巨型模块 + 双连接体系（高优先级）<a class="headerlink" href="#1-query" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>~~<strong>已不采纳</strong>：Repository 迁移、Service 层引入。当前采用 UI 直连 query/insert/update/delete。~~</p>
+</blockquote>
+<p><strong>现状</strong>：
+- <code>core/database/query.py</code> 超过 2000 行，被 30+ 文件直接引用
+- 已统一为 sqlite3 <code>get_connection</code>（原 QSqlDatabaseManager 已移除）
+- 仅 <code>WorkRepository</code> 采用 Repository 模式，其余为分散的 procedural 函数</p>
+<p><strong>建议</strong>：
+1. <strong>统一连接策略</strong>
+   - 全部使用 sqlite3 <code>get_connection</code>
+   - 在文档中写明适用场景，避免混用</p>
+<ol>
+<li>
+<p>~~<strong>按实体拆分 Repository</strong>~~（已不采纳）</p>
+</li>
+<li>
+<p>~~<strong>引入 Service 层</strong>~~（已不采纳）</p>
+</li>
+</ol>
+<hr />
+<h3 id="2-ui">2. UI 与数据层耦合（高优先级）<a class="headerlink" href="#2-ui" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>~~<strong>已不采纳</strong>：依赖注入 IWorkService、IActressService。当前接受 UI 直连数据库。~~</p>
+</blockquote>
+<p><strong>现状</strong>：
+- 页面、组件、Router 直接 import 并调用 <code>core.database.*</code>
+- 难以做单元测试和 UI 层与数据层解耦</p>
+<p><strong>建议</strong>：
+1. ~~<strong>依赖注入</strong>~~（已不采纳）</p>
+<ol>
+<li><strong>避免 Router 持有业务逻辑</strong>（仍建议采纳）</li>
+<li><code>router.py</code> 中 <code>_handle_work_route</code> 调用了 <code>get_actor_allname</code>，属于数据访问</li>
+<li>将「根据 actor_id 获取显示名并填充到页面」这类逻辑移至 WorkPage 或 ViewModel</li>
+<li>Router 只负责 <code>push(route_name, **params)</code> 与切换页面</li>
+</ol>
+<hr />
+<h3 id="3-mainwindow">3. MainWindow 职责过重（中优先级）<a class="headerlink" href="#3-mainwindow" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：
+- 创建并持有所有页面
+- 负责状态栏、内存监控、插件抓取处理、路由、快捷键等
+- 页面在启动时全部创建，影响启动速度</p>
+<p><strong>建议</strong>：
+1. <strong>按需加载页面（Lazy 化）</strong>
+   - 已有 <code>LazyWidget</code> 和 <code>LazyScrollArea</code>，可扩展到页面级
+   - 首次切换到某页面时再创建并缓存，减少启动开销</p>
+<ol>
+<li><strong>抽取 ApplicationController</strong></li>
+<li>将 <code>handle_capture_data</code>、<code>handle_capture</code>、部分信号连接移到独立控制器</li>
+<li>
+<p>MainWindow 只负责布局、路由绑定和基础生命周期</p>
+</li>
+<li>
+<p><strong>状态栏独立</strong></p>
+</li>
+<li>将内存、线程数、任务通知等封装为 <code>StatusBarController</code></li>
+<li>与 MainWindow 解耦，方便在无主窗口的场景复用（如 tray 模式）</li>
+</ol>
+<hr />
+<h3 id="4">4. 全局信号总线滥用（中优先级）<a class="headerlink" href="#4" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：
+- <code>global_signals</code> 被广泛使用，数据流难以追踪
+- 如 <code>work_data_changed</code> 可能触发多页面刷新，依赖关系不清晰
+- 维护和调试成本高</p>
+<p><strong>建议</strong>：
+1. <strong>收敛事件类型</strong>
+   - 合并语义接近的信号（如 <code>actress_data_changed</code> 与选择器刷新）
+   - 为信号添加清晰命名和文档，说明触发场景与订阅者</p>
+<ol>
+<li><strong>局部事件优先</strong></li>
+<li>能在父子组件间通过参数或局部 Signal 传递的，不经过全局总线</li>
+<li>
+<p>仅在跨模块、跨层级时使用 <code>global_signals</code></p>
+</li>
+<li>
+<p><strong>可选：引入轻量事件总线</strong></p>
+</li>
+<li>使用 <code>typing.Protocol</code> 定义 <code>EventBus</code> 接口</li>
+<li>实现可替换，便于测试时注入 mock</li>
+</ol>
+<hr />
+<h3 id="5-crawlermanager-dataupdate">5. CrawlerManager 与 DataUpdate 职责混杂（高优先级）<a class="headerlink" href="#5-crawlermanager-dataupdate" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：
+- <code>CrawlerManager</code> 负责：任务队列、多源分发、结果合并、触发写入
+- <code>DataUpdate</code> 负责：标签处理、女优/男优插入、图片下载、DB 写入、信号发射
+- 爬虫逻辑与数据持久化强耦合</p>
+<p><strong>建议</strong>：
+1. <strong>职责拆分</strong>
+   <code>CrawlerManager (调度、分发)
+        ↓ 产出 CrawledWorkData
+   DataMergeService (多源合并、清洗)
+        ↓ 产出标准 Work 领域对象
+   WorkImportService (标签/女优/男优处理、图片下载、DB 写入)</code></p>
+<ol>
+<li><strong>DataUpdate 重构</strong></li>
+<li>将 <code>DataUpdate</code> 拆成 <code>WorkImportService</code> 的用例</li>
+<li>女优/男优/标签的插入逻辑迁移到对应 Service</li>
+<li>图片下载单独成 <code>ImageDownloadService</code>，可被爬虫和手动添加共用</li>
+</ol>
+<hr />
+<h3 id="6-schema">6. 模型与 Schema 不统一（中优先级）<a class="headerlink" href="#6-schema" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：
+- <code>core/database/model/model.py</code>：<code>Work</code> 等持久化模型
+- <code>core/schema/model.py</code>：<code>CrawledWorkData</code> 爬虫 DTO
+- <code>AddWorkTabPage3.Model</code>：页面内部数据模型
+- 三者语义重叠，转换逻辑分散</p>
+<p><strong>建议</strong>：
+1. <strong>明确分层</strong>
+   - <code>core/schema/</code>：API、爬虫、外部输入的 DTO
+   - <code>core/domain/</code> 或 <code>core/database/model/</code>：领域/持久化模型
+   - UI ViewModel 持有领域模型或精简 DTO，不重复定义业务字段</p>
+<ol>
+<li><strong>统一转换</strong></li>
+<li>在 Service 层集中处理 <code>CrawledWorkData</code> → <code>Work</code>、<code>Work</code> → 展示 DTO</li>
+<li>减少各页面手写转换逻辑</li>
+</ol>
+<hr />
+<h3 id="7-server">7. Server 与数据库访问方式不统一（中优先级）<a class="headerlink" href="#7-server" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：
+- <code>server/app.py</code> 的 <code>check_existence</code> 直接用 sqlite3 连接
+- 其他模块统一使用 <code>get_connection</code></p>
+<p><strong>建议</strong>：
+1. <strong>Server 使用 sqlite3</strong>
+   - Server 在独立线程，使用 <code>get_connection(DATABASE, readonly=True)</code> 合理
+   - 明确约定：只读接口用只读连接，避免锁冲突</p>
+<ol>
+<li><strong>抽离共享查询</strong></li>
+<li>将 <code>check_existence</code> 的逻辑迁移到 <code>core.database.query</code> 模块</li>
+<li>Server 直接 import 调用，保持与 UI 一致的数据访问方式</li>
+</ol>
+<hr />
+<h3 id="8">8. 单例过多影响可测试性（低优先级）<a class="headerlink" href="#8" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：
+- <code>Router</code>、<code>GraphManager</code>、<code>CrawlerManager</code>、<code>TaskManager</code>、<code>ServerBridge</code> 等均为单例
+- 单元测试难以替换实现</p>
+<p><strong>建议</strong>：
+1. <strong>短期</strong>
+   - 为单例提供 <code>_instance = None</code> 的 reset 方法（仅用于测试）
+   - 或用 <code>pytest</code> 的 fixture 在测试前重置</p>
+<ol>
+<li><strong>长期</strong></li>
+<li>通过 DI 容器注入这些依赖，生产环境用单例实现，测试环境用 mock</li>
+<li>可考虑 <code>dependency-injector</code> 等轻量库</li>
+</ol>
+<hr />
+<h3 id="9">9. 启动顺序与错误恢复（低优先级）<a class="headerlink" href="#9" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：
+- <code>main.py</code> 顺序执行：Sim 进程 → Graph → Server → DB 初始化 → 样式 → MainWindow
+- 任一步骤失败可能导致半初始化状态</p>
+<p><strong>建议</strong>：
+1. <strong>启动阶段封装</strong>
+   - 将启动逻辑封装为 <code>Bootstrap</code> 或 <code>ApplicationContext</code>
+   - 各阶段有明确成功/失败状态，失败时给出清晰错误信息并安全退出</p>
+<ol>
+<li><strong>数据库迁移前置</strong></li>
+<li>在创建 MainWindow 之前完成所有 DB 检查和迁移</li>
+<li>避免 UI 已展示但数据库未就绪</li>
+</ol>
+<hr />
+<h3 id="10">10. 配置与路径管理（低优先级）<a class="headerlink" href="#10" title="Permanent link">&para;</a></h3>
+<p><strong>现状</strong>：
+- <code>config.py</code> 混合路径解析、<code>QSettings</code>、常量
+- <code>resource_path</code>、<code>get_PATH</code> 等职责略杂</p>
+<p><strong>建议</strong>：
+1. <strong>模块化</strong>
+   - <code>config/paths.py</code>：路径解析、打包适配
+   - <code>config/settings.py</code>：QSettings 与 ini 读写
+   - <code>config/constants.py</code>：版本号、默认值等常量</p>
+<hr />
+<h2 id="_5">三、推荐实施顺序<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>以下表格中涉及 Repository、Service 的项<strong>已不采纳</strong>。当前有效实施顺序见 <code>docs/修改意见.md</code>。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>内容</th>
+<th>预期收益</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~~<strong>P0</strong>~~</td>
+<td>~~拆分 query.py 到 Repository~~（已不采纳）</td>
+<td>-</td>
+</tr>
+<tr>
+<td><strong>P0</strong></td>
+<td>CrawlerManager / DataUpdate 职责拆分</td>
+<td>爬虫与持久化解耦，逻辑更清晰</td>
+</tr>
+<tr>
+<td>~~<strong>P1</strong>~~</td>
+<td>~~引入 Service 层，UI 通过 Service 访问数据~~（已不采纳）</td>
+<td>-</td>
+</tr>
+<tr>
+<td><strong>P1</strong></td>
+<td>MainWindow 职责拆分，页面 Lazy 加载</td>
+<td>启动更快，结构更清晰</td>
+</tr>
+<tr>
+<td><strong>P2</strong></td>
+<td>收敛 global_signals，规范事件流</td>
+<td>便于维护和排错</td>
+</tr>
+<tr>
+<td><strong>P2</strong></td>
+<td>统一模型与 Schema</td>
+<td>减少重复定义和转换错误</td>
+</tr>
+<tr>
+<td><strong>P3</strong></td>
+<td>配置模块化、单例可测试化</td>
+<td>提升长期可维护性</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_6">四、架构演进目标示意<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>~~以下为原拟议目标态，其中 Service/Repository 层、UI 不直接 import core.database 等<strong>已不采纳</strong>。当前架构见 <code>docs/data-layer.md</code>。~~</p>
+</blockquote>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│  main.py / Bootstrap                                        │
+│  - 初始化 DB、Graph、Server、样式                            │
+│  - 构建 DI 容器或 Service 实例                               │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+┌─────────────────────────▼───────────────────────────────────┐
+│  MainWindow                                                 │
+│  - 布局、路由、状态栏                                        │
+│  - 注入 PageFactory (Lazy 创建页面)                          │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+┌─────────────────────────▼───────────────────────────────────┐
+│  Pages / Dialogs (UI)                                       │
+│  - 接收 ViewModel 或 Service 注入                            │
+│  - 不直接 import core.database                              │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+┌─────────────────────────▼───────────────────────────────────┐
+│  Services (WorkService, ActressService, ...)                │
+│  - 封装业务逻辑，跨实体操作                                   │
+│  - 调用 Repository                                          │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+┌─────────────────────────▼───────────────────────────────────┐
+│  Repositories (WorkRepo, ActressRepo, ...)                  │
+│  - 单一实体的 CRUD                                          │
+│  - 使用统一的 connection 获取方式                            │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+┌─────────────────────────▼───────────────────────────────────┐
+│  Database (get_connection)                                  │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr />
+<h2 id="_7">五、小结<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
+<p>整体来看，项目功能完整，分层和模块划分已有雏形，主要问题集中在：</p>
+<ol>
+<li><strong>数据层</strong>：Query 过大、双连接、Repository 应用不彻底  </li>
+<li><strong>耦合</strong>：UI 直连数据库、Router 含业务逻辑、Crawler 与持久化混在一起  </li>
+<li><strong>职责</strong>：MainWindow 过重、全局信号使用过广  </li>
+</ol>
+<p>建议从数据层与爬虫拆分入手，再逐步引入 Service 层和依赖注入，在不大幅改写的前提下渐进式改进，以降低风险并保持可交付性。</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
