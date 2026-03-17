@@ -12,6 +12,8 @@
 [![Homepage](https://img.shields.io/badge/homepage-darkeye-blue)](https://de4321.github.io/darkeye-webpage/)
 [![Discord](https://img.shields.io/discord/1482965984104153229?label=Discord&logo=discord)](https://discord.gg/3thnEguWUk)
 
+[📖 在线文档](https://de4321.github.io/darkeye/)
+
 # 💡 快速开始
 ## 下载
 [![下载 Windows 版本](https://img.shields.io/badge/%20下载-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.1.1/DarkEye.7z)
@@ -99,6 +101,8 @@
 - [ ] 其他格式的信息导出功能，目前只能导.csv，还没想好怎么导出
 - [x] 部分截图功能，女优界面C键截图
 - [ ] 安装版本，减少换版本时手动切换数据库
+- [ ] NFO数据的导入与导出
+- [ ] Jvideo的数据导入
 
 拟物化的dvd
 ![收藏](docs/assets/dvd.jpg)
@@ -154,7 +158,8 @@ python main.py
 
 现在的打包属于激进排除，几乎把不需要的dll文件全删除了，所以当需要用到新的东西时很可能少dll。需要重新修改打包的配置
 
-# 文档
+# 📚 文档
+👉 完整文档请访问：https://de4321.github.io/darkeye/
 
 [![Architecture](https://img.shields.io/badge/📐_Architecture-blue?style=for-the-badge)](docs/architecture.md)
 [![Development](https://img.shields.io/badge/🧰_Development-green?style=for-the-badge)](docs/development.md)

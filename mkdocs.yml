@@ -12,7 +12,6 @@ nav:
   - 未来功能展望: future.md
   - 数据收集: data-collect.md
   - 推荐算法: recommendation.md
-  - AV知识: av.md
 
 plugins:
   - search
