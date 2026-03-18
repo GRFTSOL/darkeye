@@ -119,14 +119,19 @@ class ClosableTabBar(QTabBar):
                 btn.setEnabled(True)
                 btn.setIcon(icon)
                 btn.setIconSize(QSize(16, 16))
+                base_style = (
+                    "QToolButton { padding: 0; margin: 0; border: none; "
+                    "background: transparent; min-width: 20px; min-height: 20px; }\n"
+                )
             else:
+                # 不可关闭时完全取消占位：既隐藏按钮，也移除最小尺寸约束
                 btn.setFixedSize(0, 0)
                 btn.setVisible(False)
                 btn.setEnabled(False)
-            base_style = (
-                "QToolButton { padding: 0; margin: 0; border: none; "
-                "background: transparent; min-width: 20px; min-height: 20px; }\n"
-            )
+                base_style = (
+                    "QToolButton { padding: 0; margin: 0; border: none; "
+                    "background: transparent; min-width: 0px; min-height: 0px; }\n"
+                )
             if i == current:
                 btn.setStyleSheet(
                     base_style

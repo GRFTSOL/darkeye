@@ -25,7 +25,7 @@ from .radar_chart_widget import RadarChartWidget
 from .rotate_button import RotateButton
 from .search_bar import SearchBar
 from .shake_button import ShakeButton
-from .sidebar2 import Sidebar2
+from .Sidebar import Sidebar
 from .skeleton import Skeleton
 from .state_toggle_button import StateToggleButton
 from .toast_notification import Notification, Toast
@@ -82,7 +82,7 @@ __all__ = [
     "RotateButton",
     "SearchBar",
     "ShakeButton",
-    "Sidebar2",
+    "Sidebar",
     "Skeleton",
     "StateToggleButton",
     "Tag",

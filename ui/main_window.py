@@ -6,7 +6,7 @@ import logging
 from config import ICONS_PATH,APP_VERSION,set_max_window
 from controller.ShortcutRegistry import ShortcutRegistry
 from controller.ShortcutBindings import setup_mainwindow_actions#这个准备数据的操作是可以放在后台的但是QAction一定要放主线程
-from darkeye_ui.components import Sidebar2
+from darkeye_ui.components import Sidebar
 from ui.navigation.router import Router
 from controller.GlobalSignalBus import global_signals
 
@@ -55,8 +55,6 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(0) 
         
         menu_defs = [  # 内置图标名或 .svg 外部文件
-            ("forward", "前进到下一页", "chevron_up"),
-            ("back", "返回上一页", "chevron_down"),
             ("home", "首页", "house"),
             ("database", "管理", "database"),
             ("work", "作品", "film"),
@@ -66,11 +64,9 @@ class MainWindow(QMainWindow):
             ("graph", "关系图", "share_2"),
             ("shelf", "书架", "library_big"),
             ("av", "暗黑界", "scroll_text"),
-            ("setting", "设置", "settings"),
-            ("help", "帮助", "circle_question_mark"),
             ("bell", "通知", "bell"),
         ]
-        self.sidebar = Sidebar2(menu_defs=menu_defs)#侧边栏的按钮在这里改
+        self.sidebar = Sidebar(menu_defs=menu_defs)#侧边栏的按钮在这里改
 
         self.stack = QStackedWidget()
 
@@ -200,7 +196,9 @@ class MainWindow(QMainWindow):
             "help": "help"
         }
         self.sidebar.itemClicked.connect(self._on_sidebar_clicked)
-        
+        self.sidebar.backwardClicked.connect(lambda: Router.instance().back())
+        self.sidebar.forwardClicked.connect(lambda: Router.instance().forward())
+
         '''
         ### 什么时候有必要手动加单例？
         判断标准非常简单，只有满足以下 任意一点 时才需要：
@@ -274,12 +272,10 @@ class MainWindow(QMainWindow):
     @Slot(str)
     def _on_sidebar_clicked(self, menu_id: str) -> None:
         """处理侧边栏点击事件：通过路由跳转"""
-
         # 1. 前两个：历史后退 / 前进（不通过路由表跳转）
         if menu_id == "back":
             Router.instance().back()
             return
-
         if menu_id == "forward":
             Router.instance().forward()
             return

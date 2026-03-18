@@ -56,7 +56,7 @@ from darkeye_ui.components import (
     RotateButton,
     SearchBar,
     ShakeButton,
-    Sidebar2,
+    Sidebar,
     Skeleton,
     StateToggleButton,
     Tag,
@@ -905,7 +905,7 @@ def main():
         ("color_icons", "颜色图标", "copy"),
         ("theme", "主题", "refresh_cw"),
     ]
-    sidebar = Sidebar2(menu_defs=menu_defs)
+    sidebar = Sidebar(menu_defs=menu_defs)
     stack = QStackedWidget()
 
     refresh_callbacks: list = []
@@ -920,7 +920,17 @@ def main():
     stack.addWidget(_build_page_color_icons(theme_mgr, refresh_callbacks))
     stack.addWidget(_build_page_theme(theme_mgr, refresh_callbacks))
 
+    # Sidebar 底部「设置」按钮对应的简单设置页
+    settings_page = QWidget()
+    settings_layout = QVBoxLayout(settings_page)
+    settings_layout.setContentsMargins(24, 24, 24, 24)
+    settings_layout.addWidget(Label("设置", tone="inverse"))
+    settings_layout.addWidget(Label("这里是示例设置页面内容。"))
+    settings_layout.addStretch()
+    settings_index = stack.addWidget(settings_page)
+
     menu_id_to_index = {mid: i for i, (mid, _, _) in enumerate(menu_defs)}
+    menu_id_to_index["setting"] = settings_index
 
     def on_sidebar_clicked(menu_id: str):
         idx = menu_id_to_index.get(menu_id, 0)

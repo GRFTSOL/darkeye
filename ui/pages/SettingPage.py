@@ -530,11 +530,46 @@ class LastPage(QWidget):
 
         githubLabel = Label()
         githubLabel.setText(
-            '<a href="https://github.com/de4321/darkeye">https://github.com/de4321/darkeye</a>'
+            '<a href="https://github.com/de4321/darkeye">GitHub</a>'
         )
         githubLabel.setTextFormat(Qt.RichText)
         githubLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
         githubLabel.setOpenExternalLinks(True)   # 关键
+
+        discordLabel = Label()
+        discordLabel.setText(
+            '<a href="https://discord.gg/N7wJVNVA">Discord</a>'
+        )
+        discordLabel.setTextFormat(Qt.RichText)
+        discordLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        discordLabel.setOpenExternalLinks(True)
+
+        websiteLabel = Label()
+        websiteLabel.setText(
+            '<a href="https://de4321.github.io/darkeye-webpage/">官网</a>'
+        )
+        websiteLabel.setTextFormat(Qt.RichText)
+        websiteLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        websiteLabel.setOpenExternalLinks(True)
+
+        documentLabel = Label()
+        documentLabel.setText(
+            '<a href="https://de4321.github.io/darkeye/">文档</a>'
+        )
+        documentLabel.setTextFormat(Qt.RichText)
+        documentLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        documentLabel.setOpenExternalLinks(True)
+
+        
+
+        links_row = QWidget()
+        links_layout = QHBoxLayout(links_row)
+        links_layout.setContentsMargins(0, 0, 0, 0)
+        links_layout.addWidget(githubLabel)
+        links_layout.addWidget(discordLabel)
+        links_layout.addWidget(websiteLabel)
+        links_layout.addWidget(documentLabel)
+        links_layout.addStretch()
 
         layout1.addWidget(Label(f"当前版本{APP_VERSION}"))
         btn_check_update = Button("检查更新")
@@ -562,7 +597,7 @@ class LastPage(QWidget):
         layout3.addWidget(btn_android)
 
 
-        form_layout.addRow(Label("GitHub地址"),githubLabel)
+        form_layout.addRow(Label("项目链接"), links_row)
         layout.addLayout(layout1)
         layout.addLayout(layout2)
         layout.addLayout(layout3)
@@ -572,10 +607,11 @@ class VideoSettingPage(QWidget):
     '''这个是视频相关设置页面'''
     def __init__(self):
         super().__init__()
+        self.msg = MessageBoxService(self)
 
         self.init_ui()
         self.pathManagement.load_paths(get_video_path())#加载视频路径
-        self.save.clicked.connect(self.accept)
+        self._install_auto_save()
         
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -583,15 +619,64 @@ class VideoSettingPage(QWidget):
         self.pathManagement.setMinimumHeight(300)
         layout.addWidget(self.pathManagement)
 
-        self.save=Button("保存")
-        
-        layout.addWidget(self.save)
+        self.btn_update_db_video = Button("查找本地的视频录入数据库")
+        self.btn_update_db_video.setToolTip(
+            "扫描本地视频的路径下的所有视频，并提取视频番号，将没有的番号尝试去抓取信息"
+        )
+        self.btn_update_db_video.clicked.connect(self.task_update_db_video)
+        layout.addWidget(self.btn_update_db_video)
         
         
 
+    def _install_auto_save(self):
+        # 路径一旦被编辑/选择/删除，就自动写入配置（无需手动点“保存”）
+        self.pathManagement.table.itemChanged.connect(self._auto_save_paths)
+        self.pathManagement.add_btn.clicked.connect(self._auto_save_paths)
+        self.pathManagement.del_btn.clicked.connect(self._auto_save_paths)
+
+    @Slot()
+    def _auto_save_paths(self):
+        self.accept()
+
+    @Slot()
+    def task_update_db_video(self):
+        """扫描本地视频路径下的所有视频文件名，找出数据库中不存在的番号并弹出 AddQuickWork 供抓取。"""
+        from core.database.query import get_serial_number
+        from ui.dialogs.AddQuickWork import AddQuickWork
+        from utils.utils import get_video_names_from_paths
+
+        def _norm(s: str) -> str:
+            return s.upper().replace("-", "")
+
+        video_names = get_video_names_from_paths(get_video_path())
+        logging.info(f"视频文件名列表: {video_names}，数量: {len(video_names)}")
+        db_serials = get_serial_number()
+        db_normalized = {_norm(s) for s in db_serials}
+
+        missing_serials = []
+        seen_normalized = set()
+        for name in video_names:
+            norm = _norm(name)
+            if norm not in db_normalized and norm not in seen_normalized:
+                seen_normalized.add(norm)
+                missing_serials.append(name)
+
+        if not missing_serials:
+            self.msg.show_info("提示", "本地视频的番号均已存在于数据库中")
+            return
+
+        dialog = AddQuickWork()
+        dialog.load_serials(missing_serials)
+        dialog.exec()
+
     def accept(self):
         # 保存路径设置
-        paths=self.pathManagement.get_paths()
+        paths = []
+        for p in self.pathManagement.get_paths():
+            s = str(p).strip()
+            if not s or s == ".":
+                continue
+            paths.append(p)
         # 这里可以添加代码将paths保存到配置文件或应用设置中
         from config import update_video_path
         update_video_path(paths)
