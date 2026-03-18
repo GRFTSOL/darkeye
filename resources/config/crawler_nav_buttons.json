@@ -106,5 +106,25 @@
     "name": "avwiki",
     "url": "https://av-wiki.net/?s={serial}",
     "description": "avwiki，这个查作品是跳到fanza"
+  },
+  {
+    "name": "素人女优wiki",
+    "url": "https://shiroutowiki.work/?s={serial}",
+    "description": "素人女优wiki，这网站查不到正规的"
+  },
+  {
+    "name": "avwikidb",
+    "url": "https://avwikidb.com/",
+    "description": "素人女优数据库"
+  },
+  {
+    "name": "未知网站",
+    "url": "https://www.xb1.com/forums-75-1.html",
+    "description": "未知网站"
+  },
+  {
+    "name": "香港javrate",
+    "url": "https://hongkong.javrate.com/",
+    "description": "香港javrate"
   }
 ]
