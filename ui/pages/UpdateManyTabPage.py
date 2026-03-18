@@ -42,6 +42,7 @@ class UpdateManyTabPage(LazyWidget):
         mainlayout.addLayout(layout1)
 
         self.btn_update_db_video.clicked.connect(self.task_update_db_video)
+        self.btn_update_needactress.clicked.connect(self.searchActressinfo)
 
     @Slot()
     def task_update_db_video(self):

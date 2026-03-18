@@ -107,7 +107,9 @@ def analyse(resopnse)->dict:
             if matches:
                 mix=matches[-1].strip()
                 print(mix)
-                kana_, romaji_ = [s.strip() for s in mix.split('/')]
+                parts = [s.strip() for s in mix.split('/', 1)]
+                kana_ = parts[0] if parts else None
+                romaji_ = parts[1] if len(parts) > 1 else None
             alias={"jp":jp,"kana":kana_,"en":romaji_}
             aliaschain.append(alias)
         logging.info(aliaschain)
