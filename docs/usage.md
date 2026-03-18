@@ -1,8 +1,56 @@
 
-下载好软件，安装好浏览器插件，启动
+## 下载软件
+
+![下载软件](assets/下载软件.JPG) 把下面的插件也下载了。
+
+## 安装浏览器插件
+
+这里以「本地加载已解压扩展」为主，不需要商店账号。三种浏览器可以同时安装，但**建议只启用一种进行自动采集**，避免重复打开页面。
+
+### Firefox 插件
+
+1. 打开 Firefox，地址栏输入：`about:debugging#/runtime/this-firefox`
+2. 点击页面中的 **「临时加载附加组件」**（或「Load Temporary Add-on」）。
+3. 在文件选择对话框中，定位到仓库目录下：`extensions/firefox_capture/manifest.json`，选中并打开。
+4. 右上角会出现 `DarkEye Capture` 图标：
+   - 看到图标说明加载成功。
+   - 关闭浏览器或重启后需要**重新临时加载**（若要持久安装，可以打成 xpi 再导入，这里先不展开）。
+
+![](assets/firefox.JPG)
+![](assets/choosefile_firefox.JPG)
 
 
+### Chrome 插件
 
+1. 打开 Chrome，地址栏输入：`chrome://extensions/`
+2. 右上角开启 **「开发者模式」**。
+3. 点击左上角 **「加载已解压的扩展程序」**（Load unpacked）。
+4. 在文件选择对话框中，选择目录：`extensions/chrome_capture`，然后确认。
+5. 在扩展列表中确认：
+   - 出现 `DarkEye Capture`，且开关为开启状态。
+   - 点击「详情」可以看到：
+     - 背景页类型为 *Service Worker*；
+     - 有一个 Offscreen 文档在运行（用于接收软件端下发的自动采集指令）。
+
+![](assets/chrome.JPG)
+![](assets/choosefile.JPG)
+
+### Edge 插件
+
+Edge 基于 Chromium，可以直接复用 `extensions/chrome_capture` 目录：
+
+1. 打开 Edge，地址栏输入：`edge://extensions/`
+2. 左下角开启 **「开发人员模式」**（Developer mode）。
+3. 点击 **「加载解压缩的扩展」**（Load unpacked）。
+4. 在文件选择对话框中，选择目录：`extensions/chrome_capture`，然后确认。
+5. 在扩展列表中确认 `DarkEye Capture` 已启用。
+
+> 提示：  
+> - 若你只想让 **Firefox 自动采集**，可以在 Chrome / Edge 中关闭 `DarkEye Capture` 扩展的开关；  
+> - 若只想用 **Chrome/Edge 自动采集**，可以在 Firefox 的附加组件管理中禁用 `DarkEye Capture`，避免多个浏览器同时响应同一条爬虫指令。
+
+![](assets/edge.JPG)
+![](assets/choosefile.JPG)
 
 
 ## 如何把片子「收进来」？
