@@ -1,0 +1,10 @@
+{
+    "app": "DarkEye",
+    "latestVersion": "1.1.2",
+    "releaseNotes": "修复若干问题...",
+    "package": {
+      "url": "https://github.com/de4321/darkeye/releases/download/v1.1.2/DarkEye-v1.1.2.zip",
+      "sha256": "PUT_SHA256_HERE",
+      "size": 123456789
+    }
+  }
