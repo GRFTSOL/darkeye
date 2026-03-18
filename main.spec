@@ -50,6 +50,8 @@ a = Analysis(
         ('resources/develop_resources/public/', 'resources/public'),
         ('resources/config', 'resources/config'),
         ('resources/sql/', 'resources/sql/'),
+        ('resources/avwiki/', 'resources/avwiki/'),
+        ('resources/help/', 'resources/help/'),
         ('styles', 'styles'),
         ('resources/hdr/', 'resources/hdr/'),
         ('resources/maps/', 'resources/maps/'),
@@ -233,7 +235,7 @@ exe = EXE(
     strip=False,
     upx=False,
     upx_exclude=['Qt6Core.dll', 'Qt6Gui.dll','Qt6Widgets.dll','Qt6Qml.dll','Qt6Quick.dll','Qt6Pdf.dll'],
-    console=True,  # 改为 True 可显示终端日志窗口
+    console=False,  # 改为 True 可显示终端日志窗口
     icon='resources/icons/logo.ico'
 )
 

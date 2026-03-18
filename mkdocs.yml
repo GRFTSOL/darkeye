@@ -1,18 +1,16 @@
-site_name: JAV管理工具
-
+site_name: DarkEye
 
 nav:
   - 首页: index.md
-  - 使用方法: usage.md
+  - 入门指南: usage.md
+  - 软件设置: settings.md
   - UI设计: ui-design.md
   - 数据库设计: db-design.md
   - 开发注意事项: develop.md
-  - API: api.md
-  - BUG: bug.md
   - 未来功能展望: future.md
-  - 数据收集: data-collect.md
-  - 推荐算法: recommendation.md
-  - AV知识: av.md
+  - 常见问题: faq.md
+
+
 
 plugins:
   - search
@@ -26,3 +24,24 @@ markdown_extensions:
 - admonition
 - toc:
     permalink: true
+
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+    - content.code.copy
+
+  palette:
+    - scheme: default
+      primary: blue
+      accent: indigo
+    - scheme: slate
+      primary: black
+      accent: lime
+      toggle:
+        icon: material/weather-night
+        name: 切换深色模式

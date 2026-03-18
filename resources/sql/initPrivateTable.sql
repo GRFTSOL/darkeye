@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS db_version (
     applied_at DATETIME DEFAULT (datetime('now', 'localtime')),
     description TEXT
 );
-INSERT INTO "db_version" VALUES (1,'1.0','2025-10-14 09:28:01','初始版本数据库');
-INSERT INTO "db_version" VALUES (1,'1.1','2026-03-12 09:28:01','初始版本数据库');
+INSERT INTO db_version (version, applied_at, description) VALUES ('1.0', '2025-10-14 09:28:01', '初始版本');
+INSERT INTO db_version (version, applied_at, description) VALUES ('1.1', '2026-03-12 09:28:01', '私有表结构更新');
 
 CREATE TABLE IF NOT EXISTS favorite_actress(--收藏女优表
 	favorite_actress_id INTEGER PRIMARY KEY AUTOINCREMENT, --不重复主键

@@ -59,6 +59,9 @@ class CoverImage(QLabel):
     def __init__(self,image_path: str,work_id:int,standard:bool,green_mode=False, parent=None):
         super().__init__(parent)
         from core.database.query import query_studio
+        # 背景透明
+        self.setStyleSheet("background-color: transparent;")
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
         self._aspect_ratio=0.7
         self._path=image_path
         self._work_id=work_id

@@ -131,6 +131,13 @@ class LazyScrollArea(QScrollArea):
     def _apply_token_styles(self) -> None:
         self.setStyleSheet(_scrollbar_style_from_tokens(self._tokens()))
 
+    def set_page_size(self, page_size: int) -> None:
+        """设置每页加载的组件数量。"""
+        if page_size <= 0:
+            self._logger.warning("LazyScrollArea.set_page_size: invalid page_size=%s, keep %s", page_size, self.page_size)
+            return
+        self.page_size = page_size
+
     def set_loader(self, loader_fn: Callable) -> None:
         """设置加载函数，loader_fn(page_index, page_size) -> List[QWidget]"""
         self._loader_fn = loader_fn
@@ -172,17 +179,34 @@ class LazyScrollArea(QScrollArea):
             self.current_page += 1
         self.loading = False
         if not self.reached_end:
+            # 加载了一页数据后，检查当前内容是否足够产生滚动条；不够则继续预加载
             self._scroll_check_retries = 0
             QTimer.singleShot(0, self._check_scrollable_and_load_next)
 
     def _check_scrollable_and_load_next(self) -> None:
-        sb = self.verticalScrollBar()
-        if sb.maximum() == 0 and not self.reached_end and not self.loading:
-            self._load_next_page()
+        """在内容区还不足以产生滚动条时，自动连续预加载下一页（有限次数）。"""
+        if self.reached_end:
             return
-        if sb.maximum() == 0 and not self.reached_end and self._scroll_check_retries < _MAX_SCROLL_CHECK_RETRIES:
-            self._scroll_check_retries += 1
-            QTimer.singleShot(50, self._check_scrollable_and_load_next)
+        if self.loading:
+            # 正在加载时不重复触发，由加载结束后的回调继续检查
+            return
+
+        sb: QScrollBar = self.verticalScrollBar()
+        if sb.maximum() > 0:
+            # 已经可以滚动，停止自动预加载
+            return
+
+        # 此时说明还不能滚动，但数据尚未结束；在重试次数范围内继续加载下一页
+        if self._scroll_check_retries >= _MAX_SCROLL_CHECK_RETRIES:
+            self._logger.info(
+                "LazyScrollArea: stop auto-preload after %s retries without scrollable content",
+                self._scroll_check_retries,
+            )
+            return
+
+        self._scroll_check_retries += 1
+        self._load_next_page()
+        QTimer.singleShot(50, self._check_scrollable_and_load_next)
 
     def showEvent(self, event):
         super().showEvent(event)

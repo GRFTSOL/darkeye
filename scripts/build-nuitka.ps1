@@ -39,6 +39,8 @@ $nuitkaArgs = @(
     "--include-data-dir=resources/develop_resources/public=resources/public",
     "--include-data-dir=resources/config=resources/config",
     "--include-data-dir=resources/sql=resources/sql",
+    "--include-data-dir=resources/avwiki=resources/avwiki",
+    "--include-data-dir=resources/help=resources/help",
     "--include-data-dir=styles=styles",
     "--include-data-dir=resources/hdr=resources/hdr",
     "--include-data-dir=resources/maps=resources/maps",

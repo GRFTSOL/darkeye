@@ -1,5 +1,5 @@
 
-from PySide6.QtWidgets import  QVBoxLayout,QWidget,QHBoxLayout,QLineEdit,QFormLayout,QLayout,QSizePolicy
+from PySide6.QtWidgets import  QVBoxLayout,QWidget,QHBoxLayout,QLineEdit,QFormLayout,QLayout,QSizePolicy,QMessageBox
 from PySide6.QtCore import Qt,QObject,Signal,Property,Slot,SignalInstance
 
 from ui.widgets.selectors.TagSelector5 import TagSelector5
@@ -510,25 +510,39 @@ class TagManagement(LazyWidget):
         self.tag_selector.reload_tag()
 
     def redirect_tag_121(self):
-        '''标签重定向,1对1'''
-        ids=self.tag_selector.get_selected_ids()
-        if len(ids)!=2:
+        '''标签重定向,1对1。弹窗让用户明确选择方向：从哪个标签合并到哪个标签。'''
+        ids = list(self.tag_selector.get_selected_ids())
+        if len(ids) != 2:
             return
+        # 稳定顺序，避免 set 迭代顺序不确定导致方向反了
+        id_a, id_b = sorted(ids)
         from core.database.query import get_taginfo_by_id
-        tag_name_0=get_taginfo_by_id(ids[0]).get("tag_name")
-        tag_name_1=get_taginfo_by_id(ids[1]).get("tag_name")
-        logging.info(f"标签重定向,1对1,{tag_name_0}->>{tag_name_1}")
+        name_a = get_taginfo_by_id(id_a).get("tag_name")
+        name_b = get_taginfo_by_id(id_b).get("tag_name")
 
-        ret=self.msg.ask_yes_no("确认操作",f"确认将<{tag_name_0}>重定向到<{tag_name_1}>吗？")
-        if not ret:
-            return
-        
-        from core.database.update import redirect_tag_121
+        box = QMessageBox(self)
+        box.setWindowTitle("选择重定向方向")
+        box.setText("请选择要将哪个标签合并到哪个（被合并的标签会被重定向到保留的标签）：")
+        btn_a_to_b = box.addButton(f"保留 {name_b}", QMessageBox.ActionRole)
+        btn_b_to_a = box.addButton(f"保留 {name_a}", QMessageBox.ActionRole)
+        box.addButton("取消", QMessageBox.RejectRole)
+        if hasattr(self.msg, "_apply_tokens_to_box"):
+            self.msg._apply_tokens_to_box(box)
+        box.exec()
+        clicked = box.clickedButton()
 
-        if redirect_tag_121(ids[0],ids[1]):
-            self.msg.show_info("操作成功","标签重定向成功")
+        if clicked == btn_a_to_b:
+            from_id, to_id = id_a, id_b
+        elif clicked == btn_b_to_a:
+            from_id, to_id = id_b, id_a
         else:
-            self.msg.show_warning("操作失败","标签重定向失败")
-        self.tag_selector.load_with_ids([ids[1]])
+            return
+
+        logging.info(f"标签重定向,1对1,{get_taginfo_by_id(from_id).get('tag_name')}->>{get_taginfo_by_id(to_id).get('tag_name')}")
+        from core.database.update import redirect_tag_121 as do_redirect
+        if do_redirect(from_id, to_id):
+            self.msg.show_info("操作成功", "标签重定向成功")
+        else:
+            self.msg.show_warning("操作失败", "标签重定向失败")
+        self.tag_selector.load_with_ids([to_id])
         self.tag_selector.reload_tag()
-        

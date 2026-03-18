@@ -61,6 +61,9 @@ class OctImage(QLabel):
             _set_shadow_on_widget(self)
         self.setFixedSize(self._d, self._d)
         self.setAlignment(Qt.AlignCenter)
+        # 背景透明
+        self.setStyleSheet("background-color: transparent;")
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
 
         if image_path is None or image_path == "":
             self._path = None

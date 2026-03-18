@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "darkeye"
+version = "0.1.0"
+description = "暗黑影片收藏软件，专注沉浸式采集与拟物化收藏"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "pyside6==6.10.1",
+    "shiboken6==6.10.1",
+    "shiboken6-generator==6.10.1",
+    "numpy",
+    "uvicorn[standard]",
+    "fastapi",
+    "pydantic",
+    "anyio",
+    "pyinstaller",
+    "nuitka==2.8.9",
+    "pytest",
+    "psutil",
+    "matplotlib",
+    "networkx",
+    "opencv-python-headless",
+    "bs4",
+    "requests",
+    "googletrans",
+    "wordcloud",
+]
+
+[project.optional-dependencies]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings[python]",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core*", "ui*", "controller*", "darkeye_ui*", "utils*"]
