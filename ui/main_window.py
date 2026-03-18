@@ -153,9 +153,13 @@ class MainWindow(QMainWindow):
             from ui.pages.SettingPage import SettingPage
             return SettingPage()
         
-        def create_help():
-            from ui.pages.HelpPage import HelpPage
-            return HelpPage()
+        #def create_help():
+        #    from ui.pages.HelpPage import HelpPage
+        #    return HelpPage()
+
+        def create_inbox():
+            from ui.pages.InboxPage import InboxPage
+            return InboxPage()
 
         # 2. 注册路由 (route_name, factory, menu_id)
         # 侧边栏主菜单页面
@@ -179,7 +183,8 @@ class MainWindow(QMainWindow):
         self.router.register("actor_edit", create_modify_actor, "actor")
         self.router.register("work_edit", create_management, "database") # 注意：这里如果想跳到管理页的特定tab，router需要特殊处理
         self.router.register("setting", create_setting, "setting")
-        self.router.register("help",create_help,"help")
+        #self.router.register("help", create_help, "help")
+        self.router.register("inbox", create_inbox, "bell")
         
         # 3. 建立菜单到路由的映射 (供 Sidebar 点击使用)
         self._menu_to_route = {
@@ -193,7 +198,8 @@ class MainWindow(QMainWindow):
             "shelf": "shelf",
             "av": "av",
             "setting": "setting",
-            "help": "help"
+            #"help": "help",
+            "bell": "inbox",
         }
         self.sidebar.itemClicked.connect(self._on_sidebar_clicked)
         self.sidebar.backwardClicked.connect(lambda: Router.instance().back())
@@ -278,6 +284,15 @@ class MainWindow(QMainWindow):
             return
         if menu_id == "forward":
             Router.instance().forward()
+            return
+        # 2. 帮助按钮：直接触发与快捷键 H 相同的 QAction（open_help）
+        if menu_id == "help":
+            try:
+                action = getattr(self, "registry", None) and self.registry.actions_map.get("open_help")
+                if action is not None:
+                    action.trigger()
+            except Exception:
+                logging.exception("触发帮助动作失败")
             return
         route_name = self._menu_to_route.get(menu_id)
         if route_name:

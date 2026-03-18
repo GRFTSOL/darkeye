@@ -190,6 +190,22 @@ class ShelfPage(QWidget):
 
         self.btn_eraser.clicked.connect(self._clear_all_search)
 
+    def _clear_filters_for_jump(self) -> None:
+        """Clear current shelf filters synchronously before programmatic jump."""
+        self.filter_timer.stop()
+        self.actor_input.setText("")
+        self.actress_input.setText("")
+        self.director_input.setText("")
+        self.title_input.setText("")
+        self.story_input.setText("")
+        self.serial_number_input.setText("")
+        self.maker_input.setText("")
+        self.tagselector.load_with_ids([])
+        self.scope_combo.setCurrentIndex(0)
+        self.order_combo.setCurrentIndex(0)
+        self.filter_timer.stop()
+        self.apply_filter_real()
+
     def load_with_params(self, work_id=None, serial_number=None, **kwargs):
         target_work_id = work_id
         if target_work_id is None and serial_number:
@@ -205,6 +221,8 @@ class ShelfPage(QWidget):
             target_work_id = int(target_work_id)
         except (TypeError, ValueError):
             return
+
+        self._clear_filters_for_jump()
 
         if self.shelf_view.loadworkid(target_work_id):
             return

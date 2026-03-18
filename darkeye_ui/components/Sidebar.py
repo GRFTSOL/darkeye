@@ -289,8 +289,7 @@ class Sidebar(QWidget):
         self.itemClicked.emit("setting")
 
     def _on_help_clicked(self) -> None:
-        # 帮助页不对应普通菜单项，清除现有选中，仅发出特殊 menu_id
-        self.clear_selection()
+        # 帮助按钮不应影响当前主菜单选中态，仅发出特殊 menu_id
         self.itemClicked.emit("help")
 
     def get_selected_id(self) -> str | None:

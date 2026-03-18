@@ -3,7 +3,7 @@ from darkeye_ui import LazyWidget
 
 from PySide6.QtWidgets import  QHBoxLayout,QVBoxLayout,QFileDialog,QGridLayout,QWidget,QFormLayout
 from PySide6.QtGui import QIcon, QKeySequence, QColor, QDesktopServices
-from PySide6.QtCore import Slot, Qt, QUrl
+from PySide6.QtCore import Slot, Qt, QUrl, QTimer
 import logging
 from config import ICONS_PATH
 from controller.MessageService import MessageBoxService
@@ -316,7 +316,7 @@ class DBSettingPage(QWidget):
 
         self.btn_backupDB.clicked.connect(self.backup_db_public)
         self.btn_restoreDB.clicked.connect(lambda:self.restoreDBnew("public"))
-        self.btn_backupDB2.clicked.connect(lambda:self.backup_db("private"))
+        self.btn_backupDB2.clicked.connect(self.backup_db_private)
         self.btn_restoreDB2.clicked.connect(lambda:self.restoreDB("private"))
         self.btn_rebuildprivatelink.clicked.connect(self.rebuildprivatelink)
 
@@ -499,6 +499,27 @@ class DBSettingPage(QWidget):
 
 
     @Slot()
+    def backup_db_private(self):
+        '''备份私有数据库'''
+
+        backup_path = PRIVATE_DATABASE_BACKUP_PATH
+        target_path = PRIVATE_DATABASE
+        from core.database.backup_utils import backup_database
+        try:
+            # 通过对话框选择备份路径
+            dir_path = QFileDialog.getExistingDirectory(
+                self,
+                "选择备份保存位置",
+                str(backup_path)
+            )
+            if not dir_path:
+                return
+            path = backup_database(target_path, Path(dir_path))
+            self.msg.show_info("备份成功", f"备份数据库到{path}")
+        except Exception as e:
+            self.msg.show_critical(self, "备份失败", f"{str(e)}")
+
+    @Slot()
     def backup_db(self,access_level:str):
         '''备份数据库'''
         if access_level=="public":
@@ -521,6 +542,7 @@ class LastPage(QWidget):
     '''这个是尾页'''
     def __init__(self):
         super().__init__()
+        self.msg = MessageBoxService(self)
         layout = QVBoxLayout(self)
         layout1=QHBoxLayout()
         layout2=QHBoxLayout()
@@ -573,7 +595,8 @@ class LastPage(QWidget):
 
         layout1.addWidget(Label(f"当前版本{APP_VERSION}"))
         btn_check_update = Button("检查更新")
-        btn_check_update.setEnabled(False)  # 功能未实现
+        btn_check_update.setEnabled(True)
+        btn_check_update.clicked.connect(lambda: self._on_check_update_clicked(btn_check_update))
         layout1.addWidget(btn_check_update)
         btn_feedback = Button("意见反馈")
         btn_feedback.clicked.connect(
@@ -602,6 +625,106 @@ class LastPage(QWidget):
         layout.addLayout(layout2)
         layout.addLayout(layout3)
         layout.addLayout(form_layout)
+
+    def _parse_version_tuple(self, v: str) -> tuple[int, ...] | None:
+        """把 '1.1.2' 解析为 (1,1,2)。解析失败返回 None。"""
+        if not v:
+            return None
+        try:
+            parts = [p.strip() for p in v.split(".") if p.strip() != ""]
+            parsed: list[int] = []
+            for p in parts:
+                parsed.append(int(p))
+            return tuple(parsed)
+        except Exception:
+            return None
+
+    def _is_newer_version(self, remote_version: str, local_version: str) -> bool:
+        remote_t = self._parse_version_tuple(remote_version)
+        local_t = self._parse_version_tuple(local_version)
+        if remote_t is None or local_t is None:
+            # 兜底：无法解析版本就按“字符串不等则认为需要更新”（尽量不误判到具体方向）
+            return (remote_version or "").strip() != (local_version or "").strip()
+        return remote_t > local_t
+
+    def _on_check_update_clicked(self, btn: Button) -> None:
+        """从 GitHub 拉取 latest.json 并判断是否需要更新（不直接替换）。"""
+        latest_json_url = "https://raw.githubusercontent.com/de4321/darkeye/main/update/latest.json"
+
+        # 防止重复点击
+        btn.setEnabled(False)
+        btn.setText("检查中...")
+
+        import threading
+
+        overall_timeout_seconds = 12  # 整体超时守护（包含 DNS/连接/读取）
+        urlopen_timeout_seconds = 8  # urlopen 超时（避免长时间卡死）
+        done_state = {"notified": False}  # 防止超时后再收到结果弹二次
+
+        def safe_on_done(ok: bool, title: str, msg: str):
+            """确保 UI 只会更新一次（超时或正常完成二选一）。"""
+            if done_state["notified"]:
+                return
+            done_state["notified"] = True
+
+            btn.setText("检查更新")
+            btn.setEnabled(True)
+            if ok:
+                self.msg.show_info(title, msg)
+            else:
+                self.msg.show_critical(title, msg)
+
+        def worker():
+            result_title = "更新检查结果"
+            try:
+                from urllib.request import urlopen, Request
+                import json
+
+                req = Request(latest_json_url, headers={"User-Agent": "DarkEye-Updater/1.0"})
+                with urlopen(req, timeout=urlopen_timeout_seconds) as resp:
+                    raw = resp.read()
+                data = json.loads(raw.decode("utf-8", errors="replace"))
+
+                latest_version = str(data.get("latestVersion", "")).strip()
+                release_notes = str(data.get("releaseNotes", "")).strip()
+                pkg_url = str((data.get("package") or {}).get("url", "")).strip()
+
+                if not latest_version:
+                    msg = "latest.json 缺少 latestVersion 字段。"
+                    return (False, result_title, msg)
+
+                if not self._is_newer_version(latest_version, APP_VERSION):
+                    msg = f"当前已是最新版本：{APP_VERSION}。"
+                    return (True, result_title, msg)
+
+                # 需要更新
+                lines = [f"检测到新版本：{APP_VERSION} -> {latest_version}"]
+                if release_notes:
+                    lines.append(f"更新内容：{release_notes}")
+                if pkg_url:
+                    lines.append(f"下载地址：{pkg_url}")
+                msg = "\n".join(lines)
+                return (True, result_title, msg)
+            except Exception as e:
+                return (False, "更新检查失败", f"无法获取最新版本信息：{e}")
+            finally:
+                pass
+
+        def run():
+            ok, title, msg = worker()
+            QTimer.singleShot(0, lambda: safe_on_done(ok, title, msg))
+
+        threading.Thread(target=run, daemon=True).start()
+
+        # 整体超时守护：如果后台线程还没返回，就提示“超时”
+        def on_timeout():
+            safe_on_done(
+                False,
+                "更新检查超时",
+                f"更新检查在 {overall_timeout_seconds} 秒内未完成，请检查网络后重试。",
+            )
+
+        QTimer.singleShot(overall_timeout_seconds * 1000, on_timeout)
 
 class VideoSettingPage(QWidget):
     '''这个是视频相关设置页面'''

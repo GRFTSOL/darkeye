@@ -35,6 +35,8 @@ class ForceDirectedViewWidget(QWidget):
         # 节点颜色覆盖：{"actress"|"work"|"center"|"default" -> QColor or None}
         self._color_overrides: dict[str, QColor | None] = {}
         self._center_id: str | None = None
+        # 首次加载 graph 但控件尚未可见时，需要在 show 后补一次刷新/fit
+        self._pending_first_paint_refresh: bool = False
 
         # 主题管理器（用于令牌驱动视图背景色）
         self._theme_manager = None
@@ -264,7 +266,8 @@ class ForceDirectedViewWidget(QWidget):
             print(f"跳转女优界面：{nodename}")
         elif nodename.startswith("w"):
             from ui.navigation.router import Router
-            Router.instance().push("work", work_id=int(nodename[1:]))
+            #Router.instance().push("work", work_id=int(nodename[1:]))
+            Router.instance().push("shelf",work_id=int(nodename[1:]))
             print(f"跳转作品界面：{nodename}")
 
     def resizeEvent(self, event):
@@ -284,6 +287,20 @@ class ForceDirectedViewWidget(QWidget):
         super().showEvent(event)
         # 延迟 0ms，确保布局和尺寸已经稳定，再根据最新 rect 重新定位
         QTimer.singleShot(0, self._update_panel_geometry)
+        # 兜底：如果第一次 setGraph 发生在控件隐藏/0尺寸时，OpenGL 可能没真正绘制出来。
+        # 在 show 后补一次 fit + update，确保第一次进入也能显示。
+        if self._pending_first_paint_refresh:
+            self._pending_first_paint_refresh = False
+            QTimer.singleShot(0, self._refresh_view_after_first_show)
+
+    def _refresh_view_after_first_show(self) -> None:
+        try:
+            if self.view is not None:
+                self.view.fitViewToContent()
+                self.view.update()
+        except Exception:
+            # 不要让 UI 因为兜底逻辑崩溃
+            pass
 
     def _update_panel_geometry(self) -> None:
         '''悬浮的东西只能自己手动定位'''
@@ -483,6 +500,11 @@ class ForceDirectedViewWidget(QWidget):
 
         modify = bool(payload.get("modify", False))
         self._set_graph_from_networkx(G, modify=modify)
+        # 如果此时控件还没真正显示出来（例如 overlay 延迟显示），标记在 showEvent 里补刷新
+        if not self.isVisible() or self.width() <= 0 or self.height() <= 0:
+            self._pending_first_paint_refresh = True
+        else:
+            QTimer.singleShot(0, self._refresh_view_after_first_show)
         
     def _on_graph_diff_changed(self, diff_list: list) -> None:
         """

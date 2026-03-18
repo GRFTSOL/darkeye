@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtCore
 import QtQuick3D
 import QtQuick3D.AssetUtils
@@ -20,6 +20,17 @@ View3D {
     property int pressedDelegateIndex: -1
     // 左键按下时命中的 3D 对象，用于区分 CD 与盒体点击。
     property var pressedObjectHit: null
+    // 选中未展开时，力导向图 overlay 使用与爱心按钮相同的锚点（actionAnchorByIndex）做 2D 投影。
+    property var _forceViewAnchor: (selectedDelegateIndex >= 0 && expandedDelegateIndex < 0)
+        ? actionAnchorByIndex[selectedDelegateIndex]
+        : null
+    property point _forceViewScreenPoint: _forceViewAnchor
+        ? mapFrom3DScene(_forceViewAnchor.scenePosition)
+        : Qt.point(-10000, -10000)
+    on_ForceViewScreenPointChanged: {
+        if (_forceViewScreenPoint.x > -9999 && typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.setForceViewAnchor === "function")
+            dvdBridge.setForceViewAnchor(_forceViewScreenPoint.x, _forceViewScreenPoint.y)
+    }
 
     // 展开态操作按钮（爱心/编辑/删除）的 3D 锚点映射，key=delegate index。
     property var actionAnchorByIndex: ({})
@@ -59,6 +70,19 @@ View3D {
         else {
             fullyExpandedTimer.stop()
             view3d.fullyExpandedDelegateIndex = -1
+        }
+    }
+
+    // 选中/展开变化时通知 Bridge，用于在左侧显示或隐藏力导向图。
+    Connections {
+        target: view3d
+        function onSelectedDelegateIndexChanged() {
+            if (typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.selectionChanged === "function")
+                dvdBridge.selectionChanged(view3d.selectedDelegateIndex, view3d.expandedDelegateIndex)
+        }
+        function onExpandedDelegateIndexChanged() {
+            if (typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.selectionChanged === "function")
+                dvdBridge.selectionChanged(view3d.selectedDelegateIndex, view3d.expandedDelegateIndex)
         }
     }
 
@@ -189,6 +213,7 @@ View3D {
             id: dvdRepeater
             model: dvdCount
             delegate: Node {
+                id: delegateRoot
                 readonly property int _visibleStart: (typeof dvdVisibleStart !== "undefined" ? dvdVisibleStart : 0)
                 readonly property int _visibleEnd: _visibleStart + Math.max(0, dvdCount - 1)
                 readonly property int _reservedLocalOffset: view3d._frozenSelectedVirtualIndex - _visibleStart
@@ -292,7 +317,6 @@ View3D {
 
                 // 选中/悬停位移动画。
                 Behavior on z { enabled: selectionProgress <= 0.001; NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-
 
                 // 二阶段直接插值到镜头前目标坐标系，保证 front 面与镜头平面一致。
                 Node {

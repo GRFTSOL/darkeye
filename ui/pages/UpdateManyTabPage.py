@@ -36,6 +36,8 @@ class UpdateManyTabPage(LazyWidget):
         layout1.addWidget(self.btn_update_needactress)
         mainlayout=QVBoxLayout(self)
         mainlayout.addLayout(layout1)
+        self.btn_update_needactress.clicked.connect(self.searchActressinfo)
+
 
     @Slot()
     def task_search_actress(self):

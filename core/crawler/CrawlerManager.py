@@ -2,7 +2,7 @@ import logging
 import random
 import asyncio
 import traceback
-from PySide6.QtCore import QObject, Signal, QThreadPool, Slot, Qt,QTimer
+from PySide6.QtCore import QObject, Signal, QThreadPool, Slot, Qt, QTimer
 from core.crawler.Worker import Worker
 from typing import Dict, Optional
 from collections import deque
@@ -63,6 +63,13 @@ class CrawlerManager2(QObject):
             self.tasks:Dict[str, CrawlerTask]= {} # serial -> CrawlerTask
             self._relays:Dict[tuple, QObject] = {}
             self._merge_relays:Dict[str, QObject] = {} # serial -> MergeRelay
+
+            # Inbox 未完成任务集合（待爬/正在爬/下载中）。用于重启恢复与 UI 展示。
+            self._unfinished_serials: set[str] = set()
+            self._persist_key_unfinished = "Inbox/UnfinishedSerials"
+
+            # 终止开关：终止后不再调度/接收新任务，但不会强杀正在运行的 Worker
+            self._crawl_terminated: bool = False
             
             
             # 任务队列系统
@@ -79,23 +86,46 @@ class CrawlerManager2(QObject):
                 Qt.ConnectionType.QueuedConnection,
             )
 
+            # 监听下载完成：以“下载封面结束”作为任务彻底完成的判定点
+            # （无论成功/失败都会发 download_task_finished）
+            try:
+                global_signals.download_task_finished.connect(
+                    self._on_download_task_finished,
+                    Qt.ConnectionType.QueuedConnection,
+                )
+            except Exception:
+                logging.exception("连接 download_task_finished 信号失败")
+
+            # 启动恢复：从 settings.ini 恢复未完成任务到队列，并默认暂停调度
+            self._restore_unfinished_from_ini()
+
     # 对外只暴露这一个信号：任务彻底完成
     # 这个管理器只针对一种任务，那就是爬取目标番号的相关信息，另外爬女优信息的任务就是另一个爬虫
 
     # 1. 统一开始入口
     def start_crawl(self, serial_numbers, withGUI=False):
         """将任务加入队列，由调度器接管执行"""
+        if getattr(self, "_crawl_terminated", False):
+            logging.info("爬虫调度器已终止：忽略新的 start_crawl 请求")
+            return
         if isinstance(serial_numbers, str):
             serial_numbers = [serial_numbers]
 
         existing_serials = {item[0] for item in self.request_queue}
 
         for serial_number in serial_numbers:
+            serial_number = self._norm_serial(serial_number)
+            if not serial_number:
+                continue
             if serial_number in existing_serials:
                 logging.info(f"任务 {serial_number} 已在队列中，跳过重复添加")
                 continue
             self.request_queue.append((serial_number, withGUI))
             logging.info(f"任务 {serial_number} 已入队，当前队列长度: {len(self.request_queue)}")
+
+            # 记录未完成任务并持久化
+            self._unfinished_serials.add(serial_number)
+            self._persist_unfinished_to_ini()
         
         # 如果调度器未在运行（且队列有任务），立即触发第一次（或稍后触发）
         # 这里选择立即触发第一次，后续任务再延迟
@@ -111,8 +141,176 @@ class CrawlerManager2(QObject):
             else:
                 self._schedule_next(0)
 
+    def terminate_crawl(self, *, clear_queue: bool = True):
+        """终止爬虫调度（不影响正在执行的爬虫 Worker）。
+
+        - 不再调度队列中的任务（停止 QTimer）
+        - 可选清空未开始的队列任务
+        - 终止后，后续 start_crawl() 将被忽略
+        """
+        self._crawl_terminated = True
+
+        try:
+            if self.schedule_timer.isActive():
+                self.schedule_timer.stop()
+        except Exception:
+            logging.exception("终止爬虫调度器：停止 schedule_timer 失败")
+
+        if clear_queue:
+            try:
+                dropped = len(self.request_queue)
+                dropped_serials = {item[0] for item in self.request_queue}
+                self.request_queue.clear()
+                logging.info(f"爬虫调度器已终止：已丢弃未开始任务 {dropped} 个；正在运行的任务将继续执行")
+                # 丢弃的未开始任务也从“未完成集合”中移除并落盘
+                if dropped_serials:
+                    self._unfinished_serials.difference_update(dropped_serials)
+                    self._persist_unfinished_to_ini()
+            except Exception:
+                logging.exception("终止爬虫调度器：清空 request_queue 失败")
+        else:
+            logging.info("爬虫调度器已终止：未清空队列（但也不会再调度）")
+
+    def is_crawl_terminated(self) -> bool:
+        return bool(getattr(self, "_crawl_terminated", False))
+
+    def resume_crawl(self):
+        """恢复爬虫调度。
+
+        - 允许 start_crawl() 再次入队
+        - 若队列仍有未开始任务，则重新启动调度器（不会影响正在运行的 Worker）
+        """
+        self._crawl_terminated = False
+
+        # 若队列里还有任务且当前未在调度，则尽快触发下一次调度
+        try:
+            if self.request_queue and not self.schedule_timer.isActive():
+                import time
+
+                now = time.time() * 1000
+                elapsed = now - self.last_schedule_time
+                min_interval = 12000
+                delay = int(min_interval - elapsed) if elapsed < min_interval else 0
+                self._schedule_next(delay)
+        except Exception:
+            logging.exception("恢复爬虫调度器失败")
+
+    def drop_pending(self, serial: str) -> bool:
+        """从待爬队列中删除指定 serial，并同步从未完成持久化中移除。
+
+        仅影响 request_queue（未开始任务）；不强制中断正在运行的 Worker。
+        返回值表示是否确实从队列中删除到了该 serial。
+        """
+        serial = self._norm_serial(serial)
+        if not serial:
+            return False
+
+        removed_from_queue = False
+        try:
+            # 过滤 deque：保留非目标项
+            new_q = deque()
+            while self.request_queue:
+                s, withGUI = self.request_queue.popleft()
+                if s == serial and not removed_from_queue:
+                    removed_from_queue = True
+                    continue
+                new_q.append((s, withGUI))
+            self.request_queue = new_q
+        except Exception:
+            logging.exception("drop_pending: 从 request_queue 移除失败")
+
+        # 无论是否在队列中，用户显式删除都应阻止其重启恢复
+        if serial in self._unfinished_serials:
+            self._unfinished_serials.discard(serial)
+            self._persist_unfinished_to_ini()
+        else:
+            # 也做一次回写，避免 ini 中有但内存集合里没有（容错）
+            self._persist_unfinished_to_ini()
+
+        return removed_from_queue
+
+    # ======== 未完成任务持久化（settings.ini）========
+
+    def _norm_serial(self, serial: str) -> str:
+        if serial is None:
+            return ""
+        try:
+            s = str(serial).strip()
+        except Exception:
+            return ""
+        return s
+
+    def _load_unfinished_from_ini(self) -> list[str]:
+        try:
+            from config import settings  # QSettings(settings.ini)
+
+            raw = settings.value(self._persist_key_unfinished, "", type=str)
+            if not raw:
+                return []
+            parts = [p.strip() for p in str(raw).split(",") if p and str(p).strip()]
+            # 去重但尽量保持顺序
+            seen: set[str] = set()
+            out: list[str] = []
+            for p in parts:
+                if p in seen:
+                    continue
+                seen.add(p)
+                out.append(p)
+            return out
+        except Exception:
+            logging.exception("从 settings.ini 读取未完成任务失败")
+            return []
+
+    def _persist_unfinished_to_ini(self) -> None:
+        try:
+            from config import settings  # QSettings(settings.ini)
+
+            # 逗号分隔，保持一个稳定顺序便于肉眼查看
+            value = ",".join(sorted(self._unfinished_serials))
+            settings.setValue(self._persist_key_unfinished, value)
+            settings.sync()
+        except Exception:
+            logging.exception("写入 settings.ini 未完成任务失败")
+
+    def _restore_unfinished_from_ini(self) -> None:
+        """启动时恢复未完成任务到 request_queue，并默认暂停调度。"""
+        serials = self._load_unfinished_from_ini()
+        if not serials:
+            return
+
+        # 默认暂停：启动后只展示在 Inbox，用户点“继续”才会调度
+        self._crawl_terminated = True
+
+        existing = {item[0] for item in self.request_queue}
+        restored = 0
+        for s in serials:
+            s = self._norm_serial(s)
+            if not s or s in existing:
+                continue
+            self.request_queue.append((s, False))
+            self._unfinished_serials.add(s)
+            restored += 1
+
+        if restored:
+            logging.info(f"已从 settings.ini 恢复未完成任务 {restored} 个到队列（默认暂停调度）")
+            # 归一化回写一次，清除空白/重复
+            self._persist_unfinished_to_ini()
+
+    @Slot(str, bool, str)
+    def _on_download_task_finished(self, serial: str, success: bool, msg: str) -> None:
+        """下载任务结束意味着整个流程结束（无论成功/失败）。"""
+        serial = self._norm_serial(serial)
+        if not serial:
+            return
+        if serial in self._unfinished_serials:
+            self._unfinished_serials.discard(serial)
+            self._persist_unfinished_to_ini()
+
     def _schedule_next(self, delay=None):
         """安排下一次调度"""
+        if getattr(self, "_crawl_terminated", False):
+            logging.info("爬虫调度器已终止：跳过 _schedule_next")
+            return
         if delay is None:
             delay = random.randint(12000, 18000) # 12-15秒
         self.schedule_timer.start(delay)
@@ -120,6 +318,9 @@ class CrawlerManager2(QObject):
 
     def _on_schedule_tick(self):
         """调度器心跳回调"""
+        if getattr(self, "_crawl_terminated", False):
+            logging.info("爬虫调度器已终止：停止后续调度")
+            return
         if not self.request_queue:
             logging.info("队列为空，调度器停止")
             return
@@ -358,21 +559,26 @@ class DownloadRelay(QObject):
         self.downloader._on_download_result(result)
 
 class SequentialDownloader(QObject):
-    '''用于递归的下载图片'''
-    finished = Signal(bool, str) # 成功/失败, 最终文件路径/错误信息
-    success=Signal(str)
+    """用于递归的下载图片"""
 
-    def __init__(self, manager,withGUI:bool=False):
+    finished = Signal(bool, str)  # 成功/失败, 最终文件路径/错误信息
+    success = Signal(str)
+
+    def __init__(self, manager, withGUI: bool = False, *, task_id: str | None = None, total: int = 0):
         super().__init__()
         self.manager = manager
         self.current_worker_id = None
         self._download_in_progress = False
-        self.withGUI=withGUI
+        self.withGUI = withGUI
+        # 下载 Inbox 相关
+        self.task_id = task_id
+        self.total = max(0, int(total)) if total is not None else 0
+        self._current_index = 0
 
     def __del__(self):
         logging.info("SequentialDownloader 实例已成功销毁，内存已释放")
-        
-    def start(self, url_list, save_path,image_filename):
+
+    def start(self, url_list, save_path, image_filename):
         # 防御性清理：仅当不在下载中时，清掉上一轮遗留 relay
         # （如果仍在下载中就清理，会导致 relay 失去引用而被回收，进而丢回调）
         if (
@@ -384,28 +590,66 @@ class SequentialDownloader(QObject):
             self.current_worker_id = None
 
         logging.info(f"开始下载{url_list}到{save_path}")
-        self.urls = deque(url_list) #以此建立队列
+        self.urls = deque(url_list)  # 以此建立队列
         self.save_path = save_path
-        self.image_filename=image_filename
+        self.image_filename = image_filename
+        self._current_index = 0
+
+        # 发射任务开始信号（总数为可选，用 URL 数量作为兜底）
+        try:
+            if self.task_id:
+                from controller.GlobalSignalBus import global_signals
+
+                total = self.total or len(self.urls)
+                global_signals.download_task_started.emit(self.task_id, int(total))
+        except Exception:
+            logging.exception("发射 download_task_started 信号失败")
+
         self._try_next()
+
+    def _emit_progress(self, msg: str):
+        """向下载 Inbox 发射进度信号（如果配置了 task_id）"""
+        if not self.task_id:
+            return
+        try:
+            from controller.GlobalSignalBus import global_signals
+
+            total = self.total or (self._current_index or 0)
+            global_signals.download_task_progress.emit(self.task_id, int(self._current_index), int(total), msg)
+        except Exception:
+            logging.exception("发射 download_task_progress 信号失败")
 
     def _try_next(self):
         if not self.urls:
+            # 所有地址失败
             self.finished.emit(False, "所有地址均下载失败")
+            try:
+                if self.task_id:
+                    from controller.GlobalSignalBus import global_signals
+
+                    self._emit_progress("所有地址均下载失败")
+                    global_signals.download_task_finished.emit(self.task_id, False, "所有地址均下载失败")
+            except Exception:
+                logging.exception("发射 download_task_finished 失败(全部失败)")
             return
+
         from core.crawler.download import download_image
+
         url = self.urls.popleft()
+        self._current_index += 1
+        self._emit_progress(f"正在下载封面 {self._current_index} ...")
+
         # 启动 Worker 下载 url ...
         worker = Worker(lambda: download_image(url, self.save_path))
-        
+
         # 使用 Relay 方案
         relay = DownloadRelay(self)
-        relay.moveToThread(self.manager.thread()) 
-        
+        relay.moveToThread(self.manager.thread())
+
         self.current_worker_id = id(worker)
         self.manager._relays[self.current_worker_id] = relay
         self._download_in_progress = True
-        
+
         worker.signals.finished.connect(relay.handle, Qt.QueuedConnection)
         QThreadPool.globalInstance().start(worker)
 
@@ -420,13 +664,24 @@ class SequentialDownloader(QObject):
             else:
                 success, e = result
 
-            #logging.info(f"下载结果:{success},{e}")
+            # logging.info(f"下载结果:{success},{e}")
             if success:
                 logging.info(f"成功下载图片到临时地址{self.save_path}")
                 # 必须转为str，否则Signal(bool, str)可能无法正确传递Path对象
                 self.finished.emit(True, str(self.save_path))
+                try:
+                    if self.task_id:
+                        from controller.GlobalSignalBus import global_signals
+
+                        self._emit_progress("封面下载完成")
+                        total = self.total or self._current_index
+                        global_signals.download_task_finished.emit(self.task_id, True, "封面下载完成")
+                except Exception:
+                    logging.exception("发射 download_task_finished 信号失败(成功)")
             else:
-                self._try_next() # 失败则尝试下一个
+                # 失败则尝试下一个
+                self._emit_progress(f"下载失败，尝试下一个地址 ({e})")
+                self._try_next()
                 return
         finally:
             # 最后再清理 relay，确保信号发射期间对象存活
@@ -541,7 +796,10 @@ class DataUpdate:
 
         # 启动 SequentialDownloader 下载图片
         if self.manager:
-            downloader = SequentialDownloader(self.manager, self.withGUI)
+            # 使用作品番号作为下载任务 ID，cover_url_list 长度作为总步数
+            task_id = self.work.serial_number
+            total_steps = len(self.work.cover_url_list or [])
+            downloader = SequentialDownloader(self.manager, self.withGUI, task_id=task_id, total=total_steps)
             # 使用 lambda 明确参数传递，并持有 self 引用
             downloader.finished.connect(lambda s, r: self._on_download_finished(s, r, image_filename))
             downloader.start(self.work.cover_url_list, temp_path, image_filename)

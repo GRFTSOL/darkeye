@@ -54,6 +54,9 @@ class _CoverDropLabel(QLabel):
             except Exception:
                 theme_manager = None
         self._theme_manager = theme_manager
+        # 当外部需要强调提示（例如“封面已修改未保存”）时，允许覆盖边框样式。
+        # 形式为完整的 QSS border 值，例如："2px dashed orange"。
+        self._border_override: Optional[str] = None
         self._apply_token_styles()
         if self._theme_manager is not None:
             self._theme_manager.themeChanged.connect(self._apply_token_styles)
@@ -64,11 +67,22 @@ class _CoverDropLabel(QLabel):
 
     def _apply_token_styles(self) -> None:
         """根据当前主题令牌刷新 #container 的边框与文字样式。"""
+        if self._border_override:
+            # 仍使用 #container 选择器，保证命中 objectName="container" 的 label
+            self.setStyleSheet(
+                f"#container{{border: {self._border_override}; font-size: 16px; padding: 0px;margin: 0px;}}"
+            )
+            return
         if self._theme_manager is not None:
             t = self._theme_manager.tokens()
             self.setStyleSheet(_container_qss_from_tokens(t))
         else:
             self.setStyleSheet("#container{border: 2px dashed gray; font-size: 16px; padding: 0px;margin: 0px;}")
+
+    def set_border_override(self, border_qss_value: Optional[str]) -> None:
+        """覆盖边框样式（传 None 恢复为主题令牌/默认样式）。"""
+        self._border_override = border_qss_value
+        self._apply_token_styles()
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
@@ -280,3 +294,7 @@ class CoverDropWidget(QWidget):
 
     def get_image(self) -> str:
         return self._inner.get_image()
+
+    def set_border_override(self, border_qss_value: Optional[str]) -> None:
+        """覆盖内部 #container 的 border（传 None 恢复）。"""
+        self._inner.set_border_override(border_qss_value)

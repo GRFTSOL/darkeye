@@ -27,8 +27,11 @@ class TokenVerticalTabBar(QTabBar):
         self._logger = get_logger(__name__)
         self.setObjectName("VerticalTabBar")
         self.setShape(QTabBar.RoundedWest)
-        self._line_spacing = self.fontMetrics().height() * 0.05
-        self._column_spacing = self.fontMetrics().height() * 0.1
+        fm = self.fontMetrics()
+        self._line_spacing = fm.height() * 0.05
+        self._column_spacing = fm.height() * 0.1
+        # 顶部额外留白（控制“margin-top”效果）
+        self._top_margin = fm.height() * 0.3
         self.setFont(QFont("Microsoft YaHei", 12))
 
         theme_manager = resolve_theme_manager(theme_manager, "TokenVerticalTabBar")
@@ -143,7 +146,8 @@ class TokenVerticalTabBar(QTabBar):
                 char_height = fm.height() + self._line_spacing
                 char_width = fm.maxWidth()
                 x = rect.right() - char_width
-                y = rect.top()
+                # 顶部预留一定间距，让文字整体向下偏移
+                y = rect.top() + int(self._top_margin)
                 for block in self.split_text_blocks(text):
                     if re.match(r"[A-Za-z0-9\-()]+$", block):
                         br = fm.boundingRect(block)

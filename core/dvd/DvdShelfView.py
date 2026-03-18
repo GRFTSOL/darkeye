@@ -1,12 +1,22 @@
 """3D DVD 虚拟化书架视图，接收 work_ids 列表，按 3D 相机位置驱动可见范围加载。"""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from time import perf_counter
+from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot, QTimer
+from PySide6.QtCore import Property, Qt, QObject, QUrl, Signal, Slot, QTimer
 from PySide6.QtGui import QCursor, QColor
-from PySide6.QtWidgets import QApplication, QMenu, QVBoxLayout, QWidget, QSizePolicy
+from PySide6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QVBoxLayout,
+    QWidget,
+    QSizePolicy,
+)
 from PySide6.QtQuickWidgets import QQuickWidget
 
 from config import get_video_path, MESHES_PATH, MAPS_PATH, HDR_PATH, WORKCOVER_PATH
@@ -23,6 +33,9 @@ from core.database.insert import insert_liked_work
 from core.database.delete import delete_favorite_work
 from core.database.update import mark_delete
 from utils.utils import find_video, play_video, get_text_color_from_background
+
+if TYPE_CHECKING:
+    from core.graph.ForceDirectedViewWidget import ForceDirectedViewWidget
 
 
 def path_to_file_url(path: Path) -> str:
@@ -53,6 +66,12 @@ CAMERA_SETTLE_EPSILON = DVD_SPACING * 0.02
 CAMERA_SETTLE_VELOCITY = DVD_SPACING * 0.1
 DVD_QML = "Dvd.qml"
 DVD_SCENE = "dvd_scene.qml"
+# 力导向图 overlay 占据 DVD 拉出后左侧的空间，与右侧 DVD 视觉相当
+FORCEVIEW_WIDTH_MAX = 420   # 左侧区域最大宽度（与 DVD 拉出后左侧空间相当）
+FORCEVIEW_HEIGHT = 560      # 高度与 DVD 视觉比例接近
+FORCEVIEW_GAP = 16          # 与 DVD 锚点（选中中心）的间距，避免贴边
+FORCEVIEW_LEFT_MARGIN = 8   # 相对视图左边缘的内边距
+FORCEVIEW_SHOW_DELAY_MS = 500  # DVD 选中动画时长，动画完成后再显示力导向图
 
 
 class DvdBridge(QObject):
@@ -317,6 +336,20 @@ class DvdBridge(QObject):
     def onStudioClicked(self) -> None:
         self._view._on_studio_clicked()
 
+    @Slot(int, int)
+    def selectionChanged(
+        self, selected_delegate_index: int, expanded_delegate_index: int
+    ) -> None:
+        """QML 选中/展开变化时调用，用于显示或隐藏力导向图 overlay。"""
+        self._view._on_selection_changed(
+            selected_delegate_index, expanded_delegate_index
+        )
+
+    @Slot(float, float)
+    def setForceViewAnchor(self, screen_x: float, screen_y: float) -> None:
+        """QML 传入选中 DVD 的 2D 投影坐标，用于将力导向图 overlay 定位到其左侧。"""
+        self._view._update_forceview_geometry(screen_x, screen_y)
+
 
 class DvdShelfView(QWidget):
     """3D DVD 书架视图，虚拟化加载，由 3D 场景内相机位置决定可见范围。
@@ -343,11 +376,42 @@ class DvdShelfView(QWidget):
         self._update_timer.setInterval(UPDATE_INTERVAL_MS)
         self._pending_camera_x: float | None = None
         self._programmatic_open_token = 0
+        # 程序化打开（loadworkid）期间抑制 ForceView overlay：
+        # - 更重要：loadworkid 用于“直接展开进入详情”，这条路径下 forceview 不应出现（包括关闭展开回到选中态那一瞬间）
+        # 规则：只要该标记非空且仍保持选中（selected>=0），一律不显示 forceview；直到真正取消选中（selected<0）才解除。
+        # 注意：不要依赖 _programmatic_open_token 做相等比较，因为它可能在别处被递增。
+        self._suppress_forceview_while_selected_token: int | None = None
+        # loadworkid 状态机：
+        # - loadworkid 打开时会先进入“选中未展开(expanded=-1)”一段时间，然后才进入 expanded>=0
+        # - 我们只在“确实进入过 expanded”之后，关闭回到“选中未展开”时解除抑制，让 forceview 正常出现
+        self._loadworkid_has_expanded: bool = False
+        # loadworkid() 会先调用 _reset_scene_interaction_state()（触发 selected=-1 的 selectionChanged），
+        # 这不应清掉上面的抑制标记。用这个小旗标把“重置阶段”的 selectionChanged 过滤掉。
+        self._in_loadworkid_reset: bool = False
         self._quick_widget = QQuickWidget(self)
         self._quick_widget.setResizeMode(QQuickWidget.SizeRootObjectToView)
         self._quick_widget.setMinimumHeight(min_height)
         self._quick_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        #self._quick_widget.setFrameShape(QFrame.Shape.NoFrame)
+
+        self._forceview: "ForceDirectedViewWidget | None" = None
+        self._forceview_placeholder: QLabel | None = None
+        self._last_forceview_anchor: tuple[float, float] | None = None
+        self._pending_forceview_work_id: int | None = None
+        self._forceview_show_timer = QTimer(self)
+        self._forceview_show_timer.setSingleShot(True)
+        self._forceview_show_timer.timeout.connect(self._show_forceview_after_animation)
+        # 力导向图 overlay：叠在 3D 视图上，由 QML 通过 setForceViewAnchor 提供位置（选中 DVD 的 2D 投影左侧）。
+        self._forceview_container = QWidget(self)
+        self._forceview_container.setVisible(False)
+        forceview_container_layout = QVBoxLayout(self._forceview_container)
+        forceview_container_layout.setContentsMargins(0, 0, 0, 0)
+        self._forceview_placeholder = QLabel("正在生成力导向图...")
+        self._forceview_placeholder.setAlignment(
+            Qt.AlignmentFlag.AlignCenter
+            if hasattr(Qt, "AlignmentFlag")
+            else Qt.AlignCenter
+        )
+        forceview_container_layout.addWidget(self._forceview_placeholder)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -389,6 +453,157 @@ class DvdShelfView(QWidget):
         self._quick_widget.setSource(QUrl.fromLocalFile(str(qml_path)))
         self._camera_animation_timer.timeout.connect(self._advance_camera_animation)
         self._update_timer.timeout.connect(self._apply_pending_camera_update)
+
+    def _on_selection_changed(
+        self, selected_delegate_index: int, expanded_delegate_index: int
+    ) -> None:
+        """选中未展开时在 DVD 动画完成后再显示力导向图，展开或取消选中时隐藏。"""
+        # loadworkid 抑制的解除规则：
+        # - 若真正取消选中（selected<0），解除（但 reset 阶段不算）。
+        # - 若 loadworkid 已经进入过 expanded>=0，随后关闭回到“选中未展开(expanded<0)”时解除，让 forceview 显示。
+        if self._suppress_forceview_while_selected_token is not None:
+            if expanded_delegate_index >= 0:
+                self._loadworkid_has_expanded = True
+            if selected_delegate_index < 0:
+                if not self._in_loadworkid_reset:
+                    self._suppress_forceview_while_selected_token = None
+                    self._loadworkid_has_expanded = False
+            elif expanded_delegate_index < 0 and selected_delegate_index >= 0 and self._loadworkid_has_expanded:
+                # 从“展开态”关回“选中未展开态”
+                self._suppress_forceview_while_selected_token = None
+                self._loadworkid_has_expanded = False
+
+        show_force = (
+            selected_delegate_index >= 0 and expanded_delegate_index < 0
+        )
+        if show_force:
+            virtual_index = self._load_start + selected_delegate_index
+            if not (0 <= virtual_index < len(self._work_ids)):
+                show_force = False
+            # 折叠关闭动画过程中（QML 会先 expanded=-1，selected 保持一段时间），不要显示 overlay，避免关闭时闪一下。
+            if show_force:
+                root = self._root_scene_object()
+                if root is not None and root.property("_pendingCollapseSelectedIndex") is not None:
+                    try:
+                        pending_idx = int(root.property("_pendingCollapseSelectedIndex"))
+                    except Exception:
+                        pending_idx = -1
+                    if pending_idx == int(selected_delegate_index):
+                        show_force = False
+            # 程序化打开（loadworkid）：只要仍处于“选中态”，forceview 一律不显示。
+            if show_force and self._suppress_forceview_while_selected_token is not None:
+                show_force = False
+        if not show_force:
+            self._forceview_show_timer.stop()
+            self._pending_forceview_work_id = None
+            self._forceview_container.setVisible(False)
+            return
+        work_id = self._work_ids[virtual_index]
+        self._init_forceview()
+        if self._forceview is None:
+            return
+        from core.graph.graph_filter import EgoFilter
+
+        self._forceview.session.set_filter(
+            EgoFilter(center_id=f"w{work_id}", radius=3)
+        )
+        # 关键：首次进入 DVD 时，ForceViewOpenGL 可能尚未 show/初始化完成。
+        # 若此时就 setGraph，容易“第一次不显示、第二次正常”。
+        # 因此把 new_load 延后到动画结束、容器可见后再触发（在 _show_forceview_after_animation 里）。
+        self._pending_forceview_work_id = int(work_id)
+        # 等 DVD 选中动画（约 500ms）完成后再显示，避免动画过程中就出现
+        self._forceview_show_timer.stop()
+        self._forceview_show_timer.start(FORCEVIEW_SHOW_DELAY_MS)
+
+    def _show_forceview_after_animation(self) -> None:
+        """DVD 选中动画结束后显示力导向图，并用缓存的锚点设置位置。"""
+        # 定时器回调可能与“展开/折叠”状态切换同一帧发生（stop() 也可能拦不住已入队的 triggered）。
+        # 因此这里必须二次校验：只有仍处于“选中且未展开、且不在关闭折叠窗口/程序化打开抑制窗口”时才显示。
+        root = self._root_scene_object()
+        if root is not None:
+            try:
+                selected_idx = int(root.property("selectedDelegateIndex"))
+            except Exception:
+                selected_idx = -1
+            try:
+                expanded_idx = int(root.property("expandedDelegateIndex"))
+            except Exception:
+                expanded_idx = -1
+            if selected_idx < 0 or expanded_idx >= 0:
+                return
+            try:
+                pending_collapse_idx = int(root.property("_pendingCollapseSelectedIndex"))
+            except Exception:
+                pending_collapse_idx = -1
+            if pending_collapse_idx == selected_idx:
+                return
+            if self._suppress_forceview_while_selected_token is not None:
+                return
+
+        self._forceview_container.setVisible(True)
+        self._forceview_container.raise_()
+        if self._last_forceview_anchor is not None:
+            self._update_forceview_geometry(
+                self._last_forceview_anchor[0], self._last_forceview_anchor[1]
+            )
+        # 容器可见后再触发加载，保证 OpenGL 视图有有效尺寸/上下文
+        if self._forceview is not None and self._pending_forceview_work_id is not None:
+            self._forceview.session.new_load()
+
+    def _update_forceview_geometry(self, screen_x: float, screen_y: float) -> None:
+        """根据 QML 传入的锚点 2D 坐标，让力导向图矩形右侧离 screen_x 距离 50，垂直与锚点中心对齐。"""
+        if screen_x < -9999 or screen_y < -9999:
+            return
+        self._last_forceview_anchor = (screen_x, screen_y)
+        if not self._forceview_container.isVisible():
+            return
+        view_w = self._quick_widget.width()
+        view_h = self._quick_widget.height()
+        anchor_x = int(screen_x)
+        anchor_y = int(screen_y)
+        # 矩形右侧与 screen_x 相距 50，宽度不超过最大值
+        gap_right = 30
+        w = min(FORCEVIEW_WIDTH_MAX, max(200, anchor_x - gap_right - FORCEVIEW_LEFT_MARGIN))
+        h = min(FORCEVIEW_HEIGHT, view_h - 16)
+        left = anchor_x - gap_right - w
+        left = max(FORCEVIEW_LEFT_MARGIN, min(left, view_w - w))
+        top = anchor_y - h // 2
+        top = max(0, min(top, view_h - h))
+        self._forceview_container.setGeometry(left, top, w, h)
+        self._forceview_container.raise_()
+
+    def _init_forceview(self) -> None:
+        """懒创建力导向图 widget，与 AddWorkTabPage3 逻辑对齐。"""
+        if self._forceview is not None:
+            return
+        try:
+            from core.graph.ForceDirectedViewWidget import ForceDirectedViewWidget
+
+            self._forceview = ForceDirectedViewWidget()
+        except Exception as e:
+            logging.error("初始化力导向图失败: %s", e)
+            return
+
+        layout = self._forceview_container.layout()
+        if self._forceview_placeholder is not None:
+            layout.removeWidget(self._forceview_placeholder)
+            self._forceview_placeholder.setParent(None)
+            self._forceview_placeholder.deleteLater()
+            self._forceview_placeholder = None
+        layout.addWidget(self._forceview)
+
+        from core.graph.graph_manager import GraphManager
+        from core.graph.graph_filter import EmptyFilter
+
+        manager = GraphManager.instance()
+        if manager._initialized:
+            self._forceview.session.set_filter(EmptyFilter())
+            self._forceview.session.new_load()
+        else:
+            manager.initialize()
+            manager.initialization_finished.connect(
+                self._forceview.session.new_load
+            )
 
     def work_count(self) -> int:
         return len(self._work_ids)
@@ -630,18 +845,18 @@ class DvdShelfView(QWidget):
 
     def _reset_scene_interaction_state(self) -> None:
         root = self._root_scene_object()
-        if root is None:
-            return
-        root.setProperty("hoveredDelegateIndex", -1)
-        root.setProperty("pressedDelegateIndex", -1)
-        root.setProperty("pressedObjectHit", None)
-        root.setProperty("fullyExpandedDelegateIndex", -1)
-        root.setProperty("_pendingCollapseSelectedIndex", -1)
-        root.setProperty("_pendingCollapseCloseSpeedMultiplier", 1.0)
-        root.setProperty("_frozenSelectedDelegateIndex", -1)
-        root.setProperty("_frozenSelectedVirtualIndex", -1)
-        root.setProperty("selectedDelegateIndex", -1)
-        root.setProperty("expandedDelegateIndex", -1)
+        if root is not None:
+            root.setProperty("hoveredDelegateIndex", -1)
+            root.setProperty("pressedDelegateIndex", -1)
+            root.setProperty("pressedObjectHit", None)
+            root.setProperty("fullyExpandedDelegateIndex", -1)
+            root.setProperty("_pendingCollapseSelectedIndex", -1)
+            root.setProperty("_pendingCollapseCloseSpeedMultiplier", 1.0)
+            root.setProperty("_frozenSelectedDelegateIndex", -1)
+            root.setProperty("_frozenSelectedVirtualIndex", -1)
+            root.setProperty("selectedDelegateIndex", -1)
+            root.setProperty("expandedDelegateIndex", -1)
+        self._on_selection_changed(-1, -1)
 
     def _expand_delegate_if_token_matches(self, delegate_index: int, token: int) -> None:
         if token != self._programmatic_open_token:
@@ -675,6 +890,7 @@ class DvdShelfView(QWidget):
 
     @Slot(int, result=bool)
     def loadworkid(self, work_id: int) -> bool:
+        '''找到并展开特定的dvd'''
         try:
             virtual_index = self._work_ids.index(int(work_id))
         except (ValueError, TypeError):
@@ -683,8 +899,12 @@ class DvdShelfView(QWidget):
         target_camera_x = virtual_index * DVD_SPACING
         self._programmatic_open_token += 1
         token = self._programmatic_open_token
-
+        # 程序化打开：只要仍保持选中，就一律不显示 forceview（直到 selected=-1 才解除）
+        self._suppress_forceview_while_selected_token = token
+        self._loadworkid_has_expanded = False
+        self._in_loadworkid_reset = True
         self._reset_scene_interaction_state()
+        self._in_loadworkid_reset = False
         self._load_start = -1
         self._load_end = -2
         self._update_timer.stop()

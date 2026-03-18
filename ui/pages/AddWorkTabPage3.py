@@ -248,9 +248,11 @@ class ViewModel(QObject):
     def set_state(self, key: str, value:bool):
         if key not in self._changed_flags:
             raise KeyError(f"Unknown state key: {key}")
-        if self._changed_flags[key] != value:
-            self._changed_flags[key] = value
-            self.modify_state_changed.emit(key, value)
+        # numpy.bool_ / 0/1 等在 Qt 信号里可能导致签名不匹配，统一转换为真正的 bool
+        v = bool(value)
+        if self._changed_flags[key] != v:
+            self._changed_flags[key] = v
+            self.modify_state_changed.emit(key, v)
 
     # -------------------- Property --------------------
     modify_state=Property(str,_noop_get,set_state,notify=modify_state_changed)
@@ -1050,13 +1052,12 @@ class AddWorkTabPage3(LazyWidget):
                 elif state == ButtonState.DISABLED:
                     self.btn_load_form_db.setDisabled(True)
     
-    @Slot(str, bool)
-    def modify_state_change(self,key:str,value:bool):
+    def modify_state_change(self, key, value):
         highlight_line = "QLineEdit { border: 2px solid #FFA500; }"
         highlight_text = "QPlainTextEdit { border: 2px solid #FFA500; }"
         highlight_list = "QListView { border: 2px solid #FFA500; }"
-        highlight_cover = "border: 2px dashed orange; font-size: 16px; padding: 0px;margin: 0px;"
-        normal_cover = "border: 2px dashed grey; font-size: 16px; padding: 0px;margin: 0px;"
+        highlight_cover_border = "2px dashed orange"
+        normal_cover_border = None
         highlight_text2="QTextEdit { border: 2px solid #FFA500; }"
 
         mapping = [
@@ -1069,7 +1070,6 @@ class AddWorkTabPage3(LazyWidget):
             ("jp_story", self.jp_story, highlight_text, ""),
             ("actress_ids", self.actressselector.receive_actress_view, highlight_list, ""),
             ("actor_ids", self.actorselector.receive_actor_view, highlight_list, ""),
-            ("image_url", self.coverdroplabel, highlight_cover, normal_cover),
         ]
 
         for field, widget, style_on, style_off in mapping:
@@ -1078,6 +1078,11 @@ class AddWorkTabPage3(LazyWidget):
                     widget.setStyleSheet(style_on)
                 else:
                     widget.setStyleSheet(style_off)
+        if key == "image_url":
+            if value:
+                self.coverdroplabel.set_border_override(highlight_cover_border)
+            else:
+                self.coverdroplabel.set_border_override(normal_cover_border)
         # 控制方法有两种，一种是直接控制，还有种是控件写出一个接口
         if key=="tag_ids":
             if value:

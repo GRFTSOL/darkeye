@@ -940,10 +940,12 @@ class TagSelector5(QWidget):
                     background: {t.color_bg};
                     color: {t.color_text};
                     border: {t.border_width} solid {t.color_border};
-                    padding: 6px 14px;
+                    padding: 8px 18px;
+                    /* 竖直标签栏的“宽度”（厚度） */
+                    min-width: 90px;
                     border-top-left-radius: {t.radius_md};
                     border-bottom-left-radius: {t.radius_md};
-                    margin-right: 2px;
+                    margin-right: 4px;
                 }}
                 QTabBar::tab:hover {{
                     background: {t.color_bg_input};
@@ -975,10 +977,12 @@ class TagSelector5(QWidget):
                     background: #ffffff;
                     color: #999;
                     border: 2px solid #ccc;
-                    padding: 6px 14px;
+                    padding: 8px 18px;
+                    /* 竖直标签栏的“宽度”（厚度） */
+                    min-width: 90px;
                     border-top-left-radius: 8px;
                     border-bottom-left-radius: 8px;
-                    margin-right: 2px;
+                    margin-right: 4px;
                 }
                 QTabBar::tab:hover {
                     background: #f0faff;

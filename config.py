@@ -29,7 +29,7 @@ def resource_path(relative_path):
     return base_path / relative_path
 
 # ==========  加载 settings.ini ==========
-INI_FILE = resource_path("settings.ini")
+INI_FILE = resource_path("data/settings.ini")
 parser = configparser.ConfigParser()
 parser.read(INI_FILE, encoding="utf-8")
 
@@ -61,25 +61,29 @@ def get_PATH(key:str,default_value:str)->Path:
     
     return resource_path(path)#正常情况下返回地址
 
-DATABASE = get_PATH("Paths/Database","resources/public/public.db")#公共数据库文件地址
-DATABASE_BACKUP_PATH=get_PATH("Paths/DatabaseBackups","resources/public/public_backup/")#公共数据库备份地址
-ACTRESSIMAGES_PATH=get_PATH("Paths/Actressimages","resources/public/actressimages/")#女优头像的地址
-ACTORIMAGES_PATH=get_PATH("Paths/Actorimages","resources/public/actorimages/")#男优头像的地址
+DATABASE = get_PATH("Paths/Database","data/public/public.db")#公共数据库文件地址
+DATABASE_BACKUP_PATH=get_PATH("Paths/DatabaseBackups","data/public/public_backup/")#公共数据库备份地址
 
+ACTRESSIMAGES_PATH=get_PATH("Paths/Actressimages","data/public/actressimages/")#女优头像的地址
+ACTORIMAGES_PATH=get_PATH("Paths/Actorimages","data/public/actorimages/")#男优头像的地址
+WORKCOVER_PATH=get_PATH("Paths/WorkCovers","data/public/workcovers/")#作品封面的地址
 
-WORKCOVER_PATH=get_PATH("Paths/WorkCovers","resources/public/workcovers/")#作品封面的地址
+PRIVATE_DATABASE=get_PATH("Paths/PrivateDatabase","data/private/private.db")#私有数据库文件地址
+PRIVATE_DATABASE_BACKUP_PATH=get_PATH("Paths/PrivateDatabaseBackups","data/private/private_backup/")#私有数据库库备份地址
+USER_SHORTCUT_PATH=get_PATH("Paths/ShortcutMap","data/shortcuts.json")#用户快捷键列表文件地址
+CRAWLER_NAV_BUTTONS_PATH=get_PATH("Paths/CrawlerNavButtons","data/crawler_nav_buttons.json")#手动导航按钮配置
+TEMP_PATH=get_PATH("Paths/Temp","data/temp/")#存一些临时文件，包括图片等等
 
-PRIVATE_DATABASE=get_PATH("Paths/PrivateDatabase","resources/private/private.db")#私有数据库文件地址
-PRIVATE_DATABASE_BACKUP_PATH=get_PATH("Paths/PrivateDatabaseBackups","resources/private/private_backup/")#私有数据库库备份地址
-
+#上面是用户保留，系统升级不修改的
+#-------------------------------------------------#
+#下面是系统，会随着系统升级修改的
 SENSITIVE_WORDS_PATH=get_PATH("Paths/SensitiveWords","resources/config/sensitive_words.txt")#敏感词文件地址
 TAG_MAP_PATH=get_PATH("Paths/TagMap","resources/config/tag_map.json")#敏感词文件地址
-USER_SHORTCUT_PATH=get_PATH("Paths/ShortcutMap","resources/config/shortcuts.json")#用户快捷键列表文件地址
-CRAWLER_NAV_BUTTONS_PATH=get_PATH("Paths/CrawlerNavButtons","resources/config/crawler_nav_buttons.json")#手动导航按钮配置
+
 
 SQLPATH=get_PATH("Paths/Sql","resources/sql/")
 ICONS_PATH = get_PATH("Paths/Icons","resources/icons/")#软件图标的地址
-TEMP_PATH=get_PATH("Paths/Temp","resources/temp/")#存一些临时文件，包括图片等等
+
 LOG_FILE=get_PATH("Paths/LogFile","log/app.log")#log文件的位置
 QSS_PATH=get_PATH("Paths/QSS","styles/")#qss文件的位置
 MESHES_PATH=get_PATH("Paths/Meshes","resources/meshes/")#DVD 模型 mesh 文件目录
