@@ -58,9 +58,10 @@ test5.py
 test6.py
 # 项目自定义排除，主要是资源文件
 
-resources/private/
-resources/public/
-resources/temp/
+data/private/
+data/public/
+data/temp/
+data
 settings.ini
 log
 
