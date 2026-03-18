@@ -34,7 +34,7 @@ class ShortcutRegistry:
             "add_quick_work": {"name": "快速添加番号", "key": "W"},
             "add_makelove_record": {"name": "添加做爱记录", "key": "L"},
             "add_sexual_rousal_record": {"name": "添加晨勃记录", "key": "A"},
-            "open_help": {"name": "打开帮助", "key": "H"},
+            "open_help": {"name": "打开文档", "key": "H"},
             "search": {"name": "搜索", "key": "Ctrl+F"},
             "capture": {"name": "部分截图", "key": "C"},
             "allcapture": {"name": "全软件截图", "key": "Shift+C"},

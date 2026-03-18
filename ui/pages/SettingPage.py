@@ -530,11 +530,46 @@ class LastPage(QWidget):
 
         githubLabel = Label()
         githubLabel.setText(
-            '<a href="https://github.com/de4321/darkeye">https://github.com/de4321/darkeye</a>'
+            '<a href="https://github.com/de4321/darkeye">GitHub</a>'
         )
         githubLabel.setTextFormat(Qt.RichText)
         githubLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
         githubLabel.setOpenExternalLinks(True)   # 关键
+
+        discordLabel = Label()
+        discordLabel.setText(
+            '<a href="https://discord.gg/N7wJVNVA">Discord</a>'
+        )
+        discordLabel.setTextFormat(Qt.RichText)
+        discordLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        discordLabel.setOpenExternalLinks(True)
+
+        websiteLabel = Label()
+        websiteLabel.setText(
+            '<a href="https://de4321.github.io/darkeye-webpage/">官网</a>'
+        )
+        websiteLabel.setTextFormat(Qt.RichText)
+        websiteLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        websiteLabel.setOpenExternalLinks(True)
+
+        documentLabel = Label()
+        documentLabel.setText(
+            '<a href="https://de4321.github.io/darkeye/">文档</a>'
+        )
+        documentLabel.setTextFormat(Qt.RichText)
+        documentLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        documentLabel.setOpenExternalLinks(True)
+
+        
+
+        links_row = QWidget()
+        links_layout = QHBoxLayout(links_row)
+        links_layout.setContentsMargins(0, 0, 0, 0)
+        links_layout.addWidget(githubLabel)
+        links_layout.addWidget(discordLabel)
+        links_layout.addWidget(websiteLabel)
+        links_layout.addWidget(documentLabel)
+        links_layout.addStretch()
 
         layout1.addWidget(Label(f"当前版本{APP_VERSION}"))
         btn_check_update = Button("检查更新")
@@ -562,7 +597,7 @@ class LastPage(QWidget):
         layout3.addWidget(btn_android)
 
 
-        form_layout.addRow(Label("GitHub地址"),githubLabel)
+        form_layout.addRow(Label("项目链接"), links_row)
         layout.addLayout(layout1)
         layout.addLayout(layout2)
         layout.addLayout(layout3)

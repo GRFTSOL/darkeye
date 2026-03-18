@@ -1,4 +1,5 @@
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QKeySequence, QDesktopServices
+from PySide6.QtCore import QUrl
 
 
 def setup_mainwindow_actions(window, registry):
@@ -43,7 +44,9 @@ def setup_mainwindow_actions(window, registry):
     open_help_action.setShortcut(
         QKeySequence(registry.get_shortcut("open_help"))
     )
-    #open_help_action.triggered.connect()
+    open_help_action.triggered.connect(
+        lambda: QDesktopServices.openUrl(QUrl("https://de4321.github.io/darkeye/"))
+    )
     registry.actions_map["open_help"] = open_help_action
 
     focus_search = QAction("搜索", window)
