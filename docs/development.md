@@ -1,5 +1,7 @@
-# 开发环境准备
 
+
+## 开发环境准备
+### python环境
 1. 用conda的输入下面指令
 
 ```
@@ -8,4 +10,13 @@ conda activate venv
 pip install -e ".[docs]"
 ```
 
-2. 复制public基础数据
+2. 复制resources/develop_resources 复制到data下面
+
+简单来说就是运行脚本scripts/develop_pre.ps1
+
+
+### C++ qt环境
+安装qt6.10.1
+
+vs2022，选择C++桌面开发
+
