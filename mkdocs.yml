@@ -4,11 +4,8 @@ nav:
   - 首页: index.md
   - 入门指南: usage.md
   - 软件设置: settings.md
-  - UI设计: ui-design.md
   - 版本更新记录: CHANGELOG.md
-  - 数据库设计: db-design.md
-  - 开发注意事项: develop.md
-  - 未来功能展望: future.md
+  - 开发准备: development.md
   - 常见问题: faq.md
 
 

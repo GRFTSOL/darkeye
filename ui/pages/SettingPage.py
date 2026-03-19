@@ -3,7 +3,7 @@ from darkeye_ui import LazyWidget
 
 from PySide6.QtWidgets import  QHBoxLayout,QVBoxLayout,QFileDialog,QGridLayout,QWidget,QFormLayout
 from PySide6.QtGui import QIcon, QKeySequence, QColor, QDesktopServices
-from PySide6.QtCore import Slot, Qt, QUrl
+from PySide6.QtCore import Slot, Qt, QUrl, QTimer, QObject, Signal
 import logging
 from config import ICONS_PATH
 from controller.MessageService import MessageBoxService
@@ -542,6 +542,7 @@ class LastPage(QWidget):
     '''这个是尾页'''
     def __init__(self):
         super().__init__()
+        self.msg = MessageBoxService(self)
         layout = QVBoxLayout(self)
         layout1=QHBoxLayout()
         layout2=QHBoxLayout()
@@ -594,7 +595,8 @@ class LastPage(QWidget):
 
         layout1.addWidget(Label(f"当前版本{APP_VERSION}"))
         btn_check_update = Button("检查更新")
-        btn_check_update.setEnabled(False)  # 功能未实现
+        btn_check_update.setEnabled(True)
+        btn_check_update.clicked.connect(lambda: self._on_check_update_clicked(btn_check_update))
         layout1.addWidget(btn_check_update)
         btn_feedback = Button("意见反馈")
         btn_feedback.clicked.connect(
@@ -623,6 +625,71 @@ class LastPage(QWidget):
         layout.addLayout(layout2)
         layout.addLayout(layout3)
         layout.addLayout(form_layout)
+
+    def _on_check_update_clicked(self, btn: Button) -> None:
+        """从 GitHub 拉取 latest.json 并判断是否需要更新（不直接替换）。"""
+        latest_json_url = "https://raw.githubusercontent.com/de4321/darkeye/main/update/latest.json"
+
+        # 防止重复点击
+        btn.setEnabled(False)
+        btn.setText("检查中...")
+
+        import threading
+
+        overall_timeout_seconds = 12  # 整体超时守护（包含 DNS/连接/读取）
+        urlopen_timeout_seconds = 8  # urlopen 超时（避免长时间卡死）
+        done_state = {"notified": False}  # 防止超时后再收到结果弹二次
+
+        def safe_on_done(ok: bool, title: str, msg: str):
+            """确保 UI 只会更新一次（超时或正常完成二选一）。"""
+            if done_state["notified"]:
+                return
+            done_state["notified"] = True
+
+            # 释放引用，避免多次点击时持有旧 notifier
+            self._update_check_notifier = None
+
+            btn.setText("检查更新")
+            btn.setEnabled(True)
+            if ok:
+                self.msg.show_info(title, msg)
+            else:
+                self.msg.show_critical(title, msg)
+
+        class _UpdateCheckNotifier(QObject):
+            result = Signal(bool, str, str)
+
+        # 用 Signal 把后台结果可靠地投递回 UI 线程（避免后台线程 QTimer 不触发）
+        notifier = _UpdateCheckNotifier(self)
+        self._update_check_notifier = notifier
+        notifier.result.connect(safe_on_done)
+
+        def worker():
+            from core.updater import check_for_updates
+
+            res = check_for_updates(
+                APP_VERSION,
+                latest_json_url,
+                urlopen_timeout_seconds=urlopen_timeout_seconds,
+                log_latest_json=True,
+            )
+            return (res.success, res.title, res.message)
+
+        def run():
+            ok, title, msg = worker()
+            notifier.result.emit(ok, title, msg)
+
+        threading.Thread(target=run, daemon=True).start()
+
+        # 整体超时守护：如果后台线程还没返回，就提示“超时”
+        def on_timeout():
+            safe_on_done(
+                False,
+                "更新检查超时",
+                f"更新检查在 {overall_timeout_seconds} 秒内未完成，请检查网络后重试。",
+            )
+
+        QTimer.singleShot(overall_timeout_seconds * 1000, on_timeout)
 
 class VideoSettingPage(QWidget):
     '''这个是视频相关设置页面'''
