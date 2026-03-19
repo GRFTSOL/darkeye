@@ -1,10 +1,12 @@
 
 from darkeye_ui import LazyWidget
 
-from PySide6.QtWidgets import  QHBoxLayout,QVBoxLayout,QFileDialog,QGridLayout,QWidget,QFormLayout
+from PySide6.QtWidgets import  QHBoxLayout,QVBoxLayout,QFileDialog,QGridLayout,QWidget,QFormLayout,QApplication
 from PySide6.QtGui import QIcon, QKeySequence, QColor, QDesktopServices
 from PySide6.QtCore import Slot, Qt, QUrl, QTimer, QObject, Signal
 import logging
+import os
+import subprocess
 from config import ICONS_PATH
 from controller.MessageService import MessageBoxService
 from pathlib import Path
@@ -628,7 +630,7 @@ class LastPage(QWidget):
 
     def _on_check_update_clicked(self, btn: Button) -> None:
         """从 GitHub 拉取 latest.json 并判断是否需要更新（不直接替换）。"""
-        latest_json_url = "https://raw.githubusercontent.com/de4321/darkeye/main/update/latest.json"
+        latest_json_url = "http://yinruizhe.asia/latest.json"
 
         # 防止重复点击
         btn.setEnabled(False)
@@ -640,7 +642,7 @@ class LastPage(QWidget):
         urlopen_timeout_seconds = 8  # urlopen 超时（避免长时间卡死）
         done_state = {"notified": False}  # 防止超时后再收到结果弹二次
 
-        def safe_on_done(ok: bool, title: str, msg: str):
+        def safe_on_done(ok: bool, title: str, msg: str, is_update_available: bool):
             """确保 UI 只会更新一次（超时或正常完成二选一）。"""
             if done_state["notified"]:
                 return
@@ -651,13 +653,48 @@ class LastPage(QWidget):
 
             btn.setText("检查更新")
             btn.setEnabled(True)
+
+            if ok and is_update_available:
+                import config
+
+                updater_exe = BASE_DIR / "DarkEyeUpdater.exe"
+                if not updater_exe.exists():
+                    self.msg.show_critical("更新失败", f"未找到更新程序：{updater_exe}")
+                    return
+
+                current_version = str(getattr(config, "APP_VERSION", "")).strip()
+                if not current_version:
+                    self.msg.show_critical("更新失败", "无法从配置读取当前版本号。")
+                    return
+
+                cmd = [
+                    str(updater_exe),
+                    "--current-version", current_version,
+                    "--main-exe", "DarkEye.exe",
+                    "--latest-json-url", latest_json_url,
+                    "--keep", "data",
+                    "--pid", str(os.getpid()),
+                ]
+                try:
+                    subprocess.Popen(cmd, cwd=str(BASE_DIR))
+                except Exception as e:
+                    logging.exception("启动更新程序失败")
+                    self.msg.show_critical("更新失败", f"无法启动更新程序：{e}")
+                    return
+
+                self.msg.show_info("开始更新", msg + "\n\n已启动更新程序，软件即将退出完成更新。")
+                app = QApplication.instance()
+                if app is not None:
+                    QTimer.singleShot(200, app.quit)
+                return
+
             if ok:
                 self.msg.show_info(title, msg)
             else:
                 self.msg.show_critical(title, msg)
 
         class _UpdateCheckNotifier(QObject):
-            result = Signal(bool, str, str)
+            result = Signal(bool, str, str, bool)
 
         # 用 Signal 把后台结果可靠地投递回 UI 线程（避免后台线程 QTimer 不触发）
         notifier = _UpdateCheckNotifier(self)
@@ -673,11 +710,11 @@ class LastPage(QWidget):
                 urlopen_timeout_seconds=urlopen_timeout_seconds,
                 log_latest_json=True,
             )
-            return (res.success, res.title, res.message)
+            return (res.success, res.title, res.message, res.is_update_available)
 
         def run():
-            ok, title, msg = worker()
-            notifier.result.emit(ok, title, msg)
+            ok, title, msg, is_update_available = worker()
+            notifier.result.emit(ok, title, msg, is_update_available)
 
         threading.Thread(target=run, daemon=True).start()
 

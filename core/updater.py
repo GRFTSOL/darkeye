@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Optional
 from urllib.request import Request, urlopen
 
-DEFAULT_LATEST_JSON_URL = "https://raw.githubusercontent.com/de4321/darkeye/main/update/latest.json"
+DEFAULT_LATEST_JSON_URL = "https://yinruizhe.asia/latest.json"
 
 
 @dataclass(frozen=True)
@@ -99,8 +99,6 @@ def check_for_updates(
         lines = [f"检测到新版本：{local_version} -> {latest_version}"]
         if release_notes:
             lines.append(f"更新内容：{release_notes}")
-        if pkg_url:
-            lines.append(f"下载地址：{pkg_url}")
         msg = "\n".join(lines)
 
         return UpdateCheckResult(
