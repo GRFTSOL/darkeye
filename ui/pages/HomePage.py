@@ -1,7 +1,5 @@
+from PySide6.QtWidgets import QWidget, QSizePolicy, QVBoxLayout
 
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QPushButton, QHBoxLayout, QWidget, QGraphicsOpacityEffect, QSizePolicy, QVBoxLayout
-)
 from PySide6.QtCore import Slot
 import sqlite3
 import logging

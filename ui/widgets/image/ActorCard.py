@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout
-from PySide6.QtGui import QMouseEvent
+
 from PySide6.QtCore import Qt,Signal
 from config import ACTORIMAGES_PATH,ICONS_PATH
 from pathlib import Path

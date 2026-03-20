@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QToolButton,QSizePolicy
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt,Slot,QThreadPool
-from pathlib import Path
+
 from config import ICONS_PATH
 from ui.pages.TagManagement import TagManagement
 from ui.pages.SearchTable import SearchTable

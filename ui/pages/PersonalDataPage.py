@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout
-from PySide6.QtGui import QPixmap, QPainter, QPainterPath, QBrush, QColor, QPen
+from PySide6.QtGui import QPainter, QPainterPath, QBrush, QColor, QPen
 from PySide6.QtCore import Qt,Slot, QThreadPool, QRunnable, Signal, QObject
 from core.database.query import get_record_count_in_days,get_top_actress_by_masturbation_count
 import logging

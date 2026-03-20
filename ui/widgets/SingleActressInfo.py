@@ -7,7 +7,7 @@ import logging
 from darkeye_ui.components.heart_label import HeartLabel
 from ui.widgets import ClickableLabel
 from ui.widgets.image.ActressAvatar import ActressAvatar
-from darkeye_ui.components.oct_image import OctImage
+
 from config import ACTRESSIMAGES_PATH
 from darkeye_ui.components.label import Label
 

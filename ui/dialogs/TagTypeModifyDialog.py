@@ -1,6 +1,6 @@
 
-from PySide6.QtWidgets import QPushButton, QHBoxLayout,QLabel,QVBoxLayout,QDialog,QFormLayout
-from PySide6.QtCore import Signal,Qt
+from PySide6.QtWidgets import QVBoxLayout,QDialog
+from PySide6.QtCore import Signal
 from config import ICONS_PATH
 from PySide6.QtGui import QIcon
 from ui.basic.TagTypeMoveableTableView import TagTypeMoveableTableView

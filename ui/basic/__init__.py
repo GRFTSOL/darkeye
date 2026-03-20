@@ -23,5 +23,3 @@ from .ShakeButton import ShakeButton
 from .path.MultiplePathManagement import MultiplePathManagement
 from .path.SinglePathManagement import SinglePathManagement
 
-
-from ..widgets.StatusBarNotification import StatusBarNotification

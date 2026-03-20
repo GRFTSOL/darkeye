@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QSizePolicy,QFileDialog,QMenu
 from PySide6.QtGui import QPixmap,QImage, QDragEnterEvent, QDropEvent,QMouseEvent,QAction
-from PySide6.QtCore import Qt,Signal,QRect,Slot
+from PySide6.QtCore import Qt,Signal,Slot
 import shutil,logging,os,subprocess
 from datetime import datetime
 from pathlib import Path

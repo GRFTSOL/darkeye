@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QTableView, QVBoxLayout, QHBoxLayout, QAbstractItemView
+from PySide6.QtWidgets import  QVBoxLayout, QHBoxLayout, QAbstractItemView
 from PySide6.QtCore import Slot, Qt
 import logging
 

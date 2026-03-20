@@ -1,8 +1,8 @@
 
-import os
+
 import logging
 from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget, QLabel,QGraphicsOpacityEffect,QSizePolicy,QVBoxLayout,QFileDialog
-from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor,QIcon
+from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor
 from PySide6.QtCore import Qt, QPointF, QPropertyAnimation, QEasingCurve,QParallelAnimationGroup,QSize,Signal,QTimer
 from config import WORKCOVER_PATH,ICONS_PATH
 

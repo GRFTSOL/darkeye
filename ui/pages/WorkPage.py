@@ -1,6 +1,6 @@
 
-from PySide6.QtWidgets import QHBoxLayout, QWidget,QSizePolicy,QVBoxLayout,QLineEdit,QComboBox,QScrollArea
-from PySide6.QtCore import Signal,QThreadPool,Slot,Qt,QTimer
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QSizePolicy,QVBoxLayout
+from PySide6.QtCore import Slot,Qt,QTimer
 import sqlite3,logging
 from ui.widgets import CompleterLineEdit,CoverCard
 from darkeye_ui.components import LazyScrollArea

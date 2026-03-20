@@ -1,6 +1,6 @@
 import logging
 import random
-import asyncio
+
 import traceback
 from PySide6.QtCore import QObject, Signal, QThreadPool, Slot, Qt, QTimer
 from core.crawler.Worker import Worker

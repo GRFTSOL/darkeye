@@ -1,11 +1,10 @@
-from PySide6.QtWidgets import QHBoxLayout, QWidget, QLabel,QVBoxLayout,QPushButton,QStackedWidget,QScrollArea,QButtonGroup
-from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QStackedWidget,QScrollArea,QButtonGroup
+
 from PySide6.QtCore import Qt,Signal,Slot, QThreadPool, QRunnable, QObject
 from darkeye_ui.components import CalendarHeatmap
 from core.database.query import get_record_count_by_year,get_record_by_year
 
 from darkeye_ui.components.label import Label
-from darkeye_ui.components.transparent_widget import TransparentWidget
 from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.button import Button
 

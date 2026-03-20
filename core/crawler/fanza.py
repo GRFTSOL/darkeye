@@ -5,9 +5,6 @@ from typing import Dict
 root_dir = Path(__file__).resolve().parents[2]  # 上两级
 sys.path.insert(0, str(root_dir))
 
-import time
-from bs4 import BeautifulSoup
-
 
 
 from core.crawler.Worker import Worker

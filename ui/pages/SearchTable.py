@@ -1,8 +1,8 @@
-from PySide6.QtWidgets import QTableView, QVBoxLayout, QHBoxLayout, QMessageBox, QFileDialog
+from PySide6.QtWidgets import  QVBoxLayout, QHBoxLayout, QMessageBox, QFileDialog
 from PySide6.QtCore import Slot
 import logging
 
-from config import BASE_DIR, DATABASE, INI_FILE
+from config import DATABASE
 from ui.basic import ModelSearch
 from ui.base.SqliteQueryTableModel import SqliteQueryTableModel
 from darkeye_ui import LazyWidget

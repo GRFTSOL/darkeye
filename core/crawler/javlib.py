@@ -1,16 +1,14 @@
 
-from typing import Dict
-import logging
-from PySide6.QtCore import QThreadPool
-from server.bridge import bridge
 
+import logging
+import threading
+from core.crawler.jump import send_crawler_request
+from server.bridge import bridge
 #这个逻辑全在js里爬，
 
 def jump_to_javlib(serial_number):
     '''启动浏览器插件爬虫进行爬取 (同步阻塞模式)，将原本的异步回调改成同步阻塞'''
-    import threading
-    from core.crawler.jump import send_crawler_request
-    from server.bridge import bridge
+
     
     # 1. 准备同步原语
     event = threading.Event()

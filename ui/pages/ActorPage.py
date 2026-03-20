@@ -1,15 +1,13 @@
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QWidget,QVBoxLayout,QLineEdit,QComboBox
-from PySide6.QtGui import QPixmap
-from PySide6.QtCore import Qt,Signal,Slot,QTimer
+from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QLineEdit
+from PySide6.QtCore import Slot,QTimer
 import sqlite3,logging
 
 from config import DATABASE
 from core.database.query import get_actorname
-from core.database.db_utils import attach_private_db,detach_private_db
 from ui.widgets import ActorCard,CompleterLineEdit
 from darkeye_ui.components import LazyScrollArea
 from darkeye_ui import LazyWidget
-from utils.utils import timeit
+
 from darkeye_ui.components.label import Label
 from darkeye_ui.components.rotate_button import RotateButton
 from darkeye_ui.components.shake_button import ShakeButton

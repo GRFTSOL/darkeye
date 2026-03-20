@@ -1,10 +1,5 @@
-import sys
-import json
-import os
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QDialog, QVBoxLayout,
-    QLabel, QTextEdit, QPushButton, QHBoxLayout
-)
+from PySide6.QtWidgets import QDialog, QVBoxLayout,QPushButton, QHBoxLayout
+
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt
 from config import ICONS_PATH

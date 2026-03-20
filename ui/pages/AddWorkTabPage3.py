@@ -1,21 +1,21 @@
-from PySide6.QtWidgets import QPushButton, QHBoxLayout, QLabel,QVBoxLayout,QLineEdit,QTextEdit,QSizePolicy,QPlainTextEdit,QWidget,QSplitter,QScrollArea
+from PySide6.QtWidgets import QHBoxLayout,QVBoxLayout,QLineEdit,QTextEdit,QSizePolicy,QPlainTextEdit,QWidget,QScrollArea
 from PySide6.QtCore import Qt,QObject,Signal,Property,SignalInstance,Slot,QThreadPool,QTimer
 from PySide6.QtGui import QIntValidator
 
 from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfig
 from ui.widgets.CrawlerToolBox import CrawlerAutoPage,CrawlerManualNavPage
-import logging,json,asyncio
+import logging
 from pathlib import Path
 from enum import Enum
-from datetime import datetime
 
-from config import settings,WORKCOVER_PATH,TEMP_PATH
+
+from config import WORKCOVER_PATH
 from ui.widgets import ActressSelector,CompleterLineEdit,ActorSelector,CoverDropWidget
 from ui.widgets.selectors.TagSelector5 import TagSelector5
 from core.database.query import get_unique_director, get_work_tags, get_workinfo_by_workid, get_actressid_by_workid, get_actorid_by_workid, get_unique_short_story, exist_actor, get_workid_by_serialnumber, exist_actress
 from core.database.insert import InsertNewWorkByHand
 from core.database.update import update_work_byhand
-from utils.utils import mse,load_ini_ids,translate_text_sync
+from utils.utils import mse,translate_text_sync
 
 
 from darkeye_ui import LazyWidget

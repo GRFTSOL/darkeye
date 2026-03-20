@@ -1,12 +1,12 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QScrollArea, QFrame, 
+    QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
     QSizePolicy, QGraphicsView, QGraphicsScene, QGraphicsObject
 )
 from PySide6.QtCore import (
     Signal, QEasingCurve, QVariantAnimation, Slot, QTimer, QRectF, Qt, QPointF
 )
 from PySide6.QtGui import (
-    QPixmap, QCursor, QPainter, QPainterPath, QColor, QFontMetrics, QFont, QBrush
+    QPixmap, QCursor, QPainter, QPainterPath, QColor, QFontMetrics, QFont
 )
 from pathlib import Path
 import logging

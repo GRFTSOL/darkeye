@@ -3,11 +3,8 @@ from PySide6.QtWidgets import QHBoxLayout,QVBoxLayout,QFormLayout,QWidget
 from PySide6.QtCore import Qt,QObject,Signal,Property,Slot
 
 
-import logging,json,asyncio
-from pathlib import Path
-from enum import Enum
+import logging
 
-from config import settings,WORKCOVER_PATH
 from darkeye_ui import LazyWidget
 from controller.MessageService import MessageBoxService,IMessageService
 from ui.basic import MovableTableView
