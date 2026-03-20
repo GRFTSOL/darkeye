@@ -22,7 +22,7 @@ class ColorPicker(QLabel):
     def __init__(self, color: QColor = None, parent=None, *, show_text: bool = True, shape: str = ShapeRectangle):
         super().__init__(parent)
         if color is None:
-            color = QColor("white")
+            color = QColor("#cccccc")
         self._color = color
         self._show_text = show_text
         self._shape = shape

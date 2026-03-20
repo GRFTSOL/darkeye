@@ -282,7 +282,7 @@ class TagManagement(LazyWidget):
         self.tag_type.addItems(get_unique_tag_type())
 
 
-        self.color=ColorPicker()
+        self.color=ColorPicker(shape=ColorPicker.ShapeCircle)
         self.color.setMaximumHeight(40)
         self.detail=LineEdit()
         self.btn_commit=Button("提交")
@@ -303,9 +303,10 @@ class TagManagement(LazyWidget):
         self.m_group = TokenGroupBox("多选操作")
         self.m_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         vlayout=QVBoxLayout(self.m_group)
+        vlayout.setContentsMargins(0, 0, 0, 0)
 
-        self.m_color=ColorPicker()
-        self.m_color.setMaximumHeight(40)
+        self.m_color=ColorPicker(shape=ColorPicker.ShapeCircle)
+        self.m_color.setMinimumHeight(32)
         self.btn_change=Button("批量改变标签颜色")
 
 
@@ -320,8 +321,10 @@ class TagManagement(LazyWidget):
         vlayout1.addWidget(self.m_color)
         vlayout1.addWidget(self.btn_change)
 
+
         vlayout.addWidget(color_group)
         vlayout.addWidget(self.btn_redirect)
+        vlayout.addStretch()
 
 
 

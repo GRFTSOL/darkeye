@@ -778,20 +778,19 @@ class AddWorkTabPage3(LazyWidget):
         editor_layout.addWidget(self.input_story)
 
         # 先搭架子再填充：root -> 右侧依次 nav, cover, basic, tag, forceview；cover 下拆 actress；forceview 下拆 editor
-
-
         pane_basic = self._workspace_manager.split(root, Placement.Right, ratio=0.7)
         pane_tag = self._workspace_manager.split(pane_basic, Placement.Right, ratio=0.25)
         pane_force = self._workspace_manager.split(pane_tag, Placement.Right, ratio=0.5)
         pane_actress = self._workspace_manager.split(root, Placement.Bottom, ratio=0.5)
         pane_editor = self._workspace_manager.split(pane_force, Placement.Bottom, ratio=0.4)
 
+        # 同一个pane内是按顺序填充
         self._workspace_manager.fill_pane(root, make_config("爬虫区", crawler_container, closeable=False))
         self._workspace_manager.fill_pane(root, make_config("外部导航", nav_container, closeable=False))
         self._workspace_manager.fill_pane(root, make_config("封面栏", cover_container, closeable=False))
         self._workspace_manager.fill_pane(pane_basic, make_config("基础信息", basic_info_container, closeable=False))
-        self._workspace_manager.fill_pane(pane_actress, make_config("女优选择器", actress_container, closeable=False))
         self._workspace_manager.fill_pane(pane_actress, make_config("男优选择器", actor_container, closeable=False))
+        self._workspace_manager.fill_pane(pane_actress, make_config("女优选择器", actress_container, closeable=False))
         self._workspace_manager.fill_pane(pane_tag, make_config("标签选择器", tag_container, closeable=False))
         self._workspace_manager.fill_pane(pane_force, make_config("力导向图区", self.forceview_container, closeable=False))
         self._workspace_manager.fill_pane(pane_editor, make_config("编辑区", editor_container, closeable=False))
