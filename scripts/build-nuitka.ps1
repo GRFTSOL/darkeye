@@ -4,7 +4,7 @@ Write-Host "Cleaning old build and dist folders..."
 
 #if (Test-Path build) {Remove-Item build -Recurse -Force}
 
-#if (Test-Path dist) {Remove-Item dist -Recurse -Force}
+if (Test-Path dist) {Remove-Item dist -Recurse -Force}
 
 # 如果存在 __pycache__，也清掉
 if (Test-Path __pycache__) {
@@ -28,7 +28,7 @@ $nuitkaArgs = @(
     # 打开控制台黑框便于调试
     #"--windows-console-mode=force",
     "--windows-icon-from-ico=resources/icons/logo.ico",
-    "--enable-plugin=anti-bloat",
+    #"--enable-plugin=anti-bloat",#这个是默认开启的
     "--report=report.xml",
 
     # 对齐 main.spec 中的资源目录
@@ -88,6 +88,8 @@ $nuitkaArgs = @(
 
     # 排除/不跟随导入（对应 main.spec 的 excludes）
     "--nofollow-import-to=cv2",
+    # 这个压缩是不需要的，是打包脚本时才用
+    "--nofollow-import-to=zstandard",
     "--nofollow-import-to=PySide6.QtWebEngine",
     "--nofollow-import-to=PySide6.QtMultimedia",
     "--nofollow-import-to=PySide6.QtBluetooth",

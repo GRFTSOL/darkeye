@@ -647,7 +647,10 @@ class LastPage(QWidget):
         )
         layout1.addWidget(btn_feedback)
         btn_changelog = Button("版本记录")
-        btn_changelog.setEnabled(False)  # 功能未实现
+        btn_changelog.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl("https://de4321.github.io/darkeye/CHANGELOG/"))
+        )
+
         layout1.addWidget(btn_changelog)
 
         radio_auto_update = TokenRadioButton("自动更新")
