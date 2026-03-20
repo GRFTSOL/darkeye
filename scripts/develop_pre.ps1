@@ -11,5 +11,5 @@ if (!(Test-Path $dest)) {
   New-Item -ItemType Directory -Path $dest | Out-Null
 }
 
-# 移动目录（如果 data 里已有同名目录，可用 -Force 覆盖/合并行为由系统决定）
-Move-Item -Path $src -Destination $dest -Force
+# 将 develop_resources 下的文件夹及内容复制到 data
+Copy-Item -Path "$src\*" -Destination $dest -Recurse -Force
