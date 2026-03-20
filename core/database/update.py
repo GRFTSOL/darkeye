@@ -645,7 +645,7 @@ def update_actress_name(cursor:Cursor,actress_name:list[dict],actress_id)->bool:
             last_id = name_data['actress_name_id'] # 更新上一条记录的ID
 
 
-def update_actress_byhand(actress_id,height,cup,birthday,hip,waist,bust,debut_date,need_update,image_urlA,actress_name):
+def update_actress_byhand(actress_id,height,cup,birthday,hip,waist,bust,debut_date,need_update,image_urlA,actress_name,minnano_url):
     '''更新女优信息。调用后需 emit: global_signals.actress_data_changed
     参数示例: {
             "actress_id": self._actress_id,
@@ -658,14 +658,15 @@ def update_actress_byhand(actress_id,height,cup,birthday,hip,waist,bust,debut_da
             "debut_date": self._debut_date,
             "need_update": self._need_update,
             "image_urlA": self._image_urlA,
-            "actress_name": self._actress_name
+            "actress_name": self._actress_name,
+            "minnano_url": self._minnano_url
         }'''
     
     conn=get_connection(DATABASE,False)
     logging.info("数据库打开成功")
     cursor=conn.cursor()
     try:
-        cursor.execute("UPDATE actress SET birthday=?,height=?,bust=?,waist=?,hip=?,cup=?,debut_date=?,need_update=?,image_urlA=? WHERE actress_id=?",(birthday,height,bust,waist,hip,cup,debut_date,need_update,image_urlA,actress_id))
+        cursor.execute("UPDATE actress SET birthday=?,height=?,bust=?,waist=?,hip=?,cup=?,debut_date=?,need_update=?,image_urlA=?,minnano_url=? WHERE actress_id=?",(birthday,height,bust,waist,hip,cup,debut_date,need_update,image_urlA,minnano_url,actress_id))
 
         #actress_name的修改部分
         update_actress_name(cursor,actress_name,actress_id)

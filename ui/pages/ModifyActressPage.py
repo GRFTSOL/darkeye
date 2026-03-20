@@ -35,7 +35,8 @@ class Model():
         self._bust:int= None
         self._debut_date:str= None
         self._need_update:bool= False
-
+        # minnano-av 页面缓存的演员编号（可能来自 DB/插件的字符串）
+        self._minnano_id:str= None
         self._image_urlA:str= None
         self._actress_name:list[dict] = []
 
@@ -50,6 +51,7 @@ class Model():
             "bust": self._bust,
             "debut_date": self._debut_date,
             "need_update": self._need_update,
+            "minnano_url": self._minnano_id,
             "image_urlA": self._image_urlA,
             "actress_name": self._actress_name
         }
@@ -64,6 +66,8 @@ class ViewModel(QObject):
     bust_Changed = Signal(int)
     debut_date_Changed = Signal(str)
     need_update_Changed = Signal(bool)
+    # 用 str 以避免 Qt 的 Signal(int) 在接收到空字符串/非数字时转换失败
+    minnano_id_Changed = Signal(str)
     image_urlA_Changed = Signal(str)
     actress_name_Changed = Signal(list)
 
@@ -73,7 +77,7 @@ class ViewModel(QObject):
         self.msg:MessageBoxService=message_service
 
         bridge = ServerBridge()
-        bridge.actressid_received.connect(self.set_minnano_id)
+        bridge.actressid_received.connect(self.update_minnano_id)
 
     def get_actress_id(self):
         return self.model._actress_id
@@ -170,6 +174,26 @@ class ViewModel(QObject):
 
     actress_name = Property(list, get_actress_name, set_actress_name, notify=actress_name_Changed)
 
+    def get_minnano_id(self):
+        return self.model._minnano_id
+    def set_minnano_id(self, value):
+        """
+        minnano-av id 有时来自 DB（可能是 None/空字符串），有时来自插件（int）。
+        这里统一转成字符串，确保 QLineEdit 能正确显示。
+        """
+        if value is None:
+            normalized = ""
+        elif isinstance(value, int):
+            normalized = str(value)
+        else:
+            normalized = str(value).strip()
+
+        if self.model._minnano_id != normalized:
+            self.model._minnano_id = normalized
+            self.minnano_id_Changed.emit(normalized)
+    minnano_id = Property(str, get_minnano_id, set_minnano_id, notify=minnano_id_Changed)
+
+
     def load(self,actress_id:int):
         '''加载'''
         from core.database.query import get_actress_info
@@ -181,6 +205,7 @@ class ViewModel(QObject):
         self.set_actress_id(actress_id)
         self.set_height(actress.get("height") or 0)
         self.set_cup(actress.get("cup") or "")
+        self.set_minnano_id(actress.get("minnano_url") or "")
 
         self.set_birthday(actress.get("birthday") or "")
         self.set_hip(actress.get("hip") or 0)
@@ -190,6 +215,7 @@ class ViewModel(QObject):
         self.set_image_urlA(actress.get("image_urlA") or "")
         self.set_actress_name(get_actress_allname(self.actress_id))
         self.set_need_update(actress.get("need_update")or False)
+
 
     @Slot()
     def submit(self):
@@ -265,7 +291,7 @@ class ViewModel(QObject):
 
 
 
-    def set_minnano_id(self,value:int):
+    def update_minnano_id(self,value):
         '''将女优的minnano_id直接写入数据库'''
         from core.database.update import update_actress_minnano_id
         logging.info(f"设置女优{self.actress_id}的minnano_id为{value}")
@@ -362,6 +388,8 @@ class ModifyActressPage(LazyWidget):
         self.btn_delete=IconPushButton(icon_name="trash_2")
         self.btn_show=IconPushButton(icon_name="eye")
 
+        self.input_minnano_id=LineEdit()
+
         self.smalllayout.addWidget(self.btn_show)
         self.smalllayout.addWidget(self.btn_delete)
         
@@ -373,6 +401,8 @@ class ModifyActressPage(LazyWidget):
         formlayout.addRow(Label("生日(yyyy-mm-dd)"),self.input_birthday)
         formlayout.addRow(Label("出道日期(yyyy-mm-dd)"),self.input_debut_date)
         formlayout.addRow(Label("需要更新"),self.need_update)
+        formlayout.addRow(Label("minnano-av id"),self.input_minnano_id)
+
         formlayout.addRow("",self.btn_commit)
         formlayout.addRow("",self.btn_claw_update)
         formlayout.addRow("",self.btn_claw_update_hand)
@@ -430,6 +460,10 @@ class ModifyActressPage(LazyWidget):
 
         self.need_update.toggled.connect(self.vm.set_need_update)
         self.vm.need_update_Changed.connect(self.need_update.setChecked)
+
+        #minnano_id的绑定
+        self.input_minnano_id.textChanged.connect(self.vm.set_minnano_id)
+        self.vm.minnano_id_Changed.connect(self.input_minnano_id.setText)
 
         #tablemodel与viewmodel的绑定
         # TODO 这里存在循环绑定的问题
