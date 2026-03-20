@@ -35,6 +35,37 @@ from darkeye_ui.components.token_key_sequence_edit import TokenKeySequenceEdit
 from darkeye_ui.components.color_picker import ColorPicker
 from darkeye_ui.components.toggle_switch import ToggleSwitch
 from controller.GlobalSignalBus import global_signals
+import sys
+
+def _spawn_detached_process(cmd, cwd):
+    """Start a process that survives parent process exit."""
+    popen_kwargs = {
+        "cwd": str(cwd),
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+    }
+
+    if sys.platform == "win32":
+        popen_kwargs["close_fds"] = True
+        detached = getattr(subprocess, "DETACHED_PROCESS", 0)
+        new_group = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        breakaway = getattr(subprocess, "CREATE_BREAKAWAY_FROM_JOB", 0)
+
+        # Try breakaway first, then gracefully fall back when it's not allowed.
+        flag_candidates = [detached | new_group | breakaway, detached | new_group, new_group]
+        last_error = None
+        for creationflags in dict.fromkeys(flag_candidates):
+            try:
+                return subprocess.Popen(cmd, creationflags=creationflags, **popen_kwargs)
+            except OSError as err:
+                last_error = err
+
+        raise last_error
+    else:
+        popen_kwargs["start_new_session"] = True
+        return subprocess.Popen(cmd, **popen_kwargs)
+
 
 # 主题下拉选项与 ThemeId 顺序一致
 THEME_OPTIONS = [
@@ -655,6 +686,16 @@ class LastPage(QWidget):
             btn.setEnabled(True)
 
             if ok and is_update_available:
+                # 有更新时先确认：避免用户在不知情的情况下直接启动更新程序
+                update_title = title or "发现新版本"
+                should_update = self.msg.ask_yes_no(
+                    update_title,
+                    f"{msg}\n\n已检测到新版本。软件将退出以完成更新，是否立即更新？",
+                )
+                if not should_update:
+                    self.msg.show_info("已取消更新", "你已取消更新。")
+                    return
+
                 import config
 
                 updater_exe = BASE_DIR / "DarkEyeUpdater.exe"
@@ -676,7 +717,8 @@ class LastPage(QWidget):
                     "--pid", str(os.getpid()),
                 ]
                 try:
-                    subprocess.Popen(cmd, cwd=str(BASE_DIR))
+                    # Start updater as a detached process so it keeps running after app exit.
+                    _spawn_detached_process(cmd, BASE_DIR)
                 except Exception as e:
                     logging.exception("启动更新程序失败")
                     self.msg.show_critical("更新失败", f"无法启动更新程序：{e}")
@@ -724,6 +766,7 @@ class LastPage(QWidget):
                 False,
                 "更新检查超时",
                 f"更新检查在 {overall_timeout_seconds} 秒内未完成，请检查网络后重试。",
+                False,
             )
 
         QTimer.singleShot(overall_timeout_seconds * 1000, on_timeout)
