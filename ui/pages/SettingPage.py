@@ -51,8 +51,18 @@ def _spawn_detached_process(cmd, cwd):
         detached = getattr(subprocess, "DETACHED_PROCESS", 0)
         new_group = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         breakaway = getattr(subprocess, "CREATE_BREAKAWAY_FROM_JOB", 0)
+        no_window = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
-        # Try breakaway first, then gracefully fall back when it's not allowed.
+        # 优先使用 cmd /c start 启动：updater 成为 cmd 的子进程，主程序退出时 Job 不会影响 updater。
+        # cmd 执行 start 后立即退出，updater 成为孤儿进程，可继续下载不受主程序关闭影响。
+        start_cmd = ["cmd", "/c", "start", "/b", ""] + list(cmd)
+        start_flags = no_window | detached | new_group | breakaway
+        try:
+            return subprocess.Popen(start_cmd, creationflags=start_flags, **popen_kwargs)
+        except OSError:
+            pass
+
+        # 回退：直接启动（可能仍受 Job 影响）
         flag_candidates = [detached | new_group | breakaway, detached | new_group, new_group]
         last_error = None
         for creationflags in dict.fromkeys(flag_candidates):
@@ -724,7 +734,7 @@ class LastPage(QWidget):
                     self.msg.show_critical("更新失败", f"无法启动更新程序：{e}")
                     return
 
-                self.msg.show_info("开始更新", msg + "\n\n已启动更新程序，软件即将退出完成更新。")
+                self.msg.show_info("开始更新", msg + "\n\n已启动更新程序，软件即将退出完成更新。点击确认后软件将退出完成更新")
                 app = QApplication.instance()
                 if app is not None:
                     QTimer.singleShot(200, app.quit)
