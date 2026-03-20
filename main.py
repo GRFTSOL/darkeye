@@ -219,6 +219,10 @@ def _run_main_app():
     QTimer.singleShot(0, lambda: start_server())
     profiler.checkpoint("API服务器线程启动（延迟）")
 
+    # 周五 18:00 后自动检查更新（每周一次，弹窗提示）
+    from ui.pages.settings.about import maybe_auto_check_update
+    QTimer.singleShot(2000, lambda: maybe_auto_check_update(window))
+
     # 打印性能分析摘要
     profiler.print_summary()
 

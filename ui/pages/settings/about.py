@@ -1,18 +1,25 @@
 """关于软件页面：版本、更新、链接等。"""
 
+import logging
 import os
 import subprocess
 import sys
 import threading
+from datetime import datetime
+from typing import Callable
 
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QFormLayout, QWidget, QApplication
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtCore import Qt, QUrl, QTimer, QObject, Signal
 
-from config import BASE_DIR, APP_VERSION
+from config import BASE_DIR, APP_VERSION, get_last_auto_update_check_week, set_last_auto_update_check_week
 from darkeye_ui.components import Label, Button
 from darkeye_ui.components.token_radio_button import TokenRadioButton
 from controller.MessageService import MessageBoxService
+
+LATEST_JSON_URL = "http://yinruizhe.asia/latest.json"
+URLOPEN_TIMEOUT_SECONDS = 8
+OVERALL_TIMEOUT_SECONDS = 12
 
 
 def _spawn_detached_process(cmd, cwd):
@@ -56,6 +63,138 @@ def _spawn_detached_process(cmd, cwd):
         return subprocess.Popen(cmd, **popen_kwargs)
 
 
+def _handle_update_and_launch(msg_svc: MessageBoxService, title: str, msg: str) -> bool:
+    """处理「发现新版本」流程：询问用户、启动更新程序。返回 True 表示已启动更新（应用将退出）。"""
+    update_title = title or "发现新版本"
+    should_update = msg_svc.ask_yes_no(
+        update_title,
+        f"{msg}\n\n已检测到新版本。软件将退出以完成更新，是否立即更新？",
+    )
+    if not should_update:
+        msg_svc.show_info("已取消更新", "你已取消更新。")
+        return False
+
+    import config
+
+    updater_exe = BASE_DIR / "DarkEyeUpdater.exe"
+    if not updater_exe.exists():
+        msg_svc.show_critical("更新失败", f"未找到更新程序：{updater_exe}")
+        return False
+
+    current_version = str(getattr(config, "APP_VERSION", "")).strip()
+    if not current_version:
+        msg_svc.show_critical("更新失败", "无法从配置读取当前版本号。")
+        return False
+
+    app_dir = BASE_DIR.resolve()
+    cmd = [
+        str(updater_exe),
+        "--install-dir",
+        str(app_dir),
+        "--current-version",
+        current_version,
+        "--main-exe",
+        "DarkEye.exe",
+        "--latest-json-url",
+        LATEST_JSON_URL,
+        "--keep",
+        "data",
+        "--pid",
+        str(os.getpid()),
+    ]
+    try:
+        _spawn_detached_process(cmd, app_dir)
+    except Exception as e:
+        logging.exception("启动更新程序失败")
+        msg_svc.show_critical("更新失败", f"无法启动更新程序：{e}")
+        return False
+
+    msg_svc.show_info(
+        "开始更新",
+        msg + "\n\n已启动更新程序，软件即将退出完成更新。点击确认后软件将退出完成更新",
+    )
+    app = QApplication.instance()
+    if app is not None:
+        QTimer.singleShot(200, app.quit)
+    return True
+
+
+def run_update_check(
+    parent: QWidget,
+    on_done: Callable[[bool, str, str, bool, bool], None],
+    *,
+    urlopen_timeout: int = URLOPEN_TIMEOUT_SECONDS,
+    overall_timeout: int = OVERALL_TIMEOUT_SECONDS,
+) -> None:
+    """后台执行更新检查，完成后在主线程调用 on_done(ok, title, msg, is_update_available, from_timeout)。"""
+
+    class _UpdateCheckNotifier(QObject):
+        result = Signal(bool, str, str, bool, bool)
+
+    done_state = {"notified": False}
+    notifier = _UpdateCheckNotifier(parent)
+
+    def safe_emit(ok: bool, title: str, msg: str, is_update_available: bool, from_timeout: bool = False):
+        if done_state["notified"]:
+            return
+        done_state["notified"] = True
+        notifier.result.emit(ok, title, msg, is_update_available, from_timeout)
+
+    notifier.result.connect(on_done)
+
+    def worker():
+        from core.updater import check_for_updates
+
+        res = check_for_updates(
+            APP_VERSION,
+            LATEST_JSON_URL,
+            urlopen_timeout_seconds=urlopen_timeout,
+            log_latest_json=True,
+        )
+        return (res.success, res.title, res.message, res.is_update_available)
+
+    def run():
+        ok, title, msg, is_update_available = worker()
+        safe_emit(ok, title, msg, is_update_available, False)
+
+    threading.Thread(target=run, daemon=True).start()
+
+    def on_timeout():
+        safe_emit(
+            False,
+            "更新检查超时",
+            f"更新检查在 {overall_timeout} 秒内未完成，请检查网络后重试。",
+            False,
+            True,
+        )
+
+    QTimer.singleShot(overall_timeout * 1000, on_timeout)
+
+
+def maybe_auto_check_update(parent: QWidget) -> None:
+    """周五 18:00 后、本周未检查过则自动检查更新；仅在有新版本时弹窗。"""
+    now = datetime.now()
+    if now.weekday() != 4:  # 4 = Friday
+        return
+    if now.hour < 18:
+        return
+    year, week, _ = now.isocalendar()
+    week_key = f"{year}-{week}"
+    if get_last_auto_update_check_week() == week_key:
+        return
+
+    msg_svc = MessageBoxService(parent)
+
+    def on_done(ok: bool, title: str, msg: str, is_update_available: bool, from_timeout: bool):
+        if not from_timeout:
+            set_last_auto_update_check_week(week_key)
+        if ok and is_update_available:
+            _handle_update_and_launch(msg_svc, title, msg)
+        # 无新版本时静默，不弹窗
+
+    run_update_check(parent, on_done)
+
+
 class LastPage(QWidget):
     """关于软件页面"""
 
@@ -66,6 +205,7 @@ class LastPage(QWidget):
         layout1 = QHBoxLayout()
         layout2 = QHBoxLayout()
         layout3 = QHBoxLayout()
+        layout4 = QHBoxLayout()
         form_layout = QFormLayout()
 
         githubLabel = Label()
@@ -133,130 +273,43 @@ class LastPage(QWidget):
         btn_android.setEnabled(False)
         layout3.addWidget(btn_android)
 
+        layout4.addWidget(Label("下载浏览器插件"))
+        btn_firefox = Button("Firefox插件")
+        btn_firefox.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl("https://github.com/de4321/darkeye/releases"))
+        )
+        layout4.addWidget(btn_firefox)
+
+        btn_chrome = Button("Chrome/Edge插件")
+        btn_chrome.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl("https://github.com/de4321/darkeye/releases"))
+        )
+        layout4.addWidget(btn_chrome)
+
+
+
         form_layout.addRow(Label("项目链接"), links_row)
         layout.addLayout(layout1)
         layout.addLayout(layout2)
         layout.addLayout(layout3)
+        layout.addLayout(layout4)
         layout.addLayout(form_layout)
 
-    def _on_check_update_clicked(self, btn: Button) -> None:
-        latest_json_url = "http://yinruizhe.asia/latest.json"
 
+
+    def _on_check_update_clicked(self, btn: Button) -> None:
         btn.setEnabled(False)
         btn.setText("检查中...")
 
-        overall_timeout_seconds = 12
-        urlopen_timeout_seconds = 8
-        done_state = {"notified": False}
-
-        def safe_on_done(ok: bool, title: str, msg: str, is_update_available: bool):
-            if done_state["notified"]:
-                return
-            done_state["notified"] = True
-
-            self._update_check_notifier = None
-
+        def on_done(ok: bool, title: str, msg: str, is_update_available: bool, from_timeout: bool):
             btn.setText("检查更新")
             btn.setEnabled(True)
 
             if ok and is_update_available:
-                update_title = title or "发现新版本"
-                should_update = self.msg.ask_yes_no(
-                    update_title,
-                    f"{msg}\n\n已检测到新版本。软件将退出以完成更新，是否立即更新？",
-                )
-                if not should_update:
-                    self.msg.show_info("已取消更新", "你已取消更新。")
-                    return
-
-                import config
-
-                updater_exe = BASE_DIR / "DarkEyeUpdater.exe"
-                if not updater_exe.exists():
-                    self.msg.show_critical(
-                        "更新失败", f"未找到更新程序：{updater_exe}"
-                    )
-                    return
-
-                current_version = str(getattr(config, "APP_VERSION", "")).strip()
-                if not current_version:
-                    self.msg.show_critical(
-                        "更新失败", "无法从配置读取当前版本号。"
-                    )
-                    return
-
-                app_dir = BASE_DIR.resolve()
-                cmd = [
-                    str(updater_exe),
-                    "--install-dir",
-                    str(app_dir),
-                    "--current-version",
-                    current_version,
-                    "--main-exe",
-                    "DarkEye.exe",
-                    "--latest-json-url",
-                    latest_json_url,
-                    "--keep",
-                    "data",
-                    "--pid",
-                    str(os.getpid()),
-                ]
-                try:
-                    _spawn_detached_process(cmd, app_dir)
-                except Exception as e:
-                    import logging
-
-                    logging.exception("启动更新程序失败")
-                    self.msg.show_critical(
-                        "更新失败", f"无法启动更新程序：{e}"
-                    )
-                    return
-
-                self.msg.show_info(
-                    "开始更新",
-                    msg
-                    + "\n\n已启动更新程序，软件即将退出完成更新。点击确认后软件将退出完成更新",
-                )
-                app = QApplication.instance()
-                if app is not None:
-                    QTimer.singleShot(200, app.quit)
-                return
-
-            if ok:
+                _handle_update_and_launch(self.msg, title, msg)
+            elif ok:
                 self.msg.show_info(title, msg)
             else:
                 self.msg.show_critical(title, msg)
 
-        class _UpdateCheckNotifier(QObject):
-            result = Signal(bool, str, str, bool)
-
-        notifier = _UpdateCheckNotifier(self)
-        self._update_check_notifier = notifier
-        notifier.result.connect(safe_on_done)
-
-        def worker():
-            from core.updater import check_for_updates
-
-            res = check_for_updates(
-                APP_VERSION,
-                latest_json_url,
-                urlopen_timeout_seconds=urlopen_timeout_seconds,
-                log_latest_json=True,
-            )
-            return (res.success, res.title, res.message, res.is_update_available)
-
-        def run():
-            ok, title, msg, is_update_available = worker()
-            notifier.result.emit(ok, title, msg, is_update_available)
-
-        threading.Thread(target=run, daemon=True).start()
-
-        def on_timeout():
-            safe_on_done(
-                False,
-                "更新检查超时",
-                f"更新检查在 {overall_timeout_seconds} 秒内未完成，请检查网络后重试。",
-                False,
-            )
-
-        QTimer.singleShot(overall_timeout_seconds * 1000, on_timeout)
+        run_update_check(self, on_done)

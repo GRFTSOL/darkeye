@@ -180,3 +180,14 @@ def set_custom_primary(hex_color: str | None) -> None:
     '''将自定义主色写入 .ini，传入 None 时清除'''
     settings.setValue("App/CustomPrimary", hex_color or "")
     settings.sync()
+
+
+def get_last_auto_update_check_week() -> str:
+    '''获取上次自动检查更新的 ISO 周（格式 year-week，如 "2025-12"）'''
+    return settings.value("Update/LastAutoCheckWeek", "", type=str) or ""
+
+
+def set_last_auto_update_check_week(week_key: str) -> None:
+    '''记录本次自动检查更新的周'''
+    settings.setValue("Update/LastAutoCheckWeek", week_key)
+    settings.sync()
