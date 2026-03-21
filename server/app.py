@@ -119,10 +119,11 @@ async def receive_actressid(data: Dict[str, Any]):
         logger.error(f"Error processing capture data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/v1/capture")
 async def receive_capture(data: Dict[str, Any]):
     """
-    接收来自插件的抓取数据，只有普通的页面抓取数据，不包含ID抓取
+    接收来自插件的抓取数据，只有普通的页面抓取数据，不包含ID抓取，这个是
     """
     try:
         logger.info(f"Received capture data from: {data.get('url', 'unknown')}")
