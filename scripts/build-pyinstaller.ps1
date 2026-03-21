@@ -1,3 +1,6 @@
+
+#这个作为排包探测器用，正式不用这个打包
+
 # 清理旧的构建目录
 Write-Host "Cleaning old build and dist folders..."
 

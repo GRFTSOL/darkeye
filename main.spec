@@ -61,7 +61,7 @@ a = Analysis(
         ('core/dvd/icons','core/dvd/icons'),
         ('core/dvd/dvd_scene.qml','core/dvd/'),
         ('core/dvd/Dvd.qml','core/dvd/'),#这个qml要手动收集
-
+        ('DarkEyeUpdater.exe','.'),#这个qml要手动收集
     ],
     hiddenimports=[
         *collect_project_submodules('core'),

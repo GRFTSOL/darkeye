@@ -20,15 +20,12 @@ APP_NAME = "DarkEye"
 
 
 def get_version() -> str:
-    """优先从 latest.json 读取版本，否则从 pyproject.toml 读取"""
-    if LATEST_JSON.exists():
-        data = json.loads(LATEST_JSON.read_text(encoding="utf-8"))
-        if v := data.get("latestVersion"):
-            return v
-    pyproject = ROOT / "pyproject.toml"
-    if pyproject.exists():
-        for line in pyproject.read_text(encoding="utf-8").splitlines():
-            if line.strip().startswith("version"):
+    """从项目根目录 config.py 的 APP_VERSION 读取"""
+    config_py = ROOT / "config.py"
+    if config_py.exists():
+        for line in config_py.read_text(encoding="utf-8").splitlines():
+            s = line.strip()
+            if s.startswith("APP_VERSION") and "=" in s:
                 for q in ('"', "'"):
                     if q in line:
                         start = line.find(q) + 1

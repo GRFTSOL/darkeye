@@ -4,7 +4,7 @@ Write-Host "Cleaning old build and dist folders..."
 
 #if (Test-Path build) {Remove-Item build -Recurse -Force}
 
-if (Test-Path dist) {Remove-Item dist -Recurse -Force}
+#if (Test-Path dist) {Remove-Item dist -Recurse -Force}
 
 # 如果存在 __pycache__，也清掉
 if (Test-Path __pycache__) {
@@ -23,13 +23,14 @@ $nuitkaArgs = @(
     "--show-progress",
     "--show-memory",
     "--show-modules",
-    "--lto=yes",#开启lto优化
+    #"--lto=yes",#开启lto优化,debug不开
     "--jobs=10",#开10个线程，不让电脑卡死
-    # 打开控制台黑框便于调试
-    #"--windows-console-mode=force",
+    # 发布版 --windows-console-mode=disable
+    "--windows-console-mode=force",
     "--windows-icon-from-ico=resources/icons/logo.ico",
     #"--enable-plugin=anti-bloat",#这个是默认开启的
     "--report=report.xml",
+
 
     # 对齐 main.spec 中的资源目录
     "--include-data-dir=resources/develop_resources/public=data/public",
@@ -148,6 +149,8 @@ $nuitkaArgs = @(
     "--nofollow-import-to=PIL.SunImagePlugin",
     "--nofollow-import-to=PIL.SgiImagePlugin",
 
+    #排python的标准库
+    #"--nofollow-import-to=unittest",#这个东西会用到，不能排除
     "--nofollow-import-to=pandas.tests",
     "--nofollow-import-to=seaborn.tests",
     "--nofollow-import-to=scipy",
@@ -163,19 +166,43 @@ $nuitkaArgs = @(
     "--nofollow-import-to=pip",
     "--nofollow-import-to=wheel",
     "--nofollow-import-to=virtualenv",
+    # 老旧/很少用的网络与协议模块
+    "--nofollow-import-to=cgi",
+    "--nofollow-import-to=cgitb",
+    "--nofollow-import-to=smtpd",
+    "--nofollow-import-to=nntplib",
+    "--nofollow-import-to=poplib",
+    "--nofollow-import-to=imaplib",
+    "--nofollow-import-to=smtplib",
+    "--nofollow-import-to=telnetlib",
+    "--nofollow-import-to=xmlrpc.client",
+    "--nofollow-import-to=xmlrpc.server",
+    # 音频、多媒体、教学/演示相关
+    "--nofollow-import-to=aifc",
+    "--nofollow-import-to=sunau",
+    "--nofollow-import-to=wave",
+    "--nofollow-import-to=audioop",
+    "--nofollow-import-to=turtle",
+    "--nofollow-import-to=idlelib",
     "--nofollow-import-to=doctest",
-    #"--nofollow-import-to=unittest",#这个东西会用到，不能排除
     "--nofollow-import-to=pdb",
     "--nofollow-import-to=trace",
     "--nofollow-import-to=distutils",
     "--nofollow-import-to=venv",
     "--nofollow-import-to=lib2to3",
+    "--nofollow-import-to=2to3",
     "--nofollow-import-to=uu",
     "--nofollow-import-to=lzma",
     "--nofollow-import-to=wsgiref",
     "--nofollow-import-to=xml.etree.cElementTree",
     "--nofollow-import-to=_osx_support",
+    "--nofollow-import-to=binhex",
+    "--nofollow-import-to=xdrlib",
+    "--nofollow-import-to=filecmp",
+    "--nofollow-import-to=chunk",
+    "--nofollow-import-to=imghdr",
     "--nofollow-import-to=ossaudiodev",
+
 
     #不要移动的dll
     "--noinclude-dlls=qt6web*.dll",
@@ -241,7 +268,10 @@ Remove-Item ".\dist\main.dist\PySide6\plugins\networkinformation" -Recurse -Forc
 # platforminputcontexts 与输入法相关，若需中文输入等请勿删
 Remove-Item ".\dist\main.dist\PySide6\plugins\platforminputcontexts" -Recurse -Force -ErrorAction SilentlyContinue
 
-
+#额外删除,这个似乎没有什么用，这些模块好像是有用的
+#Remove-Item ".\dist\main.dist\libcrypto-3-x64.dll" -Force -ErrorAction SilentlyContinue
+#Remove-Item ".\dist\main.dist\libssl-3-x64.dll" -Force -ErrorAction SilentlyContinue
+#Remove-Item ".\dist\main.dist\libzstd.dll" -Force -ErrorAction SilentlyContinue
 
 Write-Host "Build complete."
 # 3. 记录结束时间
