@@ -60,6 +60,7 @@ Node {
     }
     */
 
+    // 伪 Toon 风格：降低金属度、提高粗糙度，让高光更“块状”、整体更偏 2D 纸质感
     PrincipledMaterial {
         id: pic_material
         baseColorMap: Texture {
@@ -69,7 +70,8 @@ Node {
         }
         opacityChannel: Material.A
         metalness: 0
-        roughness: 0.08
+        // 原来 roughness≈0.08 偏写实高光，这里拉高到 0.9 做成近乎哑光
+        roughness: 0.9
         cullMode: Material.NoCulling
     }
 
@@ -89,11 +91,12 @@ Node {
         source: (typeof meshesPath !== "undefined" ? meshesPath : "meshes/") + "cD.mesh"
 
 
+        // CD 盘面也调成更哑光、少金属的 toon 风格
         PrincipledMaterial {
             id: transparent_material
             baseColor: "#ffffffcc"
             metalness: 0
-            roughness: 0.0727273
+            roughness: 0.9
             cullMode: Material.NoCulling
             alphaMode: PrincipledMaterial.Blend
         }
@@ -101,8 +104,8 @@ Node {
         PrincipledMaterial {
             id: rainbow_material
             baseColor: "#ffcccccc"
-            metalness: 0.9
-            roughness: 0.15
+            metalness: 0.15
+            roughness: 0.85
             cullMode: Material.NoCulling
         }
         materials: [
@@ -140,11 +143,12 @@ Node {
         z: -0.000478134
         source: (typeof meshesPath !== "undefined" ? meshesPath : "meshes/") + "back.mesh"
 
+        // 盒体外壳同样走哑光 toon 质感
         PrincipledMaterial {
             id: trans_material
             baseColor: "#ffffffff"
             metalness: 0
-            roughness: 0.3
+            roughness: 0.9
             cullMode: Material.NoCulling
         }
 
