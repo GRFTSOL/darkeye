@@ -13,8 +13,6 @@
 - **采集**：Firefox 插件 + 本地 FastAPI 接口 + 多源爬虫
 - **关系发现**：力导向图（C++ 加速，Shiboken6 绑定）
 
-详见 [README](../README.md)、[PRD](PRD.md)。
-
 ---
 
 ## 二、技术栈概览
