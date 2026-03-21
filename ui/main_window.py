@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QWidget, QStackedWidget, QHBoxLayout, QMainWindow, QLabel
-from PySide6.QtCore import QTimer, Slot
+from PySide6.QtCore import QTimer, Slot, Qt
 from PySide6.QtGui import QIcon
+from PySide6.QtOpenGLWidgets import QOpenGLWidget
 import logging
 
 from config import ICONS_PATH,APP_VERSION,set_max_window
@@ -22,6 +23,10 @@ class MainWindow(QMainWindow):
 
         #======================整体布局设置==========================
         self.init_ui()
+        # 在主窗体首次 show 之前预置一个占位 QOpenGLWidget，避免后续首次进入图页面时
+        # 触发顶层窗口重建（表现为“窗口先消失再出现”）。
+        self._install_opengl_bootstrap()
+
         # self.stackPageConnectMenu() # 已在 init_router 中实现
         self.init_router()
 
@@ -36,6 +41,19 @@ class MainWindow(QMainWindow):
 
         # 延后到窗口 show / event loop 启动后再初始化爬虫管理器，避免 import/构造阻塞主窗口首帧
         QTimer.singleShot(0, self._ensure_crawler_manager_initialized)
+
+    def _install_opengl_bootstrap(self) -> None:
+        """
+        预置一个 1x1 的隐藏 QOpenGLWidget。
+        目的：让主窗口在首次显示时就走 OpenGL 复合路径，避免首次创建真实 OpenGL 页面时
+        Qt 触发顶层窗口重建导致的闪屏/消失再显示。
+        这个有效，但是现在还不是最好，但是有等待的时间
+        """
+        self._opengl_bootstrap = QOpenGLWidget(self.centralWidget())
+        self._opengl_bootstrap.setObjectName("_opengl_bootstrap")
+        self._opengl_bootstrap.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self._opengl_bootstrap.setGeometry(-10000, -10000, 1, 1)
+        self._opengl_bootstrap.show()
 
     @Slot()
     def _ensure_crawler_manager_initialized(self) -> None:
