@@ -3,7 +3,7 @@
 本项目 **DarkEye** 是一款本地运行的影片元数据管理与分析软件，强调隐私与本地控制。本文件说明本项目的数据存放位置、安全考虑，以及如何报告安全问题。
 
 ## 数据存储与目录结构
-
+### 1.1.2之前
 - 公共数据存放在 `resources/public` 目录，包括但不限于：
   - `public.db`
   - `workcovers/`
@@ -13,6 +13,21 @@
 - 日志 `log`
 - 配置文件`settings.ini`
 请根据实际需要妥善备份与保护上述目录，避免将这些目录直接暴露到公共共享盘或未经授权的同步服务中。
+
+### 1.1.2及以后
+- 公共数据存放在 `data/public` 目录，包括但不限于：
+  - `public.db`
+  - `workcovers/`
+  - `actressimages/`
+  - `actorimages/`
+- 私有数据（如更敏感的用户自定义信息）存放在 `data/private` 目录。
+`data`文件夹下面还有
+- `settings.ini` 设置
+- `shortcuts.json`用户自定义快捷键
+- `crawler_nav_buttons.json`json驱动的外链，用户可以自行编辑网站
+
+请根据实际需要妥善备份与保护上述目录，避免将这些目录直接暴露到公共共享盘或未经授权的同步服务中。
+
 
 ## 数据与隐私（Data & Privacy）
 
@@ -26,7 +41,7 @@
 ## 文件与网络访问
 
 - 程序会读写以下类型的本地资源：
-  - `resources/public` 与 `resources/private` 目录下的数据文件与图片；
+  - `data/public` 与 `data/private` 目录下的数据文件与图片；
   - 配置文件与缓存目录（如 `settings.ini`、日志文件等）。
 - DarkEye 在需要采集数据时，可能会通过本地 FastAPI 接口与浏览器插件通信，并访问外部网站：
   - 此类访问仅用于抓取影片元数据；

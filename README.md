@@ -26,13 +26,13 @@
 [![下载Chrome/Edge插件](https://img.shields.io/badge/%20下载-Chrome/Edge插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.2/chrome_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。
 
 ## 插件安装
-见文档 https://de4321.github.io/darkeye/usage/#_2
+👉 https://de4321.github.io/darkeye/usage/#_2
 
 ## 使用
-见文档 https://de4321.github.io/darkeye/usage/#_3
+👉 https://de4321.github.io/darkeye/usage/#_3
 
 ## 版本迁移
-见文档 https://de4321.github.io/darkeye/usage/#_8
+👉 https://de4321.github.io/darkeye/usage/#_8
 
 # Community
 
@@ -91,48 +91,8 @@
 
 
 # 🚀 开发
+👉 请访问：https://de4321.github.io/darkeye/development/
 
-```
-conda create -n venv python=3.13
-conda activate venv
-pip install -e ".[docs]"
-```
-
-下载后请复制 `resources/develop_resources/public` 基本数据包到 `resources/` 文件夹下
-
-插件加载，需要手动的按照上面去浏览器临时加载选择extensions/firefox_capture里的manifest.json
-
-
-## 运行
-vscode解释器选择
-Ctrl + Shift + P
-
-```
-Python: Select Interpreter
-```
-venv
-python main.py
-
-或者直接按F5
-
-## 打包发布
-在powershell里，刚刚创建的conda 虚拟环境中，运行build-pyinstaller.ps1，这个是快速打包，大概打包时间200s，
-确定无问题后，可以用build-nuitka.ps1打包，这个打包后提升速度，但是包体大一点，打包时间3000s
-打包后的结构，一个绿色的可移动的文件夹，运行main.exe就能运行，这个pyinstaller是高度精简后的，如果要多加库，需要改里面的文件
-
-现在的打包属于激进排除，几乎把不需要的dll文件全删除了，所以当需要用到新的东西时很可能少dll。需要重新修改打包的配置
 
 # 📚 文档
 👉 完整文档请访问：https://de4321.github.io/darkeye/
-
-[![Architecture](https://img.shields.io/badge/📐_Architecture-blue?style=for-the-badge)](docs/architecture.md)
-[![Development](https://img.shields.io/badge/🧰_Development-green?style=for-the-badge)](docs/development.md)
-[![Security](https://img.shields.io/badge/🔒_Security-red?style=for-the-badge)](docs/security.md)
-[![Changelog](https://img.shields.io/badge/📋_Changelog-orange?style=for-the-badge)](docs/CHANGELOG.md)
-
-| Document | Description |
-|----------|-------------|
-| [Architecture](docs/architecture.md) | 整体架构 |
-| [Development](docs/development.md) | 开发环境 |
-| [Security](docs/security.md) | 数据存储 |
-| [Changelog](docs/CHANGELOG.md) | 版本更新 |
