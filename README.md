@@ -58,7 +58,7 @@
 - [x] 分析图表,数据展示,还有部分未完成
 - [x] 拟物化dvd展示
 - [x] 筛选作品页面
-- [x] firefox/chrome/edge爬虫插件，沉浸式摘取信息，支持javtxt,javlib,javdb交互式摘取信息，
+- [x] firefox/chrome/edge爬虫插件，沉浸式摘取信息，支持javtxt,javlib,javdb交互式采集信息，
 - [x] 多链路爬虫，主要使用javlib,avdanyuwiki,javtxt,javdb,对于正规片的爬取很有效，且易过盾。
 - [x] 力导向图，查看关联，承受1w节点60帧率
 - [x] 搜索本地视频，进入爬虫列表

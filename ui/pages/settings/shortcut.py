@@ -60,4 +60,4 @@ class ShortCutSettingPage(QWidget):
             main_layout.addWidget(row)
 
         main_layout.addStretch()
-        main_layout.addWidget(Label("<small>配置将自动保存到 shortcuts_config.json</small>"))
+        main_layout.addWidget(Label("<small>配置将自动保存到 data/shortcuts_config.json</small>"))

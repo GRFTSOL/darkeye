@@ -68,6 +68,7 @@ class AvPage(LazyWidget):
         btn_preview.setCheckable(True)
         btn_preview.setChecked(True)
         btn_edit = Button("编辑")
+        btn_edit.setEnabled(False)
         btn_edit.setCheckable(True)
         self._mode_group = QButtonGroup(self)
         self._mode_group.addButton(btn_preview)
