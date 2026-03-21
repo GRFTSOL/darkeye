@@ -18,12 +18,12 @@
 
 # 💡 快速开始
 ## 下载
-[![下载 Windows 版本](https://img.shields.io/badge/%20下载-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.1.1/DarkEye.7z)
+[![下载 Windows 版本](https://img.shields.io/badge/%20下载-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.1.2/DarkEye-v1.1.2.zip)
 下载程序，解压,打开exe即可使用
 
-[![下载FireFox插件](https://img.shields.io/badge/%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.1/firefox_capture.7z)按照下面的插件安装，否则爬虫收集功能将不可用。
+[![下载FireFox插件](https://img.shields.io/badge/%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.2/firefox_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。
 
-[![下载Chrome/Edge插件](https://img.shields.io/badge/%20下载-Chrome/Edge插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.1/chrome_capture.7z)按照下面的插件安装，否则爬虫收集功能将不可用。
+[![下载Chrome/Edge插件](https://img.shields.io/badge/%20下载-Chrome/Edge插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.1.2/chrome_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。
 
 ## 插件安装
 见文档 https://de4321.github.io/darkeye/usage/#_2
