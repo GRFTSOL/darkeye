@@ -9,17 +9,21 @@
       
       
       
+        <link rel="prev" href="../security/">
+      
+      
+        <link rel="next" href="../PRD/">
       
       
         
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
-        <title>DarkEye 数据库 Schema - DarkEye</title>
+        <title>数据库结构 - DarkEye</title>
       
     
     
@@ -106,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              DarkEye 数据库 Schema
+              数据库结构
             
           </span>
         </div>
@@ -201,13 +205,13 @@
   
   
     <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
+      <a href="../develop/" class="md-tabs__link">
         
   
   
     
   
-  首页
+  开发白皮书
 
       </a>
     </li>
@@ -309,6 +313,84 @@
   
 
       
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  数据安全说明
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  数据库结构
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../PRD/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  产品需求文档
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../architecture/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  整体架构
+
+      </a>
+    </li>
+  
+
+      
     </ul>
   </div>
 </nav>
@@ -349,14 +431,14 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../develop/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    首页
+    开发白皮书
   
 
     
@@ -492,6 +574,465 @@
     
   
     常见问题
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    数据安全说明
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    数据库结构
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    数据库结构
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        一、概览
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#publicdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        二、公共库 (public.db)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="二、公共库 (public.db)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 work — 作品表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-actress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 actress — 女优表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-actress_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 actress_name — 女优姓名表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-work_actress_relation-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 work_actress_relation — 作品-女优关系表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-manufacturer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 manufacturer — 制作商表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 label — 厂牌表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 tag — 标签表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#28-work_tag_relation-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.8 work_tag_relation — 作品-标签关系表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#29-actor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.9 actor — 男优表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#210-actor_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.10 actor_name — 男优姓名表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#211-work_actor_relation-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.11 work_actor_relation — 作品-男优关系表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#212-prefix_maker_relation-" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.12 prefix_maker_relation — 番号前缀-片商关系表
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#privatedb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        三、私有库 (private.db)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="三、私有库 (private.db)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-db_version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 db_version — 数据库版本表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-favorite_actress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 favorite_actress — 收藏女优表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-favorite_work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 favorite_work — 收藏作品表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-love_making" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 love_making — 做爱记录表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-masturbation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 masturbation — 撸管记录表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-sexual_arousal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 sexual_arousal — 晨勃记录表
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#init" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        四、依赖表（未在上述 init 脚本中定义）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="四、依赖表（未在上述 init 脚本中定义）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tag_type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tag_type — 标签类型表
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#maker-manufacturer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        maker — 制作商表（由 manufacturer 迁移而来）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        五、实体关系简图
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        六、跨库查询说明
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PRD/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    产品需求文档
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    整体架构
   
 
     
@@ -852,6 +1393,20 @@
 
 
 <h1 id="darkeye-schema">DarkEye 数据库 Schema<a class="headerlink" href="#darkeye-schema" title="Permanent link">&para;</a></h1>
+<p>采用sqlite，主要是零配置。</p>
+<p>设计的ERD图片见excalidraw，整个数据库的架构就是那样子，还是非常的完善的，但是有很多的东西信息非常的难获取</p>
+<p>使用SQLite来存储，文本使用utf8来处理
+从excel导出的时候要导utf8
+SQLite要设置utf8
+因为涉及到日文的问题</p>
+<p>状态分类
+- 主动(身心主动)
+- 半推半就(身心平常，但是也能接受做爱)
+- 反抗(身心都强烈抗拒)
+- 沉伦(心理上的放纵，但是身体要做爱，背德感，表现出享受与放纵，没有羞耻或抵抗，前置条件是被动)，
+- 羞耻(心理上的抗拒 + 快感中混杂着道德负担或社交焦虑，动作含蓄遮掩身体、夹腿、蜷缩，被强制，脸红，前置条件是被动)
+- 受虐快感(高强度，受虐但是渴望做爱，前置条件是被动)
+- 冷漠(做爱无表情无状态，前置条件是被动)</p>
 <blockquote>
 <p>基于 <code>resources/sql/initTABLE.sql</code>（公共库）与 <code>resources/sql/initPrivateTable.sql</code>（私有库）整理。</p>
 </blockquote>

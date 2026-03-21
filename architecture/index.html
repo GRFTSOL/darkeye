@@ -9,17 +9,19 @@
       
       
       
+        <link rel="prev" href="../PRD/">
+      
       
       
         
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
-        <title>DarkEye 项目架构说明 - DarkEye</title>
+        <title>整体架构 - DarkEye</title>
       
     
     
@@ -106,7 +108,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              DarkEye 项目架构说明
+              整体架构
             
           </span>
         </div>
@@ -201,13 +203,13 @@
   
   
     <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
+      <a href="../develop/" class="md-tabs__link">
         
   
   
     
   
-  首页
+  开发白皮书
 
       </a>
     </li>
@@ -309,6 +311,84 @@
   
 
       
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../security/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  数据安全说明
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../SCHEMA/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  数据库结构
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../PRD/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  产品需求文档
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  整体架构
+
+      </a>
+    </li>
+  
+
+      
     </ul>
   </div>
 </nav>
@@ -349,14 +429,14 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
+      <a href="../develop/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    首页
+    开发白皮书
   
 
     
@@ -500,6 +580,332 @@
   
 
       </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    数据安全说明
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SCHEMA/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    数据库结构
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PRD/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    产品需求文档
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    整体架构
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    整体架构
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        一、项目概述
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        二、技术栈概览
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        三、整体架构分层
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        四、模块说明
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="四、模块说明">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-mainpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 入口与启动（main.py）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 配置与上下文
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 核心层（core/）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-ui-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 UI 层（ui/）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-controller" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 控制器层（controller/）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 服务层（server/）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-extensionsfirefox_capture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 扩展（extensions/firefox_capture）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#48-c-cpp_bindings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.8 C++ 绑定（cpp_bindings/）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        五、数据流与通信要点
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        六、资源与部署
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        七、小结
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -874,7 +1280,7 @@
 <tbody>
 <tr>
 <td><strong>database/</strong></td>
-<td><code>connection.get_connection()</code> 统一 SQLite 连接（WAL、外键）；<code>init</code> 建库；<code>migrations</code> 版本检测与升级、重建私有库链接、maker 前缀导入导出；<code>query/</code> 按领域拆分（work、actress、actor、tag、statistics、dashboard、private）；<code>insert</code>/<code>update</code>/<code>delete</code> 写操作，并在完成后由调用方 emit <code>GlobalSignalBus</code> 对应信号（见 <a href="../write_ops_signal_mapping/">write_ops_signal_mapping</a>）；<code>backup_utils</code> 备份/还原与资源快照；<code>db_utils</code> 附件私有库、图片一致性、清理临时文件等。</td>
+<td><code>connection.get_connection()</code> 统一 SQLite 连接（WAL、外键）；<code>init</code> 建库；<code>migrations</code> 版本检测与升级、重建私有库链接、maker 前缀导入导出；<code>query/</code> 按领域拆分（work、actress、actor、tag、statistics、dashboard、private）；<code>insert</code>/<code>update</code>/<code>delete</code> 写操作，并在完成后由调用方 emit <code>GlobalSignalBus</code> 对应信号（见 <a href="write_ops_signal_mapping.md">write_ops_signal_mapping</a>）；<code>backup_utils</code> 备份/还原与资源快照；<code>db_utils</code> 附件私有库、图片一致性、清理临时文件等。</td>
 </tr>
 <tr>
 <td><strong>graph/</strong></td>
