@@ -135,7 +135,7 @@ def SearchInfoDanyukiwi(serial_number)->dict:
     if match:
         tag_text = match.group(1).strip().replace('—-', '')#删除—-
 
-        tag_list = re.split(r'[・\s]+', tag_text.strip())
+        tag_list = re.split(r'[\s]+', tag_text.strip())#・这里分隔符之间应该是一个整体。
         # 清理空白项和可能的分隔符残留
         tag_list = [tag.strip() for tag in tag_list if tag.strip()]
 

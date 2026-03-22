@@ -1,3 +1,4 @@
+import json
 import logging
 import random
 
@@ -14,6 +15,27 @@ from utils.utils import translate_text_sync, text2tag_id_list
 from core.database.insert import InsertNewWork, InsertNewActress, InsertNewActor, add_tag2work,insert_tag
 from core.database.query import get_tagid_by_keyword,get_workid_by_serialnumber
 from controller.GlobalSignalBus import global_signals
+from config import resource_path
+
+_exclude_genre_cache: frozenset[str] | None = None
+
+
+def _exclude_genre_set() -> frozenset[str]:
+    """从 resources/config/exclude_genre.json 读取需排除的 genre 名（带缓存）。"""
+    global _exclude_genre_cache
+    if _exclude_genre_cache is not None:
+        return _exclude_genre_cache
+    path = resource_path("resources/config/exclude_genre.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        items = data.get("exclude_genre", [])
+        _exclude_genre_cache = frozenset(str(x) for x in items if x is not None)
+    except Exception as e:
+        logging.warning("读取 exclude_genre.json 失败，将不排除任何 genre: %s", e)
+        _exclude_genre_cache = frozenset()
+    return _exclude_genre_cache
+
 
 class CrawlerTask:
     def __init__(self, serial_number, sources=["javlib", "javdb","fanza","javtxt","avdanyuwiki"],withGUI=False):
@@ -504,7 +526,14 @@ class CrawlerManager2(QObject):
         genre_jav = javlib_result.get("genre") or []
         genre_javdb = javdb_result.get("genre") or []
         genre_raw = (tag_list if isinstance(tag_list, list) else []) + (genre_jav if isinstance(genre_jav, list) else []) + (genre_javdb if isinstance(genre_javdb, list) else [])
-        genre_list = list(set(str(g) for g in genre_raw if g is not None))
+        #这个是排除的genre列表
+        excluded_genres = _exclude_genre_set()
+        genre_list = [
+            g
+            for g in set(str(x) for x in genre_raw if x is not None)
+            if g not in excluded_genres
+        ]
+        
 
         jp_title=javlib_result.get("title", javtxt_result.get("jp_title", ""))  
 
