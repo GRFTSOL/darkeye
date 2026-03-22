@@ -46,7 +46,7 @@ class CrawlerTask:
 
 class ResultRelay(QObject):
     '''
-    结果中继类，用于将从不同爬虫获取的结果传递给CrawlerManager2
+    结果中继类，用于将从不同爬虫获取的结果传递给CrawlerManager
     '''
     def __init__(self, manager, source, serial):
         super().__init__()
@@ -59,7 +59,7 @@ class ResultRelay(QObject):
 
 class MergeRelay(QObject):
     '''
-    合并结果中继类，用于将合并结果传递给CrawlerManager2
+    合并结果中继类，用于将合并结果传递给CrawlerManager
     '''
     def __init__(self, manager, serial):
         super().__init__()
@@ -504,8 +504,8 @@ class CrawlerManager2(QObject):
         #合并导演，优先级avdanyuwiki,javlib,javdb
         director=avdanyuwiki_result.get("director", javlib_result.get("director", javdb_result.get("director", "")))
 
-        #合并视频长度，优先级javlib,avdanyuwiki,javdb
-        video_length=javlib_result.get("length", avdanyuwiki_result.get("length", javdb_result.get("length", "")))
+        #合并视频长度，优先级avdanyuwiki,javlib,javdb
+        video_length=avdanyuwiki_result.get("runtime", javlib_result.get("length", javdb_result.get("length", "")))
 
         #合并女优，优先级avdanyuwiki,javlib,javdb
         actress_list=avdanyuwiki_result.get("actress_list") or javlib_result.get("actress") or javdb_result.get("actress") or []
@@ -520,6 +520,14 @@ class CrawlerManager2(QObject):
             cover_list.append(avdanurl)
         serial_number = self.tasks[serial].serial.lower()
         cover_list.append("https://fourhoi.com/" + serial_number + "/cover-n.jpg")#missav的封面的规律
+
+        #合并maker，优先级avdanyuwiki,javlib,javdb
+
+        #合并series，优先级avdanyuwiki,javdb
+
+        #合并label，优先级avdanyuwiki,javlib,javdb
+
+
 
         #合并标签，优先级avdanyuwiki,javlib,javdb
         tag_list = avdanyuwiki_result.get("tag_list") or []
