@@ -139,6 +139,38 @@ def SearchInfoDanyukiwi(serial_number)->dict:
         # 清理空白项和可能的分隔符残留
         tag_list = [tag.strip() for tag in tag_list if tag.strip()]
 
+    # 提取maker(匹配 "メーカー：" 后的内容)
+    match = re.search(r'メーカー：(.+)', article.getText())
+    maker=""
+    if match:
+        maker = match.group(1).strip()
+        #logging.debug("maker为：%s",maker)
+
+    # 提取series(匹配 "シリーズ：" 后的内容)
+    match = re.search(r'シリーズ：(.+)', article.getText())
+    series=""
+    if match:
+        series = match.group(1).strip()
+        #logging.debug("series为：%s",series)
+    if series=="—-":
+        series=""
+
+    # 提取label(匹配 "レーベル：" 后的内容)
+    match = re.search(r'レーベル：(.+)', article.getText())
+    label=""
+    if match:
+        label = match.group(1).strip()
+        #logging.debug("label为：%s",label)
+    if label=="—-":
+        label=""
+
+    # 提取runtime（匹配「収録時間：」与「分」之间的内容）
+    match = re.search(r'収録時間：\s*([^分]+)\s*分', article.getText())
+    runtime=""
+    if match:
+        runtime = match.group(1).strip()
+        #logging.debug("runtime为：%s",runtime)
+
     # 6. 格式化日期（如 "2023/01/01" → "2023-01-01"）
     if date != "":
         from datetime import datetime
@@ -162,7 +194,11 @@ def SearchInfoDanyukiwi(serial_number)->dict:
         "actor_list":actor_list,
         "actress_list":actress_list,  
         "cover":img_src,
-        "tag_list":tag_list
+        "tag_list":tag_list,
+        "maker":maker,
+        "series":series,
+        "label":label,
+        "runtime":runtime
     }
     logging.info(f"解析avdanyuwiki结束")
     return data
