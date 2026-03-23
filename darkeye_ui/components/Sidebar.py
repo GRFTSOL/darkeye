@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Sequence, Union
 
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from ..design.icon import BUILTIN_ICONS
@@ -18,6 +19,17 @@ if TYPE_CHECKING:
 
 
 MenuDef = tuple[str, str, str]
+
+
+def _menu_item_selected_background(tokens: ThemeTokens) -> str:
+    """侧边栏选中项背景：主色与底色的混合，比 color_bg_input 更鲜明。"""
+    bg = QColor(tokens.color_bg)
+    p = QColor(tokens.color_primary)
+    ratio = 0.40 if bg.lightness() < 128 else 0.30
+    r = int(p.red() * ratio + bg.red() * (1 - ratio))
+    g = int(p.green() * ratio + bg.green() * (1 - ratio))
+    b = int(p.blue() * ratio + bg.blue() * (1 - ratio))
+    return f"rgb({r},{g},{b})"
 
 
 class MenuButton(QWidget):
@@ -66,11 +78,13 @@ class MenuButton(QWidget):
             text_normal = self._tokens.color_text
             # 侧边栏选中状态下也使用正常文字颜色，保证深色主题下在深背景上仍有足够对比度
             text_selected = self._tokens.color_text
-            bg_selected = self._tokens.color_bg_input
+            bg_hover = self._tokens.color_bg_input
+            bg_selected = _menu_item_selected_background(self._tokens)
             border_selected = self._tokens.color_border_focus
         else:
             text_normal = "#8a8e99"
             text_selected = "#ffffff"
+            bg_hover = "#e8eaef"
             bg_selected = "#F7E6B0"
             border_selected = "#DBCA97"
 
@@ -99,7 +113,7 @@ class MenuButton(QWidget):
                     border-left: 3px solid transparent;
                 }}
                 MenuButton:hover {{
-                    background-color: {bg_selected};
+                    background-color: {bg_hover};
                 }}
                 QLabel {{
                     color: {text_normal};
