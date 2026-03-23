@@ -1,6 +1,12 @@
 from anyio import sleep
 from PySide6.QtWidgets import (
-    QDialog,QVBoxLayout, QHBoxLayout, QTableWidgetItem, QHeaderView, QAbstractItemView
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTableWidgetItem,
+    QHeaderView,
+    QAbstractItemView,
+    QInputDialog,
 )
 from PySide6.QtCore import  Qt
 from PySide6.QtGui import QIcon
@@ -28,16 +34,19 @@ class AddQuickWork(QDialog):
         self.btn_add = Button("添加")
         self.btn_del = Button("删除")
         self.btn_clean = Button("去后缀")
+        self.btn_clean_prefix = Button("去前缀")
         self.btn_sort = Button("排序")
         
         self.btn_add.clicked.connect(self.add_row)
         self.btn_del.clicked.connect(self.delete_rows)
         self.btn_clean.clicked.connect(self.clean_suffix)
+        self.btn_clean_prefix.clicked.connect(self.clean_prefix)
         self.btn_sort.clicked.connect(self.sort_rows)
         
         top_layout.addWidget(self.btn_add)
         top_layout.addWidget(self.btn_del)
         top_layout.addWidget(self.btn_clean)
+        top_layout.addWidget(self.btn_clean_prefix)
         top_layout.addWidget(self.btn_sort)
 
         # 2. 中间列表区域
@@ -109,6 +118,30 @@ class AddQuickWork(QDialog):
                     new_text = suffix_pattern.sub('', original_text)
                     if new_text != original_text:
                         text_item.setText(new_text)
+
+    def clean_prefix(self):
+        """去前缀：输入前缀字符串，对已勾选且番号以此前缀开头的行去掉该前缀（前缀比较不区分大小写）。"""
+        prefix, ok = QInputDialog.getText(
+            self,
+            "去前缀",
+            "输入要删除的前缀（仅处理已勾选的行）：",
+        )
+        if not ok:
+            return
+        prefix = prefix.strip()
+        if not prefix:
+            self.msg.show_warning("提示", "前缀不能为空")
+            return
+        pl = len(prefix)
+        plower = prefix.lower()
+        for row in range(self.table.rowCount()):
+            chk_item = self.table.item(row, 0)
+            if chk_item and chk_item.checkState() == Qt.Checked:
+                text_item = self.table.item(row, 1)
+                if text_item:
+                    original_text = text_item.text().strip()
+                    if original_text.lower().startswith(plower):
+                        text_item.setText(original_text[pl:])
 
     def sort_rows(self):
         """按番号列排序当前所有行（点击在升序/降序间切换）。"""
