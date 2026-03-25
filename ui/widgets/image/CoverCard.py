@@ -89,25 +89,32 @@ class CoverCard(QWidget):
     @Slot()
     def _update_card(self):
         '''更新卡片信息'''
-        #查作品标题
-        from core.database.query import get_workcardinfo_by_workid
-        data=get_workcardinfo_by_workid(self._work_id)
-        self.title_label.setText(data['cn_title'])#更新标题
-        #更新图片
-        image_path=data['image_url']
-        if image_path is None:
-            #self._path=Path(ICONS_PATH/"none.png")
-            self._path=None
-        else:
-            self._path=Path(WORKCOVER_PATH/image_path)
-        self.image_label._path=self._path
-        
-        #更框的大小
-        self.image_label._standard=data['standard']
-        self.image_label._update_image()
-        #更新外框颜色
-        self.background_color=self.backgroundcolor_from_tagid(data['tag_id'])
-        self.update()
+        try:
+            # 查作品卡片信息（爬虫写库中可能短时查不到或字段为空）
+            from core.database.query import get_workcardinfo_by_workid
+            data = get_workcardinfo_by_workid(self._work_id)
+            if not data:
+                return
+
+            title = data.get("cn_title") or ""
+            self.original_title = title
+            self.title_label.setText(replace_sensitive(title) if self._green_mode else title)
+
+            # 更新图片
+            image_path = data.get("image_url")
+            if image_path is None:
+                self._path = None
+            else:
+                self._path = Path(WORKCOVER_PATH / image_path)
+            self.image_label._path = self._path
+
+            # 更新边框标准态与重绘
+            self.image_label._standard = data.get("standard")
+            self.image_label._update_image()
+            self.background_color = self.backgroundcolor_from_tagid(data.get("tag_id"))
+            self.update()
+        except Exception:
+            logging.exception("CoverCard._update_card 执行失败: work_id=%s", self._work_id)
 
     @Slot(bool)
     def _update_green_mode(self,green_mode:bool):

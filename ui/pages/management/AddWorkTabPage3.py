@@ -31,7 +31,9 @@ from darkeye_ui.components.input import PlainTextEdit
 from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.button import Button
 from darkeye_ui.components.token_spin_box import TokenSpinBox
-from darkeye_ui.components.combo_box import ComboBox
+from ui.widgets.selectors.maker_selector import MakerSelector
+from ui.widgets.selectors.label_selector import LabelSelector
+from ui.widgets.selectors.series_selector import SeriesSelector
 
 class ButtonState(Enum):
     NORMAL = 1
@@ -56,6 +58,9 @@ class Model():
         self._actress:list[int] = []
         self._actor:list[int] = []
         self._tag:list[int] = []
+        self._maker_id:int|None=None
+        self._label_id:int|None=None
+        self._series_id:int|None=None
 
     def to_dict(self):
         return {
@@ -71,6 +76,9 @@ class Model():
             "actress_ids": self._actress,
             "actor_ids": self._actor,
             "tag_ids": self._tag,
+            "maker_id": self._maker_id,
+            "label_id": self._label_id,
+            "series_id": self._series_id,
             "image_url": self._cover #这个的地址应该是一个相对地址
         }
 
@@ -91,6 +99,9 @@ class ViewModel(QObject):
     actress_changed=Signal('QList<int>')#这里不能使用list(int)要么直接list
     actor_changed=Signal('QList<int>')
     tag_changed=Signal('QList<int>')
+    maker_changed=Signal(int)
+    label_changed=Signal(int)
+    series_changed=Signal(int)
     btn_state_changed=Signal(str,ButtonState)
 
     modify_state_changed = Signal(str, bool) #发出修改什么控件的信号
@@ -113,7 +124,10 @@ class ViewModel(QObject):
         'actor_ids': False,
         'tag_ids': False,
         'image_url': False,
-        'runtime': False
+        'runtime': False,
+        'maker_id': False,
+        'label_id': False,
+        'series_id': False
         }
         self._btn_state={
             'add_work':ButtonState.DISABLED,
@@ -241,6 +255,27 @@ class ViewModel(QObject):
             self.tag_changed.emit(value)
             #print("Model updated _tag:", self.model._tag)
 
+    def get_maker(self)->int|None: return self.model._maker_id
+    def set_maker(self, value:int|None):
+        maker_id = int(value) if value not in (None, "") else None
+        if self.model._maker_id != maker_id:
+            self.model._maker_id = maker_id
+            self.maker_changed.emit(maker_id if maker_id is not None else 0)
+
+    def get_label(self)->int|None: return self.model._label_id
+    def set_label(self, value:int|None):
+        label_id = int(value) if value not in (None, "") else None
+        if self.model._label_id != label_id:
+            self.model._label_id = label_id
+            self.label_changed.emit(label_id if label_id is not None else 0)
+
+    def get_series(self)->int|None: return self.model._series_id
+    def set_series(self, value:int|None):
+        series_id = int(value) if value not in (None, "") else None
+        if self.model._series_id != series_id:
+            self.model._series_id = series_id
+            self.series_changed.emit(series_id if series_id is not None else 0)
+
     def set_btn_state(self, key: str, value:bool):
         if key not in self._btn_state:
             raise KeyError(f"Unknown state key: {key}")
@@ -282,6 +317,9 @@ class ViewModel(QObject):
     actress = Property(list, get_actress, set_actress, notify=actress_changed)
     actor = Property(list, get_actor, set_actor, notify=actor_changed)
     tag = Property(list, get_tag, set_tag, notify=tag_changed)
+    maker = Property(int, get_maker, set_maker, notify=maker_changed)
+    label = Property(int, get_label, set_label, notify=label_changed)
+    series = Property(int, get_series, set_series, notify=series_changed)
 
 
 #----------------------------------------------------------
@@ -303,6 +341,7 @@ class ViewModel(QObject):
             "tag_ids": 
             "image_url": 
             "runtime": 
+            "maker_id": 
         }
         '''
         #获得基本数据
@@ -425,6 +464,9 @@ class ViewModel(QObject):
         self.set_cn_story(inf['cn_story'])
         self.set_jp_title(inf['jp_title'])
         self.set_jp_story(inf['jp_story'])
+        self.set_maker(inf.get('maker_id'))
+        self.set_label(inf.get('label_id'))
+        self.set_series(inf.get('series_id'))
 
         actress_ids:list=get_actressid_by_workid(self.work_id)
         self.set_actress(actress_ids)
@@ -449,6 +491,9 @@ class ViewModel(QObject):
         inf['actress_ids']=actress_ids
         inf['actor_ids']=actor_ids
         inf['tag_ids']=tag_ids
+        inf['maker_id']=inf.get('maker_id', None) or None
+        inf['label_id']=inf.get('label_id', None) or None
+        inf['series_id']=inf.get('series_id', None) or None
         self.original_work=inf
         #logging.debug(f"加载的原始内容\n{self.original_work}")
 
@@ -476,6 +521,9 @@ class ViewModel(QObject):
         self.set_actress([])
         self.set_actor([])
         self.set_tag([])
+        self.set_maker(None)
+        self.set_label(None)
+        self.set_series(None)
 
 
 #----------------------------------------------------------
@@ -501,6 +549,9 @@ class ViewModel(QObject):
         self.actress_changed.connect(lambda: self.check_change('actress_ids', self.get_actress()))
         self.actor_changed.connect(lambda: self.check_change('actor_ids', self.get_actor()))
         self.tag_changed.connect(lambda: self.check_change('tag_ids', self.get_tag()))
+        self.maker_changed.connect(lambda: self.check_change('maker_id', self.get_maker()))
+        self.label_changed.connect(lambda: self.check_change('label_id', self.get_label()))
+        self.series_changed.connect(lambda: self.check_change('series_id', self.get_series()))
 
         # spinbox
         self.runtime_changed.connect(lambda: self.check_change('runtime', self.get_runtime()))
@@ -642,7 +693,7 @@ class AddWorkTabPage3(LazyWidget):
 
 
     def init_ui(self) -> None:
-        from core.database.query import get_serial_number
+        from core.database.query import get_serial_number, get_maker_name, get_label_name, get_series_name
 
         # ---------- 控件创建（与原先一致） ----------
 
@@ -686,16 +737,13 @@ class AddWorkTabPage3(LazyWidget):
         jp_story_label_layout.addWidget(self.btn_trans_story)
 
         self.label_maker = Label("片       商：")
-        self.input_maker = ComboBox()
-        self.input_maker.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.input_maker = MakerSelector(get_maker_name())
 
         self.label_label = Label("厂       牌：")
-        self.input_label = ComboBox()
-        self.input_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.input_label = LabelSelector(get_label_name())
 
         self.label_series = Label("系       列：")
-        self.input_series = ComboBox()
-        self.input_series.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.input_series = SeriesSelector(get_series_name())
 
         self.actressselector = ActressSelector()
         self.actorselector = ActorSelector()
@@ -845,7 +893,6 @@ class AddWorkTabPage3(LazyWidget):
 
         QTimer.singleShot(0, self._init_forceview)
 
-
     def bind_model(self) -> None:
         '''双向绑定'''
         self._updating_flags = {}#单独弄一个标记是否在更新，避免绑定循环问题
@@ -855,6 +902,9 @@ class AddWorkTabPage3(LazyWidget):
         self.viewmodel.actress_changed.connect(self.actressselector.load_with_ids)
         self.viewmodel.actor_changed.connect(self.actorselector.load_with_ids)
         self.viewmodel.tag_changed.connect(self.tag_selector.load_with_ids)
+        self.viewmodel.maker_changed.connect(self.maker_model_to_ui)
+        self.viewmodel.label_changed.connect(self.label_model_to_ui)
+        self.viewmodel.series_changed.connect(self.series_model_to_ui)
 
         #这个是单向的model -> UI 没有问题
         self.viewmodel.btn_state_changed.connect(self.update_commit_btn)
@@ -870,6 +920,15 @@ class AddWorkTabPage3(LazyWidget):
         )
         self.tag_selector.selection_changed.connect(
             lambda: self.viewmodel.set_tag(self.tag_selector.get_selected_ids())
+        )
+        self.input_maker.currentTextChanged.connect(
+            lambda: self.maker_ui_to_model()
+        )
+        self.input_label.currentTextChanged.connect(
+            lambda: self.label_ui_to_model()
+        )
+        self.input_series.currentTextChanged.connect(
+            lambda: self.series_ui_to_model()
         )
         self.coverdroplabel.cover_changed.connect( # coverdroplabel 可以在图片改变后发信号更新模型
             lambda: self.viewmodel.set_cover(self.coverdroplabel.get_image())
@@ -982,6 +1041,51 @@ class AddWorkTabPage3(LazyWidget):
         self.input_runtime.setValue(int(value) if value is not None else 0)
         self._updating_flags["runtime"] = False
 
+    def maker_ui_to_model(self):
+        if self._updating_flags.get("maker_id", False):
+            return
+        self._updating_flags["maker_id"] = True
+        maker_id = self.input_maker.get_maker()
+        self.viewmodel.set_maker(maker_id if maker_id is not None else None)
+        self._updating_flags["maker_id"] = False
+
+    def maker_model_to_ui(self, maker_id: int):
+        if self._updating_flags.get("maker_id", False):
+            return
+        self._updating_flags["maker_id"] = True
+        self.input_maker.set_maker(maker_id if maker_id and maker_id > 0 else None)
+        self._updating_flags["maker_id"] = False
+
+    def label_ui_to_model(self):
+        if self._updating_flags.get("label_id", False):
+            return
+        self._updating_flags["label_id"] = True
+        label_id = self.input_label.get_label()
+        self.viewmodel.set_label(label_id if label_id is not None else None)
+        self._updating_flags["label_id"] = False
+
+    def label_model_to_ui(self, label_id: int):
+        if self._updating_flags.get("label_id", False):
+            return
+        self._updating_flags["label_id"] = True
+        self.input_label.set_label(label_id if label_id and label_id > 0 else None)
+        self._updating_flags["label_id"] = False
+
+    def series_ui_to_model(self):
+        if self._updating_flags.get("series_id", False):
+            return
+        self._updating_flags["series_id"] = True
+        series_id = self.input_series.get_series_id()
+        self.viewmodel.set_series(series_id if series_id is not None else None)
+        self._updating_flags["series_id"] = False
+
+    def series_model_to_ui(self, series_id: int):
+        if self._updating_flags.get("series_id", False):
+            return
+        self._updating_flags["series_id"] = True
+        self.input_series.set_series_id(series_id if series_id and series_id > 0 else None)
+        self._updating_flags["series_id"] = False
+
 
 #----------------------------------------------------------
 #                       信号连接
@@ -1007,6 +1111,9 @@ class AddWorkTabPage3(LazyWidget):
         global_signals.download_success.connect(self.update_cover)
         global_signals.work_data_changed.connect(self.input_serial_number.reload_items)
         global_signals.work_data_changed.connect(self.input_director.reload_items)
+        global_signals.maker_data_changed.connect(self.input_maker.reload_makers)
+        global_signals.label_data_changed.connect(self.input_label.reload_labels)
+        global_signals.series_data_changed.connect(self.input_series.reload_series)
 
 
 #----------------------------------------------------------
@@ -1017,6 +1124,7 @@ class AddWorkTabPage3(LazyWidget):
         from core.crawler.CrawlerManager import get_manager
         get_manager().start_crawl(self.viewmodel.serial_number, True)
 
+    @Slot(object)
     def update_gui(self,data):
         '''更新gui'''
         if self.crawler_auto_page.cb_release_date.isChecked():
@@ -1040,6 +1148,12 @@ class AddWorkTabPage3(LazyWidget):
             self.viewmodel.set_tag(list(set(cur_tag_id)|set(data["tag_id_list"])))
         if self.crawler_auto_page.cb_runtime.isChecked():
             self.viewmodel.set_runtime(data["runtime"])
+        if self.crawler_auto_page.cb_maker.isChecked():
+            self.viewmodel.set_maker(data.get("maker_id", data.get("maker")))
+        if self.crawler_auto_page.cb_series.isChecked():
+            self.viewmodel.set_series(data.get("series_id", data.get("series")))
+        if self.crawler_auto_page.cb_label.isChecked():
+            self.viewmodel.set_label(data.get("label_id", data.get("label")))
 
     def update_cover(self,file_path:str):
         '''更新封面'''
@@ -1129,6 +1243,7 @@ class AddWorkTabPage3(LazyWidget):
         highlight_text = "QPlainTextEdit { border: 2px solid #FFA500; }"
         highlight_list = "QListView { border: 2px solid #FFA500; }"
         highlight_spin = "QSpinBox { border: 2px solid #FFA500; }"
+        highlight_combo = "QComboBox { border: 2px solid #FFA500; }"
         highlight_cover_border = "2px dashed orange"
         normal_cover_border = None
         highlight_text2="QTextEdit { border: 2px solid #FFA500; }"
@@ -1138,6 +1253,9 @@ class AddWorkTabPage3(LazyWidget):
             ("director", self.input_director, highlight_line, ""),
             ("release_date", self.input_time, highlight_line, ""),
             ("runtime", self.input_runtime, highlight_spin, ""),
+            ("maker_id", self.input_maker, highlight_combo, ""),
+            ("label_id", self.input_label, highlight_combo, ""),
+            ("series_id", self.input_series, highlight_combo, ""),
             ("cn_title", self.cn_title, highlight_text, ""),
             ("jp_title", self.jp_title, highlight_text, ""),
             ("cn_story", self.cn_story, highlight_text, ""),

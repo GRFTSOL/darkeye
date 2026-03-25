@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict
 
-from PySide6.QtCore import Qt, Slot, QTimer, QStringListModel, QItemSelectionModel
+from PySide6.QtCore import Qt, Slot, QTimer, QStringListModel
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -67,14 +67,6 @@ class InboxPage(QWidget):
         delete_button.clicked.connect(self._delete_selected_pending)
         header_layout.addWidget(delete_button)
         header_layout.addStretch(1)
-
-        self.pause_button = Button("中止", variant="default")
-        self.pause_button.clicked.connect(self._pause_crawl)
-        header_layout.addWidget(self.pause_button)
-
-        self.resume_button = Button("继续", variant="default")
-        self.resume_button.clicked.connect(self._resume_crawl)
-        header_layout.addWidget(self.resume_button)
 
         clear_button = Button("清空已完成", variant="default")
         clear_button.clicked.connect(self._clear_finished)
@@ -186,15 +178,6 @@ class InboxPage(QWidget):
             running_serials = set(manager.tasks.keys())
         except Exception:
             return
-
-        # 同步“中止/继续”按钮状态
-        try:
-            terminated = bool(getattr(manager, "is_crawl_terminated", lambda: False)())
-            self.pause_button.setEnabled(not terminated)
-            self.resume_button.setEnabled(terminated)
-        except Exception:
-            # 按钮状态同步失败不影响主流程
-            pass
 
         # 先重置所有任务的队列/爬取标记
         for state in self._tasks.values():
@@ -321,34 +304,9 @@ class InboxPage(QWidget):
             return f"{display_serial} (待爬)"
 
     def _sync_models(self) -> None:
-        # 刷新模型会清空 QListView 的 selection。这里先记住当前“待爬”选中的 serial，刷新后尽量恢复。
-        selected_pending_serial = None
-        try:
-            indexes = self.pending_list.selectionModel().selectedIndexes()
-            if indexes:
-                row = int(indexes[0].row())
-                if 0 <= row < len(self._pending_serials):
-                    selected_pending_serial = self._pending_serials[row]
-        except Exception:
-            selected_pending_serial = None
-
         self._pending_model.setStringList([self._display_text_for_serial(s) for s in self._pending_serials])
         self._running_model.setStringList([self._display_text_for_serial(s) for s in self._running_serials])
         self._finished_model.setStringList([self._display_text_for_serial(s) for s in self._finished_serials])
-
-        # 恢复待爬选择
-        try:
-            if selected_pending_serial and selected_pending_serial in self._pending_serials:
-                row = self._pending_serials.index(selected_pending_serial)
-                idx = self._pending_model.index(row)
-                if idx.isValid():
-                    self.pending_list.setCurrentIndex(idx)
-                    self.pending_list.selectionModel().select(
-                        idx,
-                        QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows
-                    )
-        except Exception:
-            pass
         self._models_dirty = False
 
     def _sync_models_if_needed(self) -> None:
@@ -385,26 +343,6 @@ class InboxPage(QWidget):
         self._models_dirty = True
         self._sync_models_if_needed()
         self._refresh_counters()
-
-    @Slot()
-    def _pause_crawl(self) -> None:
-        """中止调度：不再启动新的爬取任务，正在爬的继续；默认不清空队列，便于继续。"""
-        try:
-            from core.crawler.CrawlerManager import get_manager
-
-            get_manager().terminate_crawl(clear_queue=False)
-        except Exception:
-            return
-
-    @Slot()
-    def _resume_crawl(self) -> None:
-        """继续调度：恢复从队列中取任务执行。"""
-        try:
-            from core.crawler.CrawlerManager import get_manager
-
-            get_manager().resume_crawl()
-        except Exception:
-            return
 
     @Slot()
     def _add_task(self) -> None:

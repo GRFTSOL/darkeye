@@ -163,9 +163,19 @@ def _update_worktag(cursor:Cursor,work_id:int,tag_ids:list):
             [(work_id, tag_id) for tag_id in tags_to_add]
         )
 
-def update_work_byhand(work_id,director,release_date, notes, runtime, actress_ids,actor_ids,cn_title, cn_story, jp_title, jp_story,image_url,tag_ids)->bool:
+def update_work_byhand(work_id,director,release_date, notes, runtime, actress_ids,actor_ids,cn_title, cn_story, jp_title, jp_story,image_url,tag_ids,maker_id,label_id,series_id)->bool:
     '''更新作品的信息，默认番号是不会出错的。调用后需 emit: global_signals.work_data_changed'''
     try:
+        maker_id = int(maker_id) if maker_id not in (None, "") else None
+        label_id = int(label_id) if label_id not in (None, "") else None
+        series_id = int(series_id) if series_id not in (None, "") else None
+        if maker_id is not None and maker_id <= 0:
+            maker_id = None
+        if label_id is not None and label_id <= 0:
+            label_id = None
+        if series_id is not None and series_id <= 0:
+            series_id = None
+
         conn = get_connection(DATABASE,False)
         cursor:Cursor = conn.cursor()
         conn.execute("PRAGMA foreign_keys = ON")#打开外键约束
@@ -180,9 +190,12 @@ def update_work_byhand(work_id,director,release_date, notes, runtime, actress_id
                         cn_story=?,
                         jp_title=?,
                         jp_story=?,
-                        image_url=?
+                        image_url=?,
+                        maker_id=?,
+                        label_id=?,
+                        series_id=?
                         WHERE work_id = ?
-''',(director,release_date,notes,runtime,cn_title,cn_story,jp_title,jp_story,image_url,work_id,))
+''',(director,release_date,notes,runtime,cn_title,cn_story,jp_title,jp_story,image_url,maker_id,label_id,series_id,work_id,))
 
         _update_actress(cursor,work_id,actress_ids)
 

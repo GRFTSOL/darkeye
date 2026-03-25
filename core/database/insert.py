@@ -84,14 +84,27 @@ def InsertNewWork(serial_number:str)->int:
 
     return success
 
-def InsertNewWorkByHand(serial_number,director,release_date,notes,runtime,actress_ids,actor_ids,cn_title,cn_story,jp_title,jp_story,image_url,tag_ids)->bool:
+def InsertNewWorkByHand(serial_number,director,release_date,notes,runtime,actress_ids,actor_ids,cn_title,cn_story,jp_title,jp_story,image_url,tag_ids,maker_id,label_id,series_id)->bool:
     '''手动添加新作品。调用后需 emit: global_signals.work_data_changed'''
     success=False
     try:
+        maker_id = int(maker_id) if maker_id not in (None, "") else None
+        label_id = int(label_id) if label_id not in (None, "") else None
+        series_id = int(series_id) if series_id not in (None, "") else None
+        if maker_id is not None and maker_id <= 0:
+            maker_id = None
+        if label_id is not None and label_id <= 0:
+            label_id = None
+        if series_id is not None and series_id <= 0:
+            series_id = None
+
         conn = get_connection(DATABASE,False)
         cursor = conn.cursor()
         #添加新作品
-        cursor.execute("INSERT INTO work (serial_number,director,notes,runtime,release_date,cn_title,cn_story,jp_title,jp_story,image_url) VALUES(?,?,?,?,?,?,?,?,?,?)",(serial_number,director,notes,runtime,runtime,release_date,cn_title,cn_story,jp_title,jp_story,image_url))
+        cursor.execute(
+            "INSERT INTO work (serial_number,director,notes,runtime,release_date,cn_title,cn_story,jp_title,jp_story,image_url,maker_id,label_id,series_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (serial_number,director,notes,runtime,runtime,release_date,cn_title,cn_story,jp_title,jp_story,image_url,maker_id,label_id,series_id)
+        )
         new_id = cursor.lastrowid
         for id in actress_ids:
             cursor.execute("INSERT INTO work_actress_relation (work_id,actress_id) VALUES(?,?)",(new_id,id))
@@ -212,6 +225,70 @@ def rename_save_image(_path:str,name:str,type:str):
 
     #删除临时地址的文件
     delete_image(_path)
+
+
+def InsertNewMaker(name: str) -> int | None:
+    '''插入新的片商,成功返回 maker_id，失败返回 None'''
+    query = '''
+    INSERT INTO maker (cn_name, jp_name) VALUES (?, ?)
+    '''
+    conn = get_connection(DATABASE, False)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(query, (name, name))
+        conn.commit()
+        return cursor.lastrowid
+    except Exception as e:
+        conn.rollback()
+        logging.warning("插入片商失败: %s", e)
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def InsertNewLabel(name: str) -> int | None:
+    '''插入新的厂牌,成功返回 label_id，失败返回 None'''
+    query = '''
+    INSERT INTO label (cn_name, jp_name) VALUES (?, ?)
+    '''
+    conn = get_connection(DATABASE, False)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(query, (name, name))
+        conn.commit()
+        return cursor.lastrowid
+    except Exception as e:
+        conn.rollback()
+        logging.warning("插入厂牌失败: %s", e)
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def InsertNewSeries(name: str) -> int | None:
+    '''插入新的系列,成功返回 series_id，失败返回 None'''
+    query = '''
+    INSERT INTO series (cn_name, jp_name) VALUES (?, ?)
+    '''
+    conn = get_connection(DATABASE, False)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(query, (name, name))
+        conn.commit()
+        return cursor.lastrowid
+    except Exception as e:
+        conn.rollback()
+        logging.warning("插入系列失败: %s", e)
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
+
+
+
 #----------------------------------------------------------------------------------------------------------
 #                                      私有数据库的插入数据
 #----------------------------------------------------------------------------------------------------------

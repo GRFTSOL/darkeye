@@ -14,6 +14,10 @@ class CrawledWorkData:
     cn_story: str
     jp_story: str
 
+    maker: str
+    series: str
+    label: str
+
     # 关联数据（纯数据，非数据库ID）
     tag_list: list[str]        # ["TagA", "TagB"]
     actress_list: list[str]   # ["ActressA"]

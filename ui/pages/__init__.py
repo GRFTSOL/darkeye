@@ -13,8 +13,6 @@ from .ManagementPage import ManagementPage
 # from .PlotTabPage import PlotTabPage          # Lazy loaded by StatisticsPage
 
 
-from .UpdateManyTabPage import UpdateManyTabPage
-
 from .CoverBrowser import CoverBrowser
 
 from .ModifyActressPage import ModifyActressPage

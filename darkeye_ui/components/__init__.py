@@ -71,6 +71,7 @@ __all__ = [
     "Label",
     "LazyScrollArea",
     "LineEdit",
+    "MakerSelector",
     "ModalDialog",
     "ModernScrollMenu",
     "Notification",

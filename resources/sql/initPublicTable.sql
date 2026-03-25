@@ -290,7 +290,7 @@ SELECT --水平计算表，然后统一合并
 	(SELECT avg_age_at_release FROM average_age_per_work WHERE work_id=w.work_id)AS avg_age,
 	(SELECT state FROM actress_list WHERE work_id=w.work_id)AS state,
 	(SELECT actor_list FROM actor_list WHERE work_id=w.work_id)AS actor,
-	w.story AS story,
+	w.notes AS notes,
 	w.cn_title,
 	w.cn_story,
 	w.jp_title,
@@ -298,7 +298,7 @@ SELECT --水平计算表，然后统一合并
 	(SELECT studio_name FROM studio_list WHERE work_id=w.work_id)AS studio
 FROM 
     work w;
-	
+
 CREATE TRIGGER update_actress_timestamp                                  --自动更新时间触发器
 AFTER UPDATE ON actress
 FOR EACH ROW

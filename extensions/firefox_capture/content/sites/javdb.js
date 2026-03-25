@@ -126,6 +126,9 @@
           data.release_date = getPanelValue("日期:");
           data.length = getPanelValue("時長:");
           data.director = getPanelValue("導演:");
+          data.maker = getPanelValue("片商:");
+          data.label = getPanelValue("發行:");
+          data.series=getPanelValue("系列:");
 
           // 类别
           const genreBlock = Array.from(panelBlocks).find(block => {

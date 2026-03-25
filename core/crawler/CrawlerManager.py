@@ -38,11 +38,18 @@ def _exclude_genre_set() -> frozenset[str]:
 
 
 class CrawlerTask:
-    def __init__(self, serial_number, sources=["javlib", "javdb","fanza","javtxt","avdanyuwiki"],withGUI=False):
+    def __init__(
+        self,
+        serial_number,
+        sources=["javlib", "javdb", "fanza", "javtxt", "avdanyuwiki"],
+        withGUI=False,
+        selected_fields: set[str] | None = None,
+    ):
         self.serial:str = serial_number #任务号
         self.pending_sources:set[str] = set(sources) #分爬虫
         self.results:Dict[str, dict] = {} # 存储每个源的结果
         self.withGUI=withGUI # 是否经过GUI确认，默认直接写入数据库
+        self.selected_fields: set[str] | None = set(selected_fields) if selected_fields else None
 
 class ResultRelay(QObject):
     '''
@@ -125,11 +132,12 @@ class CrawlerManager2(QObject):
     # 这个管理器只针对一种任务，那就是爬取目标番号的相关信息，另外爬女优信息的任务就是另一个爬虫
 
     # 1. 统一开始入口
-    def start_crawl(self, serial_numbers, withGUI=False):
+    def start_crawl(self, serial_numbers, withGUI=False, selected_fields: set[str] | None = None):
         """将任务加入队列，由调度器接管执行"""
         if getattr(self, "_crawl_terminated", False):
-            logging.info("爬虫调度器已终止：忽略新的 start_crawl 请求")
-            return
+            # 单例实例在同一进程内会复用；“新开”后若仍保留终止标记，则自动恢复调度器。
+            logging.info("检测到爬虫调度器处于终止状态：自动恢复后继续 start_crawl")
+            self.resume_crawl()
         if isinstance(serial_numbers, str):
             serial_numbers = [serial_numbers]
 
@@ -142,7 +150,7 @@ class CrawlerManager2(QObject):
             if serial_number in existing_serials:
                 logging.info(f"任务 {serial_number} 已在队列中，跳过重复添加")
                 continue
-            self.request_queue.append((serial_number, withGUI))
+            self.request_queue.append((serial_number, withGUI, set(selected_fields) if selected_fields else None))
             logging.info(f"任务 {serial_number} 已入队，当前队列长度: {len(self.request_queue)}")
 
             # 记录未完成任务并持久化
@@ -232,11 +240,11 @@ class CrawlerManager2(QObject):
             # 过滤 deque：保留非目标项
             new_q = deque()
             while self.request_queue:
-                s, withGUI = self.request_queue.popleft()
+                s, withGUI, selected_fields = self.request_queue.popleft()
                 if s == serial and not removed_from_queue:
                     removed_from_queue = True
                     continue
-                new_q.append((s, withGUI))
+                new_q.append((s, withGUI, selected_fields))
             self.request_queue = new_q
         except Exception:
             logging.exception("drop_pending: 从 request_queue 移除失败")
@@ -284,15 +292,8 @@ class CrawlerManager2(QObject):
             return []
 
     def _persist_unfinished_to_ini(self) -> None:
-        try:
-            from config import settings  # QSettings(settings.ini)
-
-            # 逗号分隔，保持一个稳定顺序便于肉眼查看
-            value = ",".join(sorted(self._unfinished_serials))
-            settings.setValue(self._persist_key_unfinished, value)
-            settings.sync()
-        except Exception:
-            logging.exception("写入 settings.ini 未完成任务失败")
+        # 按需关闭落盘：仅保留内存态未完成集合，不写 settings.ini
+        return
 
     def _restore_unfinished_from_ini(self) -> None:
         """启动时恢复未完成任务到 request_queue，并默认暂停调度。"""
@@ -309,7 +310,7 @@ class CrawlerManager2(QObject):
             s = self._norm_serial(s)
             if not s or s in existing:
                 continue
-            self.request_queue.append((s, False))
+            self.request_queue.append((s, False, None))
             self._unfinished_serials.add(s)
             restored += 1
 
@@ -355,8 +356,8 @@ class CrawlerManager2(QObject):
         self.last_schedule_time = time.time() * 1000
 
         # 取出并执行任务
-        serial, withGUI = self.request_queue.popleft()
-        self._execute_crawl(serial, withGUI)
+        serial, withGUI, selected_fields = self.request_queue.popleft()
+        self._execute_crawl(serial, withGUI, selected_fields)
         
         # 如果队列仍有任务，安排下一次
         if self.request_queue:
@@ -364,10 +365,10 @@ class CrawlerManager2(QObject):
         else:
             logging.info("队列已空，停止后续调度")
 
-    def _execute_crawl(self, serial_number,withGUI=False):
+    def _execute_crawl(self, serial_number, withGUI=False, selected_fields: set[str] | None = None):
         """真正发起爬虫请求（原start_crawl逻辑）"""
         # 创建任务状态
-        task = CrawlerTask(serial_number, ["javlib","javtxt","avdanyuwiki","javdb"],withGUI)
+        task = CrawlerTask(serial_number, ["javlib", "javtxt", "avdanyuwiki", "javdb"], withGUI, selected_fields)
         self.tasks[serial_number]= task
         #目前这里开3个线程
 
@@ -482,7 +483,7 @@ class CrawlerManager2(QObject):
             task = self.tasks.get(serial)
             if not task:
                 return
-            DataUpdate(final_data, self, withGUI=task.withGUI)
+            DataUpdate(final_data, self, withGUI=task.withGUI, selected_fields=task.selected_fields)
         except Exception as e:
             logging.error(f"_on_merge_worker_finished 崩溃: {e}\n{traceback.format_exc()}")
 
@@ -522,10 +523,14 @@ class CrawlerManager2(QObject):
         cover_list.append("https://fourhoi.com/" + serial_number + "/cover-n.jpg")#missav的封面的规律
 
         #合并maker，优先级avdanyuwiki,javlib,javdb
+        maker=avdanyuwiki_result.get("maker", javlib_result.get("maker", javdb_result.get("maker", "")))
+        #此时maker的状态还是一个字符串
 
         #合并series，优先级avdanyuwiki,javdb
+        series=avdanyuwiki_result.get("series", javdb_result.get("series", ""))
 
         #合并label，优先级avdanyuwiki,javlib,javdb
+        label=avdanyuwiki_result.get("label", javlib_result.get("label", javdb_result.get("label", "")))
 
 
 
@@ -551,6 +556,9 @@ class CrawlerManager2(QObject):
             "director": director,
             "runtime": runtime,
             "actress_list": actress_list,
+            "maker": maker,
+            "series": series,
+            "label": label,
             "actor_list": avdanyuwiki_result.get("actor_list") or [],
             "genre_list": genre_list,
             "cn_title": javtxt_result.get("cn_title", ""),
@@ -593,6 +601,9 @@ class CrawlerManager2(QObject):
             actress_list=work_merge["actress_list"],
             actor_list=work_merge["actor_list"],
             cover_url_list=work_merge["cover_list"],
+            maker=work_merge["maker"],
+            series=work_merge["series"],
+            label=work_merge["label"],
         )
         return crawled_work_data
         
@@ -746,10 +757,17 @@ class SequentialDownloader(QObject):
 
 class DataUpdate:
     '''数据更新类，用于把爬虫数据更新数据库中的数据，包括直接写入与先在GUI面板中更新'''
-    def __init__(self, data: CrawledWorkData, manager: QObject = None, withGUI: bool = False):
+    def __init__(
+        self,
+        data: CrawledWorkData,
+        manager: QObject = None,
+        withGUI: bool = False,
+        selected_fields: set[str] | None = None,
+    ):
         self.work = data
         self.manager = manager
         self.withGUI = withGUI
+        self.selected_fields: set[str] | None = set(selected_fields) if selected_fields else None
         self.work_id=None
         # global_signals.request_update_cover.connect(self.insert_cover)
         if withGUI:
@@ -768,6 +786,9 @@ class DataUpdate:
                 "actress_list":self.actress_ids,
                 "actor_list":self.actor_ids,
                 "runtime": self.work.runtime,
+                "maker": self.maker_id,
+                "label": self.label_id,
+                "series": self.series_id,
             })
         else:
             self._update_work()
@@ -775,29 +796,35 @@ class DataUpdate:
     def __del__(self):
         logging.info("DataUpdate 实例已成功销毁，内存已释放")
 
+    def _want(self, field: str) -> bool:
+        """是否允许更新指定字段。None 表示不限制（兼容旧流程）。"""
+        return self.selected_fields is None or field in self.selected_fields
+
     def _update_work(self):
         '''数据清洗并写入'''
         # genre_list处理，这个要更改tag系统，包括tag合并与多语言主tag的处理，如果这个系统改完后就可以把多家的tag联系都可以搞定了，
         #从jp_title中提取tag
-        tag_id_list = text2tag_id_list(self.work.jp_title)
-        if len(self.work.actor_list) == 1 and len(self.work.actress_list) == 1:
-            tag_id_list.append(get_tagid_by_keyword("1V1", match_hole_word=True))
+        self.tag_id_list = []
+        if self._want("tag"):
+            tag_id_list = text2tag_id_list(self.work.jp_title)
+            if len(self.work.actor_list) == 1 and len(self.work.actress_list) == 1:
+                tag_id_list.append(get_tagid_by_keyword("1V1", match_hole_word=True))
 
-        added_tag=False
-        if self.work.tag_list:
-            for genre in self.work.tag_list:#如果这个有就加
-                tag_id=get_tagid_by_keyword(genre,match_hole_word=True)
-                if tag_id:
-                    tag_id_list.append(tag_id)
-                else:
-                    success,e,tag_id=insert_tag(genre,11,"#cccccc","",None,[])
-                    if success:
-                        added_tag=True
+            added_tag=False
+            if self.work.tag_list:
+                for genre in self.work.tag_list:#如果这个有就加
+                    tag_id=get_tagid_by_keyword(genre,match_hole_word=True)
+                    if tag_id:
                         tag_id_list.append(tag_id)
-        self.tag_id_list = tag_id_list
-        if added_tag:#有新添加的tag才刷新，否则这东西卡死ui
-            from controller.GlobalSignalBus import global_signals
-            global_signals.tag_data_changed.emit()
+                    else:
+                        success,e,tag_id=insert_tag(genre,11,"#cccccc","",None,[])
+                        if success:
+                            added_tag=True
+                            tag_id_list.append(tag_id)
+            self.tag_id_list = tag_id_list
+            if added_tag:#有新添加的tag才刷新，否则这东西卡死ui
+                from controller.GlobalSignalBus import global_signals
+                global_signals.tag_data_changed.emit()
         #logging.info(f"要添加的tag_id_list{tag_id_list}")
         #写入work_tag_relation关系表
         #global_signals.status_msg_changed.emit(f"成功添加tag到{self.work.serial_number}")
@@ -805,35 +832,94 @@ class DataUpdate:
 
         # actress_list的处理，新的女优要添加到数据库并触发爬取女优的任务，女优马甲的系统也要更新。
                     #直接写入女优
-        actress_list = self.work.actress_list
         self.actress_ids = []
-        for actress in actress_list:
-            id = exist_actress(actress)
-            if id is None:
-                if InsertNewActress(actress, actress):
-                    logging.info("添加女优成功:%s", actress)
-                    id = exist_actress(actress)
+        if self._want("actress"):
+            actress_list = self.work.actress_list
+            for actress in actress_list:
+                id = exist_actress(actress)
+                if id is None:
+                    if InsertNewActress(actress, actress):
+                        logging.info("添加女优成功:%s", actress)
+                        id = exist_actress(actress)
+                        self.actress_ids.append(id)
+                        from controller.GlobalSignalBus import global_signals
+                        global_signals.actress_data_changed.emit()
+                else:
                     self.actress_ids.append(id)
-                    from controller.GlobalSignalBus import global_signals
-                    global_signals.actress_data_changed.emit()
-            else:
-                self.actress_ids.append(id)
 
         # actor_list这个没法处理，就是默认添加一个只有姓名的演员
-        actor_list = self.work.actor_list
         self.actor_ids = []
-        for actor in actor_list:
-            id = exist_actor(actor)
-            if id is None:
-                if InsertNewActor(actor, actor):
-                    logging.info("添加男优成功:%s", actor)
-                    id = exist_actor(actor)
+        if self._want("actor"):
+            actor_list = self.work.actor_list
+            for actor in actor_list:
+                id = exist_actor(actor)
+                if id is None:
+                    if InsertNewActor(actor, actor):
+                        logging.info("添加男优成功:%s", actor)
+                        id = exist_actor(actor)
+                        self.actor_ids.append(id)
+                        from controller.GlobalSignalBus import global_signals
+                        global_signals.actor_data_changed.emit()
+                else:
                     self.actor_ids.append(id)
-                    from controller.GlobalSignalBus import global_signals
-                    global_signals.actor_data_changed.emit()
-            else:
-                self.actor_ids.append(id)
 
+        from core.database.query.work import (
+            get_maker_id_by_name,
+            get_label_id_by_name,
+            get_series_id_by_name,
+        )
+        from core.database.insert import InsertNewMaker, InsertNewLabel, InsertNewSeries
+        # 查询有没有，如果有就返回 id，没有就插入并返回 id
+
+        self.maker_id = None
+        maker_name = (self.work.maker or "").strip()
+        if self._want("maker") and maker_name:
+            maker_id = get_maker_id_by_name(maker_name)
+            if maker_id is None:
+                maker_id = InsertNewMaker(maker_name)
+                if maker_id is None:
+                    logging.error(f"插入新的片商失败:{maker_name}")
+                    return
+                logging.info(f"插入新的片商:{maker_name},maker_id:{maker_id}")
+                from controller.GlobalSignalBus import global_signals
+                global_signals.maker_data_changed.emit()
+            else:
+                logging.info(f"片商已存在:{maker_name},maker_id:{maker_id}")
+            self.maker_id = maker_id
+
+        self.label_id = None
+        label_name = (self.work.label or "").strip()
+        if self._want("label") and label_name:
+            label_id = get_label_id_by_name(label_name)
+            if label_id is None:
+                label_id = InsertNewLabel(label_name)
+                if label_id is None:
+                    logging.error(f"插入新的厂牌失败:{label_name}")
+                    return
+                logging.info(f"插入新的厂牌:{label_name},label_id:{label_id}")
+                from controller.GlobalSignalBus import global_signals
+                global_signals.label_data_changed.emit()
+            else:
+                logging.info(f"厂牌已存在:{label_name},label_id:{label_id}")
+            self.label_id = label_id
+
+        self.series_id = None
+        series_name = (self.work.series or "").strip()
+        if self._want("series") and series_name:
+            series_id = get_series_id_by_name(series_name)
+            if series_id is None:
+                series_id = InsertNewSeries(series_name)
+                if series_id is None:
+                    logging.error(f"插入新的系列失败:{series_name}")
+                    return
+                logging.info(f"插入新的系列:{series_name},series_id:{series_id}")
+                from controller.GlobalSignalBus import global_signals
+                global_signals.series_data_changed.emit()
+            else:
+                logging.info(f"系列已存在:{series_name},series_id:{series_id}")
+            self.series_id = series_id
+        
+        #封面图片的下载处理
         from pathlib import Path
         from config import WORKCOVER_PATH,TEMP_PATH
         from datetime import datetime
@@ -847,7 +933,7 @@ class DataUpdate:
         temp_path = Path(TEMP_PATH) / dst_name#这个是个绝对地址
 
         # 启动 SequentialDownloader 下载图片
-        if self.manager:
+        if self.manager and self._want("cover"):
             # 使用作品番号作为下载任务 ID，cover_url_list 长度作为总步数
             task_id = self.work.serial_number
             total_steps = len(self.work.cover_url_list or [])
@@ -855,7 +941,7 @@ class DataUpdate:
             # 使用 lambda 明确参数传递，并持有 self 引用
             downloader.finished.connect(lambda s, r: self._on_download_finished(s, r, image_filename))
             downloader.start(self.work.cover_url_list, temp_path, image_filename)
-        else:
+        elif self._want("cover"):
             logging.error("DataUpdate missing manager, cannot start downloader")
 
     def _on_download_finished(self, success, temp_path, image_filename):
@@ -873,18 +959,36 @@ class DataUpdate:
             self.work_id=InsertNewWork(self.work.serial_number)
 
 
-        #下面是真正写入数据库的代码
-        update_work_byhand_(self.work_id, 
-        cn_title=self.work.cn_title, 
-        jp_title=self.work.jp_title, 
-        cn_story=self.work.cn_story, 
-        jp_story=self.work.jp_story,
-        director=self.work.director,
-        release_date=self.work.release_date,actor_ids=self.actor_ids,
-        actress_ids=self.actress_ids,
-        runtime=self.work.runtime
-        )
-        add_tag2work(self.work_id, tag_ids=self.tag_id_list)
+        update_fields = {}
+        if self._want("cn_title"):
+            update_fields["cn_title"] = self.work.cn_title
+        if self._want("jp_title"):
+            update_fields["jp_title"] = self.work.jp_title
+        if self._want("cn_story"):
+            update_fields["cn_story"] = self.work.cn_story
+        if self._want("jp_story"):
+            update_fields["jp_story"] = self.work.jp_story
+        if self._want("director"):
+            update_fields["director"] = self.work.director
+        if self._want("release_date"):
+            update_fields["release_date"] = self.work.release_date
+        if self._want("actor"):
+            update_fields["actor_ids"] = self.actor_ids
+        if self._want("actress"):
+            update_fields["actress_ids"] = self.actress_ids
+        if self._want("runtime"):
+            update_fields["runtime"] = self.work.runtime
+        if self._want("maker"):
+            update_fields["maker_id"] = self.maker_id
+        if self._want("label"):
+            update_fields["label_id"] = self.label_id
+        if self._want("series"):
+            update_fields["series_id"] = self.series_id
+
+        if update_fields:
+            update_work_byhand_(self.work_id, **update_fields)
+        if self._want("tag"):
+            add_tag2work(self.work_id, tag_ids=self.tag_id_list)
 
         global_signals.work_data_changed.emit()
 
@@ -893,7 +997,7 @@ class DataUpdate:
         #logging.info("图片下载后从temp移动到正式文件夹，并写入db")
         from core.database.insert import rename_save_image
         rename_save_image(temp_path,image_filename,"cover")
-        if self.work_id is not None:
+        if self.work_id is not None and self._want("cover"):
             update_work_byhand_(self.work_id, image_url=image_filename)
 
 _crawler_manager2: Optional["CrawlerManager2"] = None

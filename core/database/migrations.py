@@ -359,10 +359,29 @@ def import_maker_prefix_json(json_path: str | Path) -> None:
     with get_connection(DATABASE, readonly=False) as conn:
         cursor = conn.cursor()
         try:
-            # 先清空关系表和片商表
+            
+            cursor.execute("PRAGMA foreign_keys = OFF;")
+            # 先新建maker_old
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS maker_new(--制作商，一部片子只有一个制作商，一部制作商可以有多个作品。一部作品可以没有制作商
+                    maker_id INTEGER PRIMARY KEY AUTOINCREMENT,--不重复主键
+                    cn_name TEXT,										--中文名
+                    jp_name TEXT,										--日文名
+                    aliases TEXT,										--别名,中间用,分开,用于重定向用。
+                    detail TEXT,                                       --其他信息
+                    logo_url TEXT										--logo地址
+                );
+                """
+            )
+            # 清空关系表与 maker 表，准备按 JSON 重建
             cursor.execute("DELETE FROM prefix_maker_relation")
-            cursor.execute("DELETE FROM maker")
+            cursor.execute("DELETE FROM sqlite_sequence WHERE name='prefix_maker_relation'")
 
+            #先删除视图
+            cursor.execute("DROP VIEW IF EXISTS v_work_all_info")
+
+            #插入数据
             for item in items:
                 if not isinstance(item, dict):
                     continue
@@ -377,7 +396,7 @@ def import_maker_prefix_json(json_path: str | Path) -> None:
                 # 始终由 SQLite 自增 maker_id，忽略 JSON 中可能存在的 maker_id
                 cursor.execute(
                     """
-                    INSERT INTO maker (cn_name, jp_name, aliases, detail, logo_url)
+                    INSERT INTO maker_new (cn_name, jp_name, aliases, detail, logo_url)
                     VALUES (?, ?, ?, ?, ?)
                     """,
                     (cn_name, jp_name, aliases, detail, logo_url),
@@ -394,6 +413,149 @@ def import_maker_prefix_json(json_path: str | Path) -> None:
                         """,
                         (prefix, maker_id),
                     )
+
+            # 把被 work 引用但在 maker_new 中匹配不到的旧 maker 追加到 maker_new 末尾
+            cursor.execute(
+                """
+                INSERT INTO maker_new (cn_name, jp_name, aliases, detail, logo_url)
+                SELECT
+                    m_old.cn_name,
+                    m_old.jp_name,
+                    m_old.aliases,
+                    m_old.detail,
+                    m_old.logo_url
+                FROM maker AS m_old
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM work
+                    WHERE work.maker_id = m_old.maker_id
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM maker_new AS m
+                    WHERE m.cn_name = m_old.cn_name
+                        OR INSTR(
+                            ',' || REPLACE(REPLACE(REPLACE(COALESCE(m.aliases, ''), '，', ','), ', ', ','), ' ,', ',') || ',',
+                            ',' || m_old.cn_name || ','
+                        ) > 0
+                )
+                """
+            )
+
+            # 用旧 maker 的数据去匹配 maker_new，重建 work.maker_id 指向
+            cursor.execute(
+                """
+                UPDATE work
+                SET maker_id = (
+                    SELECT m.maker_id
+                    FROM maker AS m_old
+                    JOIN maker_new AS m
+                        ON m.cn_name = m_old.cn_name
+                        OR INSTR(
+                            ',' || REPLACE(REPLACE(REPLACE(COALESCE(m.aliases, ''), '，', ','), ', ', ','), ' ,', ',') || ',',
+                            ',' || m_old.cn_name || ','
+                        ) > 0
+                    WHERE m_old.maker_id = work.maker_id
+                    LIMIT 1
+                )
+                WHERE maker_id IS NOT NULL
+                """
+            )
+            cursor.execute("DROP TABLE maker")#把旧表删除了
+            cursor.execute("ALTER TABLE maker_new RENAME TO maker")#把新表改名
+
+
+            #重建视图,这个是要随着版本更新的。
+            cursor.execute("""
+            CREATE VIEW v_work_all_info AS--查询作品的基本数据的视图，这个非常的长
+WITH actress_age_at_release AS (--计算每个女优发布作品的年龄
+  SELECT
+    w.work_id,
+    a.actress_id,
+    w.serial_number,
+    w.release_date,
+    a.birthday,
+    -- 使用 julianday 计算日期差（以天为单位），然后除以 365.25 得到年龄
+    (julianday(w.release_date) - julianday(a.birthday)) / 365.25 AS age_at_release
+  FROM work w
+  JOIN work_actress_relation war ON w.work_id = war.work_id
+  JOIN actress a ON war.actress_id = a.actress_id
+  WHERE w.release_date IS NOT NULL AND a.birthday IS NOT NULL
+),
+average_age_per_work AS (--辅助计算年龄的表
+  SELECT
+    work_id,
+    serial_number,
+    ROUND(AVG(age_at_release), 1)-0.45 AS avg_age_at_release--假设拍摄后5个多月发布
+  FROM actress_age_at_release
+  GROUP BY work_id
+),
+actress_list AS(--计算女优出演的名单
+SELECT
+	w.work_id,
+    GROUP_CONCAT(
+        (SELECT cn FROM actress_name WHERE actress_id = a.actress_id AND(name_type=1)),
+        ','
+    ) AS actress_list,
+	GROUP_CONCAT(war.job,',') AS job,
+	GROUP_CONCAT(war.state,',') AS state
+FROM
+    work w
+LEFT JOIN 
+    work_actress_relation war ON w.work_id = war.work_id
+LEFT JOIN 
+    actress a ON war.actress_id = a.actress_id
+GROUP BY w.work_id
+),
+actor_list AS(--男优名单
+SELECT
+	w.work_id,
+    GROUP_CONCAT(
+        (SELECT cn FROM actor_name WHERE actor_id=war1.actor_id),
+        ','
+    ) AS actor_list
+FROM
+    work w
+LEFT JOIN 
+    work_actor_relation war1 ON w.work_id = war1.work_id
+LEFT JOIN 
+    actor a ON war1.actor_id = a.actor_id
+GROUP BY w.work_id
+),
+studio_list AS(--片商表
+SELECT 
+	w.work_id,
+	(SELECT cn_name FROM maker WHERE maker_id =p.maker_id) AS studio_name
+FROM 
+    work w
+INNER JOIN 
+    prefix_maker_relation p ON p.prefix = SUBSTR(w.serial_number, 1, INSTR(w.serial_number, '-') - 1)
+WHERE 
+    w.serial_number LIKE '%-%'
+)
+SELECT --水平计算表，然后统一合并
+	w.work_id,
+    w.serial_number AS serial_number,
+    w.director AS director,
+	w.release_date AS release_date,
+	(SELECT actress_list FROM actress_list WHERE work_id=w.work_id)AS actress,
+	(SELECT avg_age_at_release FROM average_age_per_work WHERE work_id=w.work_id)AS avg_age,
+	(SELECT state FROM actress_list WHERE work_id=w.work_id)AS state,
+	(SELECT actor_list FROM actor_list WHERE work_id=w.work_id)AS actor,
+	w.notes AS notes,
+	w.cn_title,
+	w.cn_story,
+	w.jp_title,
+	w.jp_story,
+	(SELECT studio_name FROM studio_list WHERE work_id=w.work_id)AS studio
+FROM 
+    work w;
+            """)
+
+            cursor.execute("PRAGMA foreign_keys = ON;")#把外键开起来
+
+
+
 
             conn.commit()
             logging.info("已从 %s 导入 maker & prefix 映射", path)

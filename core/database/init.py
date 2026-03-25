@@ -32,7 +32,26 @@ def init_public_db(db_path:str):
 
 
 def init_database(public_db_path: Path, private_db_path: Path) -> bool:
-    """数据库连接已统一使用 sqlite3 get_connection，此处仅保留接口兼容性。
-    init_private_db 与 migrations 已负责建库与升级。
     """
-    return True
+    确保公有库和私有库均启用 WAL 模式。
+    """
+    def _enable_wal(db_path: Path) -> bool:
+        try:
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL;")
+                result = cursor.fetchone()
+                mode = result[0].lower() if result and result[0] else ""
+                if mode != "wal":
+                    logging.error("数据库 %s 启用 WAL 失败，当前模式: %s", db_path, mode or "unknown")
+                    return False
+                conn.commit()
+            logging.info("数据库 %s 已启用 WAL 模式", db_path)
+            return True
+        except Exception:
+            logging.exception("设置数据库 %s 为 WAL 模式时发生错误", db_path)
+            return False
+
+    public_ok = _enable_wal(public_db_path)
+    private_ok = _enable_wal(private_db_path)
+    return public_ok and private_ok

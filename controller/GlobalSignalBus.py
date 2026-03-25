@@ -10,6 +10,9 @@ class GlobalSignalBus(QObject):
     actress_data_changed = Signal()  # 女优数据变更信号,主要是刷新女优选择器
     actor_data_changed = Signal()  # 男优数据变更信号，主要是刷新男优选择器
     tag_data_changed = Signal()  # 标签数据变更信号，主要是刷新标签选择器
+    maker_data_changed = Signal()  # 片商数据变更信号，主要是刷新片商选择器
+    label_data_changed = Signal()  # 厂牌数据变更信号，主要是刷新厂牌选择器
+    series_data_changed = Signal()  # 系列数据变更信号，主要是刷新系列选择器
 
     # 记录相关
     masterbation_changed = Signal()  # 撸管记录变更信号

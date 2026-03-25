@@ -7,11 +7,14 @@ from ui.pages.management.TagManagement import TagManagement
 from ui.pages.management.SearchTable import SearchTable
 from ui.pages.management.AddWorkTabPage3 import AddWorkTabPage3
 from ui.pages.management.StudioManagementPage import StudioManagementPage
+from ui.pages.management.LabelManagementPage import LabelManagementPage
+from ui.pages.management.SeriesManagementPage import SeriesManagementPage
 from ui.pages.management.ManagementTable import ManagementTable
 from ui.pages.management.RecycleBinPage import RecycleBinPage
+from ui.pages.management.UpdateManyTabPage import UpdateManyTabPage
 
 import logging
-from .UpdateManyTabPage import UpdateManyTabPage
+
 from controller.MessageService import MessageBoxService
 
 from darkeye_ui.components.token_tab_widget import TokenTabWidget
@@ -41,12 +44,16 @@ class ManagementPage(QWidget):
         self.rubbish=RecycleBinPage()
         self.updatemany=UpdateManyTabPage()
         self.studio_management=StudioManagementPage()
+        self.label_management=LabelManagementPage()
+        self.series_management=SeriesManagementPage()
         self.g_management=ManagementTable()
 
         mainlayout.addWidget(self.tab_widget)
         self.tab_widget.addTab(self.worktab,"添加/修改作品")
         self.tab_widget.addTab(self.tag_manage,"作品标签管理")
         self.tab_widget.addTab(self.studio_management,"番号/制作商管理")
+        self.tab_widget.addTab(self.label_management,"厂牌管理")
+        self.tab_widget.addTab(self.series_management,"系列管理")
         self.tab_widget.addTab(self.updatemany,"批量操作")
         self.tab_widget.addTab(self.searchtable,"汇总查询表")
         self.tab_widget.addTab(self.g_management,"综合管理")

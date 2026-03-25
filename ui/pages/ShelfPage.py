@@ -19,6 +19,8 @@ from core.database.query import (
     get_actorname,
     get_serial_number,
     get_maker_name,
+    get_label_name,
+    get_series_name,
     get_workid_by_serialnumber,
 )
 from ui.basic import HorizontalScrollArea
@@ -30,6 +32,9 @@ from darkeye_ui.components.rotate_button import RotateButton
 from darkeye_ui.components.shake_button import ShakeButton
 from darkeye_ui.components.input import LineEdit
 from darkeye_ui.components.combo_box import ComboBox
+from ui.widgets.selectors.maker_selector import MakerSelector
+from ui.widgets.selectors.label_selector import LabelSelector
+from ui.widgets.selectors.series_selector import SeriesSelector
 
 class ShelfPage(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -42,6 +47,8 @@ class ShelfPage(QWidget):
         self.title = None
         self.serial_number = None
         self.studio = None
+        self.label_id = None
+        self.series_id = None
         self._green_mode = False
         self.order = "添加逆序"
         self.scope = "公共库范围"
@@ -60,12 +67,12 @@ class ShelfPage(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setFixedHeight(26)
+        scroll.setFixedHeight(32)
         scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         filterwidget = QWidget()
         filterlayout = QHBoxLayout(filterwidget)
         filterlayout.setContentsMargins(0, 0, 0, 0)
-        filterwidget.setFixedHeight(26)
+        filterwidget.setFixedHeight(32)
         filterwidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         scroll.setWidget(filterwidget)
         scroll.setStyleSheet(
@@ -86,7 +93,9 @@ class ShelfPage(QWidget):
         self.actress_input = CompleterLineEdit(get_actressname)
         self.director_input = CompleterLineEdit(get_unique_director)
         self.actor_input = CompleterLineEdit(get_actorname)
-        self.maker_input = CompleterLineEdit(get_maker_name)
+        self.maker_selector = MakerSelector(get_maker_name())
+        self.label_selector = LabelSelector(get_label_name())
+        self.series_selector = SeriesSelector(get_series_name())
 
         self.story_input.setFixedWidth(100)
         self.title_input.setFixedWidth(100)
@@ -94,7 +103,9 @@ class ShelfPage(QWidget):
         self.actress_input.setFixedWidth(120)
         self.director_input.setFixedWidth(150)
         self.actor_input.setFixedWidth(120)
-        self.maker_input.setFixedWidth(150)
+        self.maker_selector.setFixedWidth(160)
+        self.label_selector.setFixedWidth(160)
+        self.series_selector.setFixedWidth(160)
 
         filterlayout.addWidget(Label("番号："))
         filterlayout.addWidget(self.serial_number_input)
@@ -109,7 +120,17 @@ class ShelfPage(QWidget):
         filterlayout.addWidget(Label("男优"))
         filterlayout.addWidget(self.actor_input)
         filterlayout.addWidget(Label("片商"))
-        filterlayout.addWidget(self.maker_input)
+        filterlayout.addWidget(self.maker_selector)
+        filterlayout.addWidget(Label("厂牌"))
+        filterlayout.addWidget(self.label_selector)
+        filterlayout.addWidget(Label("系列"))
+        filterlayout.addWidget(self.series_selector)
+
+        for i in range(filterlayout.count()):
+            item = filterlayout.itemAt(i)
+            w = item.widget()
+            if w is not None:
+                filterlayout.setAlignment(w, Qt.AlignmentFlag.AlignVCenter)
 
         self.info = Label()
         self.info.setFixedWidth(100)
@@ -176,7 +197,9 @@ class ShelfPage(QWidget):
         self.actress_input.textChanged.connect(self.apply_filter)
         self.actor_input.textChanged.connect(self.apply_filter)
         self.director_input.textChanged.connect(self.apply_filter)
-        self.maker_input.textChanged.connect(self.apply_filter)
+        self.maker_selector.currentTextChanged.connect(self.apply_filter)
+        self.label_selector.currentTextChanged.connect(self.apply_filter)
+        self.series_selector.currentTextChanged.connect(self.apply_filter)
         self.order_combo.currentTextChanged.connect(self.apply_filter)
         self.scope_combo.currentTextChanged.connect(self.apply_filter)
         self.tagselector.selection_changed.connect(self.apply_filter)
@@ -199,7 +222,9 @@ class ShelfPage(QWidget):
         self.title_input.setText("")
         self.story_input.setText("")
         self.serial_number_input.setText("")
-        self.maker_input.setText("")
+        self.maker_selector.set_maker(None)
+        self.label_selector.set_label(None)
+        self.series_selector.set_series_id(None)
         self.tagselector.load_with_ids([])
         self.scope_combo.setCurrentIndex(0)
         self.order_combo.setCurrentIndex(0)
@@ -238,7 +263,9 @@ class ShelfPage(QWidget):
         self.title_input.setText("")
         self.story_input.setText("")
         self.serial_number_input.setText("")
-        self.maker_input.setText("")
+        self.maker_selector.set_maker(None)
+        self.label_selector.set_label(None)
+        self.series_selector.set_series_id(None)
         self.tagselector.load_with_ids([])
         self.apply_filter()
 
@@ -246,7 +273,9 @@ class ShelfPage(QWidget):
     def reload_input(self) -> None:
         self.serial_number_input.reload_items()
         self.director_input.reload_items()
-        self.maker_input.reload_items()
+        self.maker_selector.reload_makers()
+        self.label_selector.reload_labels()
+        self.series_selector.reload_series()
 
     @Slot(bool)
     def update_green_mode(self, green_mode: bool) -> None:
@@ -265,7 +294,9 @@ class ShelfPage(QWidget):
         self.actor = self.actor_input.text().strip()
         self.title = self.title_input.text().strip()
         self.serial_number = self.serial_number_input.text().strip()
-        self.studio = self.maker_input.text().strip()
+        self.studio = self.maker_selector.currentText().strip()
+        self.label_id = self.label_selector.get_label()
+        self.series_id = self.series_selector.get_series_id()
         self.tag_ids = self.tagselector.get_selected_ids()
         self.scope = self.scope_combo.currentText()
         self.order = self.order_combo.currentText()
@@ -393,6 +424,14 @@ JOIN filter_maker ON filter_maker.maker_id=p.maker_id
         if self.title:
             query += "AND work.cn_title LIKE ?\n"
             params.append(f"%{self.title}%")
+
+        if self.label_id:
+            query += "AND work.label_id = ?\n"
+            params.append(self.label_id)
+
+        if self.series_id:
+            query += "AND work.series_id = ?\n"
+            params.append(self.series_id)
 
         if self.scope == "收藏未观看":
             query += "AND work.work_id NOT IN (SELECT work_id FROM priv.masturbation WHERE work_id IS NOT NULL)\n"

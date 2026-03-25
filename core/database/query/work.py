@@ -93,6 +93,9 @@ def get_workinfo_by_workid(work_id: int) -> dict:
     cn_story,
     jp_title,
     jp_story,
+    work.maker_id AS maker_id,
+    work.label_id AS label_id,
+    work.series_id AS series_id,
     (SELECT cn_name FROM maker WHERE maker_id =p.maker_id) AS studio_name
     FROM work
     LEFT JOIN
@@ -371,6 +374,41 @@ def get_serial_number_map() -> dict:
         return {}
 
 
+def get_works_for_bulk_crawl_fields() -> list[dict]:
+    """批量爬虫筛选所需字段快照（含关联计数）。"""
+    query = """
+    SELECT
+        w.work_id,
+        w.serial_number,
+        w.release_date,
+        w.director,
+        w.runtime,
+        w.cn_title,
+        w.jp_title,
+        w.cn_story,
+        w.jp_story,
+        w.image_url,
+        w.maker_id,
+        w.label_id,
+        w.series_id,
+        (SELECT COUNT(1) FROM work_actress_relation war WHERE war.work_id = w.work_id) AS actress_count,
+        (SELECT COUNT(1) FROM work_actor_relation wor WHERE wor.work_id = w.work_id) AS actor_count,
+        (SELECT COUNT(1) FROM work_tag_relation wtr WHERE wtr.work_id = w.work_id) AS tag_count
+    FROM work w
+    WHERE w.is_deleted = 0
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            column_names = [description[0] for description in cursor.description]
+            return [dict(zip(column_names, row)) for row in rows]
+    except sqlite3.Error as e:
+        logging.error(f"get_works_for_bulk_crawl_fields 查询时数据库错误: {e}")
+        return []
+
+
 def get_workid_by_serialnumber(serial_number) -> int | None:
     '''通过番号返回work_id'''
     query = '''
@@ -454,13 +492,155 @@ def get_unique_short_story() -> list:
         return [row[0] for row in rows]
 
 
-def get_maker_name() -> list:
-    """获取所有的片商"""
-    query = "SELECT cn_name FROM maker"
+def get_maker_name() -> list[dict]:
+    """获取所有片商信息（含 maker_id/cn_name/jp_name/aliases）"""
+    query = """
+    SELECT maker_id, cn_name, jp_name, aliases
+    FROM maker
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
-        return [row[0] for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+        return [
+            {
+                "maker_id": row[0],
+                "cn_name": row[1],
+                "jp_name": row[2],
+                "aliases": row[3],
+            }
+            for row in rows
+        ]
+
+
+def get_label_name() -> list[dict]:
+    """获取所有厂牌信息（含 label_id/cn_name/jp_name/aliases）"""
+    query = """
+    SELECT label_id, cn_name, jp_name, aliases
+    FROM label
+    """
+    with get_connection(DATABASE, True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        return [
+            {
+                "label_id": row[0],
+                "cn_name": row[1],
+                "jp_name": row[2],
+                "aliases": row[3],
+            }
+            for row in rows
+        ]
+
+
+def get_series_name() -> list[dict]:
+    """获取所有系列信息（含 series_id/cn_name/jp_name/aliases）"""
+    query = """
+    SELECT series_id, cn_name, jp_name, aliases
+    FROM series
+    """
+    with get_connection(DATABASE, True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        return [
+            {
+                "series_id": row[0],
+                "cn_name": row[1],
+                "jp_name": row[2],
+                "aliases": row[3],
+            }
+            for row in rows
+        ]
+
+def get_maker_id_by_name(name: str) -> int | None:
+    '''通过片商名字返回片商id,要求name为片商的cn_name或jp_name或aliases中的一个，绝对匹配,不区分大小写，
+    但是aliases是逗号分割的，所以需要分割后进行匹配'''
+    target = (name or "").strip().lower()
+    if not target:
+        return None
+
+    query = """
+    SELECT maker_id, cn_name, jp_name, aliases
+    FROM maker
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            for maker_id, cn_name, jp_name, aliases in rows:
+                if str(cn_name or "").strip().lower() == target:
+                    return maker_id
+                if str(jp_name or "").strip().lower() == target:
+                    return maker_id
+                alias_parts = [a.strip().lower() for a in str(aliases or "").split(",") if a and a.strip()]
+                if target in alias_parts:
+                    return maker_id
+    except sqlite3.Error as e:
+        logging.info(f"get_maker_id_by_name 查询时数据库错误: {e}")
+    return None
+
+
+def get_label_id_by_name(name: str) -> int | None:
+    """通过厂牌名字返回厂牌 id，支持 cn/jp/aliases 绝对匹配（忽略大小写）"""
+    target = (name or "").strip().lower()
+    if not target:
+        return None
+
+    query = """
+    SELECT label_id, cn_name, jp_name, aliases
+    FROM label
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            for label_id, cn_name, jp_name, aliases in rows:
+                if str(cn_name or "").strip().lower() == target:
+                    return label_id
+                if str(jp_name or "").strip().lower() == target:
+                    return label_id
+                alias_parts = [a.strip().lower() for a in str(aliases or "").split(",") if a and a.strip()]
+                if target in alias_parts:
+                    return label_id
+    except sqlite3.Error as e:
+        logging.info(f"get_label_id_by_name 查询时数据库错误: {e}")
+    return None
+
+
+def get_series_id_by_name(name: str) -> int | None:
+    """通过系列名字返回系列 id，支持 cn/jp/aliases 绝对匹配（忽略大小写）"""
+    target = (name or "").strip().lower()
+    if not target:
+        return None
+
+    query = """
+    SELECT series_id, cn_name, jp_name, aliases
+    FROM series
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            for series_id, cn_name, jp_name, aliases in rows:
+                if str(cn_name or "").strip().lower() == target:
+                    return series_id
+                if str(jp_name or "").strip().lower() == target:
+                    return series_id
+                alias_parts = [a.strip().lower() for a in str(aliases or "").split(",") if a and a.strip()]
+                if target in alias_parts:
+                    return series_id
+    except sqlite3.Error as e:
+        logging.info(f"get_series_id_by_name 查询时数据库错误: {e}")
+    return None
+
+
+
+
 
 
 # Deprecated aliases (use new names above)

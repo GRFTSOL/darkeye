@@ -43,7 +43,7 @@ class ManagementTable(LazyWidget):
     def init_ui(self):
         self.view = TokenTableView()
         self.tableCombo=ComboBox()
-        self.tableCombo.addItems(["label","love_making","masturbation","sexual_arousal"])
+        self.tableCombo.addItems(["love_making","masturbation","sexual_arousal"])
         self.tableCombo.currentTextChanged.connect(self.on_table_changed)
 
         # 按钮
