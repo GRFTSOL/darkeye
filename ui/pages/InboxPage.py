@@ -174,8 +174,11 @@ class InboxPage(QWidget):
             return
 
         try:
-            queue_serials = {item[0] for item in manager.request_queue}
-            running_serials = set(manager.tasks.keys())
+            if hasattr(manager, "inbox_snapshot"):
+                queue_serials, running_serials = manager.inbox_snapshot()
+            else:
+                queue_serials = {item[0] for item in manager.request_queue}
+                running_serials = set(manager.tasks.keys())
         except Exception:
             return
 
