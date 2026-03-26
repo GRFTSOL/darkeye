@@ -1,6 +1,6 @@
 
-from PySide6.QtWidgets import QHBoxLayout,QVBoxLayout,QFormLayout,QWidget
-from PySide6.QtCore import Qt,QObject,Signal,Property,Signal,Slot,QThreadPool
+from PySide6.QtWidgets import QHBoxLayout,QVBoxLayout,QFormLayout,QWidget,QSizePolicy
+from PySide6.QtCore import Qt,QObject,Signal,Property,Slot,QThreadPool
 
 
 import logging
@@ -10,8 +10,9 @@ from darkeye_ui import LazyWidget
 from controller.MessageService import MessageBoxService,IMessageService
 
 from ui.basic import MovableTableView,IconPushButton
-from core.database.query import get_actress_allname
+from core.database.query import get_actress_allname, get_serial_number
 from ui.widgets import ActressAvatarDropWidget
+from ui.widgets.text.WikiTextEdit import WikiTextEdit
 from server.bridge import ServerBridge
 
 from darkeye_ui.components.toggle_switch import ToggleSwitch
@@ -39,6 +40,7 @@ class Model():
         self._minnano_id:str= None
         self._image_urlA:str= None
         self._actress_name:list[dict] = []
+        self._notes:str = ""
 
     def to_dict(self):
         return {
@@ -53,7 +55,8 @@ class Model():
             "need_update": self._need_update,
             "minnano_url": self._minnano_id,
             "image_urlA": self._image_urlA,
-            "actress_name": self._actress_name
+            "actress_name": self._actress_name,
+            "notes": self._notes
         }
 
 class ViewModel(QObject):
@@ -70,6 +73,7 @@ class ViewModel(QObject):
     minnano_id_Changed = Signal(str)
     image_urlA_Changed = Signal(str)
     actress_name_Changed = Signal(list)
+    notes_Changed = Signal(str)
 
     def __init__(self, model:Model=None,message_service:IMessageService=None):
         super().__init__()
@@ -177,6 +181,18 @@ class ViewModel(QObject):
 
     actress_name = Property(list, get_actress_name, set_actress_name, notify=actress_name_Changed)
 
+    def get_notes(self):
+        return self.model._notes
+    def set_notes(self, value: str):
+        if not value:
+            value = ""
+        normalized = value.strip()
+        if self.model._notes != normalized:
+            self.model._notes = normalized
+            self.notes_Changed.emit(normalized)
+
+    notes = Property(str, get_notes, set_notes, notify=notes_Changed)
+
     def get_minnano_id(self):
         return self.model._minnano_id
     def set_minnano_id(self, value):
@@ -218,6 +234,7 @@ class ViewModel(QObject):
         self.set_image_urlA(actress.get("image_urlA") or "")
         self.set_actress_name(get_actress_allname(self.actress_id))
         self.set_need_update(actress.get("need_update")or False)
+        self.set_notes(actress.get("notes") or "")
 
 
     @Slot()
@@ -403,12 +420,10 @@ class ViewModel(QObject):
     @Slot()
     def show_actress(self):
         '''跳转到展示单个女优界面'''
-        #from controller.GlobalSignalBus import global_signals
         logging.debug(f"准备跳转展示女优界面{self.get_actress_id()}")
-        #global_signals.actress_clicked.emit(self.get_actress_id())
-        # 使用路由替代信号跳转
+
         from ui.navigation.router import Router
-        Router.instance().push("actress", actress_id=self.get_actress_id())
+        Router.instance().push("single_actress", actress_id=self.get_actress_id())
 
 class ModifyActressPage(LazyWidget):
     '''
@@ -433,6 +448,18 @@ class ModifyActressPage(LazyWidget):
         mainlayout.addLayout(hlayout)
         self.moveable_name=MovableTableView()
         self.avatar=ActressAvatarDropWidget("actress")
+
+        self.notes_panel = QWidget()
+        notes_vlayout = QVBoxLayout(self.notes_panel)
+        notes_vlayout.setContentsMargins(0, 0, 0, 0)
+        notes_vlayout.addWidget(Label("自由记录"))
+        self.input_notes = WikiTextEdit()
+        self.input_notes.set_completer_func(get_serial_number)
+        self.input_notes.setMinimumWidth(280)
+        self.input_notes.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        notes_vlayout.addWidget(self.input_notes, 1)
 
         self.basic=QWidget()
         self.basic.setFixedWidth(300)
@@ -486,8 +513,8 @@ class ModifyActressPage(LazyWidget):
 
         
         hlayout.addWidget(self.basic)
-        hlayout.addWidget(self.moveable_name)
-        hlayout.addStretch()
+        hlayout.addWidget(self.moveable_name, 2)
+        hlayout.addWidget(self.notes_panel, 1)
 
 
     def config(self):
@@ -496,6 +523,7 @@ class ModifyActressPage(LazyWidget):
         self.msg=MessageBoxService(self)#弹窗服务
         self.model=Model()
         self.vm = ViewModel(self.model,self.msg)#依赖注入
+        self._notes_binding_lock = False
 
     
     def signal_connect(self):
@@ -548,6 +576,25 @@ class ModifyActressPage(LazyWidget):
             lambda: self.vm.set_image_urlA(self.avatar.get_image())
         )
 
+        self.input_notes.textChanged.connect(self._notes_ui_to_vm)
+        self.vm.notes_Changed.connect(self._notes_vm_to_ui)
+
+    def _notes_ui_to_vm(self):
+        if self._notes_binding_lock:
+            return
+        self._notes_binding_lock = True
+        self.vm.set_notes(self.input_notes.toPlainText())
+        self._notes_binding_lock = False
+
+    def _notes_vm_to_ui(self, text: str):
+        if self._notes_binding_lock:
+            return
+        self._notes_binding_lock = True
+        self.input_notes.blockSignals(True)
+        self.input_notes.clear()
+        self.input_notes.setPlainText(text or "")
+        self.input_notes.blockSignals(False)
+        self._notes_binding_lock = False
 
     def update(self,actress_id:int):
         '''加载'''

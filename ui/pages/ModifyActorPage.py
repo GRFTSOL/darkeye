@@ -1,5 +1,5 @@
 
-from PySide6.QtWidgets import QHBoxLayout,QVBoxLayout,QFormLayout,QWidget
+from PySide6.QtWidgets import QHBoxLayout,QVBoxLayout,QFormLayout,QWidget,QSizePolicy
 from PySide6.QtCore import Qt,QObject,Signal,Property,Slot
 
 
@@ -8,12 +8,13 @@ import logging
 from darkeye_ui import LazyWidget
 from controller.MessageService import MessageBoxService,IMessageService
 from ui.basic import MovableTableView
-from core.database.query import get_actor_allname
+from core.database.query import get_actor_allname, get_serial_number
 from darkeye_ui.components.button import Button
 from darkeye_ui.components.label import Label
 from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.token_spin_box import TokenSpinBox
 from ui.widgets import ActressAvatarDropWidget
+from ui.widgets.text.WikiTextEdit import WikiTextEdit
 
 
 class Model():
@@ -25,6 +26,7 @@ class Model():
         self._fat:int=None
         self._image_url:str= None
         self._actor_name:list[dict] = []
+        self._notes:str = ""
 
     def to_dict(self):
         return {
@@ -32,7 +34,8 @@ class Model():
             "fat":self._fat,
             "actor_id": self._actor_id,
             "image_url": self._image_url,
-            "actor_name": self._actor_name
+            "actor_name": self._actor_name,
+            "notes": self._notes
         }
 
 class ViewModel(QObject):
@@ -43,7 +46,7 @@ class ViewModel(QObject):
     actor_name_Changed = Signal(list)  
     fat_Changed=Signal(int)
     handsome_Changed=Signal(int)
-
+    notes_Changed = Signal(str)
 
     def __init__(self, model:Model=None,message_service:IMessageService=None):
         super().__init__()
@@ -96,6 +99,18 @@ class ViewModel(QObject):
 
     actor_name = Property(list, get_actor_name, set_actor_name, notify=actor_name_Changed)
 
+    def get_notes(self):
+        return self.model._notes
+    def set_notes(self, value: str):
+        if not value:
+            value = ""
+        normalized = value.strip()
+        if self.model._notes != normalized:
+            self.model._notes = normalized
+            self.notes_Changed.emit(normalized)
+
+    notes = Property(str, get_notes, set_notes, notify=notes_Changed)
+
     def load(self,actor_id:int):
         '''加载'''
         from core.database.query import get_actor_info
@@ -109,6 +124,7 @@ class ViewModel(QObject):
         self.set_actor_id(actor_id)
         self.set_image_url(actor.get("image_url") or "")
         self.set_actor_name(get_actor_allname(self.actor_id))
+        self.set_notes(actor.get("notes") or "")
 
     @Slot()
     def submit(self):
@@ -182,6 +198,18 @@ class ModifyActorPage(LazyWidget):
         self.moveable_name=MovableTableView()
         self.avatar=ActressAvatarDropWidget("actor")
 
+        self.notes_panel = QWidget()
+        notes_vlayout = QVBoxLayout(self.notes_panel)
+        notes_vlayout.setContentsMargins(0, 0, 0, 0)
+        notes_vlayout.addWidget(Label("自由记录"))
+        self.input_notes = WikiTextEdit()
+        self.input_notes.set_completer_func(get_serial_number)
+        self.input_notes.setMinimumWidth(280)
+        self.input_notes.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        notes_vlayout.addWidget(self.input_notes, 1)
+
         self.input_handsome=TokenSpinBox()
         self.input_handsome.setRange(0, 2)
 
@@ -205,8 +233,8 @@ class ModifyActorPage(LazyWidget):
 
         
         hlayout.addWidget(self.basic)
-        hlayout.addWidget(self.moveable_name)
-        hlayout.addStretch()
+        hlayout.addWidget(self.moveable_name, 2)
+        hlayout.addWidget(self.notes_panel, 1)
 
 
     def config(self):
@@ -215,6 +243,7 @@ class ModifyActorPage(LazyWidget):
         self.msg=MessageBoxService(self)#弹窗服务
         self.model=Model()
         self.vm = ViewModel(self.model,self.msg)#依赖注入
+        self._notes_binding_lock = False
 
     
     def signal_connect(self):
@@ -245,6 +274,25 @@ class ModifyActorPage(LazyWidget):
             lambda: self.vm.set_image_url(self.avatar.get_image())
         )
 
+        self.input_notes.textChanged.connect(self._notes_ui_to_vm)
+        self.vm.notes_Changed.connect(self._notes_vm_to_ui)
+
+    def _notes_ui_to_vm(self):
+        if self._notes_binding_lock:
+            return
+        self._notes_binding_lock = True
+        self.vm.set_notes(self.input_notes.toPlainText())
+        self._notes_binding_lock = False
+
+    def _notes_vm_to_ui(self, text: str):
+        if self._notes_binding_lock:
+            return
+        self._notes_binding_lock = True
+        self.input_notes.blockSignals(True)
+        self.input_notes.clear()
+        self.input_notes.setPlainText(text or "")
+        self.input_notes.blockSignals(False)
+        self._notes_binding_lock = False
 
     def update(self,actor_id:int):
         '''加载'''

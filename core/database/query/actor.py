@@ -16,7 +16,8 @@ def get_actor_info(actor_id: int) -> dict:
         a.image_url,
         a.birthday,
         a.handsome,
-        a.fat
+        a.fat,
+        a.notes
     FROM actor a
     LEFT JOIN actor_name n
         ON n.actor_id = a.actor_id

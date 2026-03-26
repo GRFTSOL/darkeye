@@ -23,7 +23,8 @@ def get_actress_info(actress_id: int) -> dict:
         a.cup,
         a.debut_date,
         a.need_update,
-        a.minnano_url
+        a.minnano_url,
+        a.notes
     FROM actress a
     LEFT JOIN actress_name n
         ON n.actress_id = a.actress_id
