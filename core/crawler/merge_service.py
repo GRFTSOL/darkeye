@@ -54,6 +54,7 @@ def merge_crawl_results(results: Dict[str, dict], canonical_serial: str) -> Craw
         or javdb_result.get("actress")
         or []
     )
+    #这里最好加一个屏蔽词
 
     def _urls(x):
         if x is None:
@@ -67,14 +68,22 @@ def merge_crawl_results(results: Dict[str, dict], canonical_serial: str) -> Craw
     serial_lower = canonical_serial.lower()
     cover_list.append("https://fourhoi.com/" + serial_lower + "/cover-n.jpg")
 
-    maker = avdanyuwiki_result.get(
-        "maker",
-        javlib_result.get("maker", javdb_result.get("maker", "")),
+    maker = (
+        avdanyuwiki_result.get("maker")
+        or javlib_result.get("maker")
+        or javdb_result.get("maker")
+        or ""
     )
-    series = avdanyuwiki_result.get("series", javdb_result.get("series", ""))
-    label = avdanyuwiki_result.get(
-        "label",
-        javlib_result.get("label", javdb_result.get("label", "")),
+    series = (
+        avdanyuwiki_result.get("series")
+        or javdb_result.get("series")
+        or ""
+    )
+    label = (
+        avdanyuwiki_result.get("label")
+        or javlib_result.get("label")
+        or javdb_result.get("label")
+        or ""
     )
 
     tag_list = avdanyuwiki_result.get("tag_list") or []
