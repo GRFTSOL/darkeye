@@ -81,7 +81,7 @@ class SearchTable(LazyWidget):
         if not file_path.endswith(".csv"):
             file_path += ".csv"
 
-        base_sql = getattr(self, "query_sql", "SELECT * FROM v_work_all_info")
+        base_sql = getattr(self, "query_sql", "SELECT * FROM v_work_avg_age_info")
         ok = export_sql_to_csv(base_sql, file_path, DATABASE)
 
         if ok:

@@ -399,7 +399,7 @@ WHERE cn LIKE ? OR jp LIKE ?
             query += "JOIN priv.masturbation  ON priv.masturbation.work_id=work.work_id\n"
 
         if self.order == "拍摄年龄顺序" or self.order == "拍摄年龄逆序":
-            query += "JOIN v_work_all_info v ON work.work_id = v.work_id\n"
+            query += "JOIN v_work_avg_age_info v ON work.work_id = v.work_id\n"
 
         if self.actress:
             query += """
@@ -471,9 +471,9 @@ HAVING COUNT(DISTINCT wtr2.tag_id) = ?
             case "发布时间逆序":
                 order = "ORDER BY work.release_date DESC\n"
             case "拍摄年龄顺序":
-                order = "ORDER BY (SELECT avg_age FROM v_work_all_info WHERE work_id=work.work_id)\n"
+                order = "ORDER BY (SELECT avg_age FROM v_work_avg_age_info WHERE work_id=work.work_id)\n"
             case "拍摄年龄逆序":
-                order = "ORDER BY (SELECT avg_age FROM v_work_all_info WHERE work_id=work.work_id) DESC\n"
+                order = "ORDER BY (SELECT avg_age FROM v_work_avg_age_info WHERE work_id=work.work_id) DESC\n"
             case "添加逆序":
                 order = "ORDER BY work.create_time DESC\n"
             case "添加顺序":

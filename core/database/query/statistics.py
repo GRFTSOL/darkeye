@@ -28,8 +28,8 @@ def fetch_work_actress_avg_age(scope: int) -> list[tuple]:
             SELECT
             avg_age ,
             1 AS weight
-            FROM v_work_all_info
-            JOIN priv.favorite_work fav ON fav.work_id=v_work_all_info.work_id
+            FROM v_work_avg_age_info
+            JOIN priv.favorite_work fav ON fav.work_id=v_work_avg_age_info.work_id
             WHERE avg_age is not NULL
             '''
         case 1:
@@ -37,8 +37,8 @@ def fetch_work_actress_avg_age(scope: int) -> list[tuple]:
 SELECT
     avg_age ,
      1 AS weight
-FROM v_work_all_info
-JOIN masturbation_count ON masturbation_count.work_id=v_work_all_info.work_id
+FROM v_work_avg_age_info
+JOIN masturbation_count ON masturbation_count.work_id=v_work_avg_age_info.work_id
 WHERE avg_age is not NULL
             '''
         case 2:
@@ -46,8 +46,8 @@ WHERE avg_age is not NULL
 SELECT
     avg_age ,
     masturbation_count.masturbation_count AS weight
-FROM v_work_all_info
-JOIN masturbation_count ON masturbation_count.work_id=v_work_all_info.work_id
+FROM v_work_avg_age_info
+JOIN masturbation_count ON masturbation_count.work_id=v_work_avg_age_info.work_id
 WHERE avg_age is not NULL
             '''
         case -1:
@@ -56,7 +56,7 @@ WHERE avg_age is not NULL
                 avg_age,
                 1 AS weight
             FROM
-                v_work_all_info
+                v_work_avg_age_info
             WHERE avg_age is not NULL
             '''
     with get_connection(DATABASE, True) as conn:
@@ -408,15 +408,15 @@ def fetch_top_studios_by_scope(scope: int) -> list[tuple]:
         case 0:
             query = '''
             SELECT
-                studio ,
+                m.cn_name AS studio,
                 COUNT(*) AS num
-            FROM
-                v_work_all_info
-            JOIN priv.favorite_work fav ON fav.work_id=v_work_all_info.work_id
+            FROM work w
+            JOIN priv.favorite_work fav ON fav.work_id = w.work_id
+            JOIN maker m ON m.maker_id = w.maker_id
             WHERE
-                studio IS NOT NULL
+                m.cn_name IS NOT NULL
             GROUP BY
-                studio
+                m.cn_name
             ORDER BY
                 num DESC
             LIMIT 20
@@ -424,48 +424,47 @@ def fetch_top_studios_by_scope(scope: int) -> list[tuple]:
         case 1:
             query = f'''WITH {masturbationsql}
             SELECT
-                studio ,
+                m.cn_name AS studio,
                 COUNT(*) AS num
-            FROM
-                v_work_all_info
-            JOIN masturbation_count ON masturbation_count.work_id=v_work_all_info.work_id
+            FROM work w
+            JOIN masturbation_count mc ON mc.work_id = w.work_id
+            JOIN maker m ON m.maker_id = w.maker_id
             WHERE
-                studio IS NOT NULL
+                m.cn_name IS NOT NULL
             GROUP BY
-                studio
+                m.cn_name
             ORDER BY
                 num DESC
             LIMIT 20
             '''
         case 2:
             query = f'''
-WITH {masturbationsql}
-SELECT
-    studio ,
-    sum(masturbation_count.masturbation_count) AS num
-FROM
-    v_work_all_info
-JOIN masturbation_count ON masturbation_count.work_id=v_work_all_info.work_id
-WHERE
-    studio IS NOT NULL
-
-GROUP BY
-    studio
-ORDER BY
-    num DESC
-LIMIT 20
-'''
+    WITH {masturbationsql}
+    SELECT
+        m.cn_name AS studio,
+        SUM(mc.masturbation_count) AS num
+    FROM work w
+    JOIN masturbation_count mc ON mc.work_id = w.work_id
+    JOIN maker m ON m.maker_id = w.maker_id
+    WHERE
+        m.cn_name IS NOT NULL
+    GROUP BY
+        m.cn_name
+    ORDER BY
+        num DESC
+    LIMIT 20
+    '''
         case -1:
             query = '''
             SELECT
-                studio ,
+                m.cn_name AS studio,
                 COUNT(*) AS num
-            FROM
-                v_work_all_info
+            FROM work w
+            JOIN maker m ON m.maker_id = w.maker_id
             WHERE
-                studio IS NOT NULL
+                m.cn_name IS NOT NULL
             GROUP BY
-                studio
+                m.cn_name
             ORDER BY
                 num DESC
             LIMIT 20

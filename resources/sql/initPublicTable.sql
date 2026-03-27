@@ -315,4 +315,39 @@ BEGIN
     SET update_time = DATETIME('now', 'localtime')
     WHERE work_id = OLD.work_id;
 END;
+
+CREATE VIEW v_work_avg_age_info AS--查询作品的基本数据的视图，这个非常的长
+WITH actress_age_at_release AS (--计算每个女优发布作品的年龄
+  SELECT
+    w.work_id,
+    a.actress_id,
+    w.serial_number,
+    w.release_date,
+    a.birthday,
+    -- 使用 julianday 计算日期差（以天为单位），然后除以 365.25 得到年龄
+    (julianday(w.release_date) - julianday(a.birthday)) / 365.25 AS age_at_release
+  FROM work w
+  JOIN work_actress_relation war ON w.work_id = war.work_id
+  JOIN actress a ON war.actress_id = a.actress_id
+  WHERE w.release_date IS NOT NULL AND a.birthday IS NOT NULL
+),
+average_age_per_work AS (--辅助计算年龄的表
+  SELECT
+    work_id,
+    serial_number,
+    ROUND(AVG(age_at_release), 1)-0.45 AS avg_age_at_release--假设拍摄后5个多月发布
+  FROM actress_age_at_release
+  GROUP BY work_id
+)
+SELECT --水平计算表，然后统一合并
+	w.work_id,
+    w.serial_number AS serial_number,
+	(SELECT avg_age_at_release FROM average_age_per_work WHERE work_id=w.work_id)AS avg_age
+FROM 
+    work w;
+
+
+
+
+
 COMMIT;
