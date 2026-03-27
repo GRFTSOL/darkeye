@@ -64,7 +64,7 @@ class UpdateManyTabPage(LazyWidget):
         )
         self.btn_update_needactress.clicked.connect(self.searchActressinfo)
         self.btn_update_maker_by_knowledge.clicked.connect(self.task_update_maker_by_prefix)
-        self.crawler_auto_page.btn_get_crawler.setToolTip("根据指定字段，补充爬取")
+        self.crawler_auto_page.btn_get_crawler.setToolTip("根据指定字段，补充爬取，该功能为对所有的片进行筛选，只对有空字段的进行爬取，而且只更新空字段")
         self.crawler_auto_page.btn_get_crawler.clicked.connect(self.bulk_crawl_empty_fields)
 
 

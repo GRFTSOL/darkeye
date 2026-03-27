@@ -5,7 +5,7 @@ from .connection import get_connection
 import logging
 from pathlib import Path
 import json
-from config import SQLPATH
+from config import SQLPATH, resource_path
 
 def get_db_version(conn:Connection):
     cur = conn.cursor()
@@ -45,6 +45,11 @@ def upgrade_public_db(conn, current_version):
             sql_script = f.read()
         conn.executescript(sql_script)  # 一次性执行建库SQL（使用传入的连接）
         conn.commit()
+
+        import_label_json(resource_path("resources/config/label.json"))
+        import_maker_prefix_json(resource_path("resources/config/maker_prefix.json"))
+        import_series_json(resource_path("resources/config/series.json"))
+
         logging.info("公共数据库迁移完成1.0 → 2升级")
 
 
