@@ -105,7 +105,9 @@ class SeriesManagementPage(LazyWidget):
             },
         )
         if not self.model.refresh():
-            QMessageBox.critical(self, "错误", f"加载表 series 失败: {self.model.lastError().text()}")
+            QMessageBox.critical(
+                self, "错误", f"加载表 series 失败: {self.model.lastError().text()}"
+            )
             return
 
         self.view.setModel(self.model)
@@ -262,7 +264,9 @@ class SeriesManagementPage(LazyWidget):
     @Slot()
     def save_changes(self):
         if not self.model.submitAll():
-            QMessageBox.critical(self, "错误", f"保存失败: {self.model.lastError().text()}")
+            QMessageBox.critical(
+                self, "错误", f"保存失败: {self.model.lastError().text()}"
+            )
             return
         QMessageBox.information(self, "提示", "保存成功")
         from controller.GlobalSignalBus import global_signals
@@ -278,7 +282,9 @@ class SeriesManagementPage(LazyWidget):
     @Slot()
     def refresh_data(self):
         if not self.model.refresh():
-            QMessageBox.critical(self, "刷新错误", f"刷新 series 失败: {self.model.lastError().text()}")
+            QMessageBox.critical(
+                self, "刷新错误", f"刷新 series 失败: {self.model.lastError().text()}"
+            )
             return
         self.mapper.toFirst()
         logging.info("series 数据已刷新")
@@ -325,7 +331,11 @@ class SeriesManagementPage(LazyWidget):
             target_row = cursor.fetchone()
 
             if not source_row or not target_row:
-                logging.warning("重定向失败：系列不存在 source=%s target=%s", source_series_id, target_series_id)
+                logging.warning(
+                    "重定向失败：系列不存在 source=%s target=%s",
+                    source_series_id,
+                    target_series_id,
+                )
                 conn.rollback()
                 return False
 
@@ -333,7 +343,11 @@ class SeriesManagementPage(LazyWidget):
             _, _, target_aliases = target_row
 
             source_name = str(source_cn_name or source_jp_name or "").strip()
-            alias_items = [a.strip() for a in str(target_aliases or "").split(",") if a and a.strip()]
+            alias_items = [
+                a.strip()
+                for a in str(target_aliases or "").split(",")
+                if a and a.strip()
+            ]
             if source_name:
                 alias_items.append(source_name)
 

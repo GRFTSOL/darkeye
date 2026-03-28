@@ -1,5 +1,6 @@
 # darkeye_ui/components/sidebar2.py - 侧边栏导航组件
 """侧边栏：八边形按钮列，hover 呼出 tooltip，点击选中，令牌驱动。"""
+
 from pathlib import Path
 from typing import Optional, Sequence, Union, TYPE_CHECKING
 
@@ -39,6 +40,7 @@ def _resolve_icon(
     # 回退：尝试从应用 config 获取（兼容旧用法）
     try:
         from config import ICONS_PATH  # type: ignore[import-untyped]
+
         return None, Path(ICONS_PATH) / icon_name
     except ImportError as exc:
         warn_once(
@@ -112,7 +114,9 @@ class Sidebar2(QWidget):
             btn.installEventFilter(self)
             layout.addWidget(btn, alignment=Qt.AlignmentFlag.AlignHCenter)
             self._buttons[mid] = btn
-        self._btn_to_text = {self._buttons[mid]: text for mid, text, _ in self.menu_defs}
+        self._btn_to_text = {
+            self._buttons[mid]: text for mid, text, _ in self.menu_defs
+        }
         layout.addStretch(1)
 
         if self.menu_defs:

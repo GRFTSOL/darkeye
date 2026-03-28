@@ -207,7 +207,9 @@ class WorkspaceManager:
         pane.pane_empty.connect(self._on_pane_empty)
         pane.set_drag_start_callback(self._drag_overlay.activate)
         pane.set_drag_end_callback(self._drag_overlay.deactivate)
-        pane.set_get_content_closeable(lambda cid: self._content_closeable.get(cid, True))
+        pane.set_get_content_closeable(
+            lambda cid: self._content_closeable.get(cid, True)
+        )
         # 不再对每个 pane 设置 drop_handler，由 DragDropOverlay 统一命中与执行
 
     def _on_pane_empty(self, pane: PaneWidget) -> None:
@@ -273,8 +275,16 @@ class WorkspaceManager:
         if content_id in pane.content_ids():
             content_id = self.new_content_id()
         self._content_closeable[content_id] = content_config._closeable
-        title = content_config._title if content_config._title is not None else content_config.content_id
-        widget = content_config._widget if content_config._widget is not None else _make_placeholder_content(content_config.content_id)
+        title = (
+            content_config._title
+            if content_config._title is not None
+            else content_config.content_id
+        )
+        widget = (
+            content_config._widget
+            if content_config._widget is not None
+            else _make_placeholder_content(content_config.content_id)
+        )
         icon = content_config._icon
         pane.add_content(content_id, title, widget, icon=icon)
 
@@ -365,4 +375,3 @@ class WorkspaceManager:
         if content_id is None:
             content_id = self.new_content_id()
         return ContentConfig(content_id)
-

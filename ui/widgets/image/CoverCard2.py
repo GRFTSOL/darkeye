@@ -12,7 +12,6 @@ from utils.utils import replace_sensitive
 from ui.navigation.router import Router
 from darkeye_ui.components.label import Label
 
-
 # 与 CoverImageFixed.FIXED_SIZE 一致；卡片总宽高固定
 _IMG_W = 240
 _IMG_H = 162
@@ -62,19 +61,19 @@ class CoverCard2(QWidget):
         else:
             self._path = Path(WORKCOVER_PATH / image_path)
 
-        self.image_label = CoverImageFixed(self._path, self._work_id, standard, green_mode)
+        self.image_label = CoverImageFixed(
+            self._path, self._work_id, standard, green_mode
+        )
         self.image_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         self.title_label = Label(_title_for_label(title, green_mode))
-        self.title_label.setStyleSheet(
-            """
+        self.title_label.setStyleSheet("""
             QLabel {
                 font-size: 12px;
                 font-family: 'Microsoft YaHei';
                 font-weight: bold;
             }
-        """
-        )
+        """)
         self.serial_number = serial_number
         self.serial_number_label = ClickableLabel(serial_number)
         self.serial_number_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -89,15 +88,13 @@ class CoverCard2(QWidget):
         self.serial_number_label.setAlignment(Qt.AlignCenter)
         self.serial_number_label.setFixedHeight(_SERIAL_H)
         self.serial_number_label.setFixedWidth(_IMG_W)
-        self.serial_number_label.setStyleSheet(
-            """
+        self.serial_number_label.setStyleSheet("""
             QLabel {
                 font-size: 13px;
                 font-family: 'Microsoft YaHei';
                 font-weight: bold;
             }
-        """
-        )
+        """)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(_MARGIN_H, _MARGIN_TOP, _MARGIN_H, _MARGIN_BOTTOM)
@@ -118,7 +115,9 @@ class CoverCard2(QWidget):
 
     def signal_connect(self):
         self.image_label.jump_to_modify_work.connect(
-            lambda: Router.instance().push("work_edit", serial_number=self.serial_number)
+            lambda: Router.instance().push(
+                "work_edit", serial_number=self.serial_number
+            )
         )
         from controller.GlobalSignalBus import global_signals
 
@@ -194,12 +193,16 @@ class CoverCard2(QWidget):
             self.background_color = self.backgroundcolor_from_tagid(data.get("tag_id"))
             self.update()
         except Exception:
-            logging.exception("CoverCard2._update_card 执行失败: work_id=%s", self._work_id)
+            logging.exception(
+                "CoverCard2._update_card 执行失败: work_id=%s", self._work_id
+            )
 
     @Slot(bool)
     def _update_green_mode(self, green_mode: bool):
         self._green_mode = green_mode
-        self.title_label.setText(_title_for_label(self.original_title, self._green_mode))
+        self.title_label.setText(
+            _title_for_label(self.original_title, self._green_mode)
+        )
 
     def paintEvent(self, event):
         painter = QPainter(self)

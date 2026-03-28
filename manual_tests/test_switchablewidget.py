@@ -1,15 +1,25 @@
-from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QStackedWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QWidget,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QStackedWidget,
+)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPalette
 
+
 class ColorWidget(QWidget):
     """简单颜色背景 QWidget"""
+
     def __init__(self, color: str):
         super().__init__()
         self.setAutoFillBackground(True)
         palette = self.palette()
         palette.setColor(QPalette.Window, QColor(color))
         self.setPalette(palette)
+
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -54,6 +64,7 @@ class MainWindow(QWidget):
         index = self.stack.currentIndex()
         index = (index + 1) % self.stack.count()  # 循环切换
         self.stack.setCurrentIndex(index)
+
 
 if __name__ == "__main__":
     app = QApplication([])

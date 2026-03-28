@@ -30,4 +30,3 @@ class TokenGroupBox(QGroupBox):
         style = self.style()
         style.unpolish(self)
         style.polish(self)
-

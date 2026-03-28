@@ -1,5 +1,6 @@
 # darkeye_ui/components/token_vertical_tab_bar.py - 竖排 TabBar，由设计令牌驱动
 """竖排 TabBar，文字颜色由设计令牌驱动，支持主题切换。"""
+
 import re
 from typing import TYPE_CHECKING, Optional
 
@@ -64,30 +65,30 @@ class TokenVerticalTabBar(QTabBar):
     def _replace_ellipsis(self, text: str) -> str:
         if text == "" or text is None:
             return ""
-        text = text.replace("，", "\uFE10")
-        text = text.replace("、", "\uFE11")
-        text = text.replace("。", "\uFE12")
-        text = text.replace("：", "\uFE13")
-        text = text.replace("；", "\uFE14")
-        text = text.replace("！", "\uFE15")
-        text = text.replace("？", "\uFE16")
-        text = text.replace("……", "\uFE19")
-        text = text.replace("\u2026", "\uFE19")
-        text = text.replace("\u22EF", "\uFE19")
-        text = text.replace("（", "\uFE35")
-        text = text.replace("）", "\uFE36")
-        text = text.replace("【", "\uFE3B")
-        text = text.replace("】", "\uFE3C")
-        text = text.replace("《", "\uFE3D")
-        text = text.replace("》", "\uFE3E")
-        text = text.replace("〈", "\uFE3F")
-        text = text.replace("〉", "\uFE40")
-        text = text.replace("'", "\uFE41")
-        text = text.replace("'", "\uFE42")
-        text = text.replace("「", "\uFE41")
-        text = text.replace("」", "\uFE42")
-        text = text.replace("『", "\uFE43")
-        text = text.replace("』", "\uFE44")
+        text = text.replace("，", "\ufe10")
+        text = text.replace("、", "\ufe11")
+        text = text.replace("。", "\ufe12")
+        text = text.replace("：", "\ufe13")
+        text = text.replace("；", "\ufe14")
+        text = text.replace("！", "\ufe15")
+        text = text.replace("？", "\ufe16")
+        text = text.replace("……", "\ufe19")
+        text = text.replace("\u2026", "\ufe19")
+        text = text.replace("\u22ef", "\ufe19")
+        text = text.replace("（", "\ufe35")
+        text = text.replace("）", "\ufe36")
+        text = text.replace("【", "\ufe3b")
+        text = text.replace("】", "\ufe3c")
+        text = text.replace("《", "\ufe3d")
+        text = text.replace("》", "\ufe3e")
+        text = text.replace("〈", "\ufe3f")
+        text = text.replace("〉", "\ufe40")
+        text = text.replace("'", "\ufe41")
+        text = text.replace("'", "\ufe42")
+        text = text.replace("「", "\ufe41")
+        text = text.replace("」", "\ufe42")
+        text = text.replace("『", "\ufe43")
+        text = text.replace("』", "\ufe44")
         return text
 
     def split_text_blocks(self, text: str):
@@ -155,12 +156,16 @@ class TokenVerticalTabBar(QTabBar):
                         painter.save()
                         painter.translate(x + char_width / 2, y + block_w / 2)
                         painter.rotate(90)
-                        painter.drawText(-block_w / 2, fm.ascent() - br.height() / 2, block)
+                        painter.drawText(
+                            -block_w / 2, fm.ascent() - br.height() / 2, block
+                        )
                         painter.restore()
                         y += block_w + self._line_spacing
                     else:
                         for ch in block:
-                            painter.drawText(QRect(x, y, char_width, char_height), Qt.AlignCenter, ch)
+                            painter.drawText(
+                                QRect(x, y, char_width, char_height), Qt.AlignCenter, ch
+                            )
                             y += char_height
         finally:
             painter.end()
@@ -179,9 +184,13 @@ class TokenVerticalTabBar(QTabBar):
                 total_height += block_width + self._line_spacing
             else:
                 total_height += (char_height + self._line_spacing) * len(block)
-        max_single_width = max(fm.horizontalAdvance(c) for c in text if c.strip()) if text else 0
+        max_single_width = (
+            max(fm.horizontalAdvance(c) for c in text if c.strip()) if text else 0
+        )
         min_width = int(max_single_width * 1.5) if max_single_width else 40
-        ideal_width = max_single_width + padding_horizontal * 2 if max_single_width else 60
+        ideal_width = (
+            max_single_width + padding_horizontal * 2 if max_single_width else 60
+        )
         max_width = int(max_single_width * 2.5) if max_single_width else 120
         width = max(min_width, min(ideal_width, max_width))
         return QSize(width, total_height)

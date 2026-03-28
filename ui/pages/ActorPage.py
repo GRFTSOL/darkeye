@@ -1,10 +1,10 @@
-from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QLineEdit
-from PySide6.QtCore import Slot,QTimer
-import sqlite3,logging
+from PySide6.QtWidgets import QHBoxLayout, QWidget, QVBoxLayout, QLineEdit
+from PySide6.QtCore import Slot, QTimer
+import sqlite3, logging
 
 from config import DATABASE
 from core.database.query import get_actorname
-from ui.widgets import ActorCard,CompleterLineEdit
+from ui.widgets import ActorCard, CompleterLineEdit
 from darkeye_ui.components import LazyScrollArea
 from darkeye_ui import LazyWidget
 
@@ -13,45 +13,45 @@ from darkeye_ui.components.rotate_button import RotateButton
 from darkeye_ui.components.shake_button import ShakeButton
 from darkeye_ui.components.combo_box import ComboBox
 
+
 class ActorPage(LazyWidget):
     def __init__(self):
         super().__init__()
-        
+
     def _lazy_load(self):
         logging.info("----------加载男优界面----------")
         self.last_scroll_value = 0  # 上一次滚动位置
-        self.actor_name=None
+        self.actor_name = None
 
-        self.order="添加逆序"#排序默认值
-        self.cup=None
+        self.order = "添加逆序"  # 排序默认值
+        self.cup = None
 
-        #self.spacer_widget = QWidget()
-        #self.spacer_widget.setFixedHeight(70)
+        # self.spacer_widget = QWidget()
+        # self.spacer_widget.setFixedHeight(70)
 
         self.filter_widget = QWidget()
         self.filter_widget.setFixedHeight(32)
         self.filter_layout = QHBoxLayout(self.filter_widget)  # 直接传入 widget
-        self.filter_layout.setContentsMargins(10,0,10,0)
+        self.filter_layout.setContentsMargins(10, 0, 10, 0)
 
         self.actorname_input = CompleterLineEdit(get_actorname)
 
-
-        self.info=Label()#用来显示信息
+        self.info = Label()  # 用来显示信息
         self.info.setFixedWidth(100)
 
         self.actor_input = QLineEdit()
 
-        self.btn_eraser=ShakeButton(icon_name="eraser",icon_size=24,out_size=24)
-        self.btn_reload=RotateButton(icon_name="refresh_cw",icon_size=24,out_size=24)
-        #排序选择器
+        self.btn_eraser = ShakeButton(icon_name="eraser", icon_size=24, out_size=24)
+        self.btn_reload = RotateButton(
+            icon_name="refresh_cw", icon_size=24, out_size=24
+        )
+        # 排序选择器
         self.order_combo = ComboBox()
-        self.order_combo.addItems(["添加顺序","添加逆序","封面优先"])
+        self.order_combo.addItems(["添加顺序", "添加逆序", "封面优先"])
         self.order_combo.setCurrentText(self.order)
-
 
         self.filter_layout.addWidget(Label("男优"))
         self.filter_layout.addWidget(self.actorname_input)
-
 
         self.filter_layout.addWidget(self.btn_reload)
         self.filter_layout.addWidget(self.btn_eraser)
@@ -59,31 +59,31 @@ class ActorPage(LazyWidget):
 
         self.filter_layout.addWidget(self.order_combo)
 
-        #加载男优的区域
+        # 加载男优的区域
         self.lazy_area = LazyScrollArea(column_width=150)
 
-        #总体布局
+        # 总体布局
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
-        #mainlayout.addWidget(self.spacer_widget)
+        # mainlayout.addWidget(self.spacer_widget)
         mainlayout.addWidget(self.filter_widget)
         mainlayout.addWidget(self.lazy_area)
-        
+
         self.singal_connect()
 
-        self.lazy_area.set_loader(self.load_page)#这个最费时
-        self.info.setText("过滤总数:"+str(self.load_data(0,0,True)[0][0]))
+        self.lazy_area.set_loader(self.load_page)  # 这个最费时
+        self.info.setText("过滤总数:" + str(self.load_data(0, 0, True)[0][0]))
 
-        self.filter_timer = QTimer(self)#防抖动
+        self.filter_timer = QTimer(self)  # 防抖动
         self.filter_timer.setSingleShot(True)
         self.filter_timer.timeout.connect(self.apply_filter_real)
-
 
     def singal_connect(self):
         self.btn_reload.clicked.connect(self.refresh)
         self.order_combo.activated.connect(self.apply_filter)
         self.actorname_input.textChanged.connect(self.apply_filter)
         from controller.GlobalSignalBus import global_signals
+
         global_signals.actor_data_changed.connect(self.actorname_input.reload_items)
         self.btn_eraser.clicked.connect(self._clear_all_search)
 
@@ -100,45 +100,42 @@ class ActorPage(LazyWidget):
     @Slot()
     def apply_filter_real(self):
         self.actor_name = self.actorname_input.text().strip()
-        self.order=self.order_combo.currentText()
-
+        self.order = self.order_combo.currentText()
 
         self.lazy_area.reset()
         self.update_info()
 
-
     def update_info(self):
-        '''更新查询到几条数据'''
-        if self.load_data(0,0,True) is None:
+        """更新查询到几条数据"""
+        if self.load_data(0, 0, True) is None:
             self.info.setText("没有查询到数据")
         else:
-            self.info.setText("过滤总数:"+str(self.load_data(0,0,True)[0][0]))
+            self.info.setText("过滤总数:" + str(self.load_data(0, 0, True)[0][0]))
 
-
-    def load_data(self, page_index: int, page_size: int,count:bool=False)->tuple:
-        '''返回查询的数据'''
+    def load_data(self, page_index: int, page_size: int, count: bool = False) -> tuple:
+        """返回查询的数据"""
         offset = page_index * page_size
         # 动态拼接 SQL,要怎么筛逻辑都在这里改
-        params=[]
-        #基础查询
-        if count:#查询总数
-            query=f"""
+        params = []
+        # 基础查询
+        if count:  # 查询总数
+            query = f"""
 SELECT 
     count(*) AS count
 FROM actor
         """
         else:
-            query=f"""
+            query = f"""
 SELECT 
     (SELECT cn FROM actor_name WHERE actor_id = actor.actor_id AND(name_type=1))AS name,
     image_url,
     actor.actor_id
 FROM actor
         """
-        
+
         # 拼withsql
         if self.actor_name:
-            withsql=f'''
+            withsql = f"""
 WITH filtered_actores AS (--先筛选名字中的actor_id,单独的
 SELECT 
     DISTINCT actor_id
@@ -146,60 +143,66 @@ FROM
     actor_name
 WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
 )
-            '''
-            query=withsql+query
-            params.extend([f"%{self.actor_name}%", f"%{self.actor_name}%", f"%{self.actor_name}%", f"%{self.actor_name}%"])
+            """
+            query = withsql + query
+            params.extend(
+                [
+                    f"%{self.actor_name}%",
+                    f"%{self.actor_name}%",
+                    f"%{self.actor_name}%",
+                    f"%{self.actor_name}%",
+                ]
+            )
 
         # 拼join
         if self.actor_name:
-            join="JOIN filtered_actores f ON actor.actor_id = f.actor_id \n"
-            query+=join
+            join = "JOIN filtered_actores f ON actor.actor_id = f.actor_id \n"
+            query += join
 
         # 拼where
-        where="WHERE 1=1\n"#占位
+        where = "WHERE 1=1\n"  # 占位
         match self.order:
             case "年龄顺序":
-                where="WHERE actor.birthday !=''AND actor.birthday is NOT NULL\n"
+                where = "WHERE actor.birthday !=''AND actor.birthday is NOT NULL\n"
             case "年龄逆序":
-                where="WHERE actor.birthday !=''AND actor.birthday is NOT NULL\n"
+                where = "WHERE actor.birthday !=''AND actor.birthday is NOT NULL\n"
 
-        query+=where#比拼
-
+        query += where  # 比拼
 
         # 拼order
         match self.order:
             case "添加顺序":
-                order="ORDER BY actor.create_time \n"
+                order = "ORDER BY actor.create_time \n"
             case "添加逆序":
-                order="ORDER BY actor.create_time DESC\n"
+                order = "ORDER BY actor.create_time DESC\n"
             case "封面优先":
-                order="ORDER BY CASE WHEN actor.image_url IS NOT NULL AND actor.image_url != '' THEN 0 ELSE 1 END"
+                order = "ORDER BY CASE WHEN actor.image_url IS NOT NULL AND actor.image_url != '' THEN 0 ELSE 1 END"
 
         if not count:
-            query +=f"{order} LIMIT ? OFFSET ?"#最后拼这个
+            query += f"{order} LIMIT ? OFFSET ?"  # 最后拼这个
             params.extend([page_size, offset])
 
-        #logging.debug(f"actorPage Execute SQL\n{query}")
-        with sqlite3.connect(f"file:{DATABASE}?mode=ro",uri=True) as conn:
+        # logging.debug(f"actorPage Execute SQL\n{query}")
+        with sqlite3.connect(f"file:{DATABASE}?mode=ro", uri=True) as conn:
             cursor = conn.cursor()
-            cursor.execute(query,params) #这里面不能orderby random 会重复
-            results=cursor.fetchall()
+            cursor.execute(query, params)  # 这里面不能orderby random 会重复
+            results = cursor.fetchall()
         return results
 
     def load_page(self, page_index: int, page_size: int) -> list[ActorCard]:
         """返回一个页面的 actorCard 列表"""
-        result:list[ActorCard] = []
-        data=self.load_data(page_index,page_size)
+        result: list[ActorCard] = []
+        data = self.load_data(page_index, page_size)
         if not data:
             return None
-        for name, image_url,actor_id in data:
-            card = ActorCard(name,image_url,actor_id)
+        for name, image_url, actor_id in data:
+            card = ActorCard(name, image_url, actor_id)
 
             result.append(card)
         return result
-    
+
     def refresh(self):
-        '''刷新'''
+        """刷新"""
         self.lazy_area.reset()
         self.update_info()
 
@@ -211,14 +214,12 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
             # 向下滚动，隐藏顶部
             if self.filter_widget.isVisible():
                 self.filter_widget.hide()
-                #self.spacer_widget.hide()
+                # self.spacer_widget.hide()
 
         elif direction < -5:
             # 向上滚动，显示顶部
             if not self.filter_widget.isVisible():
                 self.filter_widget.show()
-                #self.spacer_widget.show()
+                # self.spacer_widget.show()
 
         self.last_scroll_value = value
-
-

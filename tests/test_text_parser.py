@@ -1,10 +1,12 @@
-import pytest,sys,os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import pytest, sys, os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core.graph.text_parser import parse_wikilinks, extract_references
 
+
 class TestWikiLinkParser:
-    
+
     def test_basic_link(self):
         """测试基本的 [[Target]] 格式"""
         text = "这是一个 [[SNIS-123]] 的测试"

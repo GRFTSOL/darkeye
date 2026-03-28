@@ -1,6 +1,6 @@
-'''
+"""
 这个包里主要都是复合控件，带项目数据，与项目需求紧密相关,并且重复用到的，如果不重复用就直接挂在UI下面了
-'''
+"""
 
 from darkeye_ui.components import CompleterLineEdit
 from .selectors.ActressSelector import ActressSelector
@@ -22,4 +22,3 @@ from .text.ClickableLabel import ClickableLabel
 
 from .SingleActressInfo import SingleActressInfo
 from .StatsOverviewCards import StatsOverviewCards
-

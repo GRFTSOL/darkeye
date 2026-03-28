@@ -5,6 +5,7 @@
 写操作完成后，调用方负责 emit 对应的 global_signals.*_changed 信号。
 详见 docs/write_ops_signal_mapping.md 映射表。
 """
+
 import logging
 import random
 import time
@@ -13,40 +14,48 @@ from utils.utils import translate_text_sync
 
 from config import DATABASE
 from .connection import get_connection
-from sqlite3 import Cursor,IntegrityError
+from sqlite3 import Cursor, IntegrityError
 from .query.work import get_works_for_auto_cn_translation
-#----------------------------------------------------------------------------------------------------------
-#                                               公共数据库的更新
-#----------------------------------------------------------------------------------------------------------
 
-def update_tag_type(tag_type_data:list[dict])->bool:
-    '''更新tag_type。调用后需 emit: global_signals.tag_data_changed'''
-    #1.计算需要删除的部分然后删除
-    #获得当前所有的tag_type_id的集合
-    conn = get_connection(DATABASE,False)
+# ----------------------------------------------------------------------------------------------------------
+#                                               公共数据库的更新
+# ----------------------------------------------------------------------------------------------------------
+
+
+def update_tag_type(tag_type_data: list[dict]) -> bool:
+    """更新tag_type。调用后需 emit: global_signals.tag_data_changed"""
+    # 1.计算需要删除的部分然后删除
+    # 获得当前所有的tag_type_id的集合
+    conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
     cursor.execute("SELECT tag_type_id FROM tag_type")
     existing_tag_type = {row[0] for row in cursor.fetchall()}
-    #比较现有的差距
-    new_tag_type=set([data["tag_type_id"] for data in tag_type_data])
-    delete_tag_type=existing_tag_type-new_tag_type
+    # 比较现有的差距
+    new_tag_type = set([data["tag_type_id"] for data in tag_type_data])
+    delete_tag_type = existing_tag_type - new_tag_type
     logging.debug(f"要删除的tag_type_id{delete_tag_type}")
 
     try:
         for tag_type_id in delete_tag_type:
-            cursor.execute("DELETE FROM tag_type WHERE tag_type_id=?",(tag_type_id,))
-            #现在没有外键会导致失误删除
+            cursor.execute("DELETE FROM tag_type WHERE tag_type_id=?", (tag_type_id,))
+            # 现在没有外键会导致失误删除
 
-        #2.计算需要添加的部分然后添加
-        #要添加的就是tag_type_id为空的
-        order=1
+        # 2.计算需要添加的部分然后添加
+        # 要添加的就是tag_type_id为空的
+        order = 1
         for data in tag_type_data:
             if not data.get("tag_type_id"):
-                cursor.execute("INSERT INTO tag_type (tag_type_name,tag_order) VALUES(?,?)",(data["tag_type_name"],order))
+                cursor.execute(
+                    "INSERT INTO tag_type (tag_type_name,tag_order) VALUES(?,?)",
+                    (data["tag_type_name"], order),
+                )
                 logging.debug(f"要添加的tag_type:{data["tag_type_name"]}")
             else:
-                cursor.execute("UPDATE tag_type SET tag_type_name=?,tag_order=? Where tag_type_id=?",(data["tag_type_name"],order,data["tag_type_id"]))
-            order+=1
+                cursor.execute(
+                    "UPDATE tag_type SET tag_type_name=?,tag_order=? Where tag_type_id=?",
+                    (data["tag_type_name"], order, data["tag_type_id"]),
+                )
+            order += 1
         conn.commit()
         logging.debug("标签类型更新成功")
         return True
@@ -57,36 +66,39 @@ def update_tag_type(tag_type_data:list[dict])->bool:
     finally:
         conn.close()
 
-#需要外键检查的
-def UpdateWorkTags(work_id, new_tag_ids)->bool:
+
+# 需要外键检查的
+def UpdateWorkTags(work_id, new_tag_ids) -> bool:
     """更高效地更新作品标签关系（只删除不再需要的，只添加新的）。调用后需 emit: global_signals.work_data_changed"""
     try:
-        conn = get_connection(DATABASE,False)
+        conn = get_connection(DATABASE, False)
         cursor = conn.cursor()
         # 1. 获取现有的标签ID集合
-        cursor.execute("SELECT tag_id FROM work_tag_relation WHERE work_id = ?", (work_id,))
+        cursor.execute(
+            "SELECT tag_id FROM work_tag_relation WHERE work_id = ?", (work_id,)
+        )
         existing_tags = {row[0] for row in cursor.fetchall()}
         new_tags = set(new_tag_ids)
-        
+
         # 2. 计算需要删除和需要添加的标签
         tags_to_remove = existing_tags - new_tags
         tags_to_add = new_tags - existing_tags
-        
+
         # 3. 执行删除（只删除不再需要的）
         if tags_to_remove:
-            placeholders = ','.join(['?'] * len(tags_to_remove))
+            placeholders = ",".join(["?"] * len(tags_to_remove))
             cursor.execute(
                 f"DELETE FROM work_tag_relation WHERE work_id = ? AND tag_id IN ({placeholders})",
-                (work_id, *tags_to_remove)
+                (work_id, *tags_to_remove),
             )
-        
+
         # 4. 执行添加（只添加新的）
         if tags_to_add:
             cursor.executemany(
                 "INSERT INTO work_tag_relation (work_id, tag_id) VALUES (?, ?)",
-                [(work_id, tag_id) for tag_id in tags_to_add]
+                [(work_id, tag_id) for tag_id in tags_to_add],
             )
-        
+
         conn.commit()
         return True
     except Exception as e:
@@ -96,58 +108,65 @@ def UpdateWorkTags(work_id, new_tag_ids)->bool:
     finally:
         conn.close()
 
-def _update_actor(cursor:Cursor,work_id:int,actor_ids:list):
-    '''更新作品的男优关系，传入一个cursor'''
+
+def _update_actor(cursor: Cursor, work_id: int, actor_ids: list):
+    """更新作品的男优关系，传入一个cursor"""
     # 3. 更新男优----------------------------------------------------------------------------
-    cursor.execute("SELECT actor_id FROM work_actor_relation WHERE work_id = ?", (work_id,))
+    cursor.execute(
+        "SELECT actor_id FROM work_actor_relation WHERE work_id = ?", (work_id,)
+    )
     existing_actor = {row[0] for row in cursor.fetchall()}
     new_actor = set(actor_ids)
-    
+
     #  计算需要删除和需要添加的男优
     actor_to_remove = existing_actor - new_actor
     actor_to_add = new_actor - existing_actor
-    
+
     #  执行删除（只删除不再需要的）
     if actor_to_remove:
-        placeholders = ','.join(['?'] * len(actor_to_remove))
+        placeholders = ",".join(["?"] * len(actor_to_remove))
         cursor.execute(
             f"DELETE FROM work_actor_relation WHERE work_id = ? AND actor_id IN ({placeholders})",
-            (work_id, *actor_to_remove)
+            (work_id, *actor_to_remove),
         )
-    
+
     #  执行添加（只添加新的）
     if actor_to_add:
         cursor.executemany(
             "INSERT INTO work_actor_relation (work_id, actor_id) VALUES (?, ?)",
-            [(work_id, tag_id) for tag_id in actor_to_add]
+            [(work_id, tag_id) for tag_id in actor_to_add],
         )
 
-def _update_actress(cursor:Cursor,work_id:int,actress_ids:list):
+
+def _update_actress(cursor: Cursor, work_id: int, actress_ids: list):
     # 2. 更新女优,用try包裹---------------------------------------------------------------------------------
-    cursor.execute("SELECT actress_id FROM work_actress_relation WHERE work_id = ?", (work_id,))
+    cursor.execute(
+        "SELECT actress_id FROM work_actress_relation WHERE work_id = ?", (work_id,)
+    )
     existing_actress = {row[0] for row in cursor.fetchall()}
     new_actress = set(actress_ids)
-    
+
     #  计算需要删除和需要添加的女优
     actress_to_remove = existing_actress - new_actress
     actress_to_add = new_actress - existing_actress
-    
+
     #  执行删除（只删除不再需要的）
     if actress_to_remove:
-        placeholders = ','.join(['?'] * len(actress_to_remove))
+        placeholders = ",".join(["?"] * len(actress_to_remove))
         cursor.execute(
             f"DELETE FROM work_actress_relation WHERE work_id = ? AND actress_id IN ({placeholders})",
-            (work_id, *actress_to_remove)
+            (work_id, *actress_to_remove),
         )
-    
+
     #  执行添加（只添加新的）
     if actress_to_add:
         cursor.executemany(
             "INSERT INTO work_actress_relation (work_id, actress_id) VALUES (?, ?)",
-            [(work_id, tag_id) for tag_id in actress_to_add]
+            [(work_id, tag_id) for tag_id in actress_to_add],
         )
 
-def _update_worktag(cursor:Cursor,work_id:int,tag_ids:list):
+
+def _update_worktag(cursor: Cursor, work_id: int, tag_ids: list):
     # 1. 更新tag
     cursor.execute("SELECT tag_id FROM work_tag_relation WHERE work_id = ?", (work_id,))
     existing_tags = {row[0] for row in cursor.fetchall()}
@@ -157,20 +176,39 @@ def _update_worktag(cursor:Cursor,work_id:int,tag_ids:list):
     tags_to_add = new_tags - existing_tags
     # 3. 执行删除（只删除不再需要的）
     if tags_to_remove:
-        placeholders = ','.join(['?'] * len(tags_to_remove))
+        placeholders = ",".join(["?"] * len(tags_to_remove))
         cursor.execute(
             f"DELETE FROM work_tag_relation WHERE work_id = ? AND tag_id IN ({placeholders})",
-            (work_id, *tags_to_remove)
+            (work_id, *tags_to_remove),
         )
     # 4. 执行添加（只添加新的）
     if tags_to_add:
         cursor.executemany(
             "INSERT INTO work_tag_relation (work_id, tag_id) VALUES (?, ?)",
-            [(work_id, tag_id) for tag_id in tags_to_add]
+            [(work_id, tag_id) for tag_id in tags_to_add],
         )
 
-def update_work_byhand(work_id,director,release_date, notes, runtime, actress_ids,actor_ids,cn_title, cn_story, jp_title, jp_story,image_url,tag_ids,maker_id,label_id,series_id,fanart=None)->bool:
-    '''更新作品的信息，默认番号是不会出错的。调用后需 emit: global_signals.work_data_changed'''
+
+def update_work_byhand(
+    work_id,
+    director,
+    release_date,
+    notes,
+    runtime,
+    actress_ids,
+    actor_ids,
+    cn_title,
+    cn_story,
+    jp_title,
+    jp_story,
+    image_url,
+    tag_ids,
+    maker_id,
+    label_id,
+    series_id,
+    fanart=None,
+) -> bool:
+    """更新作品的信息，默认番号是不会出错的。调用后需 emit: global_signals.work_data_changed"""
     try:
         maker_id = int(maker_id) if maker_id not in (None, "") else None
         label_id = int(label_id) if label_id not in (None, "") else None
@@ -182,11 +220,12 @@ def update_work_byhand(work_id,director,release_date, notes, runtime, actress_id
         if series_id is not None and series_id <= 0:
             series_id = None
 
-        conn = get_connection(DATABASE,False)
-        cursor:Cursor = conn.cursor()
-        conn.execute("PRAGMA foreign_keys = ON")#打开外键约束
+        conn = get_connection(DATABASE, False)
+        cursor: Cursor = conn.cursor()
+        conn.execute("PRAGMA foreign_keys = ON")  # 打开外键约束
         # 1. 更新基本的信息
-        cursor.execute('''
+        cursor.execute(
+            """
                         UPDATE work
                         SET director=?,
                         release_date=?,
@@ -202,13 +241,30 @@ def update_work_byhand(work_id,director,release_date, notes, runtime, actress_id
                         series_id=?,
                         fanart=?
                         WHERE work_id = ?
-''',(director,release_date,notes,runtime,cn_title,cn_story,jp_title,jp_story,image_url,maker_id,label_id,series_id,fanart,work_id,))
+""",
+            (
+                director,
+                release_date,
+                notes,
+                runtime,
+                cn_title,
+                cn_story,
+                jp_title,
+                jp_story,
+                image_url,
+                maker_id,
+                label_id,
+                series_id,
+                fanart,
+                work_id,
+            ),
+        )
 
-        _update_actress(cursor,work_id,actress_ids)
+        _update_actress(cursor, work_id, actress_ids)
 
-        _update_actor(cursor,work_id,actor_ids)
+        _update_actor(cursor, work_id, actor_ids)
 
-        _update_worktag(cursor,work_id,tag_ids)
+        _update_worktag(cursor, work_id, tag_ids)
 
         conn.commit()
         return True
@@ -219,6 +275,7 @@ def update_work_byhand(work_id,director,release_date, notes, runtime, actress_id
     finally:
         conn.close()
 
+
 def update_work_byhand_(work_id: int, **fields) -> bool:
     """
     动态更新作品的信息，传入什么字段就更新什么字段,只能更新最基本的。
@@ -227,32 +284,32 @@ def update_work_byhand_(work_id: int, **fields) -> bool:
     """
     if not fields:
         return False  # 没有字段传入，不更新
-    
+
     try:
         conn = get_connection(DATABASE, False)
         cursor = conn.cursor()
         conn.execute("PRAGMA foreign_keys = ON")  # 打开外键约束
 
         # 特殊处理 actress_ids
-        if 'actress_ids' in fields:
-            actress_ids = fields.pop('actress_ids')# 从 fields 中移除并获取值
+        if "actress_ids" in fields:
+            actress_ids = fields.pop("actress_ids")  # 从 fields 中移除并获取值
             # 执行演员关联的更新逻辑
-            _update_actress(cursor,work_id, actress_ids)
+            _update_actress(cursor, work_id, actress_ids)
 
-        if 'actor_ids' in fields:
-            actor_ids = fields.pop('actor_ids')# 从 fields 中移除并获取值
+        if "actor_ids" in fields:
+            actor_ids = fields.pop("actor_ids")  # 从 fields 中移除并获取值
             # 执行演员关联的更新逻辑
-            _update_actor(cursor,work_id, actor_ids)
-        
-        if 'tag_ids' in fields:
-            tag_ids = fields.pop('tag_ids')# 从 fields 中移除并获取值
+            _update_actor(cursor, work_id, actor_ids)
+
+        if "tag_ids" in fields:
+            tag_ids = fields.pop("tag_ids")  # 从 fields 中移除并获取值
             # 执行演员关联的更新逻辑
-            _update_worktag(cursor,work_id, tag_ids)
+            _update_worktag(cursor, work_id, tag_ids)
 
         if not fields:
             conn.commit()
             return True  # 如果没有其他字段需要更新，直接提交并返回
-        
+
         # 动态拼接 SET 子句
         set_clauses = []
         params = []
@@ -279,13 +336,13 @@ def update_work_byhand_(work_id: int, **fields) -> bool:
         conn.close()
 
 
-def update_work_actor(work_id:int,actor_ids:list)->bool:
-    '''更新作品的男优关系。调用后需 emit: global_signals.work_data_changed'''
+def update_work_actor(work_id: int, actor_ids: list) -> bool:
+    """更新作品的男优关系。调用后需 emit: global_signals.work_data_changed"""
     try:
-        conn = get_connection(DATABASE,False)
+        conn = get_connection(DATABASE, False)
         cursor = conn.cursor()
-        conn.execute("PRAGMA foreign_keys = ON")#打开外键约束
-        _update_actor(cursor,work_id,actor_ids)
+        conn.execute("PRAGMA foreign_keys = ON")  # 打开外键约束
+        _update_actor(cursor, work_id, actor_ids)
         conn.commit()
         return True
     except Exception as e:
@@ -296,201 +353,221 @@ def update_work_actor(work_id:int,actor_ids:list)->bool:
         conn.close()
 
 
-#不需要外键检查的
+# 不需要外键检查的
+
 
 def check_workcover_integrity():
-    '''检查数据库中图片地址与实际位置的完整性
-    
+    """检查数据库中图片地址与实际位置的完整性
+
     文件夹中多出来的图片给删除
     文件夹中如果少了，也就是数据库中的image_url找不到指定的文件，把库中的相对位置给删除成NULL
-    '''
+    """
     return
 
-def update_db_actress(id:int,data:dict):
-    '''更新女优名字，身材信息数据。调用后需 emit: global_signals.actress_data_changed'''
 
-    conn=get_connection(DATABASE,False)
+def update_db_actress(id: int, data: dict):
+    """更新女优名字，身材信息数据。调用后需 emit: global_signals.actress_data_changed"""
+
+    conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
-    cursor=conn.cursor()
+    cursor = conn.cursor()
 
     try:
         logging.info(f"准备更新:{data},{id}")
         cursor.execute(
             "UPDATE actress SET birthday= ?,height = ?, bust = ?, waist = ?, hip = ?, cup = ?,debut_date=?,need_update=0 WHERE actress_id = ?",
-            (data['出生日期'],data['身高'],data['胸围'],data['腰围'],data['臀围'],data['罩杯'],data['出道日期'],id)
+            (
+                data["出生日期"],
+                data["身高"],
+                data["胸围"],
+                data["腰围"],
+                data["臀围"],
+                data["罩杯"],
+                data["出道日期"],
+                id,
+            ),
         )
-        #更新英文名,假名
+        # 更新英文名,假名
 
-        cursor.execute("UPDATE actress_name SET en=?,kana=? WHERE actress_id=?",
-                (data['英文名'],data['假名'],id))
-        
+        cursor.execute(
+            "UPDATE actress_name SET en=?,kana=? WHERE actress_id=?",
+            (data["英文名"], data["假名"], id),
+        )
 
         conn.commit()
         logging.info("更新成功")
     except Exception as e:
         conn.rollback()
-        logging.info("更新失败",e)
+        logging.info("更新失败", e)
     finally:
         cursor.close()
         conn.close()
     return 0
 
-def update_actress_image(id:int,image_url):
-    '''更新女优头像地址。调用后需 emit: global_signals.actress_data_changed'''
 
-    conn=get_connection(DATABASE,False)
+def update_actress_image(id: int, image_url):
+    """更新女优头像地址。调用后需 emit: global_signals.actress_data_changed"""
+
+    conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
-    cursor=conn.cursor()
+    cursor = conn.cursor()
 
     try:
-        logging.info("准备更新:%s,%s",image_url,id)
+        logging.info("准备更新:%s,%s", image_url, id)
         cursor.execute(
             "UPDATE actress SET image_urlA=?,need_update=0 WHERE actress_id = ?",
-            (image_url,id)
+            (image_url, id),
         )
         conn.commit()
         logging.info("更新成功")
     except Exception as e:
         conn.rollback()
-        logging.info("更新失败",e)
+        logging.info("更新失败", e)
     finally:
         cursor.close()
         conn.close()
     return 0
 
-def update_actress_minnano_id(id,minnano_actress_id):
-    '''更新女优 minnano 信息。调用后需 emit: global_signals.actress_data_changed（若影响展示）'''
-    conn=get_connection(DATABASE,False)
+
+def update_actress_minnano_id(id, minnano_actress_id):
+    """更新女优 minnano 信息。调用后需 emit: global_signals.actress_data_changed（若影响展示）"""
+    conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
-    cursor=conn.cursor()
+    cursor = conn.cursor()
 
     try:
-        logging.info("准备更新:%s,%s",minnano_actress_id,id)
+        logging.info("准备更新:%s,%s", minnano_actress_id, id)
         cursor.execute(
             "UPDATE actress SET minnano_url=?,need_update=0 WHERE actress_id = ?",
-            (minnano_actress_id,id)
+            (minnano_actress_id, id),
         )
         conn.commit()
         logging.info("更新成功")
     except Exception as e:
         conn.rollback()
-        logging.info("更新失败",e)
+        logging.info("更新失败", e)
     finally:
         cursor.close()
         conn.close()
     return 0
 
-def update_work_javtxt(id,javtxt_id):
-    '''写入javtxt_id的缓存数据。通常无需 emit（内部缓存）'''
-    conn=get_connection(DATABASE,False)
+
+def update_work_javtxt(id, javtxt_id):
+    """写入javtxt_id的缓存数据。通常无需 emit（内部缓存）"""
+    conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
-    cursor=conn.cursor()
+    cursor = conn.cursor()
 
     try:
-        logging.info("准备更新:%s,%s",javtxt_id,id)
-        cursor.execute(
-            "UPDATE work SET javtxt_id=? WHERE work_id = ?",
-            (javtxt_id,id)
-        )
+        logging.info("准备更新:%s,%s", javtxt_id, id)
+        cursor.execute("UPDATE work SET javtxt_id=? WHERE work_id = ?", (javtxt_id, id))
         conn.commit()
         logging.info("更新成功")
     except Exception as e:
         conn.rollback()
-        logging.info("更新失败",e)
+        logging.info("更新失败", e)
     finally:
         cursor.close()
         conn.close()
     return 0
 
-def update_titlestory(serial_number,cn_title,jp_title,cn_story,jp_story):
-    '''更新故事进去。调用后需 emit: global_signals.work_data_changed'''
-    conn=get_connection(DATABASE,False)
+
+def update_titlestory(serial_number, cn_title, jp_title, cn_story, jp_story):
+    """更新故事进去。调用后需 emit: global_signals.work_data_changed"""
+    conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
-    cursor=conn.cursor()
+    cursor = conn.cursor()
 
     try:
-        logging.info("准备更新:%s",serial_number)
+        logging.info("准备更新:%s", serial_number)
         cursor.execute(
             "UPDATE work SET cn_title=?,jp_title=?,cn_story=?,jp_story==? WHERE serial_number = ?",
-            (cn_title,jp_title,cn_story,jp_story,serial_number)
+            (cn_title, jp_title, cn_story, jp_story, serial_number),
         )
         conn.commit()
         logging.info("更新成功")
     except Exception as e:
         conn.rollback()
-        logging.info("更新失败",e)
+        logging.info("更新失败", e)
     finally:
         cursor.close()
         conn.close()
     return 0
 
-def update_tag_color(tag_ids:list,color):
-    '''更新tag的color。调用后需 emit: global_signals.tag_data_changed'''
-    conn=get_connection(DATABASE,False)
+
+def update_tag_color(tag_ids: list, color):
+    """更新tag的color。调用后需 emit: global_signals.tag_data_changed"""
+    conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
-    cursor=conn.cursor()
+    cursor = conn.cursor()
     try:
-        logging.info("准备更新:%s",tag_ids)
+        logging.info("准备更新:%s", tag_ids)
         cursor.executemany(
-                "UPDATE tag SET color=? Where tag_id=?",
-                [(color,tag_id) for tag_id in tag_ids]
-            )
-        conn.commit()
-        logging.info("更新成功")
-    except Exception as e:
-        conn.rollback()
-        logging.info("更新失败",e)
-    finally:
-        cursor.close()
-        conn.close()
-    return 0
-
-def update_fanza_cover_url(work_id:int,fcover_url:str):
-    '''更新作品 FANZA 封面 URL。通常无需 emit（内部缓存）'''
-    conn=get_connection(DATABASE,False)
-    logging.info("数据库打开成功")
-    cursor=conn.cursor()
-
-    try:
-        logging.info("准备更新:%s,%s",work_id,fcover_url)
-        cursor.execute(
-            "UPDATE work SET fcover_url=? WHERE work_id = ?",
-            (fcover_url,work_id)
+            "UPDATE tag SET color=? Where tag_id=?",
+            [(color, tag_id) for tag_id in tag_ids],
         )
         conn.commit()
         logging.info("更新成功")
     except Exception as e:
         conn.rollback()
-        logging.info("更新失败",e)
+        logging.info("更新失败", e)
     finally:
         cursor.close()
         conn.close()
     return 0
 
 
-def update_on_dan(work_id:int,on_dan:int):
-    '''更新一部作品能否在avdan上找到。通常无需 emit（内部状态）'''
-    conn=get_connection(DATABASE,False)
+def update_fanza_cover_url(work_id: int, fcover_url: str):
+    """更新作品 FANZA 封面 URL。通常无需 emit（内部缓存）"""
+    conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
-    cursor=conn.cursor()
+    cursor = conn.cursor()
 
     try:
-        logging.info("准备更新:%s,%s",work_id,on_dan)
+        logging.info("准备更新:%s,%s", work_id, fcover_url)
         cursor.execute(
-            "UPDATE work SET on_dan=? WHERE work_id = ?",
-            (on_dan,work_id)
+            "UPDATE work SET fcover_url=? WHERE work_id = ?", (fcover_url, work_id)
         )
         conn.commit()
         logging.info("更新成功")
     except Exception as e:
         conn.rollback()
-        logging.info("更新失败",e)
+        logging.info("更新失败", e)
+    finally:
+        cursor.close()
+        conn.close()
+    return 0
+
+
+def update_on_dan(work_id: int, on_dan: int):
+    """更新一部作品能否在avdan上找到。通常无需 emit（内部状态）"""
+    conn = get_connection(DATABASE, False)
+    logging.info("数据库打开成功")
+    cursor = conn.cursor()
+
+    try:
+        logging.info("准备更新:%s,%s", work_id, on_dan)
+        cursor.execute("UPDATE work SET on_dan=? WHERE work_id = ?", (on_dan, work_id))
+        conn.commit()
+        logging.info("更新成功")
+    except Exception as e:
+        conn.rollback()
+        logging.info("更新失败", e)
     finally:
         cursor.close()
         conn.close()
 
-def update_tag(tag_id:int,tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_redirect_tag_id:int,tag_alias:list[dict])->bool:
-    '''
+
+def update_tag(
+    tag_id: int,
+    tag_name: str,
+    tag_type_id: int,
+    tag_color: str,
+    tag_detail: str,
+    tag_redirect_tag_id: int,
+    tag_alias: list[dict],
+) -> bool:
+    """
     更新标签信息。调用后需 emit: global_signals.tag_data_changed
     参数示例:
             "tag_id": self._tag_id,
@@ -499,18 +576,18 @@ def update_tag(tag_id:int,tag_name:str,tag_type_id:int,tag_color:str,tag_detail:
             "tag_color":self._tag_color,
             "tag_detail":self._tag_detail,
             "tag_redirect_tag_id":self._tag_redirect_tag_id
-    '''
-    conn=get_connection(DATABASE,False)
+    """
+    conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
-    cursor=conn.cursor()
+    cursor = conn.cursor()
 
     try:
-        logging.info("准备更新:%s,%s",tag_id,tag_name)
+        logging.info("准备更新:%s,%s", tag_id, tag_name)
         cursor.execute(
             "UPDATE tag SET tag_name=?,tag_type_id=?,color=?,detail=?,redirect_tag_id=? WHERE tag_id = ?",
-            (tag_name,tag_type_id,tag_color,tag_detail,tag_redirect_tag_id,tag_id)
+            (tag_name, tag_type_id, tag_color, tag_detail, tag_redirect_tag_id, tag_id),
         )
-        update_tag_alias(cursor,tag_alias,tag_id)
+        update_tag_alias(cursor, tag_alias, tag_id)
         conn.commit()
         logging.info("更新成功")
         return True
@@ -530,53 +607,55 @@ def update_tag(tag_id:int,tag_name:str,tag_type_id:int,tag_color:str,tag_detail:
         cursor.close()
         conn.close()
 
-def update_tag_alias(cursor:Cursor,tag_alias:list[dict],tag_id):
-    '''更新tag_alias'''
-    #先计算要删除的部分，然后计算添加的部分
-    #先取原来的
-    cursor.execute(f'''
+
+def update_tag_alias(cursor: Cursor, tag_alias: list[dict], tag_id):
+    """更新tag_alias"""
+    # 先计算要删除的部分，然后计算添加的部分
+    # 先取原来的
+    cursor.execute(
+        f"""
 SELECT 
 	tag_id
 FROM tag 
-WHERE redirect_tag_id=?''', (tag_id,))
+WHERE redirect_tag_id=?""",
+        (tag_id,),
+    )
     existing_ids = {row[0] for row in cursor.fetchall()}
     existing_ids = set(existing_ids)
     logging.debug(existing_ids)
-    new_ids = {name['tag_id'] for name in tag_alias if name['tag_id'] is not None}
+    new_ids = {name["tag_id"] for name in tag_alias if name["tag_id"] is not None}
     logging.debug(new_ids)
-    delete_ids= existing_ids - new_ids
+    delete_ids = existing_ids - new_ids
     logging.debug(delete_ids)
     # 3. 执行删除（只删除不再需要的）
     if delete_ids:
-        placeholders = ','.join(['?'] * len(delete_ids))
+        placeholders = ",".join(["?"] * len(delete_ids))
         cursor.execute(
-            f"DELETE FROM tag WHERE tag_id IN ({placeholders})",
-            (*delete_ids,)
+            f"DELETE FROM tag WHERE tag_id IN ({placeholders})", (*delete_ids,)
         )
     logging.debug("删除成功")
-    #修改与添加
+    # 修改与添加
     for tag in tag_alias:
-        if tag['tag_id'] is None or tag['tag_id']=="":#表明是新添加的
+        if tag["tag_id"] is None or tag["tag_id"] == "":  # 表明是新添加的
             cursor.execute(
                 "INSERT INTO tag (tag_name,redirect_tag_id) VALUES (?,?)",
-                (tag["tag_name"],tag_id)
+                (tag["tag_name"], tag_id),
             )
-        else: #修改
+        else:  # 修改
             cursor.execute(
-                "UPDATE tag SET tag_name=? WHERE tag_id=?",(tag["tag_name"],tag["tag_id"])
+                "UPDATE tag SET tag_name=? WHERE tag_id=?",
+                (tag["tag_name"], tag["tag_id"]),
             )
 
-def mark_delete(work_id)->bool:
-    '''将作品标记为已删除。调用后需 emit: global_signals.work_data_changed'''
-    conn=get_connection(DATABASE,False)
+
+def mark_delete(work_id) -> bool:
+    """将作品标记为已删除。调用后需 emit: global_signals.work_data_changed"""
+    conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
-    cursor=conn.cursor()
+    cursor = conn.cursor()
     try:
-        #logging.info("准备更新:%s,%s",work_id)
-        cursor.execute(
-            "UPDATE work SET is_deleted=1 WHERE work_id = ?",
-            (work_id,)
-        )
+        # logging.info("准备更新:%s,%s",work_id)
+        cursor.execute("UPDATE work SET is_deleted=1 WHERE work_id = ?", (work_id,))
         conn.commit()
         logging.info("标记作品为删除状态")
         return True
@@ -588,51 +667,60 @@ def mark_delete(work_id)->bool:
         cursor.close()
         conn.close()
 
-def mark_undelete(work_id)->bool:
-    '''将作品标记为未删除。调用后需 emit: global_signals.work_data_changed'''
-    conn=get_connection(DATABASE,False)
+
+def mark_undelete(work_id) -> bool:
+    """将作品标记为未删除。调用后需 emit: global_signals.work_data_changed"""
+    conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
-    cursor=conn.cursor()
+    cursor = conn.cursor()
     try:
-        #logging.info("准备更新:%s,%s",work_id)
-        cursor.execute(
-            "UPDATE work SET is_deleted=0 WHERE work_id = ?",
-            (work_id,)
-        )
+        # logging.info("准备更新:%s,%s",work_id)
+        cursor.execute("UPDATE work SET is_deleted=0 WHERE work_id = ?", (work_id,))
         conn.commit()
         logging.info("标记作品为未删除状态")
         return True
     except Exception as e:
         conn.rollback()
-        logging.info(f"标记作品为未删除状态失败{e}",)
+        logging.info(
+            f"标记作品为未删除状态失败{e}",
+        )
         return False
     finally:
         cursor.close()
         conn.close()
 
 
-def update_actress_name(cursor:Cursor,actress_name:list[dict],actress_id)->bool:
-    '''更新女优的名字'''
-    #先计算要删除的部分，然后计算添加的部分
-    cursor.execute("SELECT actress_name_id FROM actress_name WHERE actress_id = ?", (actress_id,))
+def update_actress_name(cursor: Cursor, actress_name: list[dict], actress_id) -> bool:
+    """更新女优的名字"""
+    # 先计算要删除的部分，然后计算添加的部分
+    cursor.execute(
+        "SELECT actress_name_id FROM actress_name WHERE actress_id = ?", (actress_id,)
+    )
     existing_ids = {row[0] for row in cursor.fetchall()}
     existing_ids = set(existing_ids)
-    new_ids = {name['actress_name_id'] for name in actress_name if name['actress_name_id'] is not None}
-    delete_ids= existing_ids - new_ids
+    new_ids = {
+        name["actress_name_id"]
+        for name in actress_name
+        if name["actress_name_id"] is not None
+    }
+    delete_ids = existing_ids - new_ids
     print(delete_ids)
     # 外键全删除
-    cursor.execute("UPDATE actress_name SET redirect_actress_name_id = NULL WHERE actress_id = ?", (actress_id,))
+    cursor.execute(
+        "UPDATE actress_name SET redirect_actress_name_id = NULL WHERE actress_id = ?",
+        (actress_id,),
+    )
     print("外键清理成功")
     # 3. 执行删除（只删除不再需要的）
-    if delete_ids:#这个删除的时候还有外键问题
-        placeholders = ','.join(['?'] * len(delete_ids))
+    if delete_ids:  # 这个删除的时候还有外键问题
+        placeholders = ",".join(["?"] * len(delete_ids))
         cursor.execute(
             f"DELETE FROM actress_name WHERE actress_name_id IN ({placeholders})",
-            (*delete_ids,)
+            (*delete_ids,),
         )
     # TODO
     print("删除成功")
-    #修改与添加
+    # 修改与添加
     for i, name_data in enumerate(actress_name):
         # 确定 name_type 和 redirect_id 的值
         # 假设 name_type 0 为主要名字，1为其他名字
@@ -645,29 +733,59 @@ def update_actress_name(cursor:Cursor,actress_name:list[dict],actress_id)->bool:
             # 后续数据，name_type=1，redirect_id指向上一条数据的ID
             name_type = 0
             redirect_id = last_id
-        
-        if name_data['actress_name_id'] is None or name_data['actress_name_id']=="":
+
+        if name_data["actress_name_id"] is None or name_data["actress_name_id"] == "":
             # 插入新名字
             print(f"插入新名字{name_data['jp']}")
             cursor.execute(
                 "INSERT INTO actress_name (actress_id, name_type, cn, jp, en, kana, redirect_actress_name_id) VALUES (?,?,?,?,?,?,?)",
-                (actress_id, name_type, name_data['cn'], name_data['jp'], name_data['en'], name_data['kana'], redirect_id)
+                (
+                    actress_id,
+                    name_type,
+                    name_data["cn"],
+                    name_data["jp"],
+                    name_data["en"],
+                    name_data["kana"],
+                    redirect_id,
+                ),
             )
             print("插入新名字")
-            last_id = cursor.lastrowid # 更新上一条记录的ID
-            
+            last_id = cursor.lastrowid  # 更新上一条记录的ID
+
         else:
             # 修改已有的名字
             print(f"修改现有名字{name_data['jp']}")
             cursor.execute(
                 "UPDATE actress_name SET name_type = ?, cn = ?, jp = ?, en = ?, kana = ?, redirect_actress_name_id = ? WHERE actress_name_id = ?",
-                (name_type, name_data['cn'], name_data['jp'], name_data['en'], name_data['kana'], redirect_id, name_data['actress_name_id'])
+                (
+                    name_type,
+                    name_data["cn"],
+                    name_data["jp"],
+                    name_data["en"],
+                    name_data["kana"],
+                    redirect_id,
+                    name_data["actress_name_id"],
+                ),
             )
-            last_id = name_data['actress_name_id'] # 更新上一条记录的ID
+            last_id = name_data["actress_name_id"]  # 更新上一条记录的ID
 
 
-def update_actress_byhand(actress_id,height,cup,birthday,hip,waist,bust,debut_date,need_update,image_urlA,actress_name,minnano_url,notes=""):
-    '''更新女优信息。调用后需 emit: global_signals.actress_data_changed
+def update_actress_byhand(
+    actress_id,
+    height,
+    cup,
+    birthday,
+    hip,
+    waist,
+    bust,
+    debut_date,
+    need_update,
+    image_urlA,
+    actress_name,
+    minnano_url,
+    notes="",
+):
+    """更新女优信息。调用后需 emit: global_signals.actress_data_changed
     参数示例: {
             "actress_id": self._actress_id,
             "height": self._height,
@@ -682,16 +800,32 @@ def update_actress_byhand(actress_id,height,cup,birthday,hip,waist,bust,debut_da
             "actress_name": self._actress_name,
             "minnano_url": self._minnano_url,
             "notes": self._notes
-        }'''
-    
-    conn=get_connection(DATABASE,False)
-    logging.info("数据库打开成功")
-    cursor=conn.cursor()
-    try:
-        cursor.execute("UPDATE actress SET birthday=?,height=?,bust=?,waist=?,hip=?,cup=?,debut_date=?,need_update=?,image_urlA=?,minnano_url=?,notes=? WHERE actress_id=?",(birthday,height,bust,waist,hip,cup,debut_date,need_update,image_urlA,minnano_url,notes or "",actress_id))
+        }"""
 
-        #actress_name的修改部分
-        update_actress_name(cursor,actress_name,actress_id)
+    conn = get_connection(DATABASE, False)
+    logging.info("数据库打开成功")
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "UPDATE actress SET birthday=?,height=?,bust=?,waist=?,hip=?,cup=?,debut_date=?,need_update=?,image_urlA=?,minnano_url=?,notes=? WHERE actress_id=?",
+            (
+                birthday,
+                height,
+                bust,
+                waist,
+                hip,
+                cup,
+                debut_date,
+                need_update,
+                image_urlA,
+                minnano_url,
+                notes or "",
+                actress_id,
+            ),
+        )
+
+        # actress_name的修改部分
+        update_actress_name(cursor, actress_name, actress_id)
 
         conn.commit()
         logging.info("更新成功")
@@ -707,17 +841,20 @@ def update_actress_byhand(actress_id,height,cup,birthday,hip,waist,bust,debut_da
         conn.close()
 
 
-def update_actor_byhand(actor_id,handsome,fat,image_url,actor_name,notes=""):
-    '''更新男优信息。调用后需 emit: global_signals.actor_data_changed'''
-    
-    conn=get_connection(DATABASE,False)
-    logging.info("数据库打开成功")
-    cursor=conn.cursor()
-    try:
-        cursor.execute("UPDATE actor SET handsome=?,fat=?,image_url=?,notes=? WHERE actor_id=?",(handsome,fat,image_url,notes or "",actor_id))
+def update_actor_byhand(actor_id, handsome, fat, image_url, actor_name, notes=""):
+    """更新男优信息。调用后需 emit: global_signals.actor_data_changed"""
 
-        #actor_name的修改部分
-        update_actor_name(cursor,actor_name,actor_id)
+    conn = get_connection(DATABASE, False)
+    logging.info("数据库打开成功")
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "UPDATE actor SET handsome=?,fat=?,image_url=?,notes=? WHERE actor_id=?",
+            (handsome, fat, image_url, notes or "", actor_id),
+        )
+
+        # actor_name的修改部分
+        update_actor_name(cursor, actor_name, actor_id)
 
         conn.commit()
         logging.info("更新成功")
@@ -733,27 +870,32 @@ def update_actor_byhand(actor_id,handsome,fat,image_url,actor_name,notes=""):
         conn.close()
 
 
-def update_actor_name(cursor:Cursor,actor_name:list[dict],actor_id)->bool:
-    '''更新男优的名字'''
-    #先计算要删除的部分，然后计算添加的部分
-    cursor.execute("SELECT actor_name_id FROM actor_name WHERE actor_id = ?", (actor_id,))
+def update_actor_name(cursor: Cursor, actor_name: list[dict], actor_id) -> bool:
+    """更新男优的名字"""
+    # 先计算要删除的部分，然后计算添加的部分
+    cursor.execute(
+        "SELECT actor_name_id FROM actor_name WHERE actor_id = ?", (actor_id,)
+    )
     existing_ids = {row[0] for row in cursor.fetchall()}
     existing_ids = set(existing_ids)
-    new_ids = {name['actor_name_id'] for name in actor_name if name['actor_name_id'] is not None}
-    delete_ids= existing_ids - new_ids
+    new_ids = {
+        name["actor_name_id"]
+        for name in actor_name
+        if name["actor_name_id"] is not None
+    }
+    delete_ids = existing_ids - new_ids
     print(delete_ids)
 
-
     # 3. 执行删除（只删除不再需要的）
-    if delete_ids:#这个删除的时候还有外键问题
-        placeholders = ','.join(['?'] * len(delete_ids))
+    if delete_ids:  # 这个删除的时候还有外键问题
+        placeholders = ",".join(["?"] * len(delete_ids))
         cursor.execute(
             f"DELETE FROM actor_name WHERE actor_name_id IN ({placeholders})",
-            (*delete_ids,)
+            (*delete_ids,),
         )
     # TODO
     print("删除成功")
-    #修改与添加
+    # 修改与添加
     for i, name_data in enumerate(actor_name):
         # 确定 name_type 和 redirect_id 的值
         # 假设 name_type 0 为主要名字，1为其他名字
@@ -765,12 +907,19 @@ def update_actor_name(cursor:Cursor,actor_name:list[dict],actor_id)->bool:
             # 后续数据，name_type=1
             name_type = 0
 
-        if name_data['actor_name_id'] is None or name_data['actor_name_id']=="":
+        if name_data["actor_name_id"] is None or name_data["actor_name_id"] == "":
             # 插入新名字
             print(f"插入新名字{name_data['jp']}")
             cursor.execute(
                 "INSERT INTO actor_name (actor_id, name_type, cn, jp, en, kana) VALUES (?,?,?,?,?,?)",
-                (actor_id, name_type, name_data['cn'], name_data['jp'], name_data['en'], name_data['kana'])
+                (
+                    actor_id,
+                    name_type,
+                    name_data["cn"],
+                    name_data["jp"],
+                    name_data["en"],
+                    name_data["kana"],
+                ),
             )
             print("插入新名字")
         else:
@@ -778,35 +927,54 @@ def update_actor_name(cursor:Cursor,actor_name:list[dict],actor_id)->bool:
             print(f"修改现有名字{name_data['jp']}")
             cursor.execute(
                 "UPDATE actor_name SET name_type = ?, cn = ?, jp = ?, en = ?, kana = ? WHERE actor_name_id = ?",
-                (name_type, name_data['cn'], name_data['jp'], name_data['en'], name_data['kana'], name_data['actor_name_id'])
+                (
+                    name_type,
+                    name_data["cn"],
+                    name_data["jp"],
+                    name_data["en"],
+                    name_data["kana"],
+                    name_data["actor_name_id"],
+                ),
             )
 
-def redirect_tag_121(tag_id0,tag_id1):
-    '''标签重定向,1对1。调用后需 emit: global_signals.tag_data_changed
+
+def redirect_tag_121(tag_id0, tag_id1):
+    """标签重定向,1对1。调用后需 emit: global_signals.tag_data_changed
     tag_id0是需要被删除的标签
     tag_id1是被指向的标签
-    '''
-    conn=get_connection(DATABASE,False)
+    """
+    conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
-    cursor=conn.cursor()
+    cursor = conn.cursor()
     try:
         # 1. 更新标签重定向指针
-        cursor.execute("UPDATE tag SET redirect_tag_id=? WHERE tag_id=?",(tag_id1,tag_id0))
+        cursor.execute(
+            "UPDATE tag SET redirect_tag_id=? WHERE tag_id=?", (tag_id1, tag_id0)
+        )
         # 2. 把旧的关联的tag也要重定向
-        cursor.execute("UPDATE tag SET redirect_tag_id=? WHERE redirect_tag_id=?",(tag_id1,tag_id0))
+        cursor.execute(
+            "UPDATE tag SET redirect_tag_id=? WHERE redirect_tag_id=?",
+            (tag_id1, tag_id0),
+        )
         # 2. 迁移作品关联 (核心修改)
         # 将所有关联了旧标签的作品，赋予新标签。如果有冲突(已存在)，则忽略
         # 2. 先处理冲突：如果作品已经有了新标签，就直接删除旧标签记录（因为不需要合并了）
-        cursor.execute("""
+        cursor.execute(
+            """
             DELETE FROM work_tag_relation 
             WHERE tag_id = ? 
             AND work_id IN (
                 SELECT work_id FROM work_tag_relation WHERE tag_id = ?
             )
-        """, (tag_id0, tag_id1))
+        """,
+            (tag_id0, tag_id1),
+        )
 
         # 3. 更新剩余记录：剩下的旧标签记录都可以安全地变更为新标签
-        cursor.execute("UPDATE work_tag_relation SET tag_id = ? WHERE tag_id = ?", (tag_id1, tag_id0))
+        cursor.execute(
+            "UPDATE work_tag_relation SET tag_id = ? WHERE tag_id = ?",
+            (tag_id1, tag_id0),
+        )
         conn.commit()
         logging.info("更新成功")
         print("更新成功")
@@ -866,13 +1034,11 @@ def update_work_maker_from_prefix_relation() -> str:
         if not prefix_to_maker:
             return "prefix_maker_relation 为空，未执行更新"
 
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT work_id, serial_number, maker_id
             FROM work
             WHERE IFNULL(is_deleted, 0) = 0
-            """
-        )
+            """)
         updates: list[tuple[int, int]] = []
         for work_id, serial_number, cur_maker in cursor.fetchall():
             prefix = _serial_prefix_for_maker_lookup(serial_number)

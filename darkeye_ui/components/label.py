@@ -4,6 +4,7 @@ from typing import Optional
 from PySide6.QtWidgets import QLabel
 from PySide6.QtCore import Qt
 
+
 class Label(QLabel):
     """可复用标签，通过 objectName=DesignLabel 由 QSS 驱动样式。"""
 

@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QInputDialog,
 )
-from PySide6.QtCore import  Qt
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from config import ICONS_PATH
 import logging, re
@@ -15,6 +15,7 @@ from controller.MessageService import MessageBoxService
 
 from darkeye_ui.components.button import Button
 from darkeye_ui.components.token_table_widget import TokenTableWidget
+
 
 class AddQuickWork(QDialog):
     # 快速记录作品番号的窗口，能在局外响应
@@ -37,13 +38,13 @@ class AddQuickWork(QDialog):
         self.btn_clean = Button("去后缀")
         self.btn_clean_prefix = Button("删前缀行")
         self.btn_sort = Button("排序")
-        
+
         self.btn_add.clicked.connect(self.add_row)
         self.btn_del.clicked.connect(self.delete_rows)
         self.btn_clean.clicked.connect(self.clean_suffix)
         self.btn_clean_prefix.clicked.connect(self.clean_prefix)
         self.btn_sort.clicked.connect(self.sort_rows)
-        
+
         top_layout.addWidget(self.btn_add)
         top_layout.addWidget(self.btn_del)
         top_layout.addWidget(self.btn_clean)
@@ -54,10 +55,12 @@ class AddQuickWork(QDialog):
         self.table = TokenTableWidget()
         self.table.setColumnCount(2)
         self.table.setHorizontalHeaderLabels(["选择", "番号"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeToContents
+        )
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        
+
         # 3. 底部提交按钮
         self.btn_commit = Button("快速添加")
         self.btn_commit.clicked.connect(self.submit)
@@ -68,7 +71,7 @@ class AddQuickWork(QDialog):
         main_layout.addLayout(top_layout)
         main_layout.addWidget(self.table)
         main_layout.addWidget(self.btn_commit)
-        
+
         # 初始化添加一行
         self.add_row()
 
@@ -76,17 +79,19 @@ class AddQuickWork(QDialog):
         """在表格末尾插入一个空行"""
         row = self.table.rowCount()
         self.table.insertRow(row)
-        
+
         # 第一列：复选框
         chk_item = QTableWidgetItem()
-        chk_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+        chk_item.setFlags(
+            Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        )
         chk_item.setCheckState(Qt.Checked)
         self.table.setItem(row, 0, chk_item)
-        
+
         # 第二列：文本输入
         text_item = QTableWidgetItem("")
         self.table.setItem(row, 1, text_item)
-        
+
         # 自动聚焦到新行的文本列
         self.table.editItem(text_item)
         self.table.setCurrentItem(text_item)
@@ -100,15 +105,15 @@ class AddQuickWork(QDialog):
         for ranges in selected_ranges:
             for row in range(ranges.topRow(), ranges.bottomRow() + 1):
                 rows_to_delete.add(row)
-        
+
         for row in sorted(rows_to_delete, reverse=True):
             self.table.removeRow(row)
 
     def clean_suffix(self):
         """去后缀：处理所有复选框选中的行"""
         # 常见的需要去除的后缀正则，不区分大小写
-        suffix_pattern = re.compile(r'(-C|-h|_uncensored|ch|pl)$', re.IGNORECASE)
-        
+        suffix_pattern = re.compile(r"(-C|-h|_uncensored|ch|pl)$", re.IGNORECASE)
+
         for row in range(self.table.rowCount()):
             chk_item = self.table.item(row, 0)
             if chk_item and chk_item.checkState() == Qt.Checked:
@@ -116,7 +121,7 @@ class AddQuickWork(QDialog):
                 if text_item:
                     original_text = text_item.text().strip()
                     # 正则替换
-                    new_text = suffix_pattern.sub('', original_text)
+                    new_text = suffix_pattern.sub("", original_text)
                     if new_text != original_text:
                         text_item.setText(new_text)
 
@@ -160,7 +165,9 @@ class AddQuickWork(QDialog):
                     "text": text_item.text(),
                 }
             )
-        rows.sort(key=lambda r: r["text"].strip().lower(), reverse=not self._sort_ascending)
+        rows.sort(
+            key=lambda r: r["text"].strip().lower(), reverse=not self._sort_ascending
+        )
         self._sort_ascending = not self._sort_ascending
 
         self.table.setRowCount(0)
@@ -168,7 +175,9 @@ class AddQuickWork(QDialog):
             row = self.table.rowCount()
             self.table.insertRow(row)
             chk_item = QTableWidgetItem()
-            chk_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            chk_item.setFlags(
+                Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            )
             chk_item.setCheckState(r["checked"])
             self.table.setItem(row, 0, chk_item)
             text_item = QTableWidgetItem(r["text"])
@@ -180,13 +189,15 @@ class AddQuickWork(QDialog):
         for serial in serial_list:
             row = self.table.rowCount()
             self.table.insertRow(row)
-            
+
             # 第一列：复选框
             chk_item = QTableWidgetItem()
-            chk_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            chk_item.setFlags(
+                Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            )
             chk_item.setCheckState(Qt.Checked)
             self.table.setItem(row, 0, chk_item)
-            
+
             # 第二列：文本输入
             text_item = QTableWidgetItem(serial)
             self.table.setItem(row, 1, text_item)
@@ -209,11 +220,8 @@ class AddQuickWork(QDialog):
 
         # 通过惰性单例获取 CrawlerManager 启动后台任务
         from core.crawler.CrawlerManager import get_manager
+
         get_manager().start_crawl(serial_list)
-        
+
         self.msg.show_info("提示", "已转入后台处理，您可以继续其他操作。")
         self.accept()
-
-
-
-

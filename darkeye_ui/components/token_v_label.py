@@ -1,5 +1,6 @@
 # darkeye_ui/components/token_v_label.py - 竖排标签，由设计令牌驱动
 """竖排标签（带孔、倒角、中英混排），颜色可由令牌驱动或显式传入。"""
+
 from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtCore import QDateTime, QSize, QTimer, Qt
@@ -96,7 +97,9 @@ class TokenVLabel(QLabel):
         self.setFixedSize(self._fixed_size)
         self.update()
 
-    def setColors(self, background_color: str, text_color: str, hover_color: Optional[str] = None) -> None:
+    def setColors(
+        self, background_color: str, text_color: str, hover_color: Optional[str] = None
+    ) -> None:
         self.background_color = QColor(background_color)
         self.text_color = QColor(text_color)
         if hover_color:
@@ -124,8 +127,16 @@ class TokenVLabel(QLabel):
         font = self._select_font(self.text()[0])
         fm = QFontMetrics(font)
         char_width = fm.horizontalAdvance(self.text()[0])
-        fmodify = char_width * 0.1 if self.is_chinese(self.text()[0]) else char_width * 0.4
-        height = total_height + width * self.corner_cut_ratio * 3 + width * self.hole_radius_ratio * 2 - fm.descent() * 0.3 - fmodify
+        fmodify = (
+            char_width * 0.1 if self.is_chinese(self.text()[0]) else char_width * 0.4
+        )
+        height = (
+            total_height
+            + width * self.corner_cut_ratio * 3
+            + width * self.hole_radius_ratio * 2
+            - fm.descent() * 0.3
+            - fmodify
+        )
         return QSize(width, int(height))
 
     def is_chinese(self, char: str) -> bool:
@@ -160,7 +171,12 @@ class TokenVLabel(QLabel):
         hole_path = QPainterPath()
         hole_center_x = rect.width() // 2
         hole_center_y = cut + hole_radius
-        hole_path.addEllipse(hole_center_x - hole_radius, hole_center_y - hole_radius, hole_radius * 2, hole_radius * 2)
+        hole_path.addEllipse(
+            hole_center_x - hole_radius,
+            hole_center_y - hole_radius,
+            hole_radius * 2,
+            hole_radius * 2,
+        )
         outer_path2 = outer_path.subtracted(hole_path)
 
         painter.setClipPath(outer_path2)
@@ -182,7 +198,11 @@ class TokenVLabel(QLabel):
             font = self._select_font(self.text()[0])
             fm = QFontMetrics(font)
             char_width = fm.horizontalAdvance(self.text()[0])
-            fmodify = char_width * 0.1 if self.is_chinese(self.text()[0]) else char_width * 0.4
+            fmodify = (
+                char_width * 0.1
+                if self.is_chinese(self.text()[0])
+                else char_width * 0.4
+            )
         y = cut * 2 + hole_radius * 2 - fmodify
 
         for char in self.text():
@@ -197,7 +217,9 @@ class TokenVLabel(QLabel):
                 char_height = fm.height()
             else:
                 char_height = fm.ascent() + fm.descent() * 0.3
-            char_x = (rect.width() - max_char_width) // 2 + (max_char_width - char_width) // 2
+            char_x = (rect.width() - max_char_width) // 2 + (
+                max_char_width - char_width
+            ) // 2
             painter.drawText(char_x, y + fm.ascent(), char)
             y += char_height
         painter.end()
@@ -212,8 +234,11 @@ class TokenVLabel(QLabel):
         self.update()
         super().leaveEvent(event)
 
-    def flash_invert(self, duration=3000, interval=300, flash_bg_color=None, flash_text_color=None):
+    def flash_invert(
+        self, duration=3000, interval=300, flash_bg_color=None, flash_text_color=None
+    ):
         from utils.utils import invert_color
+
         if not hasattr(self, "_original_bg"):
             self._original_bg = self.background_color
             self._original_text = self.text_color

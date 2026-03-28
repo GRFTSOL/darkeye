@@ -151,8 +151,7 @@ class Toast(QFrame):
     def _apply_token_style(self, *_args) -> None:
         t = self._tokens()
         accent = self._accent_color(t)
-        self.setStyleSheet(
-            f"""
+        self.setStyleSheet(f"""
 QFrame#DesignToast {{
     background-color: {t.color_bg};
     border: {t.border_width} solid {accent};
@@ -163,8 +162,7 @@ QLabel#DesignToastLabel {{
     font-family: {t.font_family_base};
     font-size: {t.font_size_base};
 }}
-"""
-        )
+""")
 
     @classmethod
     def _group_key(cls, parent: Optional[QWidget]) -> int:

@@ -63,7 +63,9 @@ def main():
         pct = done / total if total else 0
         filled = int(width * pct)
         bar = "=" * filled + "-" * (width - filled)
-        sys.stderr.write(f"\r{prefix} |{bar}| {pct*100:.1f}% ({done//1024//1024}MB/{total//1024//1024}MB)")
+        sys.stderr.write(
+            f"\r{prefix} |{bar}| {pct*100:.1f}% ({done//1024//1024}MB/{total//1024//1024}MB)"
+        )
         sys.stderr.flush()
 
     cctx = zstd.ZstdCompressor(level=19)

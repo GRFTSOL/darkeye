@@ -71,7 +71,9 @@ class DBSettingPage(QWidget):
 
         self.btn_restoreDB = Button()
         self.btn_restoreDB.setText("还原公共数据库")
-        self.btn_restoreDB.setToolTip("在备份的数据库里选择一个数据还原，覆盖现有的数据库")
+        self.btn_restoreDB.setToolTip(
+            "在备份的数据库里选择一个数据还原，覆盖现有的数据库"
+        )
         self.btn_restoreDB.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
 
         self.btn_backupDB2 = Button()
@@ -81,7 +83,9 @@ class DBSettingPage(QWidget):
 
         self.btn_restoreDB2 = Button()
         self.btn_restoreDB2.setText("还原私有数据库")
-        self.btn_restoreDB2.setToolTip("在备份的数据库里选择一个数据还原，覆盖现有的数据库")
+        self.btn_restoreDB2.setToolTip(
+            "在备份的数据库里选择一个数据还原，覆盖现有的数据库"
+        )
         self.btn_restoreDB2.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
 
         self.btn_rebuildprivatelink = Button()
@@ -92,7 +96,9 @@ class DBSettingPage(QWidget):
         self.btn_rebuildprivatelink.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
 
         self.btn_import_nfo = Button("从 NFO 导入作品")
-        self.btn_import_nfo.setToolTip("选择 Kodi 风格的 .nfo 文件导入一条作品（番号已存在则跳过）")
+        self.btn_import_nfo.setToolTip(
+            "选择 Kodi 风格的 .nfo 文件导入一条作品（番号已存在则跳过）"
+        )
 
         layout1 = QGridLayout()
         layout1.addWidget(self.btn_vacuum, 0, 0)
@@ -173,7 +179,9 @@ class DBSettingPage(QWidget):
         if not file_path:
             return
 
-        if not self.msg.ask_yes_no("确认恢复", "是否用该备份覆盖现有数据库？操作不可撤销！"):
+        if not self.msg.ask_yes_no(
+            "确认恢复", "是否用该备份覆盖现有数据库？操作不可撤销！"
+        ):
             return
 
         success = restore_backup_safely(Path(file_path), target_path)
@@ -205,7 +213,9 @@ class DBSettingPage(QWidget):
         if not file_path:
             return
 
-        if not self.msg.ask_yes_no("确认恢复", "是否用该备份覆盖现有数据库？操作不可撤销！"):
+        if not self.msg.ask_yes_no(
+            "确认恢复", "是否用该备份覆盖现有数据库？操作不可撤销！"
+        ):
             return
 
         success = restore_snapshot(Path(file_path))

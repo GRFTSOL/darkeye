@@ -1,15 +1,24 @@
-from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout,QStackedWidget,QScrollArea,QButtonGroup
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QWidget,
+    QVBoxLayout,
+    QStackedWidget,
+    QScrollArea,
+    QButtonGroup,
+)
 
-from PySide6.QtCore import Qt,Signal,Slot, QThreadPool, QRunnable, QObject
+from PySide6.QtCore import Qt, Signal, Slot, QThreadPool, QRunnable, QObject
 from darkeye_ui.components import CalendarHeatmap
-from core.database.query import get_record_count_by_year,get_record_by_year
+from core.database.query import get_record_count_by_year, get_record_by_year
 
 from darkeye_ui.components.label import Label
 from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.button import Button
 
+
 class DatabaseQueryWorker(QRunnable):
     """数据库查询工作线程"""
+
     def __init__(self, query_func, *args, **kwargs):
         super().__init__()
         self.query_func = query_func
@@ -23,13 +32,16 @@ class DatabaseQueryWorker(QRunnable):
             self.signals.finished.emit(result)
         except Exception as e:
             import logging
+
             logging.error(f"数据库查询失败: {e}")
             self.signals.finished.emit(None)
 
 
 class WorkerSignals(QObject):
     """工作线程信号"""
+
     finished = Signal(object)
+
 
 class SwitchHeapMap(QWidget):
     def __init__(self):
@@ -40,20 +52,21 @@ class SwitchHeapMap(QWidget):
 
         from core.database.query import get_record_early_year
         from datetime import datetime
-        early_year=get_record_early_year()
+
+        early_year = get_record_early_year()
         if not early_year:
-            early_year=int(datetime.now().year)
+            early_year = int(datetime.now().year)
         # 年份列表,从有记录的最早的年份开始，到当前年份结束
         year_list = [str(x) for x in list(range(early_year, datetime.now().year + 1))]
         year_list = year_list[::-1]
-        #year_list=[str(x) for x in list(range(2018,2026))]
-        self.buttonlist=ButtonList(year_list)
+        # year_list=[str(x) for x in list(range(2018,2026))]
+        self.buttonlist = ButtonList(year_list)
         self.buttonlist.setFixedHeight(200)
         # 左右切换按钮
-        self.btn_prev =IconPushButton(icon_name="arrow_up")
-        self.btn_next =IconPushButton(icon_name="arrow_down")
+        self.btn_prev = IconPushButton(icon_name="arrow_up")
+        self.btn_next = IconPushButton(icon_name="arrow_down")
 
-        today_year = datetime.today().year# 获取当前年份
+        today_year = datetime.today().year  # 获取当前年份
         self.current_year = today_year
         # 绑定按钮点击
         self.btn_prev.clicked.connect(lambda: self.switch(-1))
@@ -62,14 +75,15 @@ class SwitchHeapMap(QWidget):
         # 先显示占位UI
         self.placeholder_widget = Label("加载中...")
         self.placeholder_widget.setAlignment(Qt.AlignCenter)
-        self.placeholder_widget.setStyleSheet("font-size: 16px; color: #999999; padding: 50px;")
+        self.placeholder_widget.setStyleSheet(
+            "font-size: 16px; color: #999999; padding: 50px;"
+        )
         self.placeholder_widget.setFixedSize(750, 155)
 
         # 三个示例 QWidget - 先创建空的热力图
-        self.calendar_heatmap_masturbation=CalendarHeatmap(year=today_year, data={})
-        self.calendar_heatmap_sex=CalendarHeatmap(year=today_year, data={})
-        self.calendar_heatmap_arousal=CalendarHeatmap(year=today_year, data={})
-
+        self.calendar_heatmap_masturbation = CalendarHeatmap(year=today_year, data={})
+        self.calendar_heatmap_sex = CalendarHeatmap(year=today_year, data={})
+        self.calendar_heatmap_arousal = CalendarHeatmap(year=today_year, data={})
 
         # QStackedWidget 管理多个 QWidget
         self.stack = QStackedWidget()
@@ -86,7 +100,7 @@ class SwitchHeapMap(QWidget):
         btn_layout.addWidget(self.btn_prev)
         btn_layout.addWidget(self.btn_next)
 
-        left_layout=QVBoxLayout()
+        left_layout = QVBoxLayout()
 
         left_layout.addLayout(btn_layout)
 
@@ -99,10 +113,9 @@ class SwitchHeapMap(QWidget):
         left_layout.addWidget(self.content_stack)
 
         main_layout = QHBoxLayout(self)
-        main_layout.setContentsMargins(0,0,0,0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addLayout(left_layout)
         main_layout.addWidget(self.buttonlist)
-
 
         self.buttonlist.switch_year.connect(self.update)
 
@@ -128,7 +141,7 @@ class SwitchHeapMap(QWidget):
         return [
             get_record_count_by_year(year, 0),
             get_record_count_by_year(year, 1),
-            get_record_count_by_year(year, 2)
+            get_record_count_by_year(year, 2),
         ]
 
     def _load_heatmaps(self, year):
@@ -136,7 +149,7 @@ class SwitchHeapMap(QWidget):
         return [
             get_record_by_year(year, 0),
             get_record_by_year(year, 1),
-            get_record_by_year(year, 2)
+            get_record_by_year(year, 2),
         ]
 
     def _on_counts_loaded(self, counts):
@@ -145,7 +158,7 @@ class SwitchHeapMap(QWidget):
             self.heatmap_names = [
                 f"撸管{counts[0]}次在当年中",
                 f"做爱{counts[1]}次在当年中",
-                f"晨勃{counts[2]}次在当年中"
+                f"晨勃{counts[2]}次在当年中",
             ]
             index = self.stack.currentIndex()
             self.heatmap_name.setText(self.heatmap_names[index])
@@ -154,9 +167,13 @@ class SwitchHeapMap(QWidget):
         """热力图数据加载完成"""
         if heatmap_data:
             # 更新热力图数据
-            self.calendar_heatmap_masturbation.update_data(self.current_year, heatmap_data[0])
+            self.calendar_heatmap_masturbation.update_data(
+                self.current_year, heatmap_data[0]
+            )
             self.calendar_heatmap_sex.update_data(self.current_year, heatmap_data[1])
-            self.calendar_heatmap_arousal.update_data(self.current_year, heatmap_data[2])
+            self.calendar_heatmap_arousal.update_data(
+                self.current_year, heatmap_data[2]
+            )
 
             # 缓存数据
             self.heatmap_data_cache[self.current_year] = heatmap_data
@@ -173,7 +190,7 @@ class SwitchHeapMap(QWidget):
 
     @Slot(int)
     def update(self, year: int, force_refresh: bool = False):
-        '''根据年份去更新自身。force_refresh=True 时忽略缓存强制重新加载（用于数据变更后刷新）'''
+        """根据年份去更新自身。force_refresh=True 时忽略缓存强制重新加载（用于数据变更后刷新）"""
         self.current_year = year
 
         # 显示加载状态
@@ -225,7 +242,8 @@ class SwitchHeapMap(QWidget):
 
 
 class ButtonList(QScrollArea):
-    switch_year=Signal(int)
+    switch_year = Signal(int)
+
     def __init__(self, items: list[str]):
         super().__init__()
         self.setWidgetResizable(True)  # 关键：内容自动适应
@@ -242,10 +260,10 @@ class ButtonList(QScrollArea):
         # 滚动区里的实际内容容器，背景由这个决定
         self.container = QWidget()
         self.container.setStyleSheet("background: transparent;")
-        self.container.setAttribute(Qt.WA_TranslucentBackground)#这个透明很关键
+        self.container.setAttribute(Qt.WA_TranslucentBackground)  # 这个透明很关键
 
         self.vbox = QVBoxLayout(self.container)
-        self.vbox.setAlignment(Qt.AlignTop)   # 顶部对齐
+        self.vbox.setAlignment(Qt.AlignTop)  # 顶部对齐
 
         # 把滚动区
         self.setWidget(self.container)
@@ -261,7 +279,6 @@ class ButtonList(QScrollArea):
             first_btn = self.group.buttons()[0]
             first_btn.setChecked(True)
             self.on_button_clicked(self.group.id(first_btn))  # 手动触发
-        
 
     def populate(self, items: list[str]):
         # 先清空旧内容（如果需要重复刷新）
@@ -273,7 +290,7 @@ class ButtonList(QScrollArea):
 
         for i, text in enumerate(items):
             btn = Button(text)
-            btn.setFixedSize(100,40)
+            btn.setFixedSize(100, 40)
             btn.setCheckable(True)  # 关键：可选中
             self.group.addButton(btn, i)
             self.vbox.addWidget(btn)

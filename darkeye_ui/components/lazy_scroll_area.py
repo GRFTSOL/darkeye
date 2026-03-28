@@ -1,5 +1,6 @@
 # darkeye_ui/components/lazy_scroll_area.py - 瀑布流懒加载滚动区，由设计令牌驱动
 """瀑布流 + 懒加载滚动区，滚动条样式由设计令牌驱动。"""
+
 from typing import TYPE_CHECKING, Callable, Optional
 
 from PySide6.QtCore import Qt, QTimer
@@ -86,6 +87,7 @@ class LazyScrollArea(QScrollArea):
 
         try:
             from controller.MessageService import MessageBoxService
+
             self.msg = MessageBoxService(self)
         except ImportError as exc:
             warn_once(
@@ -102,14 +104,18 @@ class LazyScrollArea(QScrollArea):
             content_widget = QWidget()
             vlayout = QVBoxLayout(content_widget)
             waterfall_widget = QWidget()
-            self.waterfall_layout = WaterfallLayout(waterfall_widget, column_width=column_width)
+            self.waterfall_layout = WaterfallLayout(
+                waterfall_widget, column_width=column_width
+            )
             vlayout.setContentsMargins(0, 0, 0, 0)
             vlayout.addWidget(widget, 0, Qt.AlignCenter | Qt.AlignmentFlag.AlignTop)
             vlayout.addWidget(waterfall_widget, 0, Qt.AlignmentFlag.AlignTop)
             vlayout.addStretch()
         else:
             content_widget = QWidget()
-            self.waterfall_layout = WaterfallLayout(content_widget, column_width=column_width)
+            self.waterfall_layout = WaterfallLayout(
+                content_widget, column_width=column_width
+            )
 
         self.waterfall_layout.setContentsMargins(0, 5, 0, 0)
         self.setWidget(content_widget)
@@ -146,7 +152,11 @@ class LazyScrollArea(QScrollArea):
     def set_page_size(self, page_size: int) -> None:
         """设置每页加载的组件数量。"""
         if page_size <= 0:
-            self._logger.warning("LazyScrollArea.set_page_size: invalid page_size=%s, keep %s", page_size, self.page_size)
+            self._logger.warning(
+                "LazyScrollArea.set_page_size: invalid page_size=%s, keep %s",
+                page_size,
+                self.page_size,
+            )
             return
         self.page_size = page_size
 

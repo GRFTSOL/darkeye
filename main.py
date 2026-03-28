@@ -11,9 +11,11 @@
 
 # Windows CMD 中文乱码修复：在首次输出前将控制台代码页设为 UTF-8
 import sys
+
 if sys.platform == "win32":
     try:
         import ctypes
+
         kernel32 = ctypes.windll.kernel32
         kernel32.SetConsoleOutputCP(65001)
         kernel32.SetConsoleCP(65001)
@@ -25,6 +27,7 @@ def load_global_style():
     """加载全局样式表（项目 main.qss）"""
     from pathlib import Path
     from config import QSS_PATH
+
     style = Path(QSS_PATH / "main.qss").read_text(encoding="utf-8")
     return style
 
@@ -40,6 +43,7 @@ def load_app_stylesheet(app):
 
     theme_mgr = ThemeManager()
     from config import get_theme_id, get_custom_primary
+
     try:
         initial_theme = ThemeId[get_theme_id()]
     except (KeyError, TypeError):
@@ -71,14 +75,16 @@ def apply_theme(theme_id):
         theme_id = ThemeId(theme_id)
     theme_mgr.set_theme(app, theme_id)
 
+
 def _run_main_app():
-    
+
     # 是否显示启动 splash，可通过命令行参数关闭
 
     show_splash = False
 
     # 初始化性能分析器（必须在log_config之前，因为log_config本身也需要时间）
     from core.utils.profiler import get_profiler
+
     profiler = get_profiler()
     profiler.checkpoint("程序启动")
 
@@ -86,6 +92,7 @@ def _run_main_app():
     profiler.measure_import("core.utils.log_config")
     from core.utils import log_config
     import logging
+
     logger = logging.getLogger(__name__)
     profiler.checkpoint("日志系统初始化")
 
@@ -93,15 +100,20 @@ def _run_main_app():
     profiler.measure_import("PySide6.QtWidgets")
     profiler.measure_import("PySide6.QtGui")
     import os
-    os.environ["QSG_RHI_BACKEND"] = "opengl"   # 必须尽早，放在导入/创建 Quick 相关对象之前
-    #强制 Qt Quick 使用 OpenGL，与 QOpenGLWidget 兼容（否则 Windows 默认 D3D11 会冲突）
+
+    os.environ["QSG_RHI_BACKEND"] = (
+        "opengl"  # 必须尽早，放在导入/创建 Quick 相关对象之前
+    )
+    # 强制 Qt Quick 使用 OpenGL，与 QOpenGLWidget 兼容（否则 Windows 默认 D3D11 会冲突）
 
     from PySide6.QtWidgets import QApplication, QDialog, QSplashScreen
     from PySide6.QtGui import QPixmap, QSurfaceFormat, QOpenGLContext, QOffscreenSurface
     from PySide6.QtCore import Qt, QTimer
 
-    #OpenGL设置
-    QApplication.setAttribute(Qt.AA_UseDesktopOpenGL)#不知道这个要不要加，但是这个好像没有什么用
+    # OpenGL设置
+    QApplication.setAttribute(
+        Qt.AA_UseDesktopOpenGL
+    )  # 不知道这个要不要加，但是这个好像没有什么用
     QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     fmt = QSurfaceFormat()
     fmt.setVersion(3, 3)
@@ -120,6 +132,7 @@ def _run_main_app():
     # 创建应用和启动画面
     with profiler.measure_execution("创建QApplication", sync=True):
         import sys
+
         app = QApplication(sys.argv)
     profiler.checkpoint("创建应用")
 
@@ -139,12 +152,11 @@ def _run_main_app():
         except Exception:
             logger.exception("OpenGL预热失败，继续正常启动")
 
-
-    #try:
+    # try:
     #    # 强制 Qt Quick 使用 OpenGL，与 QOpenGLWidget 兼容（否则 Windows 默认 D3D11 会冲突）
     #    from PySide6.QtQuick import QQuickWindow, QSGRendererInterface
     #    QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.OpenGL)
-    #except ImportError:
+    # except ImportError:
     #    pass
 
     splash = None
@@ -163,13 +175,13 @@ def _run_main_app():
             app.processEvents()
         profiler.checkpoint("启动画面显示")
 
-
     # 首次启动协议对话框（已注释）
-    if is_first_lunch():#判断是否是第一次启动
+    if is_first_lunch():  # 判断是否是第一次启动
         from ui.dialogs import TermsDialog
-        dialog=TermsDialog()
 
-        if dialog.exec() == QDialog.Accepted:# type: ignore[arg-type]
+        dialog = TermsDialog()
+
+        if dialog.exec() == QDialog.Accepted:  # type: ignore[arg-type]
             set_first_luch(False)
         else:
             set_first_luch(True)
@@ -184,7 +196,10 @@ def _run_main_app():
     profiler.measure_import("core.database.migrations")
     profiler.measure_import("config")
     from core.database.init import init_database, init_private_db
-    from core.database.migrations import check_and_upgrade_private_db, check_and_upgrade_public_db
+    from core.database.migrations import (
+        check_and_upgrade_private_db,
+        check_and_upgrade_public_db,
+    )
     from config import DATABASE, PRIVATE_DATABASE
 
     with profiler.measure_execution("数据库初始化（全部）", sync=True):
@@ -239,11 +254,13 @@ def _run_main_app():
     # 界面已就绪，再在后台启动 API（用户通常不会立刻用，优化开屏速度）
     profiler.measure_import("server")
     from server import start_server
+
     QTimer.singleShot(0, lambda: start_server())
     profiler.checkpoint("API服务器线程启动（延迟）")
 
     # 周五 18:00 后自动检查更新（每周一次，弹窗提示）
     from ui.pages.settings.about import maybe_auto_check_update
+
     QTimer.singleShot(2000, lambda: maybe_auto_check_update(window))
 
     # 打印性能分析摘要
@@ -254,7 +271,7 @@ def _run_main_app():
 
 
 if __name__ == "__main__":
-    '''
+    """
     # 打包后 multiprocessing 使用 spawn：子进程会重新执行本脚本，必须跳过 GUI 避免无限开窗
     import multiprocessing
     multiprocessing.freeze_support()
@@ -262,7 +279,6 @@ if __name__ == "__main__":
         # 子进程：仅由 multiprocessing 引导执行 simulation worker，不跑主流程
         pass
     else:
-    '''
-    #现在不需要多进程，就这样
+    """
+    # 现在不需要多进程，就这样
     _run_main_app()
-

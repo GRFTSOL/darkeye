@@ -1,10 +1,10 @@
-
-from PySide6.QtCore import Qt, QPoint, QRect, QSize,QRect
+from PySide6.QtCore import Qt, QPoint, QRect, QSize, QRect
 from PySide6.QtWidgets import QLayout
 
 
 class FlowLayout(QLayout):
-    '''流式布局，从左往右横向填充，不够了换行，适合内部widget高度相同的时候使用'''
+    """流式布局，从左往右横向填充，不够了换行，适合内部widget高度相同的时候使用"""
+
     def __init__(self, parent=None, margin=0, spacing=10):
         super().__init__(parent)
         self.setSpacing(spacing)
@@ -47,9 +47,11 @@ class FlowLayout(QLayout):
         size = QSize()
         for item in self.itemList:
             size = size.expandedTo(item.minimumSize())
-        size += QSize(2 * self.contentsMargins().top(), 2 * self.contentsMargins().top())
+        size += QSize(
+            2 * self.contentsMargins().top(), 2 * self.contentsMargins().top()
+        )
         return size
-    
+
     def removeWidget(self, widget):
         """完全移除 widget 并清理布局项"""
         for i in reversed(range(len(self.itemList))):
@@ -74,9 +76,9 @@ class FlowLayout(QLayout):
         spaceX = self.spacing()
         spaceY = self.spacing()
         for item in self.itemList:
-            #这几行代码如果要用需要在使用的时候.show()以及relayout()手动刷新，否则就是会有问题。需要动态隐藏部分控件（如搜索过滤）
-            #widget = item.widget()
-            #if widget is None or not widget.isVisible():
+            # 这几行代码如果要用需要在使用的时候.show()以及relayout()手动刷新，否则就是会有问题。需要动态隐藏部分控件（如搜索过滤）
+            # widget = item.widget()
+            # if widget is None or not widget.isVisible():
             #    continue
 
             nextX = x + item.sizeHint().width() + spaceX

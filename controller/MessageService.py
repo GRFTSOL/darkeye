@@ -46,13 +46,14 @@ class IMessageService(ABC):
     def show_info(self, title, message): ...
 
     @abstractmethod
-    def show_warning(self,title,message):...
+    def show_warning(self, title, message): ...
 
     @abstractmethod
-    def show_critical(self,title,message):...
+    def show_critical(self, title, message): ...
 
     @abstractmethod
     def ask_yes_no(self, title, message) -> bool: ...
+
 
 class MessageBoxService(IMessageService):
     """消息框服务，由设计令牌驱动样式，随主题切换变色。"""
@@ -62,6 +63,7 @@ class MessageBoxService(IMessageService):
         if theme_manager is None:
             try:
                 from app_context import get_theme_manager
+
                 theme_manager = get_theme_manager()
             except Exception as e:
                 logging.debug(
@@ -80,25 +82,33 @@ class MessageBoxService(IMessageService):
         box.setStyleSheet(_messagebox_qss_from_tokens(self._tokens()))
 
     def show_info(self, title, message):
-        box = QMessageBox(QMessageBox.Information, title, message, QMessageBox.Ok, self.parent)
+        box = QMessageBox(
+            QMessageBox.Information, title, message, QMessageBox.Ok, self.parent
+        )
         self._apply_tokens_to_box(box)
         box.exec()
 
     def show_warning(self, title, message):
-        box = QMessageBox(QMessageBox.Warning, title, message, QMessageBox.Ok, self.parent)
+        box = QMessageBox(
+            QMessageBox.Warning, title, message, QMessageBox.Ok, self.parent
+        )
         self._apply_tokens_to_box(box)
         box.exec()
 
     def show_critical(self, title, message):
-        box = QMessageBox(QMessageBox.Critical, title, message, QMessageBox.Ok, self.parent)
+        box = QMessageBox(
+            QMessageBox.Critical, title, message, QMessageBox.Ok, self.parent
+        )
         self._apply_tokens_to_box(box)
         box.exec()
 
     def ask_yes_no(self, title, message) -> bool:
         box = QMessageBox(
-            QMessageBox.Question, title, message,
+            QMessageBox.Question,
+            title,
+            message,
             QMessageBox.Yes | QMessageBox.No,
-            self.parent
+            self.parent,
         )
         self._apply_tokens_to_box(box)
         return box.exec() == QMessageBox.Yes

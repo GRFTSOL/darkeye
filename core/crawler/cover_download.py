@@ -44,7 +44,11 @@ class SequentialDownloader(QObject):
         self._current_index = 0
 
     def _pool(self) -> QThreadPool:
-        return self._thread_pool if self._thread_pool is not None else QThreadPool.globalInstance()
+        return (
+            self._thread_pool
+            if self._thread_pool is not None
+            else QThreadPool.globalInstance()
+        )
 
     def __del__(self):
         logging.info("SequentialDownloader 实例已成功销毁，内存已释放")

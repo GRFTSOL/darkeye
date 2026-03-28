@@ -85,7 +85,9 @@ def start_db_queue_worker() -> DatabaseQueueWorker:
 
 def _get_db_queue_worker() -> DatabaseQueueWorker:
     if _worker is None:
-        raise RuntimeError("DatabaseQueueWorker 未启动，请在 main 中调用 start_db_queue_worker()")
+        raise RuntimeError(
+            "DatabaseQueueWorker 未启动，请在 main 中调用 start_db_queue_worker()"
+        )
     return _worker
 
 

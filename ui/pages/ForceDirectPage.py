@@ -1,5 +1,4 @@
-
-from PySide6.QtWidgets import  QVBoxLayout
+from PySide6.QtWidgets import QVBoxLayout
 from PySide6.QtCore import Qt
 import logging
 from darkeye_ui import LazyWidget
@@ -9,7 +8,6 @@ from darkeye_ui.components.label import Label
 class ForceDirectPage(LazyWidget):
     def __init__(self):
         super().__init__()
-
 
     def _lazy_load(self):
         logging.info("----------力导向图界面----------")
@@ -21,7 +19,7 @@ class ForceDirectPage(LazyWidget):
         mainlayout.setContentsMargins(0, 0, 0, 0)
 
         placeholder = Label("正在生成力导向图...")
-        placeholder.setAlignment(Qt.AlignCenter)# type: ignore[arg-type]
+        placeholder.setAlignment(Qt.AlignCenter)  # type: ignore[arg-type]
         mainlayout.addWidget(placeholder)
 
         view = ForceDirectedViewWidget()
@@ -30,5 +28,3 @@ class ForceDirectPage(LazyWidget):
         placeholder.deleteLater()
         mainlayout.addWidget(view)
         view.session.new_load()
-
-

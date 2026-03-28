@@ -1,4 +1,5 @@
 """3D DVD 虚拟化书架视图，接收 work_ids 列表，按 3D 相机位置驱动可见范围加载。"""
+
 from __future__ import annotations
 
 import json
@@ -21,7 +22,14 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtQuickWidgets import QQuickWidget
 
-from config import FANART_PATH, get_video_path, MESHES_PATH, MAPS_PATH, HDR_PATH, WORKCOVER_PATH
+from config import (
+    FANART_PATH,
+    get_video_path,
+    MESHES_PATH,
+    MAPS_PATH,
+    HDR_PATH,
+    WORKCOVER_PATH,
+)
 from controller.MessageService import MessageBoxService
 from core.database.query import (
     get_workinfo_by_workid,
@@ -70,10 +78,10 @@ CAMERA_SETTLE_VELOCITY = DVD_SPACING * 0.1
 DVD_QML = "Dvd.qml"
 DVD_SCENE = "dvd_scene.qml"
 # 力导向图 overlay 占据 DVD 拉出后左侧的空间，与右侧 DVD 视觉相当
-FORCEVIEW_WIDTH_MAX = 420   # 左侧区域最大宽度（与 DVD 拉出后左侧空间相当）
-FORCEVIEW_HEIGHT = 560      # 高度与 DVD 视觉比例接近
-FORCEVIEW_GAP = 16          # 与 DVD 锚点（选中中心）的间距，避免贴边
-FORCEVIEW_LEFT_MARGIN = 8   # 相对视图左边缘的内边距
+FORCEVIEW_WIDTH_MAX = 420  # 左侧区域最大宽度（与 DVD 拉出后左侧空间相当）
+FORCEVIEW_HEIGHT = 560  # 高度与 DVD 视觉比例接近
+FORCEVIEW_GAP = 16  # 与 DVD 锚点（选中中心）的间距，避免贴边
+FORCEVIEW_LEFT_MARGIN = 8  # 相对视图左边缘的内边距
 FORCEVIEW_SHOW_DELAY_MS = 500  # DVD 选中动画时长，动画完成后再显示力导向图
 FANART_STRIP_MAX_WIDTH = 440
 FANART_STRIP_GAP_BELOW_ANCHOR = 10
@@ -168,7 +176,9 @@ class DvdBridge(QObject):
             self.expandedWorkFavoritedChanged.emit()
 
     expandedWorkFavorited = Property(
-        bool, _get_expanded_favorited, _set_expanded_favorited,
+        bool,
+        _get_expanded_favorited,
+        _set_expanded_favorited,
         notify=expandedWorkFavoritedChanged,
     )
 
@@ -181,7 +191,9 @@ class DvdBridge(QObject):
             self.expandedWorkTitleChanged.emit()
 
     expandedWorkTitle = Property(
-        str, _get_expanded_work_title, _set_expanded_work_title,
+        str,
+        _get_expanded_work_title,
+        _set_expanded_work_title,
         notify=expandedWorkTitleChanged,
     )
 
@@ -194,7 +206,9 @@ class DvdBridge(QObject):
             self.expandedWorkStoryChanged.emit()
 
     expandedWorkStory = Property(
-        str, _get_expanded_work_story, _set_expanded_work_story,
+        str,
+        _get_expanded_work_story,
+        _set_expanded_work_story,
         notify=expandedWorkStoryChanged,
     )
 
@@ -207,7 +221,9 @@ class DvdBridge(QObject):
             self.expandedWorkCodeChanged.emit()
 
     expandedWorkCode = Property(
-        str, _get_expanded_work_code, _set_expanded_work_code,
+        str,
+        _get_expanded_work_code,
+        _set_expanded_work_code,
         notify=expandedWorkCodeChanged,
     )
 
@@ -220,7 +236,9 @@ class DvdBridge(QObject):
             self.expandedWorkReleaseDateChanged.emit()
 
     expandedWorkReleaseDate = Property(
-        str, _get_expanded_work_release_date, _set_expanded_work_release_date,
+        str,
+        _get_expanded_work_release_date,
+        _set_expanded_work_release_date,
         notify=expandedWorkReleaseDateChanged,
     )
 
@@ -233,7 +251,9 @@ class DvdBridge(QObject):
             self.expandedWorkTagsChanged.emit()
 
     expandedWorkTags = Property(
-        list, _get_expanded_work_tags, _set_expanded_work_tags,
+        list,
+        _get_expanded_work_tags,
+        _set_expanded_work_tags,
         notify=expandedWorkTagsChanged,
     )
 
@@ -246,7 +266,9 @@ class DvdBridge(QObject):
             self.expandedWorkActressesChanged.emit()
 
     expandedWorkActresses = Property(
-        list, _get_expanded_work_actresses, _set_expanded_work_actresses,
+        list,
+        _get_expanded_work_actresses,
+        _set_expanded_work_actresses,
         notify=expandedWorkActressesChanged,
     )
 
@@ -259,7 +281,9 @@ class DvdBridge(QObject):
             self.expandedWorkActorsChanged.emit()
 
     expandedWorkActors = Property(
-        list, _get_expanded_work_actors, _set_expanded_work_actors,
+        list,
+        _get_expanded_work_actors,
+        _set_expanded_work_actors,
         notify=expandedWorkActorsChanged,
     )
 
@@ -272,7 +296,9 @@ class DvdBridge(QObject):
             self.expandedWorkDirectorChanged.emit()
 
     expandedWorkDirector = Property(
-        str, _get_expanded_work_director, _set_expanded_work_director,
+        str,
+        _get_expanded_work_director,
+        _set_expanded_work_director,
         notify=expandedWorkDirectorChanged,
     )
 
@@ -285,7 +311,9 @@ class DvdBridge(QObject):
             self.expandedWorkStudioChanged.emit()
 
     expandedWorkStudio = Property(
-        str, _get_expanded_work_studio, _set_expanded_work_studio,
+        str,
+        _get_expanded_work_studio,
+        _set_expanded_work_studio,
         notify=expandedWorkStudioChanged,
     )
 
@@ -298,7 +326,9 @@ class DvdBridge(QObject):
             self.expandedWorkLabelChanged.emit()
 
     expandedWorkLabel = Property(
-        str, _get_expanded_work_label, _set_expanded_work_label,
+        str,
+        _get_expanded_work_label,
+        _set_expanded_work_label,
         notify=expandedWorkLabelChanged,
     )
 
@@ -311,7 +341,9 @@ class DvdBridge(QObject):
             self.expandedWorkSeriesChanged.emit()
 
     expandedWorkSeries = Property(
-        str, _get_expanded_work_series, _set_expanded_work_series,
+        str,
+        _get_expanded_work_series,
+        _set_expanded_work_series,
         notify=expandedWorkSeriesChanged,
     )
 
@@ -324,7 +356,9 @@ class DvdBridge(QObject):
             self.expandedWorkMakerIdChanged.emit()
 
     expandedWorkMakerId = Property(
-        int, _get_expanded_work_maker_id, _set_expanded_work_maker_id,
+        int,
+        _get_expanded_work_maker_id,
+        _set_expanded_work_maker_id,
         notify=expandedWorkMakerIdChanged,
     )
 
@@ -337,7 +371,9 @@ class DvdBridge(QObject):
             self.expandedWorkLabelIdChanged.emit()
 
     expandedWorkLabelId = Property(
-        int, _get_expanded_work_label_id, _set_expanded_work_label_id,
+        int,
+        _get_expanded_work_label_id,
+        _set_expanded_work_label_id,
         notify=expandedWorkLabelIdChanged,
     )
 
@@ -350,7 +386,9 @@ class DvdBridge(QObject):
             self.expandedWorkSeriesIdChanged.emit()
 
     expandedWorkSeriesId = Property(
-        int, _get_expanded_work_series_id, _set_expanded_work_series_id,
+        int,
+        _get_expanded_work_series_id,
+        _set_expanded_work_series_id,
         notify=expandedWorkSeriesIdChanged,
     )
 
@@ -526,7 +564,9 @@ class DvdShelfView(QWidget):
         fanart_layout = QVBoxLayout(self._fanart_strip_container)
         fanart_layout.setContentsMargins(6, 4, 6, 4)
         self._fanart_strip = FanartStripWidget(
-            FANART_PATH, legacy_cover_path=WORKCOVER_PATH, parent=self._fanart_strip_container
+            FANART_PATH,
+            legacy_cover_path=WORKCOVER_PATH,
+            parent=self._fanart_strip_container,
         )
         self._fanart_strip.set_can_add(False)
         self._fanart_strip.set_preview_mode(True)
@@ -590,14 +630,16 @@ class DvdShelfView(QWidget):
                 if not self._in_loadworkid_reset:
                     self._suppress_forceview_while_selected_token = None
                     self._loadworkid_has_expanded = False
-            elif expanded_delegate_index < 0 and selected_delegate_index >= 0 and self._loadworkid_has_expanded:
+            elif (
+                expanded_delegate_index < 0
+                and selected_delegate_index >= 0
+                and self._loadworkid_has_expanded
+            ):
                 # 从“展开态”关回“选中未展开态”
                 self._suppress_forceview_while_selected_token = None
                 self._loadworkid_has_expanded = False
 
-        show_force = (
-            selected_delegate_index >= 0 and expanded_delegate_index < 0
-        )
+        show_force = selected_delegate_index >= 0 and expanded_delegate_index < 0
         if show_force:
             virtual_index = self._load_start + selected_delegate_index
             if not (0 <= virtual_index < len(self._work_ids)):
@@ -605,9 +647,14 @@ class DvdShelfView(QWidget):
             # 折叠关闭动画过程中（QML 会先 expanded=-1，selected 保持一段时间），不要显示 overlay，避免关闭时闪一下。
             if show_force:
                 root = self._root_scene_object()
-                if root is not None and root.property("_pendingCollapseSelectedIndex") is not None:
+                if (
+                    root is not None
+                    and root.property("_pendingCollapseSelectedIndex") is not None
+                ):
                     try:
-                        pending_idx = int(root.property("_pendingCollapseSelectedIndex"))
+                        pending_idx = int(
+                            root.property("_pendingCollapseSelectedIndex")
+                        )
                     except Exception:
                         pending_idx = -1
                     if pending_idx == int(selected_delegate_index):
@@ -626,9 +673,7 @@ class DvdShelfView(QWidget):
             return
         from core.graph.graph_filter import EgoFilter
 
-        self._forceview.session.set_filter(
-            EgoFilter(center_id=f"w{work_id}", radius=3)
-        )
+        self._forceview.session.set_filter(EgoFilter(center_id=f"w{work_id}", radius=3))
         # 关键：首次进入 DVD 时，ForceViewOpenGL 可能尚未 show/初始化完成。
         # 若此时就 setGraph，容易“第一次不显示、第二次正常”。
         # 因此把 new_load 延后到动画结束、容器可见后再触发（在 _show_forceview_after_animation 里）。
@@ -654,7 +699,9 @@ class DvdShelfView(QWidget):
             if selected_idx < 0 or expanded_idx >= 0:
                 return
             try:
-                pending_collapse_idx = int(root.property("_pendingCollapseSelectedIndex"))
+                pending_collapse_idx = int(
+                    root.property("_pendingCollapseSelectedIndex")
+                )
             except Exception:
                 pending_collapse_idx = -1
             if pending_collapse_idx == selected_idx:
@@ -685,7 +732,9 @@ class DvdShelfView(QWidget):
         anchor_y = int(screen_y)
         # 矩形右侧与 screen_x 相距 50，宽度不超过最大值
         gap_right = 30
-        w = min(FORCEVIEW_WIDTH_MAX, max(200, anchor_x - gap_right - FORCEVIEW_LEFT_MARGIN))
+        w = min(
+            FORCEVIEW_WIDTH_MAX, max(200, anchor_x - gap_right - FORCEVIEW_LEFT_MARGIN)
+        )
         h = min(FORCEVIEW_HEIGHT, view_h - 16)
         left = anchor_x - gap_right - w
         left = max(FORCEVIEW_LEFT_MARGIN, min(left, view_w - w))
@@ -710,9 +759,7 @@ class DvdShelfView(QWidget):
             max(160, view_w - 2 * FANART_STRIP_MARGIN_H),
         )
         left = anchor_x - w // 2
-        left = max(
-            FANART_STRIP_MARGIN_H, min(left, view_w - w - FANART_STRIP_MARGIN_H)
-        )
+        left = max(FANART_STRIP_MARGIN_H, min(left, view_w - w - FANART_STRIP_MARGIN_H))
         hint_h = int(self._fanart_strip.sizeHint().height())
         h = max(FANART_STRIP_MIN_HEIGHT, hint_h)
         top = anchor_y + FANART_STRIP_GAP_BELOW_ANCHOR
@@ -777,15 +824,13 @@ class DvdShelfView(QWidget):
             self._forceview.session.new_load()
         else:
             manager.initialize()
-            manager.initialization_finished.connect(
-                self._forceview.session.new_load
-            )
+            manager.initialization_finished.connect(self._forceview.session.new_load)
 
     def work_count(self) -> int:
         return len(self._work_ids)
 
     def set_work_ids(self, work_ids: list[int]) -> None:
-        '''这里一次性设置好所有的work_ids'''
+        """这里一次性设置好所有的work_ids"""
         self._programmatic_open_token += 1
         self._reset_scene_interaction_state()
         self._work_ids = work_ids
@@ -869,7 +914,9 @@ class DvdShelfView(QWidget):
             self._camera_animation_timer.start()
 
     def scroll_camera_by(self, delta: float, max_camera_x: float) -> None:
-        target = max(0.0, min(float(max_camera_x), self._camera_target_x + float(delta)))
+        target = max(
+            0.0, min(float(max_camera_x), self._camera_target_x + float(delta))
+        )
         self.set_camera_target(target)
 
     def _advance_camera_animation(self) -> None:
@@ -908,7 +955,9 @@ class DvdShelfView(QWidget):
         if not self._update_timer.isActive():
             self._update_timer.start()
 
-    def _calc_target_window(self, center_index: float, total_count: int) -> tuple[int, int]:
+    def _calc_target_window(
+        self, center_index: float, total_count: int
+    ) -> tuple[int, int]:
         if total_count <= 0:
             return 0, -1
         if total_count <= WINDOW_RANGE:
@@ -939,7 +988,10 @@ class DvdShelfView(QWidget):
             load_start, load_end = target_start, target_end
         else:
             # 滞后阈值内不触发更新，减少无效重建
-            if center_index < self._load_start + HYSTERESIS or center_index > self._load_end - HYSTERESIS:
+            if (
+                center_index < self._load_start + HYSTERESIS
+                or center_index > self._load_end - HYSTERESIS
+            ):
                 desired_shift = target_start - self._load_start
                 if desired_shift > MAX_SHIFT_PER_UPDATE:
                     desired_shift = MAX_SHIFT_PER_UPDATE
@@ -972,8 +1024,7 @@ class DvdShelfView(QWidget):
         visible_ids = self._work_ids[load_start : load_end + 1]
         works_data = get_works_for_dvd(visible_ids)
         works_by_id = {
-            int(d.get("work_id")): d for d in works_data
-            if d.get("work_id") is not None
+            int(d.get("work_id")): d for d in works_data if d.get("work_id") is not None
         }
 
         texture_urls: list[str] = []
@@ -1047,7 +1098,9 @@ class DvdShelfView(QWidget):
             root.setProperty("expandedDelegateIndex", -1)
         self._on_selection_changed(-1, -1)
 
-    def _expand_delegate_if_token_matches(self, delegate_index: int, token: int) -> None:
+    def _expand_delegate_if_token_matches(
+        self, delegate_index: int, token: int
+    ) -> None:
         if token != self._programmatic_open_token:
             return
         root = self._root_scene_object()
@@ -1073,13 +1126,14 @@ class DvdShelfView(QWidget):
         root.setProperty("expandedDelegateIndex", -1)
         QTimer.singleShot(
             SELECT_OPEN_DELAY_MS,
-            lambda idx=delegate_index, current_token=token:
-                self._expand_delegate_if_token_matches(idx, current_token),
+            lambda idx=delegate_index, current_token=token: self._expand_delegate_if_token_matches(
+                idx, current_token
+            ),
         )
 
     @Slot(int, result=bool)
     def loadworkid(self, work_id: int) -> bool:
-        '''找到并展开特定的dvd'''
+        """找到并展开特定的dvd"""
         try:
             virtual_index = self._work_ids.index(int(work_id))
         except (ValueError, TypeError):
@@ -1102,8 +1156,9 @@ class DvdShelfView(QWidget):
         self._apply_pending_camera_update()
         QTimer.singleShot(
             0,
-            lambda idx=virtual_index, current_token=token:
-                self._select_and_open_virtual_index_if_token_matches(idx, current_token),
+            lambda idx=virtual_index, current_token=token: self._select_and_open_virtual_index_if_token_matches(
+                idx, current_token
+            ),
         )
         return True
 
@@ -1172,7 +1227,9 @@ class DvdShelfView(QWidget):
         work_id = self._work_ids[virtual_index]
         info = get_workinfo_by_workid(work_id) or {}
 
-        title = self._pick_first_nonempty_text(info, ("cn_title", "jp_title", "serial_number"))
+        title = self._pick_first_nonempty_text(
+            info, ("cn_title", "jp_title", "serial_number")
+        )
         story = self._pick_first_nonempty_text(info, ("cn_story", "jp_story", "story"))
         code = str(info.get("serial_number", "") or "").strip()
         release_date = str(info.get("release_date", "") or "").strip()
@@ -1241,6 +1298,7 @@ class DvdShelfView(QWidget):
             insert_liked_work(work_id)
         self._bridge.set_expanded_favorited(not is_fav)
         from controller.GlobalSignalBus import global_signals
+
         global_signals.like_work_changed.emit()
 
     def _on_edit_clicked(self, virtual_index: int) -> None:
@@ -1253,6 +1311,7 @@ class DvdShelfView(QWidget):
         if not serial_number:
             return
         from ui.navigation.router import Router
+
         Router.instance().push("work_edit", serial_number=serial_number)
 
     def _on_delete_clicked(self, virtual_index: int) -> None:
@@ -1265,21 +1324,25 @@ class DvdShelfView(QWidget):
             if mark_delete(work_id):
                 msg.show_info("成功", "已标记删除")
                 from controller.GlobalSignalBus import global_signals
+
                 global_signals.work_data_changed.emit()
 
     def _on_tag_clicked(self, tag_id: int) -> None:
         """标签点击：跳转作品列表页（按 tag 筛选）。"""
         from ui.navigation.router import Router
+
         Router.instance().push("mutiwork", tag_id=tag_id)
 
     def _on_actress_clicked(self, actress_id: int) -> None:
         """女优点击：跳转女优详情页。"""
         from ui.navigation.router import Router
+
         Router.instance().push("single_actress", actress_id=actress_id)
 
     def _on_actor_clicked(self, actor_id: int) -> None:
         """男优点击：跳转作品列表页（按 actor 筛选）。"""
         from ui.navigation.router import Router
+
         Router.instance().push("mutiwork", actor_id=actor_id)
 
     def _on_director_clicked(self) -> None:

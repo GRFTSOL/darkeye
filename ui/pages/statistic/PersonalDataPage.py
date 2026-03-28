@@ -1,11 +1,14 @@
-#个人隐私的面板
+# 个人隐私的面板
 
 from typing import TYPE_CHECKING, Optional
 
-from PySide6.QtWidgets import QHBoxLayout, QWidget,QVBoxLayout
+from PySide6.QtWidgets import QHBoxLayout, QWidget, QVBoxLayout
 from PySide6.QtGui import QPainter, QPainterPath, QBrush, QColor, QPen
-from PySide6.QtCore import Qt,Slot, QThreadPool, QRunnable, Signal, QObject
-from core.database.query import get_record_count_in_days,get_top_actress_by_masturbation_count
+from PySide6.QtCore import Qt, Slot, QThreadPool, QRunnable, Signal, QObject
+from core.database.query import (
+    get_record_count_in_days,
+    get_top_actress_by_masturbation_count,
+)
 import logging
 from ui.widgets import ActressCard
 from ui.widgets.StatsOverviewCards import StatsOverviewCards
@@ -20,8 +23,10 @@ from darkeye_ui.design.tokens import ThemeTokens, LIGHT_TOKENS
 if TYPE_CHECKING:
     from darkeye_ui.design.theme_manager import ThemeManager
 
+
 class DatabaseQueryWorker(QRunnable):
     """数据库查询工作线程"""
+
     def __init__(self, query_func, *args, **kwargs):
         super().__init__()
         self.query_func = query_func
@@ -40,12 +45,13 @@ class DatabaseQueryWorker(QRunnable):
 
 class WorkerSignals(QObject):
     """工作线程信号"""
+
     finished = Signal(object)
+
 
 class PersonalDataPage(LazyWidget):
     def __init__(self):
         super().__init__()
-
 
     def _lazy_load(self):
         logging.info("----------个人数据界面----------")
@@ -55,13 +61,13 @@ class PersonalDataPage(LazyWidget):
         # 顶部统计卡片（数据库概览）
         mainlayout.addWidget(StatsOverviewCards())
 
-        self.hlayout=QHBoxLayout()
-        
-        most_like_actress30=MostLikeActress(30)
-        most_like_actress180=MostLikeActress(180)
-        most_like_actress365=MostLikeActress(365)
+        self.hlayout = QHBoxLayout()
 
-        work_sale_cycle=WorkSaleCycle()
+        most_like_actress30 = MostLikeActress(30)
+        most_like_actress180 = MostLikeActress(180)
+        most_like_actress365 = MostLikeActress(365)
+
+        work_sale_cycle = WorkSaleCycle()
         self.hlayout.addWidget(most_like_actress30)
         self.hlayout.addWidget(most_like_actress180)
         self.hlayout.addWidget(most_like_actress365)
@@ -70,19 +76,20 @@ class PersonalDataPage(LazyWidget):
 
         mainlayout.addLayout(self.hlayout)
 
-        calendar_heatmap=SwitchHeapMap()
-        mainlayout.addWidget(calendar_heatmap,alignment=Qt.AlignCenter)
+        calendar_heatmap = SwitchHeapMap()
+        mainlayout.addWidget(calendar_heatmap, alignment=Qt.AlignCenter)
 
-        
-        #全局信号总线触发
+        # 全局信号总线触发
         global_signals.masterbation_changed.connect(work_sale_cycle.update_day)
         global_signals.like_work_changed.connect(work_sale_cycle.update_day)
         global_signals.masterbation_changed.connect(most_like_actress30.update_actress)
         global_signals.masterbation_changed.connect(most_like_actress180.update_actress)
         global_signals.masterbation_changed.connect(most_like_actress365.update_actress)
         from datetime import datetime
+
         def refresh_heatmap():
             calendar_heatmap.update(datetime.now().year, force_refresh=True)
+
         global_signals.masterbation_changed.connect(refresh_heatmap)
         global_signals.lovemaking_changed.connect(refresh_heatmap)
         global_signals.sexarousal_changed.connect(refresh_heatmap)
@@ -108,6 +115,7 @@ class OctagonCard(QWidget, ShadowEffectMixin):
         if theme_manager is None:
             try:
                 from app_context import get_theme_manager
+
                 theme_manager = get_theme_manager()
             except Exception as e:
                 logging.debug(
@@ -162,16 +170,17 @@ class OctagonCard(QWidget, ShadowEffectMixin):
 
 
 class WorkSaleCycle(OctagonCard):
-    '''去化周期显示'''
+    """去化周期显示"""
+
     def __init__(self):
         super().__init__("WorkSaleCycle", margins=(0, 0, 0, 0))
         self.thread_pool = QThreadPool.globalInstance()
 
         mainlayout = self.mainlayout
-        label1=Label(f"收藏作品中未观看去化周期")
+        label1 = Label(f"收藏作品中未观看去化周期")
         label1.setAlignment(Qt.AlignCenter)
 
-        self.label2=Label("加载中...")
+        self.label2 = Label("加载中...")
         self.label2.setAlignment(Qt.AlignCenter)
         self.label2.setStyleSheet("font-size: 30pt; color: #999999;")
 
@@ -190,24 +199,25 @@ class WorkSaleCycle(OctagonCard):
     def _calculate_sales_cycle(self):
         """#按过去3个月平均的撸管频率去计算去化周期并显示,当去化周期大于14天时就进入选择模式"""
         from core.database.query import get_unmasturbated_work_count
-        un_mas_num=get_unmasturbated_work_count()
-        count=get_record_count_in_days(90,0)
-        if not count==0:
-            Sales_cycleun=int(un_mas_num/count*90)
+
+        un_mas_num = get_unmasturbated_work_count()
+        count = get_record_count_in_days(90, 0)
+        if not count == 0:
+            Sales_cycleun = int(un_mas_num / count * 90)
         else:
-            Sales_cycleun=114514
+            Sales_cycleun = 114514
         return Sales_cycleun
 
     def _on_data_loaded(self, day):
         """数据加载完成回调"""
-        self.label2.setText(str(day)+"天")
-        if day>30:
+        self.label2.setText(str(day) + "天")
+        if day > 30:
             self.label2.setStyleSheet("font-size: 30pt; color: #FF0000;")  # 纯红
         else:
             self.label2.setStyleSheet("font-size: 30pt; color: #000000;")  # 纯黑
 
     def work_not_watch(self):
-        '''#按过去3个月平均的撸管频率去计算去化周期并显示,当去化周期大于14天时就进入选择模式'''
+        """#按过去3个月平均的撸管频率去计算去化周期并显示,当去化周期大于14天时就进入选择模式"""
         return self._calculate_sales_cycle()
 
     @Slot()
@@ -221,14 +231,15 @@ class WorkSaleCycle(OctagonCard):
 
 
 class MostLikeActress(OctagonCard):
-    '''最喜欢的女优卡片'''
-    def __init__(self,beforeday):
-        super().__init__("mostLikeActress", margins=(10,0,10,10))
-        self._bday=beforeday
+    """最喜欢的女优卡片"""
+
+    def __init__(self, beforeday):
+        super().__init__("mostLikeActress", margins=(10, 0, 10, 10))
+        self._bday = beforeday
         self.thread_pool = QThreadPool.globalInstance()
         self.current_worker = None
 
-        label1=Label(f"过去{beforeday}天最喜欢的女优")
+        label1 = Label(f"过去{beforeday}天最喜欢的女优")
 
         # 先显示占位UI
         self.placeholder_widget = QWidget()
@@ -249,9 +260,9 @@ class MostLikeActress(OctagonCard):
         self.actress_card_container_layout.addWidget(self.placeholder_widget)
         self.actress_card = None
 
-        #总装
-        mainlayout=self.mainlayout
-        mainlayout.addWidget(label1,alignment=Qt.AlignCenter)
+        # 总装
+        mainlayout = self.mainlayout
+        mainlayout.addWidget(label1, alignment=Qt.AlignCenter)
         mainlayout.addWidget(self.actress_card_container)
 
         # 异步加载数据
@@ -271,16 +282,17 @@ class MostLikeActress(OctagonCard):
             self.placeholder_widget = None
 
         if actress:
-            self.actress_card = ActressCard(actress['actress_name'], actress['image_urlA'], actress['actress_id'])
+            self.actress_card = ActressCard(
+                actress["actress_name"], actress["image_urlA"], actress["actress_id"]
+            )
         else:
             self.actress_card = ActressCard()
 
         self.actress_card_container_layout.addWidget(self.actress_card)
 
-
     @Slot()
     def update_actress(self):
-        '''初始化或者更新'''
+        """初始化或者更新"""
         # 清除旧的女优卡片
         if self.actress_card:
             self.actress_card.setParent(None)

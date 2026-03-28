@@ -1,5 +1,6 @@
 """阶段二：布局树与 QSplitter 动态管理。"""
-'''测试文件在tests/'''
+
+"""测试文件在tests/"""
 import json
 import logging
 from pathlib import Path
@@ -9,7 +10,6 @@ from PySide6.QtCore import Qt
 from typing import Union, Callable
 
 from ui.myads.pane_widget import PaneWidget
-
 
 # -------- 纯数据节点（无 Qt 依赖）--------
 
@@ -90,9 +90,15 @@ def _model_dump(node: ModelNode, indent: int = 0) -> list[str]:
     lines = []
     prefix = "  " * indent
     if isinstance(node, SplitModelNode):
-        orient = "H" if node.orientation == Qt.Horizontal else ("V" if node.orientation == Qt.Vertical else "—")
+        orient = (
+            "H"
+            if node.orientation == Qt.Horizontal
+            else ("V" if node.orientation == Qt.Vertical else "—")
+        )
         sizes_str = repr(node.sizes) if node.sizes is not None else "None"
-        lines.append(f"{prefix}Split({orient}) children={len(node.children)} sizes={sizes_str}")
+        lines.append(
+            f"{prefix}Split({orient}) children={len(node.children)} sizes={sizes_str}"
+        )
         for child in node.children:
             lines.extend(_model_dump(child, indent + 1))
     else:
@@ -168,7 +174,11 @@ class LayoutTreeModel:
                 parent.sizes = [int(ratio * M), int((1 - ratio) * M)]
             else:
                 parent.sizes = [int((1 - ratio) * M), int(ratio * M)]
-        elif old_sizes is not None and len(old_sizes) == n - 1 and 0 <= idx < len(old_sizes):
+        elif (
+            old_sizes is not None
+            and len(old_sizes) == n - 1
+            and 0 <= idx < len(old_sizes)
+        ):
             part = old_sizes[idx]
             # part 为原窗格占位，拆成 old 与 new，new 占 ratio
             if insert_before:
@@ -177,7 +187,9 @@ class LayoutTreeModel:
             else:
                 new_first = int((1 - ratio) * part)
                 new_second = part - new_first
-            parent.sizes = old_sizes[:idx] + [new_first, new_second] + old_sizes[idx + 1:]
+            parent.sizes = (
+                old_sizes[:idx] + [new_first, new_second] + old_sizes[idx + 1 :]
+            )
         else:
             _set_equal_sizes(parent)
 
@@ -261,7 +273,7 @@ class LayoutTreeModel:
             and len(parent.sizes) == len(parent.children)
             and 0 <= idx < len(parent.sizes)
         ):
-            parent.sizes = parent.sizes[:idx] + parent.sizes[idx + 1:]
+            parent.sizes = parent.sizes[:idx] + parent.sizes[idx + 1 :]
         else:
             parent.sizes = None
         parent.children.pop(idx)
@@ -289,13 +301,20 @@ class LayoutTreeModel:
             self._apply_rule1_merge(node, only_child, is_root)
             return
 
-        if isinstance(only_child, PaneModelNode) and not is_root and grandparent is not None:
+        if (
+            isinstance(only_child, PaneModelNode)
+            and not is_root
+            and grandparent is not None
+        ):
             if grandparent.orientation != node.orientation:
                 self._apply_rule2_promote_pane(node, only_child)
 
     def _find_parent_split(self, node: SplitModelNode) -> SplitModelNode | None:
         """查找 node 的父 SplitModelNode（仅通过遍历根树）。"""
-        def find(parent: SplitModelNode, target: SplitModelNode) -> SplitModelNode | None:
+
+        def find(
+            parent: SplitModelNode, target: SplitModelNode
+        ) -> SplitModelNode | None:
             for c in parent.children:
                 if c is target:
                     return parent
@@ -304,9 +323,12 @@ class LayoutTreeModel:
                     if r is not None:
                         return r
             return None
+
         return find(self._root, node) if node is not self._root else None
 
-    def _apply_rule1_merge(self, node: SplitModelNode, only_child: SplitModelNode, is_root: bool) -> None:
+    def _apply_rule1_merge(
+        self, node: SplitModelNode, only_child: SplitModelNode, is_root: bool
+    ) -> None:
         """规则 1：单子且子为 SplitModelNode，合并。"""
         if is_root:
             self._root = only_child
@@ -322,7 +344,9 @@ class LayoutTreeModel:
         node.children.clear()
         self._normalize_node(grandparent, grandparent is self._root)
 
-    def _apply_rule2_promote_pane(self, node: SplitModelNode, only_child: PaneModelNode) -> None:
+    def _apply_rule2_promote_pane(
+        self, node: SplitModelNode, only_child: PaneModelNode
+    ) -> None:
         """规则 2：单子且子为 Pane，且与祖父方向不同，提升到祖父。"""
         grandparent = self._find_parent_split(node)
         if grandparent is None:
@@ -335,14 +359,21 @@ class LayoutTreeModel:
 
     def _apply_rule3_flatten(self, node: SplitModelNode) -> None:
         """规则 3：多子中同向 SplitModelNode 展平。展平时重算 sizes，不直接置 None。"""
-        old_sizes = node.sizes if (node.sizes is not None and len(node.sizes) == len(node.children)) else None
+        old_sizes = (
+            node.sizes
+            if (node.sizes is not None and len(node.sizes) == len(node.children))
+            else None
+        )
         i = 0
         while i < len(node.children):
             child = node.children[i]
-            if isinstance(child, SplitModelNode) and child.orientation == node.orientation:
+            if (
+                isinstance(child, SplitModelNode)
+                and child.orientation == node.orientation
+            ):
                 if old_sizes is not None:
                     expanded = _expand_sizes_for_flatten(old_sizes[i], child)
-                    node.sizes = old_sizes[:i] + expanded + old_sizes[i + 1:]
+                    node.sizes = old_sizes[:i] + expanded + old_sizes[i + 1 :]
                     old_sizes = node.sizes
                 node.children.pop(i)
                 for j, gc in enumerate(child.children):
@@ -357,8 +388,7 @@ class LayoutTreeModel:
     def dump_tree(self) -> list[str]:
         return _model_dump(self._root)
 
-
-#下面都是序列化的相关函数
+    # 下面都是序列化的相关函数
 
     def to_dict(self) -> dict:
         """将根节点递归序列化为 JSON 友好 dict。"""
@@ -434,7 +464,9 @@ def _dict_to_model_node(d: dict) -> ModelNode:
     if t == "split":
         orient_str = d.get("orientation")
         if orient_str not in ("horizontal", "vertical"):
-            raise ValueError("split node must have orientation: 'horizontal' or 'vertical'")
+            raise ValueError(
+                "split node must have orientation: 'horizontal' or 'vertical'"
+            )
         orientation = Qt.Horizontal if orient_str == "horizontal" else Qt.Vertical
         children_raw = d.get("children")
         if not isinstance(children_raw, list):
@@ -519,7 +551,11 @@ class LayoutRenderer:
             self._root_widget = new_root
         else:
             self._root_widget = self._build_splitter(root_model)
-        if old_root is not None and old_root is not self._root_widget and self._on_root_replaced:
+        if (
+            old_root is not None
+            and old_root is not self._root_widget
+            and self._on_root_replaced
+        ):
             self._on_root_replaced(old_root, self._root_widget)
 
     def _build_splitter(self, node: SplitModelNode) -> QSplitter:
@@ -655,8 +691,6 @@ class LayoutTree:
         pane.setParent(None)  # 从旧树摘出，避免 sync 替换根时随旧根被析构
         self._renderer.sync()
         pane.deleteLater()
-
-
 
     @staticmethod
     def load_layout_file(path: str | Path) -> dict:

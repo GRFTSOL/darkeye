@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import networkx as nx
 
+
 class GraphFilter(ABC):
     @abstractmethod
     def filter_node(self, graph: nx.Graph, node_id) -> bool:
@@ -15,6 +16,7 @@ class GraphFilter(ABC):
 
 class EmptyFilter(GraphFilter):
     """过滤器，什么都不返回（过滤掉所有节点和边）。"""
+
     def filter_node(self, graph: nx.Graph, node_id) -> bool:
         return False
 
@@ -24,6 +26,7 @@ class EmptyFilter(GraphFilter):
 
 class PassThroughFilter(GraphFilter):
     """Default filter that includes everything."""
+
     def filter_node(self, graph: nx.Graph, node_id) -> bool:
         return True
 
@@ -33,6 +36,7 @@ class PassThroughFilter(GraphFilter):
 
 class EgoFilter(GraphFilter):
     """自我中心过滤器，过滤以指定节点为中心，半径为指定值的子图"""
+
     def __init__(self, center_id: str, radius: int = 1):
         self.center_id = center_id
         self.radius = radius
@@ -43,7 +47,9 @@ class EgoFilter(GraphFilter):
             self._valid_nodes = set()
             return
         # Calculate ego graph nodes
-        self._valid_nodes = set(nx.ego_graph(graph, self.center_id, radius=self.radius).nodes())
+        self._valid_nodes = set(
+            nx.ego_graph(graph, self.center_id, radius=self.radius).nodes()
+        )
 
     def filter_node(self, graph: nx.Graph, node_id) -> bool:
         if self._valid_nodes is None:

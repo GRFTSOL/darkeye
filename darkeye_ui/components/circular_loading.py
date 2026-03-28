@@ -64,7 +64,9 @@ class CircularLoading(QWidget):
         self._track_color = QColor(t.color_text_disabled)
         sw = self._stroke_width
         if sw is None:
-            sw = max(4, _parse_border_width(t.border_width) * 2)  # 令牌值的 2 倍，至少 4px
+            sw = max(
+                4, _parse_border_width(t.border_width) * 2
+            )  # 令牌值的 2 倍，至少 4px
         self._stroke = max(2, min(sw, self._size // 3))
 
     def _on_theme_changed(self) -> None:

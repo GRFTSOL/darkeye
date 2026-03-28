@@ -40,3 +40,21 @@ docs = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["core*", "ui*", "controller*", "darkeye_ui*", "utils*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+extend-exclude = """
+/(
+  \\.git
+  | \\.venv
+  | venv
+  | \\.pytest_cache
+  | \\.pytest_tmp
+  | \\.mypy_cache
+  | build
+  | dist
+  | cpp_bindings
+  | extensions
+)/
+"""

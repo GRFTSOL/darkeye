@@ -1,33 +1,43 @@
-from PySide6.QtWidgets import QSizePolicy,QFileDialog,QMenu
-from PySide6.QtGui import QPixmap,QImage, QDragEnterEvent, QDropEvent,QMouseEvent,QAction
-from PySide6.QtCore import Qt,Signal,Slot
-import shutil,logging,os,subprocess
+from PySide6.QtWidgets import QSizePolicy, QFileDialog, QMenu
+from PySide6.QtGui import (
+    QPixmap,
+    QImage,
+    QDragEnterEvent,
+    QDropEvent,
+    QMouseEvent,
+    QAction,
+)
+from PySide6.QtCore import Qt, Signal, Slot
+import shutil, logging, os, subprocess
 from datetime import datetime
 from pathlib import Path
 
-from config import ACTRESSIMAGES_PATH,TEMP_PATH,ACTORIMAGES_PATH
+from config import ACTRESSIMAGES_PATH, TEMP_PATH, ACTORIMAGES_PATH
 from controller.MessageService import MessageBoxService
 from darkeye_ui.components.label import Label
+
 
 def is_temp_path(path: str | Path) -> bool:
     """判断路径是否是临时路径（检查路径中包含'temp'）"""
     path_obj = Path(path) if isinstance(path, str) else path
     return "temp" in path_obj.parts  # 检查路径各部分是否包含'temp'
 
+
 class ActressAvatarDropWidget(Label):
-    '''可拖动式添加封面的Label'''
-    
-    cover_changed=Signal()
-    def __init__(self,type="actress"):
+    """可拖动式添加封面的Label"""
+
+    cover_changed = Signal()
+
+    def __init__(self, type="actress"):
         super().__init__()
-        if type=="actress":
-            self.show_text="把女优头像拖进来"
-            self.base_path=ACTRESSIMAGES_PATH#要保存与读取的地址
-        elif type=="actor":
-            self.show_text="把男优头像拖进来"
-            self.base_path=ACTORIMAGES_PATH
-        
-        self._aspect_ratio = 1 # 宽高比 
+        if type == "actress":
+            self.show_text = "把女优头像拖进来"
+            self.base_path = ACTRESSIMAGES_PATH  # 要保存与读取的地址
+        elif type == "actor":
+            self.show_text = "把男优头像拖进来"
+            self.base_path = ACTORIMAGES_PATH
+
+        self._aspect_ratio = 1  # 宽高比
         self.setMaximumHeight(800)
         self.setScaledContents(False)  # 关闭默认拉伸
         self.setAcceptDrops(True)  # 允许拖放
@@ -41,12 +51,11 @@ class ActressAvatarDropWidget(Label):
             margin: 0px;
         }
         """)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) 
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._original_pixmap = None  # 保存原始图像,这个是个QPixmap对象
-        self._path=None #这个是核心
-        #这个要实现双向绑定的状态，传进来图片地址,数据驱动，而不是手动去设置
-        self.msg=MessageBoxService(self)
-
+        self._path = None  # 这个是核心
+        # 这个要实现双向绑定的状态，传进来图片地址,数据驱动，而不是手动去设置
+        self.msg = MessageBoxService(self)
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
@@ -85,7 +94,7 @@ class ActressAvatarDropWidget(Label):
                 self,
                 "选择封面图片",
                 "",
-                "图片文件 (*.jpg *.jpeg *.png *.bmp *.gif *.webp)"
+                "图片文件 (*.jpg *.jpeg *.png *.bmp *.gif *.webp)",
             )
             if file_path:
                 if self.is_image(file_path):
@@ -106,8 +115,8 @@ class ActressAvatarDropWidget(Label):
         for url in urls:
             file_path = url.toLocalFile()
             if self.is_image(file_path):
-                self._path=self.temp_save_image(file_path)
-                self._show_image()#拖入后显示，实现绑定
+                self._path = self.temp_save_image(file_path)
+                self._show_image()  # 拖入后显示，实现绑定
                 self.cover_changed.emit()
             else:
                 self.msg.show_info("文件类型错误", f"不是图片文件：{file_path}")
@@ -115,19 +124,19 @@ class ActressAvatarDropWidget(Label):
     def temp_save_image(self, src_path: str) -> str:
         """使用pathlib保存图片到临时目录"""
         src = Path(src_path)  # 将源路径转为Path对象
-        
+
         # 生成带时间戳的新文件名
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         dst_name = f"image_{timestamp}{src.suffix.lower()}"  # 直接获取后缀
-        
-        TEMP_PATH.mkdir(parents=True, exist_ok=True)#若不存在临时目录，自动创建
+
+        TEMP_PATH.mkdir(parents=True, exist_ok=True)  # 若不存在临时目录，自动创建
         # 构建目标路径（自动处理跨平台路径分隔符）
         dst_path = Path(TEMP_PATH) / dst_name
-        
+
         # 拷贝文件
         shutil.copy(src, dst_path)  # Path对象可直接用于shutil.copy
-        logging.info("图片已临时保存到%s",dst_path)
-        
+        logging.info("图片已临时保存到%s", dst_path)
+
         # 返回字符串路径（兼容旧代码）
         return str(dst_path)
 
@@ -136,13 +145,20 @@ class ActressAvatarDropWidget(Label):
         # 统一转为 Path 对象处理
         file_path = Path(path) if isinstance(path, str) else path
         # 获取后缀并判断（更简洁的写法）
-        return file_path.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
+        return file_path.suffix.lower() in {
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".bmp",
+            ".webp",
+        }
 
     def _show_image(self):
-        '''
+        """
         内部函数，显示一半的图片
         使用 QImage 处理，用 QPixmap 显示
-        '''
+        """
         if self._path is None:
             self.setText("无封面")
             return
@@ -154,50 +170,48 @@ class ActressAvatarDropWidget(Label):
             self.setText("无封面")
             return
 
-
-
         # 3. 将处理后的 QImage 转换为 QPixmap 并缩放
         # 直接在 QPixmap 上进行缩放，因为显示性能更优
 
-        self._original_pixmap= QPixmap.fromImage(original_image)
+        self._original_pixmap = QPixmap.fromImage(original_image)
         scaled_pixmap = self._original_pixmap.scaled(
-            self.size(), 
-            Qt.AspectRatioMode.KeepAspectRatio, 
-            Qt.TransformationMode.SmoothTransformation
+            self.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
         )
-        
+
         # 4. 将最终的 QPixmap 设置到 Label 上
         self.setPixmap(scaled_pixmap)
 
-    
     def resizeEvent(self, event):
-        '''改变大小的事件'''
+        """改变大小的事件"""
         w = self.width()
         h = self.height()
         h = int(w * self._aspect_ratio)
         self.setFixedHeight(h)  # 或者你想 setFixedWidth(int(h * aspect_ratio))
         if self._original_pixmap:
-            scaled = self._original_pixmap.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            scaled = self._original_pixmap.scaled(
+                self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
             super().setPixmap(scaled)
         super().resizeEvent(event)
-        
 
     @Slot(str)
-    def set_image(self,relative_image_path:str|None):
-        '''这是提供给外部的接口
+    def set_image(self, relative_image_path: str | None):
+        """这是提供给外部的接口
         这个是输入相对地址给外面的界面用的，set后立刻显示，实现绑定
-        '''
-        cover_changed=False
-        #logging.debug("设置的相对路径是:%s",relative_image_path)
-        if relative_image_path is None or relative_image_path=="":
-            #if self._path is not None and is_temp_path(self._path):#这个临时保存后再次切换就有问题了
+        """
+        cover_changed = False
+        # logging.debug("设置的相对路径是:%s",relative_image_path)
+        if relative_image_path is None or relative_image_path == "":
+            # if self._path is not None and is_temp_path(self._path):#这个临时保存后再次切换就有问题了
             #    self.delete_image()#现在有个问题就是这个临时文件夹会变大，不清理的话，找个函数清理
-            #先删除临时路径的文件
+            # 先删除临时路径的文件
             if self._path is not None:
-                cover_changed=True
-            self._path=None
-            self._original_pixmap=None #清空原始图像
-            self.setPixmap(QPixmap()) 
+                cover_changed = True
+            self._path = None
+            self._original_pixmap = None  # 清空原始图像
+            self.setPixmap(QPixmap())
             self.setText(self.show_text)
             if cover_changed:
                 self.cover_changed.emit()
@@ -207,12 +221,10 @@ class ActressAvatarDropWidget(Label):
         if p.is_absolute():
             self._path = str(p)
         else:
-            self._path=str(self.base_path / relative_image_path)
+            self._path = str(self.base_path / relative_image_path)
         self._show_image()
         self.cover_changed.emit()
 
-    def get_image(self)->str:
-        '''返回现在的URL'''
+    def get_image(self) -> str:
+        """返回现在的URL"""
         return self._path
-    
-

@@ -98,7 +98,9 @@ class LabelManagementPage(LazyWidget):
             header_overrides={0: "ID", 1: "中文名", 2: "日文名", 3: "别名", 4: "详情"},
         )
         if not self.model.refresh():
-            QMessageBox.critical(self, "错误", f"加载表 label 失败: {self.model.lastError().text()}")
+            QMessageBox.critical(
+                self, "错误", f"加载表 label 失败: {self.model.lastError().text()}"
+            )
             return
 
         self.view.setModel(self.model)
@@ -255,10 +257,13 @@ class LabelManagementPage(LazyWidget):
     @Slot()
     def save_changes(self):
         if not self.model.submitAll():
-            QMessageBox.critical(self, "错误", f"保存失败: {self.model.lastError().text()}")
+            QMessageBox.critical(
+                self, "错误", f"保存失败: {self.model.lastError().text()}"
+            )
             return
         QMessageBox.information(self, "提示", "保存成功")
         from controller.GlobalSignalBus import global_signals
+
         global_signals.label_data_changed.emit()
         global_signals.work_data_changed.emit()
 
@@ -270,7 +275,9 @@ class LabelManagementPage(LazyWidget):
     @Slot()
     def refresh_data(self):
         if not self.model.refresh():
-            QMessageBox.critical(self, "刷新错误", f"刷新 label 失败: {self.model.lastError().text()}")
+            QMessageBox.critical(
+                self, "刷新错误", f"刷新 label 失败: {self.model.lastError().text()}"
+            )
             return
         self.mapper.toFirst()
         logging.info("label 数据已刷新")
@@ -296,6 +303,7 @@ class LabelManagementPage(LazyWidget):
         self.refresh_data()
         QMessageBox.information(self, "提示", "厂牌重定向成功")
         from controller.GlobalSignalBus import global_signals
+
         global_signals.label_data_changed.emit()
         global_signals.work_data_changed.emit()
 
@@ -316,7 +324,11 @@ class LabelManagementPage(LazyWidget):
             target_row = cursor.fetchone()
 
             if not source_row or not target_row:
-                logging.warning("重定向失败：厂牌不存在 source=%s target=%s", source_label_id, target_label_id)
+                logging.warning(
+                    "重定向失败：厂牌不存在 source=%s target=%s",
+                    source_label_id,
+                    target_label_id,
+                )
                 conn.rollback()
                 return False
 
@@ -324,7 +336,11 @@ class LabelManagementPage(LazyWidget):
             _, _, target_aliases = target_row
 
             source_name = str(source_cn_name or source_jp_name or "").strip()
-            alias_items = [a.strip() for a in str(target_aliases or "").split(",") if a and a.strip()]
+            alias_items = [
+                a.strip()
+                for a in str(target_aliases or "").split(",")
+                if a and a.strip()
+            ]
             if source_name:
                 alias_items.append(source_name)
 

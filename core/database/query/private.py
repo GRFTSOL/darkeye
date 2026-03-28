@@ -1,17 +1,18 @@
-'''私有库查询'''
+"""私有库查询"""
+
 from config import PRIVATE_DATABASE
 from ..connection import get_connection
 
 
 def query_actress(actress_id) -> bool:
-    '''判断某个actress_id是否在私有库内'''
-    query = '''
+    """判断某个actress_id是否在私有库内"""
+    query = """
     SELECT
         actress_id
     FROM
         favorite_actress
     WHERE actress_id=?
-    '''
+    """
     with get_connection(PRIVATE_DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (actress_id,))
@@ -22,14 +23,14 @@ def query_actress(actress_id) -> bool:
 
 
 def query_work(work_id) -> bool:
-    '''判断某个work_id是否在私有库内'''
-    query = '''
+    """判断某个work_id是否在私有库内"""
+    query = """
     SELECT
         work_id
     FROM
         favorite_work
     WHERE work_id=?
-    '''
+    """
     with get_connection(PRIVATE_DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (work_id,))
@@ -46,14 +47,14 @@ def get_unique_tools_from_masturbation() -> list:
     返回:
     - list: 工具名称的列表，按使用次数降序排列
     """
-    query = '''
+    query = """
         SELECT
             tool_name ,
             count(*) AS num
         FROM masturbation
         GROUP BY tool_name
         ORDER BY num DESC
-        '''
+        """
     with get_connection(PRIVATE_DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
@@ -75,7 +76,7 @@ def get_record_by_year(year: int, scope: int) -> dict:
     """
     match scope:
         case 0:
-            query = '''
+            query = """
     SELECT
         DATE(start_time) AS day,
         COUNT(*) AS count_per_day
@@ -83,9 +84,9 @@ def get_record_by_year(year: int, scope: int) -> dict:
     WHERE strftime('%Y', start_time) = ?
     GROUP BY day
     ORDER BY day;
-    '''
+    """
         case 1:
-            query = '''
+            query = """
     SELECT
         DATE(event_time) AS day,
         COUNT(*) AS count_per_day
@@ -93,9 +94,9 @@ def get_record_by_year(year: int, scope: int) -> dict:
     WHERE strftime('%Y', event_time) = ?
     GROUP BY day
     ORDER BY day;
-    '''
+    """
         case 2:
-            query = '''
+            query = """
     SELECT
         DATE(arousal_time) AS day,
         COUNT(*) AS count_per_day
@@ -103,7 +104,7 @@ def get_record_by_year(year: int, scope: int) -> dict:
     WHERE strftime('%Y', arousal_time) = ?
     GROUP BY day
     ORDER BY day;
-    '''
+    """
 
     with get_connection(PRIVATE_DATABASE, True) as conn:
         cursor = conn.cursor()
@@ -111,8 +112,9 @@ def get_record_by_year(year: int, scope: int) -> dict:
         data = cursor.fetchall()
     result = {}
     from PySide6.QtCore import QDate
+
     for date_str, val in data:
-        y, month, day = map(int, date_str.split('-'))
+        y, month, day = map(int, date_str.split("-"))
         qdate = QDate(y, month, day)
         result[qdate] = val
     return result
@@ -131,29 +133,29 @@ def get_record_count_in_days(days: int, scope: int) -> int:
     """
     match scope:
         case 0:
-            query = '''
+            query = """
             SELECT
                 count(*) AS count
             FROM
                 masturbation
             WHERE start_time >= DATE('now', printf('-%d day', ?))
-            '''
+            """
         case 1:
-            query = '''
+            query = """
             SELECT
                 count(*) AS count
             FROM
                 love_making
             WHERE event_time >= DATE('now', printf('-%d day', ?))
-            '''
+            """
         case 2:
-            query = '''
+            query = """
             SELECT
                 count(*) AS count
             FROM
                 sexual_arousal
             WHERE arousal_time >= DATE('now', printf('-%d day', ?))
-            '''
+            """
     with get_connection(PRIVATE_DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (days,))
@@ -173,26 +175,26 @@ def get_record_count_by_year(year: int, scope: int) -> int:
     """
     match scope:
         case 0:
-            query = '''
+            query = """
     SELECT
         COUNT(*) AS count
     FROM masturbation
     WHERE strftime('%Y', start_time) = ?
-    '''
+    """
         case 1:
-            query = '''
+            query = """
     SELECT
         COUNT(*) AS count
     FROM love_making
     WHERE strftime('%Y', event_time) = ?
-    '''
+    """
         case 2:
-            query = '''
+            query = """
     SELECT
         COUNT(*) AS count
     FROM sexual_arousal
     WHERE strftime('%Y', arousal_time) = ?
-    '''
+    """
     with get_connection(PRIVATE_DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (str(year),))
@@ -200,8 +202,8 @@ def get_record_count_by_year(year: int, scope: int) -> int:
 
 
 def get_record_early_year() -> int | None:
-    '''返回三表最早记录的年份'''
-    query = '''
+    """返回三表最早记录的年份"""
+    query = """
     SELECT MIN(year) AS earliest_year FROM (
         SELECT MIN(strftime('%Y', start_time)) AS year FROM masturbation
         UNION ALL
@@ -209,7 +211,7 @@ def get_record_early_year() -> int | None:
         UNION ALL
         SELECT MIN(strftime('%Y', arousal_time)) AS year FROM sexual_arousal
     );
-    '''
+    """
     with get_connection(PRIVATE_DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)

@@ -18,7 +18,9 @@ class MakerSelector(ComboBox):
         self.setInsertPolicy(ComboBox.InsertPolicy.NoInsert)
         self.setMaxVisibleItems(15)
         # 避免按超长片商名扩张控件宽度
-        self.setSizeAdjustPolicy(ComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.setSizeAdjustPolicy(
+            ComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
         self.setMinimumContentsLength(8)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.lineEdit().setFrame(False)
@@ -27,7 +29,9 @@ class MakerSelector(ComboBox):
         self._completer = QCompleter(self._completion_model, self)
         self._completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         # 过滤由 _on_text_edited 手动完成，这里用 Unfiltered 避免再次按主名文本过滤。
-        self._completer.setCompletionMode(QCompleter.CompletionMode.UnfilteredPopupCompletion)
+        self._completer.setCompletionMode(
+            QCompleter.CompletionMode.UnfilteredPopupCompletion
+        )
         # 复用 ComboBox 下拉列表的设计系统样式，保证输入联想弹层与下拉弹层视觉一致。
         self._completer.popup().setObjectName("DesignComboBoxPopup")
         self.setCompleter(self._completer)
@@ -74,7 +78,9 @@ class MakerSelector(ComboBox):
         self.clear()
         for rec in self._maker_records:
             self.addItem(rec["display_name"], rec["maker_id"])
-        self._completion_model.setStringList([rec["display_name"] for rec in self._maker_records])
+        self._completion_model.setStringList(
+            [rec["display_name"] for rec in self._maker_records]
+        )
         self.setCurrentIndex(0)
         self._selected_maker_id = None
 

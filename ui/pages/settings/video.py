@@ -38,7 +38,8 @@ class VideoSettingPage(QWidget):
 
         self.btn_import_nfo = Button("从视频路径扫描并导入 NFO")
         self.btn_import_nfo.setToolTip(
-            "递归查找已配置路径下所有 .nfo，按 Kodi 电影格式导入作品；" "若 NFO 内番号已在库中则跳过。"
+            "递归查找已配置路径下所有 .nfo，按 Kodi 电影格式导入作品；"
+            "若 NFO 内番号已在库中则跳过。"
         )
         self.btn_import_nfo.clicked.connect(self.task_import_nfo_from_video_paths)
         layout.addWidget(self.btn_import_nfo)
@@ -105,7 +106,9 @@ class VideoSettingPage(QWidget):
         roots = [Path(p).expanduser() for p in get_video_path()]
         roots = [r for r in roots if r.is_dir()]
         if not roots:
-            self.msg.show_info("提示", "请先在上方添加至少一个存在本地的视频文件夹路径。")
+            self.msg.show_info(
+                "提示", "请先在上方添加至少一个存在本地的视频文件夹路径。"
+            )
             return
 
         nfo_list = self._collect_nfo_files(roots)

@@ -45,7 +45,9 @@ QAbstractItemView#DesignCompleterPopup::item:hover {{
 class CompleterLoaderRunnable(QRunnable):
     """在后台线程执行 loader_func，结果通过 signal 传回主线程（携带请求序号）。"""
 
-    def __init__(self, loader_func: Callable[[], list], request_seq: int, signal: Signal):
+    def __init__(
+        self, loader_func: Callable[[], list], request_seq: int, signal: Signal
+    ):
         super().__init__()
         self.loader_func = loader_func
         self.request_seq = request_seq
@@ -71,7 +73,12 @@ class CompleterLineEdit(LineEdit):
 
     items_loaded = Signal(int, list)
 
-    def __init__(self, loader_func: Callable[[], list] | None = None, parent=None, theme_manager: Optional["ThemeManager"] = None):
+    def __init__(
+        self,
+        loader_func: Callable[[], list] | None = None,
+        parent=None,
+        theme_manager: Optional["ThemeManager"] = None,
+    ):
         """
         :param loader_func: 返回项目列表的函数（在后台线程执行）
         :param parent: 父组件

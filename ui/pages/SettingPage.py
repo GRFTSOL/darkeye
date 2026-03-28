@@ -14,6 +14,7 @@ from .settings import (
     VideoSettingPage,
 )
 
+
 class SettingPage(LazyWidget):
     def __init__(self):
         super().__init__()

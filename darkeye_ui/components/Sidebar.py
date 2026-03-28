@@ -14,7 +14,6 @@ from ..design.theme_manager import ThemeManager
 from ..design.tokens import ThemeTokens
 from .icon_push_button import IconPushButton
 
-
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QWidget as _QWidget
 

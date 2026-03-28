@@ -1,16 +1,17 @@
-
-import json,logging,os
+import json, logging, os
 from config import USER_SHORTCUT_PATH
 
+
 class ShortcutRegistry:
-    '''
+    """
     快捷键注册中心，单例模式，长周期
     功能:
     - 加载和保存用户自定义的快捷键配置
     - 提供默认快捷键配置
     - 支持添加、删除、修改快捷键
     - 支持查询快捷键绑定的操作
-    '''
+    """
+
     _instance = None  # 存储单例引用
 
     def __new__(cls, *args, **kwargs):
@@ -19,7 +20,6 @@ class ShortcutRegistry:
             cls._instance = super(ShortcutRegistry, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
-
 
     def __init__(self, config_path=USER_SHORTCUT_PATH):
         """确保初始化逻辑只运行一次"""
@@ -38,10 +38,9 @@ class ShortcutRegistry:
             "search": {"name": "搜索", "key": "Ctrl+F"},
             "capture": {"name": "部分截图", "key": "C"},
             "allcapture": {"name": "全软件截图", "key": "Shift+C"},
-
         }
         self.user_shortcuts = self.load_config()
-        self.actions_map={}
+        self.actions_map = {}
         self._initialized = True
 
     def load_config(self):
@@ -49,7 +48,7 @@ class ShortcutRegistry:
         if not os.path.exists(self.config_path):
             return {}
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
             logging.warning(
@@ -69,7 +68,7 @@ class ShortcutRegistry:
 
     def save_config(self):
         """保存当前用户设置到本地"""
-        with open(self.config_path, 'w', encoding='utf-8') as f:
+        with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(self.user_shortcuts, f, indent=4, ensure_ascii=False)
 
     def get_shortcut(self, action_id):
@@ -86,5 +85,3 @@ class ShortcutRegistry:
         if action_id in self.user_shortcuts:
             del self.user_shortcuts[action_id]
             self.save_config()
-
-

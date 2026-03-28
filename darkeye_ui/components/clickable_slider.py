@@ -89,7 +89,9 @@ class ClickableSlider(QSlider):
             else:
                 ratio = 1.0 - event.position().y() / max(1, self.height())
             ratio = float(max(0.0, min(1.0, ratio)))
-            value = self.minimum() + int(round(ratio * (self.maximum() - self.minimum())))
+            value = self.minimum() + int(
+                round(ratio * (self.maximum() - self.minimum()))
+            )
             self.setValue(value)
         super().mousePressEvent(event)
 

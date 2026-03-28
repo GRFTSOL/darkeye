@@ -1,4 +1,4 @@
-'''
+"""
 查询与数据库交互的函数，按业务域拆分为多个子模块。
 此处聚合导出，保持与原有 from core.database.query import xxx 的兼容。
 
@@ -10,7 +10,8 @@
 - dashboard: 仪表盘统计
 - statistics: 统计图表（年龄、身材分布、年份、导演/片商排行等）
 - private: 私有库（自慰/做爱/晨勃记录、按年/按天统计等）
-'''
+"""
+
 from .work import (
     get_all_work_id,
     get_work_ids_with_cover,

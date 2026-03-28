@@ -8,9 +8,12 @@ from PySide6.QtWidgets import QLabel
 import math
 
 
-def _set_shadow_on_widget(widget: QLabel, blur_radius=10, x_offset=0, y_offset=2, color=None):
+def _set_shadow_on_widget(
+    widget: QLabel, blur_radius=10, x_offset=0, y_offset=2, color=None
+):
     """为控件设置投影，仅依赖 PySide6"""
     from PySide6.QtWidgets import QGraphicsDropShadowEffect
+
     if color is None:
         color = QColor(0, 0, 0, 80)
     effect = QGraphicsDropShadowEffect(widget)
@@ -92,8 +95,14 @@ class OctImage(QLabel):
         c = d / (2 + math.sqrt(2))
         polygon = QPolygonF()
         for x, y in [
-            (c, 0), (d - c, 0), (d, c), (d, d - c),
-            (d - c, d), (c, d), (0, d - c), (0, c),
+            (c, 0),
+            (d - c, 0),
+            (d, c),
+            (d, d - c),
+            (d - c, d),
+            (c, d),
+            (0, d - c),
+            (0, c),
         ]:
             polygon.append(QPointF(x, y))
         self.setPixmap(QPixmap.fromImage(img))
@@ -107,5 +116,9 @@ class OctImage(QLabel):
             self.clearMask()
             return
         p = Path(image_path)
-        self._path = (self._base_path / image_path) if self._base_path and not p.is_absolute() else p
+        self._path = (
+            (self._base_path / image_path)
+            if self._base_path and not p.is_absolute()
+            else p
+        )
         self._show_image_async()

@@ -1,9 +1,8 @@
-
-#用于展示封面一半的图片+标题+番号
+# 用于展示封面一半的图片+标题+番号
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout
-from PySide6.QtGui import QPainter,QColor,QPainterPath
-from PySide6.QtCore import Qt,Signal,Slot
+from PySide6.QtGui import QPainter, QColor, QPainterPath
+from PySide6.QtCore import Qt, Signal, Slot
 from config import WORKCOVER_PATH
 from pathlib import Path
 import logging
@@ -15,26 +14,36 @@ from darkeye_ui.components.label import Label
 
 
 class CoverCard(QWidget):
-    def __init__(self, title: str,image_path: str,serial_number,work_id,standard:bool,color="#87CEEB",green_mode=False,parent=None):
+    def __init__(
+        self,
+        title: str,
+        image_path: str,
+        serial_number,
+        work_id,
+        standard: bool,
+        color="#87CEEB",
+        green_mode=False,
+        parent=None,
+    ):
         super().__init__(parent)
-        #self.setStyleSheet("border: 1px solid red; border-radius: 4px;")
+        # self.setStyleSheet("border: 1px solid red; border-radius: 4px;")
         self.setFixedWidth(220)
-        self.background_color=color
-        self._work_id=work_id
-        self.original_title=title
-        self._green_mode=green_mode
+        self.background_color = color
+        self._work_id = work_id
+        self.original_title = title
+        self._green_mode = green_mode
 
         if image_path is None:
-            #self._path=Path(ICONS_PATH/"none.png")
-            self._path=None
+            # self._path=Path(ICONS_PATH/"none.png")
+            self._path = None
         else:
-            self._path=Path(WORKCOVER_PATH/image_path)
-        #logging.debug(f"卡片的绿色模式{green_mode}")
-        self.image_label = CoverImage(self._path,self._work_id,standard,green_mode)
-        
+            self._path = Path(WORKCOVER_PATH / image_path)
+        # logging.debug(f"卡片的绿色模式{green_mode}")
+        self.image_label = CoverImage(self._path, self._work_id, standard, green_mode)
+
         self.title_label = Label(title or "")
 
-        if green_mode:#新创造的修改
+        if green_mode:  # 新创造的修改
             self.title_label.setText(replace_sensitive(title))
 
         self.title_label.setStyleSheet("""
@@ -44,9 +53,8 @@ class CoverCard(QWidget):
                 font-weight: bold;         /* 粗体，可选 normal、bold、100-900 */
             }
         """)
-        self.serial_number=serial_number
-        self.serial_number_label=ClickableLabel(serial_number)
-
+        self.serial_number = serial_number
+        self.serial_number_label = ClickableLabel(serial_number)
 
         self.image_label.setAlignment(Qt.AlignCenter)
 
@@ -63,42 +71,48 @@ class CoverCard(QWidget):
             }
         """)
 
-
         layout = QVBoxLayout(self)
-        w=self.width()*0.15
-        if title !="":
-            layout.setContentsMargins(5,10,5,20)
+        w = self.width() * 0.15
+        if title != "":
+            layout.setContentsMargins(5, 10, 5, 20)
         else:
-            layout.setContentsMargins(5,10,5,w)
-        layout.addWidget(self.serial_number_label,alignment=Qt.AlignCenter)
+            layout.setContentsMargins(5, 10, 5, w)
+        layout.addWidget(self.serial_number_label, alignment=Qt.AlignCenter)
         layout.addWidget(self.image_label)
-        #if title !="":
+        # if title !="":
         layout.addWidget(self.title_label)
-        
+
         self.signal_connect()
 
     def signal_connect(self):
-        '''信号转接'''
-        self.image_label.jump_to_modify_work.connect(lambda:Router.instance().push("work_edit", serial_number=self.serial_number))
-        
+        """信号转接"""
+        self.image_label.jump_to_modify_work.connect(
+            lambda: Router.instance().push(
+                "work_edit", serial_number=self.serial_number
+            )
+        )
+
         from controller.GlobalSignalBus import global_signals
+
         global_signals.green_mode_changed.connect(self._update_green_mode)
         global_signals.work_data_changed.connect(self._update_card)
-        
 
     @Slot()
     def _update_card(self):
-        '''更新卡片信息'''
+        """更新卡片信息"""
         try:
             # 查作品卡片信息（爬虫写库中可能短时查不到或字段为空）
             from core.database.query import get_workcardinfo_by_workid
+
             data = get_workcardinfo_by_workid(self._work_id)
             if not data:
                 return
 
             title = data.get("cn_title") or ""
             self.original_title = title
-            self.title_label.setText(replace_sensitive(title) if self._green_mode else title)
+            self.title_label.setText(
+                replace_sensitive(title) if self._green_mode else title
+            )
 
             # 更新图片
             image_path = data.get("image_url")
@@ -114,12 +128,14 @@ class CoverCard(QWidget):
             self.background_color = self.backgroundcolor_from_tagid(data.get("tag_id"))
             self.update()
         except Exception:
-            logging.exception("CoverCard._update_card 执行失败: work_id=%s", self._work_id)
+            logging.exception(
+                "CoverCard._update_card 执行失败: work_id=%s", self._work_id
+            )
 
     @Slot(bool)
-    def _update_green_mode(self,green_mode:bool):
-        '''更新绿色模式'''
-        self._green_mode=green_mode
+    def _update_green_mode(self, green_mode: bool):
+        """更新绿色模式"""
+        self._green_mode = green_mode
         if self._green_mode:
             self.title_label.setText(replace_sensitive(self.original_title))
         else:
@@ -137,12 +153,13 @@ class CoverCard(QWidget):
         # 调用父类 paintEvent 让子控件正常绘制
         super().paintEvent(event)
     '''
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
         w, h = self.width(), self.height()
-        cut = w*0.15  # 倒角的长度（四角削去的边长）
+        cut = w * 0.15  # 倒角的长度（四角削去的边长）
 
         path = QPainterPath()
         path.moveTo(cut, 0)
@@ -159,17 +176,16 @@ class CoverCard(QWidget):
         painter.end()  # 必须在 super() 之前结束，避免 QBackingStore::endPaint 报错
         super().paintEvent(event)
 
-
     @staticmethod
-    def backgroundcolor_from_tagid(tag_id:int|None)->str:
-        #color_list=["#00d8f3","#79ec82","#fede2a"]
-        color_list=["#80B0F8","#ffa475","#ffeb28"]
+    def backgroundcolor_from_tagid(tag_id: int | None) -> str:
+        # color_list=["#00d8f3","#79ec82","#fede2a"]
+        color_list = ["#80B0F8", "#ffa475", "#ffeb28"]
         match tag_id:
             case 1:
                 return color_list[0]
             case 2:
                 return color_list[1]
-            case 3:  
+            case 3:
                 return color_list[2]
             case None:
                 return "#00000000"

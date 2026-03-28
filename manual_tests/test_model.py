@@ -1,4 +1,5 @@
 """手动测试：验证数据库初始化与 sqlite3 连接可用。"""
+
 import sys
 import os
 

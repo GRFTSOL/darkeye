@@ -16,7 +16,6 @@ from controller.GlobalSignalBus import global_signals
 from core.crawler.crawler_task import CrawlWorkflowState
 from darkeye_ui.components import Label, TokenListView
 
-
 _WORKFLOW_LABELS: dict[CrawlWorkflowState, str] = {
     CrawlWorkflowState.QUEUED: "排队",
     CrawlWorkflowState.CRAWLING: "源站爬取",
@@ -138,7 +137,9 @@ class InboxPage(QWidget):
     def _on_task_started(self, serial: str, total: int) -> None:
         state = self._tasks.get(serial)
         if state is None:
-            state = DownloadTaskState(serial=serial, current=0, total=max(0, int(total)))
+            state = DownloadTaskState(
+                serial=serial, current=0, total=max(0, int(total))
+            )
             self._tasks[serial] = state
         else:
             state.total = max(0, int(total))
@@ -214,7 +215,9 @@ class InboxPage(QWidget):
         self._refresh_counters()
 
     @Slot(str, int, int, str)
-    def _on_task_progress(self, serial: str, current: int, total: int, msg: str) -> None:
+    def _on_task_progress(
+        self, serial: str, current: int, total: int, msg: str
+    ) -> None:
         state = self._tasks.get(serial)
         if state is None:
             state = DownloadTaskState(serial=serial)
@@ -305,9 +308,15 @@ class InboxPage(QWidget):
         return f"{display_serial} (待爬)"
 
     def _sync_models(self) -> None:
-        self._pending_model.setStringList([self._display_text_for_serial(s) for s in self._pending_serials])
-        self._running_model.setStringList([self._display_text_for_serial(s) for s in self._running_serials])
-        self._finished_model.setStringList([self._display_text_for_serial(s) for s in self._finished_serials])
+        self._pending_model.setStringList(
+            [self._display_text_for_serial(s) for s in self._pending_serials]
+        )
+        self._running_model.setStringList(
+            [self._display_text_for_serial(s) for s in self._running_serials]
+        )
+        self._finished_model.setStringList(
+            [self._display_text_for_serial(s) for s in self._finished_serials]
+        )
         self._models_dirty = False
 
     def _sync_models_if_needed(self) -> None:
@@ -316,10 +325,14 @@ class InboxPage(QWidget):
 
     def _refresh_counters(self) -> None:
         pending_count = sum(
-            1 for s in self._tasks.values() if s.in_queue and not s.started and not s.finished
+            1
+            for s in self._tasks.values()
+            if s.in_queue and not s.started and not s.finished
         )
         running_count = sum(
-            1 for s in self._tasks.values() if (s.crawling or s.started) and not s.finished
+            1
+            for s in self._tasks.values()
+            if (s.crawling or s.started) and not s.finished
         )
         finished_count = sum(1 for s in self._tasks.values() if s.finished)
 

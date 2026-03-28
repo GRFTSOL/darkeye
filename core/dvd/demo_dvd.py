@@ -1,4 +1,5 @@
 """Qt Quick 3D 加载 DVD 模型演示。"""
+
 from __future__ import annotations
 
 import sys
@@ -18,7 +19,8 @@ from core.dvd.DvdShelfView import cover_url_to_texture_url, path_to_file_url
 
 
 class work:
-    '''弄一个数据类'''
+    """弄一个数据类"""
+
     def __init__(self, work_id, serial_number, cover_url) -> None:
         self.work_id = work_id
         self.serial_number = serial_number

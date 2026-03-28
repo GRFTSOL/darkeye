@@ -36,6 +36,7 @@ from ui.widgets.selectors.maker_selector import MakerSelector
 from ui.widgets.selectors.label_selector import LabelSelector
 from ui.widgets.selectors.series_selector import SeriesSelector
 
+
 class ShelfPage(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -75,8 +76,7 @@ class ShelfPage(QWidget):
         filterwidget.setFixedHeight(32)
         filterwidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         scroll.setWidget(filterwidget)
-        scroll.setStyleSheet(
-            """
+        scroll.setStyleSheet("""
     QScrollArea {
         border: none;
         background: transparent;
@@ -84,8 +84,7 @@ class ShelfPage(QWidget):
     QScrollBar {
         background: transparent;
     }
-"""
-        )
+""")
 
         self.story_input = LineEdit()
         self.title_input = LineEdit()
@@ -135,8 +134,10 @@ class ShelfPage(QWidget):
         self.info = Label()
         self.info.setFixedWidth(100)
 
-        self.btn_reload = RotateButton(icon_name="refresh_cw",icon_size=24,out_size=24)
-        self.btn_eraser = ShakeButton(icon_name="eraser",icon_size=24,out_size=24)
+        self.btn_reload = RotateButton(
+            icon_name="refresh_cw", icon_size=24, out_size=24
+        )
+        self.btn_eraser = ShakeButton(icon_name="eraser", icon_size=24, out_size=24)
 
         self.order_combo = ComboBox()
         self.order_combo.addItems(
@@ -246,7 +247,9 @@ class ShelfPage(QWidget):
             try:
                 target_work_id = get_workid_by_serialnumber(str(serial_number).strip())
             except Exception:
-                logging.exception("ShelfPage: failed to resolve work_id from serial_number")
+                logging.exception(
+                    "ShelfPage: failed to resolve work_id from serial_number"
+                )
                 return
 
         if target_work_id is not None:
@@ -261,7 +264,9 @@ class ShelfPage(QWidget):
                 return
 
             # Delay one event-loop tick so a freshly lazy-loaded page can finish applying its initial data.
-            QTimer.singleShot(0, lambda wid=target_work_id: self.shelf_view.loadworkid(wid))
+            QTimer.singleShot(
+                0, lambda wid=target_work_id: self.shelf_view.loadworkid(wid)
+            )
             return
 
         def _positive_id(v) -> int | None:
@@ -396,7 +401,9 @@ WHERE cn LIKE ? OR jp LIKE ?
             query += "JOIN priv.favorite_work fav ON fav.work_id=work.work_id\n"
 
         if self.scope == "已撸过":
-            query += "JOIN priv.masturbation  ON priv.masturbation.work_id=work.work_id\n"
+            query += (
+                "JOIN priv.masturbation  ON priv.masturbation.work_id=work.work_id\n"
+            )
 
         if self.order == "拍摄年龄顺序" or self.order == "拍摄年龄逆序":
             query += "JOIN v_work_avg_age_info v ON work.work_id = v.work_id\n"

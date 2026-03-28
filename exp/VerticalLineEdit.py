@@ -1,8 +1,16 @@
 # vertical_line_edit.py
 
 from PySide6.QtWidgets import QWidget
-from PySide6.QtGui import QPainter, QFont, QColor, QKeyEvent, QGuiApplication, QClipboard
-from PySide6.QtCore import Qt, QTimer, QRectF, QPointF,QSize
+from PySide6.QtGui import (
+    QPainter,
+    QFont,
+    QColor,
+    QKeyEvent,
+    QGuiApplication,
+    QClipboard,
+)
+from PySide6.QtCore import Qt, QTimer, QRectF, QPointF, QSize
+
 
 class VerticalLineEdit(QWidget):
     def __init__(self, parent=None, font=None, line_spacing=4, placeholder=""):
@@ -11,9 +19,9 @@ class VerticalLineEdit(QWidget):
         self._line_spacing = line_spacing
         self._placeholder = placeholder
 
-        self._chars = []            # 已提交字符列表
-        self._cursor_index = 0      # 插入位置（0..len）
-        self._preedit = ""          # IME 预编辑字符串
+        self._chars = []  # 已提交字符列表
+        self._cursor_index = 0  # 插入位置（0..len）
+        self._preedit = ""  # IME 预编辑字符串
         self._has_focus = False
 
         # 光标闪烁
@@ -174,7 +182,10 @@ class VerticalLineEdit(QWidget):
             # placeholder
             if not self._chars and not self._preedit and not self._has_focus:
                 p.setPen(QColor(160, 160, 160))
-                p.drawText(QPointF(x_center - fm.horizontalAdvance(self._placeholder) / 2, y), self._placeholder)
+                p.drawText(
+                    QPointF(x_center - fm.horizontalAdvance(self._placeholder) / 2, y),
+                    self._placeholder,
+                )
 
             p.setPen(QColor(30, 30, 30))
 
@@ -187,17 +198,17 @@ class VerticalLineEdit(QWidget):
                     p.save()
                     ch_w = fm.horizontalAdvance(ch)
                     ch_h = fm.height()
-                    
+
                     # 平移到字符绘制中心，再旋转
                     p.translate(x_center, y)
                     p.rotate(90)
                     # 因为旋转后坐标轴变了，这里绘制时 y=0, x 左移半宽
                     p.drawText(QPointF(-ch_w / 2, fm.ascent() / 2), ch)
                     p.restore()
-                    y += line_h-10
+                    y += line_h - 10
                 else:
                     # 中文等直接竖排绘制
-                    
+
                     ch_w = fm.horizontalAdvance(ch)
                     p.drawText(QPointF(x_center - ch_w / 2, y), ch)
                     y += line_h
@@ -205,7 +216,11 @@ class VerticalLineEdit(QWidget):
                     self._draw_cursor(p, x_center, y - fm.ascent(), line_h)
 
             # 光标在末尾
-            if self._cursor_visible and self._has_focus and self._cursor_index == len(self._chars):
+            if (
+                self._cursor_visible
+                and self._has_focus
+                and self._cursor_index == len(self._chars)
+            ):
                 self._draw_cursor(p, x_center, y - fm.ascent(), line_h)
 
             # 预编辑字符串
@@ -215,14 +230,16 @@ class VerticalLineEdit(QWidget):
                 p.drawText(QPointF(x_center - pe_w / 2, y), self._preedit)
                 p.drawLine(x_center - pe_w / 2, y + 2, x_center + pe_w / 2, y + 2)
 
-    def _draw_cursor(self, painter: QPainter, x_center: float, y_top: float, line_h: float):
+    def _draw_cursor(
+        self, painter: QPainter, x_center: float, y_top: float, line_h: float
+    ):
         """绘制横向插入光标（短横线）"""
         fm = painter.fontMetrics()
         cursor_w = fm.horizontalAdvance("M") * 0.8  # 横线宽度，0.8 表示稍短于字符宽
         # 横线放在字符底部，也可以放在中间
         cx_left = x_center - cursor_w / 2
-        cy = y_top +  - 2  # 离底部 2px
-        
+        cy = y_top + -2  # 离底部 2px
+
         if self._cursor_visible:
             painter.setPen(QColor(20, 20, 20))
             painter.drawLine(QPointF(cx_left, cy), QPointF(cx_left + cursor_w, cy))
@@ -231,7 +248,9 @@ class VerticalLineEdit(QWidget):
     def sizeHint(self):
         fm = self.fontMetrics()
         # 宽度可以按字体最大字符宽 + padding
-        w = fm.horizontalAdvance('W')
+        w = fm.horizontalAdvance("W")
         # 高度按当前字符数（或最小高度）
-        h = max(60, int((fm.height() + self._line_spacing) * max(1, len(self._chars)) + 8))
+        h = max(
+            60, int((fm.height() + self._line_spacing) * max(1, len(self._chars)) + 8)
+        )
         return QSize(w, h)

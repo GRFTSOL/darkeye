@@ -21,7 +21,14 @@ class ColorPicker(QLabel):
     colorChanged = Signal(str)
     colorConfirmed = Signal(str)
 
-    def __init__(self, color: QColor = None, parent=None, *, show_text: bool = True, shape: str = ShapeRectangle):
+    def __init__(
+        self,
+        color: QColor = None,
+        parent=None,
+        *,
+        show_text: bool = True,
+        shape: str = ShapeRectangle,
+    ):
         super().__init__(parent)
         if color is None:
             color = QColor("#cccccc")
@@ -34,7 +41,7 @@ class ColorPicker(QLabel):
         self._update_color(self._color)
         self.mousePressEvent = self._handle_click
         self._color_wheel = None
-        #self._set_shadow()
+        # self._set_shadow()
 
     def _set_shadow(self):
         shadow = QGraphicsDropShadowEffect(self)

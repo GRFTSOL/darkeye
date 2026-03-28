@@ -1,5 +1,6 @@
 # darkeye_ui/components/token_collapsible_section.py - 可折叠面板，由设计令牌驱动
 """可折叠面板（Accordion 风格），背景与图标由设计令牌驱动。"""
+
 from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtCore import Qt, Signal
@@ -64,7 +65,9 @@ class TokenCollapsibleSection(QWidget):
 
     def _update_icon(self, expanded: bool) -> None:
         t = self._tokens()
-        icon = get_builtin_icon("chevron_down" if expanded else "chevron_right", size=16, color=t.color_icon)
+        icon = get_builtin_icon(
+            "chevron_down" if expanded else "chevron_right", size=16, color=t.color_icon
+        )
         self.toggle_btn.setIcon(icon)
 
     def _apply_token_styles(self) -> None:

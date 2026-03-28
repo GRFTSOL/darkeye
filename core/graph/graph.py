@@ -1,5 +1,4 @@
-
-import math,random
+import math, random
 import networkx as nx
 
 
@@ -8,9 +7,10 @@ def generate_random_connections(mean: float) -> int:
     # JS 中的：-Math.log(1 - Math.random()) * mean
     return round(-math.log(1 - random.random()) * mean)
 
-def generate_random_graph(node_number=200, mean=1)-> nx.Graph:
+
+def generate_random_graph(node_number=200, mean=1) -> nx.Graph:
     """生成随机图"""
-    
+
     G = nx.Graph()
 
     # 添加节点
@@ -27,15 +27,17 @@ def generate_random_graph(node_number=200, mean=1)-> nx.Graph:
 
     return G
 
-def generate_graph()->nx.Graph:
-    '''产生无向图'''
-    
+
+def generate_graph() -> nx.Graph:
+    """产生无向图"""
+
     from core.database.connection import get_connection
     from config import DATABASE
-    conn=get_connection(DATABASE,True)
+
+    conn = get_connection(DATABASE, True)
     cursor = conn.cursor()
 
-    q1="""
+    q1 = """
     SELECT 
     actress_id,
     (SELECT cn FROM actress_name WHERE actress_id=actress.actress_id)AS name
@@ -44,7 +46,7 @@ def generate_graph()->nx.Graph:
     """
     cursor.execute(q1)
     actresses = cursor.fetchall()
-    q2="""
+    q2 = """
     SELECT 
     work_id,
     serial_number
@@ -60,16 +62,16 @@ def generate_graph()->nx.Graph:
     cursor.close()
     conn.close()
 
-    #添加图
-    G=nx.Graph()
-            # 添加女优节点
+    # 添加图
+    G = nx.Graph()
+    # 添加女优节点
     for aid, name in actresses:
         G.add_node(
             f"a{aid}",  # 避免与作品 id 冲突
             label=name,
             group="actress",
         )
-                # 添加作品节点
+        # 添加作品节点
     for wid, title in works:
         G.add_node(
             f"w{wid}",
@@ -82,19 +84,21 @@ def generate_graph()->nx.Graph:
         G.add_edge(f"a{aid}", f"w{wid}")
     return G
 
-def generate_similar_graph()->nx.Graph:
-    '''计算两两作品间的相似度，产生图，相似度高于阈值的连接'''
+
+def generate_similar_graph() -> nx.Graph:
+    """计算两两作品间的相似度，产生图，相似度高于阈值的连接"""
     import numpy as np
 
-    #从数据库获取作品及其标签
+    # 从数据库获取作品及其标签
     from core.database.connection import get_connection
-    from core.database.db_utils import attach_private_db,detach_private_db
+    from core.database.db_utils import attach_private_db, detach_private_db
     from config import DATABASE
-    conn=get_connection(DATABASE,True)
+
+    conn = get_connection(DATABASE, True)
     cursor = conn.cursor()
     attach_private_db(cursor)
 
-    q1="""
+    q1 = """
     SELECT 
     wtr.work_id,
     wtr.tag_id
@@ -106,9 +110,9 @@ def generate_similar_graph()->nx.Graph:
 	WHERE tag_type.tag_type_id  IN(1,3,7,8)
     """
     cursor.execute(q1)
-    work_tags_list= cursor.fetchall()
+    work_tags_list = cursor.fetchall()
 
-    q2="""
+    q2 = """
     SELECT 
     w.work_id,
     w.serial_number
@@ -129,8 +133,8 @@ def generate_similar_graph()->nx.Graph:
     tag_ids = sorted({t for w, t in work_tags_list})
 
     # 建立 id -> index 映射  ,由于work_id，tag_id不连续
-    work_id_to_idx = {w:i for i,w in enumerate(work_ids)}
-    tag_id_to_idx = {t:i for i,t in enumerate(tag_ids)}
+    work_id_to_idx = {w: i for i, w in enumerate(work_ids)}
+    tag_id_to_idx = {t: i for i, t in enumerate(tag_ids)}
 
     # 构建稠密 0/1 特征矩阵，避免依赖 scipy / sklearn
     X = np.zeros((len(work_ids), len(tag_ids)), dtype=float)
@@ -160,16 +164,11 @@ def generate_similar_graph()->nx.Graph:
             if sim > threshold:
                 edges.append((work_ids[i], work_ids[j], sim))  # (作品A, 作品B, 相似度)
 
-
     G = nx.Graph()
 
     for wid, title in works:
         G.add_node(
-            f"w{wid}",
-            label=title,
-            title=f"作品: {title}",
-            group="work",
-            shape="box"
+            f"w{wid}", label=title, title=f"作品: {title}", group="work", shape="box"
         )
 
     for a, b, sim in edges:
@@ -188,7 +187,7 @@ def generate_similar_graph()->nx.Graph:
 
         # 找出中心节点（你可以改用其他中心性算法）
         centrality = nx.degree_centrality(subG)
-        center_node = max(centrality, key=centrality.get)# type: ignore[arg-type]
+        center_node = max(centrality, key=centrality.get)  # type: ignore[arg-type]
 
         # 删除所有不含中心节点的边
         for u, v in list(subG.edges()):
@@ -198,4 +197,3 @@ def generate_similar_graph()->nx.Graph:
         print(f"子图 {comp} → 中心节点 {center_node}，保留星形结构")
 
     return G
-

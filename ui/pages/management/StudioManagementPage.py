@@ -2,7 +2,20 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QAbstractItemView, QDataWidgetMapper, QDialog, QFileDialog, QFormLayout, QHBoxLayout, QMessageBox, QPushButton, QSplitter, QTableView, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QDataWidgetMapper,
+    QDialog,
+    QFileDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QMessageBox,
+    QPushButton,
+    QSplitter,
+    QTableView,
+    QVBoxLayout,
+    QWidget,
+)
 import logging
 
 from config import BASE_DIR, DATABASE, ICONS_PATH
@@ -68,7 +81,7 @@ class MakerRedirectDialog(QDialog):
 
 
 class StudioManagementPage(LazyWidget):
-    #StudioManagementPage
+    # StudioManagementPage
     def __init__(self):
         super().__init__()
 
@@ -80,14 +93,18 @@ class StudioManagementPage(LazyWidget):
 
         self.config()
 
-        self.current_active_view=self.view1#默认选择
+        self.current_active_view = self.view1  # 默认选择
 
     def config(self):
         """配置 model 与 view"""
         # 表格用 delegate（parent=view1）；mapper 用独立 delegate（parent=None），
         # 避免 "editor does not belong to this view" 警告
-        self.maker_delegate = MakerComboDelegate(self.view1, DATABASE, maker_col_index=2)
-        self.mapper_maker_delegate = MakerComboDelegate(None, DATABASE, maker_col_index=2)
+        self.maker_delegate = MakerComboDelegate(
+            self.view1, DATABASE, maker_col_index=2
+        )
+        self.mapper_maker_delegate = MakerComboDelegate(
+            None, DATABASE, maker_col_index=2
+        )
 
         # model1: prefix_maker_relation
         self.model1 = SqliteEditableTableModel(
@@ -98,7 +115,11 @@ class StudioManagementPage(LazyWidget):
             header_overrides={0: "ID", 1: "番号前缀", 2: "制作商"},
         )
         if not self.model1.refresh():
-            QMessageBox.critical(self, "错误", f"加载表 prefix_maker_relation 失败: {self.model1.lastError().text()}")
+            QMessageBox.critical(
+                self,
+                "错误",
+                f"加载表 prefix_maker_relation 失败: {self.model1.lastError().text()}",
+            )
             return
 
         self.view1.setModel(self.model1)
@@ -110,7 +131,9 @@ class StudioManagementPage(LazyWidget):
         self.view1.setItemDelegate(self.maker_delegate)
 
         # studio ComboBox 数据源
-        self.maker_combo_model = SqliteQueryTableModel("SELECT maker_id, cn_name FROM maker", DATABASE)
+        self.maker_combo_model = SqliteQueryTableModel(
+            "SELECT maker_id, cn_name FROM maker", DATABASE
+        )
         self.maker_combo_model.refresh()
         self.studio.setModel(self.maker_combo_model)
         self.studio.setModelColumn(1)  # 显示 cn_name
@@ -132,7 +155,9 @@ class StudioManagementPage(LazyWidget):
             header_overrides={0: "ID", 1: "中文名", 2: "日文名", 3: "别名"},
         )
         if not self.model2.refresh():
-            QMessageBox.critical(self, "错误", f"加载表 maker 失败: {self.model2.lastError().text()}")
+            QMessageBox.critical(
+                self, "错误", f"加载表 maker 失败: {self.model2.lastError().text()}"
+            )
             return
 
         self.view2.setModel(self.model2)
@@ -162,7 +187,7 @@ class StudioManagementPage(LazyWidget):
         self.view1 = TokenTableView()
         self.view2 = TokenTableView()
 
-        self.status_label=Label("")
+        self.status_label = Label("")
         # 表格区域 - 使用分割器
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.view1)
@@ -174,7 +199,7 @@ class StudioManagementPage(LazyWidget):
         self.btn_delete = Button("删除行")
         self.btn_save = Button("保存修改")
         self.btn_revert = Button("撤销修改")
-        self.btn_refresh=Button("读数据库数据")
+        self.btn_refresh = Button("读数据库数据")
         self.btn_redirect_maker = Button("重定向片商")
 
         self.btn_export_maker_prefix = Button()
@@ -200,24 +225,23 @@ class StudioManagementPage(LazyWidget):
         button_layout.addWidget(self.btn_redirect_maker)
         button_layout.addWidget(self.status_label)
 
-        self.serial_number=LineEdit()
-        self.studio=ComboBox()
+        self.serial_number = LineEdit()
+        self.studio = ComboBox()
 
-        formlayout1=QFormLayout()
-        formlayout1.addRow(Label("番号前缀"),self.serial_number)
-        formlayout1.addRow(Label("制作商"),self.studio)
+        formlayout1 = QFormLayout()
+        formlayout1.addRow(Label("番号前缀"), self.serial_number)
+        formlayout1.addRow(Label("制作商"), self.studio)
 
-        self.cn_name=LineEdit()
-        self.jp_name=LineEdit()
-        self.alias=LineEdit()
-        formlayout2=QFormLayout()
-        formlayout2.addRow(Label("中文名"),self.cn_name)
-        formlayout2.addRow(Label("日文名"),self.jp_name)
-        formlayout2.addRow(Label("别名"),self.alias)
+        self.cn_name = LineEdit()
+        self.jp_name = LineEdit()
+        self.alias = LineEdit()
+        formlayout2 = QFormLayout()
+        formlayout2.addRow(Label("中文名"), self.cn_name)
+        formlayout2.addRow(Label("日文名"), self.jp_name)
+        formlayout2.addRow(Label("别名"), self.alias)
 
-
-        self.searchWidget=ModelSearch()
-        hlayout=QHBoxLayout()
+        self.searchWidget = ModelSearch()
+        hlayout = QHBoxLayout()
         hlayout.addLayout(formlayout1)
         hlayout.addLayout(formlayout2)
 
@@ -288,6 +312,7 @@ class StudioManagementPage(LazyWidget):
             self.msg.show_info("导入成功", "片商前缀数据已从 JSON 导入。")
             self.refresh_data()
             from controller.GlobalSignalBus import global_signals
+
             global_signals.maker_data_changed.emit()
             global_signals.work_data_changed.emit()
         except Exception as e:
@@ -301,24 +326,23 @@ class StudioManagementPage(LazyWidget):
                 self.set_active_view(obj)
         return super().eventFilter(obj, event)
 
-    def set_active_view(self, view:QTableView):
+    def set_active_view(self, view: QTableView):
         """设置当前活动视图"""
         self.current_active_view = view
         view_name = "前缀表格" if view == self.view1 else "制作商表"
         self.status_label.setText(f"当前焦点: {view_name}")
-        
+
         # 可选：高亮当前活动视图
         self.view1.setStyleSheet("")
         self.view2.setStyleSheet("")
-        #view.setStyleSheet("border: 2px solid blue;")
+        # view.setStyleSheet("border: 2px solid blue;")
         view.setStyleSheet("""
         QTableView{
             border: 2px solid orange;
         }
         """)
-        model,view=self.get_current_model_and_view()
-        self.searchWidget.set_model_view(model,view)
-
+        model, view = self.get_current_model_and_view()
+        self.searchWidget.set_model_view(model, view)
 
     def get_current_model_and_view(self):
         """获取当前活动的模型和视图"""
@@ -328,21 +352,20 @@ class StudioManagementPage(LazyWidget):
             return self.model2, self.view2
         return None, None
 
-
     @Slot()
     def add_row(self):
         """新增一行"""
         model, view = self.get_current_model_and_view()
-        if view==self.view1:
-            default=["番号前缀",1]
+        if view == self.view1:
+            default = ["番号前缀", 1]
         else:
-            default=[]
+            default = []
         if model and view:
             row = model.rowCount()
             model.insertRow(row)
             # 可选：初始化部分字段
             for i, value in enumerate(default):
-                model.setData(model.index(row, i+1), value)
+                model.setData(model.index(row, i + 1), value)
             view.selectRow(row)
             # 滚动到最后一行
             view.scrollToBottom()  # 滚动到底
@@ -365,13 +388,15 @@ class StudioManagementPage(LazyWidget):
         model, view = self.get_current_model_and_view()
         if model and view:
             if not model.submitAll():
-                QMessageBox.critical(self, "错误", f"保存失败: {model.lastError().text()}")
+                QMessageBox.critical(
+                    self, "错误", f"保存失败: {model.lastError().text()}"
+                )
             else:
                 QMessageBox.information(self, "提示", "保存成功")
                 from controller.GlobalSignalBus import global_signals
+
                 global_signals.maker_data_changed.emit()
                 global_signals.work_data_changed.emit()
-
 
     @Slot()
     def revert_changes(self):
@@ -385,10 +410,16 @@ class StudioManagementPage(LazyWidget):
     def refresh_data(self):
         """刷新数据"""
         if not self.model1.refresh():
-            QMessageBox.critical(self, "刷新错误", f"刷新 prefix_maker_relation 失败: {self.model1.lastError().text()}")
+            QMessageBox.critical(
+                self,
+                "刷新错误",
+                f"刷新 prefix_maker_relation 失败: {self.model1.lastError().text()}",
+            )
             return
         if not self.model2.refresh():
-            QMessageBox.critical(self, "刷新错误", f"刷新 maker 失败: {self.model2.lastError().text()}")
+            QMessageBox.critical(
+                self, "刷新错误", f"刷新 maker 失败: {self.model2.lastError().text()}"
+            )
             return
 
         self.maker_combo_model.refresh()
@@ -423,6 +454,7 @@ class StudioManagementPage(LazyWidget):
         self.refresh_data()
         QMessageBox.information(self, "提示", "片商重定向成功")
         from controller.GlobalSignalBus import global_signals
+
         global_signals.maker_data_changed.emit()
         global_signals.work_data_changed.emit()
 
@@ -443,7 +475,11 @@ class StudioManagementPage(LazyWidget):
             target_row = cursor.fetchone()
 
             if not source_row or not target_row:
-                logging.warning("重定向失败：片商不存在 source=%s target=%s", source_maker_id, target_maker_id)
+                logging.warning(
+                    "重定向失败：片商不存在 source=%s target=%s",
+                    source_maker_id,
+                    target_maker_id,
+                )
                 conn.rollback()
                 return False
 
@@ -451,7 +487,11 @@ class StudioManagementPage(LazyWidget):
             _, _, target_aliases = target_row
 
             source_name = str(source_cn_name or source_jp_name or "").strip()
-            alias_items = [a.strip() for a in str(target_aliases or "").split(",") if a and a.strip()]
+            alias_items = [
+                a.strip()
+                for a in str(target_aliases or "").split(",")
+                if a and a.strip()
+            ]
             if source_name:
                 alias_items.append(source_name)
 

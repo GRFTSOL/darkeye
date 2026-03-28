@@ -32,13 +32,19 @@ class CommonPage(QWidget):
             self.theme_choose.addItem(label)
         saved_theme = get_theme_id()
         try:
-            idx = next(i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid.name == saved_theme)
+            idx = next(
+                i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid.name == saved_theme
+            )
             self.theme_choose.setCurrentIndex(idx)
         except StopIteration:
             theme_mgr = get_theme_manager()
             if theme_mgr is not None:
                 try:
-                    idx = next(i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid == theme_mgr.current())
+                    idx = next(
+                        i
+                        for i, (tid, _) in enumerate(THEME_OPTIONS)
+                        if tid == theme_mgr.current()
+                    )
                     self.theme_choose.setCurrentIndex(idx)
                 except StopIteration:
                     logging.debug(
@@ -56,7 +62,9 @@ class CommonPage(QWidget):
             or (theme_mgr.custom_primary() if theme_mgr else None)
             or (theme_mgr.tokens().color_primary if theme_mgr else "#2563eb")
         )
-        self.color_picker = ColorPicker(QColor(initial_primary), shape=ColorPicker.ShapeCircle)
+        self.color_picker = ColorPicker(
+            QColor(initial_primary), shape=ColorPicker.ShapeCircle
+        )
         primary_color_layout.addWidget(self.color_picker)
 
         self.color_picker.colorConfirmed.connect(self._on_primary_color_changed)

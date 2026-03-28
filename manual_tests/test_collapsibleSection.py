@@ -1,14 +1,20 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QToolButton, 
-    QSizePolicy, QScrollArea
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QToolButton,
+    QSizePolicy,
+    QScrollArea,
 )
 from PySide6.QtCore import Qt, QPropertyAnimation, QSize, Signal
 from PySide6.QtGui import QIcon
 from pathlib import Path
 import sys
+
 root_dir = Path(__file__).resolve().parents[1]  # 上两级
 sys.path.insert(0, str(root_dir))
 from config import ICONS_PATH
+
 
 class CollapsibleSection(QWidget):
     """
@@ -16,6 +22,7 @@ class CollapsibleSection(QWidget):
     - 点击标题展开/收起内容区
     - 支持平滑动画
     """
+
     toggled = Signal(bool)  # 发出展开/收起状态
 
     def __init__(self, title: str = "标题", parent=None):
@@ -30,8 +37,8 @@ class CollapsibleSection(QWidget):
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.setChecked(False)
         self.toggle_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        #self.toggle_btn.setArrowType(Qt.ArrowType.RightArrow)
-        self.toggle_btn.setIcon(QIcon(str(ICONS_PATH/"arrow-right.svg")))
+        # self.toggle_btn.setArrowType(Qt.ArrowType.RightArrow)
+        self.toggle_btn.setIcon(QIcon(str(ICONS_PATH / "arrow-right.svg")))
         self.toggle_btn.setStyleSheet("""
             QToolButton {
                 border: none;
@@ -67,10 +74,14 @@ class CollapsibleSection(QWidget):
     def toggle_content(self, checked):
         """展开/收起动画"""
         self._is_expanded = checked
-        
+
         # 更新箭头方向
 
-        self.toggle_btn.setIcon(QIcon(str(ICONS_PATH/"arrow-down.svg")) if checked else QIcon(str(ICONS_PATH/"arrow-right.svg")) )
+        self.toggle_btn.setIcon(
+            QIcon(str(ICONS_PATH / "arrow-down.svg"))
+            if checked
+            else QIcon(str(ICONS_PATH / "arrow-right.svg"))
+        )
 
         # 计算内容高度
         content_height = self.content.sizeHint().height() if checked else 0
@@ -116,19 +127,16 @@ class AccordionTest(QWidget):
         scroll_layout = QVBoxLayout(scroll_content)
         scroll_layout.setContentsMargins(0, 0, 0, 0)
         scroll_layout.setSpacing(0)
-        
 
         # 添加多个可折叠面板
         for i in range(10):
             section = CollapsibleSection(f"面板 {i+1}")
-
 
             scroll_layout.addWidget(section)
 
             # 示例内容
             label = QLabel("这里是内容区域，可以放任意控件\n" * 5)
             section.addWidget(label)
-
 
         scroll_layout.addStretch()
         scroll.setWidget(scroll_content)
@@ -138,6 +146,7 @@ class AccordionTest(QWidget):
 if __name__ == "__main__":
     from PySide6.QtWidgets import QApplication
     import sys
+
     app = QApplication(sys.argv)
     w = AccordionTest()
     w.show()

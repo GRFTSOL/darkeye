@@ -5,78 +5,86 @@
 写操作完成后，调用方负责 emit 对应的 global_signals.*_changed 信号。
 详见 docs/write_ops_signal_mapping.md 映射表。
 """
+
 from sqlite3 import IntegrityError
-from config import DATABASE,PRIVATE_DATABASE
+from config import DATABASE, PRIVATE_DATABASE
 import logging
 from .connection import get_connection
 
-def InsertNewActress(ch_name,jp_name)->bool:
-    '''插入女优数据。调用后需 emit: global_signals.actress_data_changed'''
-    conn = get_connection(DATABASE,False)
+
+def InsertNewActress(ch_name, jp_name) -> bool:
+    """插入女优数据。调用后需 emit: global_signals.actress_data_changed"""
+    conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
-    success=False
+    success = False
     try:
         cursor.execute("INSERT INTO actress DEFAULT VALUES")
         new_id = cursor.lastrowid
 
-        #添加中文日文名
-        cursor.execute("INSERT INTO actress_name (actress_id,name_type,cn,jp) VALUES(?,?,?,?)",
-                    (new_id,1,ch_name,jp_name))
+        # 添加中文日文名
+        cursor.execute(
+            "INSERT INTO actress_name (actress_id,name_type,cn,jp) VALUES(?,?,?,?)",
+            (new_id, 1, ch_name, jp_name),
+        )
 
         conn.commit()
         logging.info(f"新插入的 actress_id 是: {new_id}:日文名:{jp_name}")
-        success=True
+        success = True
     except Exception as e:
         conn.rollback()
-        logging.warning("插入失败:",e)
-        success= False
+        logging.warning("插入失败:", e)
+        success = False
     finally:
         cursor.close()
         conn.close()
     return success
-    
-def InsertNewActor(cn_name,jp_name)->bool:
-    '''插入男优数据。调用后需 emit: global_signals.actor_data_changed'''
-    conn = get_connection(DATABASE,False)
+
+
+def InsertNewActor(cn_name, jp_name) -> bool:
+    """插入男优数据。调用后需 emit: global_signals.actor_data_changed"""
+    conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
-    success=False
+    success = False
     try:
-        #添加中文日文名
+        # 添加中文日文名
         cursor.execute("INSERT INTO actor DEFAULT VALUES")
         new_id = cursor.lastrowid
 
-        #添加中文日文名
-        cursor.execute("INSERT INTO actor_name (actor_id,name_type,cn,jp) VALUES(?,?,?,?)",
-                    (new_id,1,cn_name,jp_name))
+        # 添加中文日文名
+        cursor.execute(
+            "INSERT INTO actor_name (actor_id,name_type,cn,jp) VALUES(?,?,?,?)",
+            (new_id, 1, cn_name, jp_name),
+        )
         conn.commit()
-        
+
         logging.info(f"新插入的 actor_id 是: {new_id}:日文名:{jp_name}")
-        success=True
+        success = True
     except Exception as e:
         conn.rollback()
-        logging.warning("插入失败:",e)
-        success= False
+        logging.warning("插入失败:", e)
+        success = False
     finally:
         cursor.close()
         conn.close()
     return success
 
-def InsertNewWork(serial_number:str)->int:
-    '''添加新作品。调用后需 emit: global_signals.work_data_changed'''
-    conn = get_connection(DATABASE,False)
+
+def InsertNewWork(serial_number: str) -> int:
+    """添加新作品。调用后需 emit: global_signals.work_data_changed"""
+    conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
-    success=False
+    success = False
     try:
-        #添加新作品
-        cursor.execute("INSERT INTO work (serial_number) VALUES(?)",(serial_number,))
+        # 添加新作品
+        cursor.execute("INSERT INTO work (serial_number) VALUES(?)", (serial_number,))
         new_id = cursor.lastrowid
 
         conn.commit()
         logging.info(f"新插入的 work_id 是: {new_id}")
-        success=new_id
+        success = new_id
     except Exception as e:
         conn.rollback()
-        logging.warning("插入失败:",e)
+        logging.warning("插入失败:", e)
         return None
     finally:
         cursor.close()
@@ -84,9 +92,28 @@ def InsertNewWork(serial_number:str)->int:
 
     return success
 
-def InsertNewWorkByHand(serial_number,director,release_date,notes,runtime,actress_ids,actor_ids,cn_title,cn_story,jp_title,jp_story,image_url,tag_ids,maker_id,label_id,series_id,fanart=None)->bool:
-    '''手动添加新作品。调用后需 emit: global_signals.work_data_changed'''
-    success=False
+
+def InsertNewWorkByHand(
+    serial_number,
+    director,
+    release_date,
+    notes,
+    runtime,
+    actress_ids,
+    actor_ids,
+    cn_title,
+    cn_story,
+    jp_title,
+    jp_story,
+    image_url,
+    tag_ids,
+    maker_id,
+    label_id,
+    series_id,
+    fanart=None,
+) -> bool:
+    """手动添加新作品。调用后需 emit: global_signals.work_data_changed"""
+    success = False
     try:
         maker_id = int(maker_id) if maker_id not in (None, "") else None
         label_id = int(label_id) if label_id not in (None, "") else None
@@ -98,71 +125,109 @@ def InsertNewWorkByHand(serial_number,director,release_date,notes,runtime,actres
         if series_id is not None and series_id <= 0:
             series_id = None
 
-        conn = get_connection(DATABASE,False)
+        conn = get_connection(DATABASE, False)
         cursor = conn.cursor()
-        #添加新作品（列顺序与表定义一致：runtime 后接 release_date）
+        # 添加新作品（列顺序与表定义一致：runtime 后接 release_date）
         cursor.execute(
             """INSERT INTO work (serial_number,director,notes,runtime,release_date,cn_title,cn_story,jp_title,jp_story,image_url,maker_id,label_id,series_id,fanart)
                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (serial_number,director,notes,runtime,release_date,cn_title,cn_story,jp_title,jp_story,image_url,maker_id,label_id,series_id,fanart)
+            (
+                serial_number,
+                director,
+                notes,
+                runtime,
+                release_date,
+                cn_title,
+                cn_story,
+                jp_title,
+                jp_story,
+                image_url,
+                maker_id,
+                label_id,
+                series_id,
+                fanart,
+            ),
         )
         new_id = cursor.lastrowid
         for id in actress_ids:
-            cursor.execute("INSERT INTO work_actress_relation (work_id,actress_id) VALUES(?,?)",(new_id,id))
+            cursor.execute(
+                "INSERT INTO work_actress_relation (work_id,actress_id) VALUES(?,?)",
+                (new_id, id),
+            )
         for id in actor_ids:
-            cursor.execute("INSERT INTO work_actor_relation (work_id,actor_id) VALUES(?,?)",(new_id,id))
+            cursor.execute(
+                "INSERT INTO work_actor_relation (work_id,actor_id) VALUES(?,?)",
+                (new_id, id),
+            )
         for id in tag_ids:
-            cursor.execute("INSERT INTO work_tag_relation (work_id,tag_id) VALUES(?,?)",(new_id,id))            
+            cursor.execute(
+                "INSERT INTO work_tag_relation (work_id,tag_id) VALUES(?,?)",
+                (new_id, id),
+            )
         conn.commit()
         logging.info(f"新插入的 work_id 是: {new_id}")
-        success=True
+        success = True
     except Exception as e:
         conn.rollback()
-        logging.warning("插入失败:",e)
+        logging.warning("插入失败:", e)
     finally:
         cursor.close()
         conn.close()
     return success
 
-def insert_tag(tag_name:str,tag_type_id:int,tag_color:str,tag_detail:str,tag_redirect_tag_id:int,tag_alias:list[dict])->tuple[bool, str,int|None]:
-    '''插入标签。调用后需 emit: global_signals.tag_data_changed'''
-    success=False
+
+def insert_tag(
+    tag_name: str,
+    tag_type_id: int,
+    tag_color: str,
+    tag_detail: str,
+    tag_redirect_tag_id: int,
+    tag_alias: list[dict],
+) -> tuple[bool, str, int | None]:
+    """插入标签。调用后需 emit: global_signals.tag_data_changed"""
+    success = False
     try:
-        conn = get_connection(DATABASE,False)
+        conn = get_connection(DATABASE, False)
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO tag (tag_name,tag_type_id,color,detail,redirect_tag_id) VALUES(?,?,?,?,?)",(tag_name,tag_type_id,tag_color,tag_detail,tag_redirect_tag_id))
+        cursor.execute(
+            "INSERT INTO tag (tag_name,tag_type_id,color,detail,redirect_tag_id) VALUES(?,?,?,?,?)",
+            (tag_name, tag_type_id, tag_color, tag_detail, tag_redirect_tag_id),
+        )
         new_id = cursor.lastrowid
         conn.commit()
         logging.info(f"新插入的 tag_id 是: {new_id}")
-        return (True, "插入成功",new_id)
-    
+        return (True, "插入成功", new_id)
+
     except IntegrityError as e:
         if "UNIQUE constraint failed: tag.tag_name" in str(e):
             print(f"错误：标签名称 '{tag_name}' 已存在")
             # 标签已存在
-            message=f"标签名称 '{tag_name}' 已存在"
+            message = f"标签名称 '{tag_name}' 已存在"
         else:
             print(f"其他完整性错误: {e}")
         conn.rollback()
-        return False,message,None
-    
+        return False, message, None
+
     except Exception as e:
         conn.rollback()
         logging.warning(f"插入失败:{e}")
-        return False, str(e),None # 将错误信息转换为字符串返回
+        return False, str(e), None  # 将错误信息转换为字符串返回
     finally:
         cursor.close()
         conn.close()
 
     return success
 
-def add_tag2work(work_id:int,tag_ids:list[int])->bool:
-    '''给作品添加标签,只添加没有的,是直写入数据库。调用后需 emit: global_signals.work_data_changed'''
-    success=False
+
+def add_tag2work(work_id: int, tag_ids: list[int]) -> bool:
+    """给作品添加标签,只添加没有的,是直写入数据库。调用后需 emit: global_signals.work_data_changed"""
+    success = False
     try:
-        conn = get_connection(DATABASE,False)
+        conn = get_connection(DATABASE, False)
         cursor = conn.cursor()
-        cursor.execute("SELECT tag_id FROM work_tag_relation WHERE work_id = ?", (work_id,))
+        cursor.execute(
+            "SELECT tag_id FROM work_tag_relation WHERE work_id = ?", (work_id,)
+        )
         existing_tags = {row[0] for row in cursor.fetchall()}
         new_tags = set(tag_ids)
         # 2. 计算需要需要添加的标签
@@ -172,10 +237,10 @@ def add_tag2work(work_id:int,tag_ids:list[int])->bool:
         if tags_to_add:
             cursor.executemany(
                 "INSERT INTO work_tag_relation (work_id, tag_id) VALUES (?, ?)",
-                [(work_id, tag_id) for tag_id in tags_to_add]
+                [(work_id, tag_id) for tag_id in tags_to_add],
             )
         conn.commit()
-        success=True
+        success = True
     except Exception as e:
         conn.rollback()
         logging.warning(f"插入失败:{e}")
@@ -184,24 +249,26 @@ def add_tag2work(work_id:int,tag_ids:list[int])->bool:
         conn.close()
     return success
 
-def rename_save_image(_path:str,name:str,type:str):
-    '''更改名字保存封面图片到库中，并且将相对地址写入数据库
+
+def rename_save_image(_path: str, name: str, type: str):
+    """更改名字保存封面图片到库中，并且将相对地址写入数据库
     _path:一个图片的绝对地址
     name:图片要更改的名字
     这个要带格式转换，将其他的格式转换成jpg格式保存，否则可能会有兼容性问题
-    '''
+    """
     from pathlib import Path
     from config import WORKCOVER_PATH, FANART_PATH, ACTRESSIMAGES_PATH, ACTORIMAGES_PATH
-    from utils.utils import delete_image,webp_to_jpg_pillow,png_to_jpg_pillow
+    from utils.utils import delete_image, webp_to_jpg_pillow, png_to_jpg_pillow
     import shutil
-    if type=="cover":
-        dst_path:Path = Path(WORKCOVER_PATH) / name
-    elif type=="actress":
-        dst_path:Path = Path(ACTRESSIMAGES_PATH) / name
-    elif type=="actor":
-        dst_path:Path = Path(ACTORIMAGES_PATH) / name
-    elif type=="fanart":
-        dst_path:Path = Path(FANART_PATH) / name
+
+    if type == "cover":
+        dst_path: Path = Path(WORKCOVER_PATH) / name
+    elif type == "actress":
+        dst_path: Path = Path(ACTRESSIMAGES_PATH) / name
+    elif type == "actor":
+        dst_path: Path = Path(ACTORIMAGES_PATH) / name
+    elif type == "fanart":
+        dst_path: Path = Path(FANART_PATH) / name
     else:
         logging.info("选择保存的类型错误")
         return
@@ -210,7 +277,7 @@ def rename_save_image(_path:str,name:str,type:str):
     if not _path:
         return
     src_path = Path(_path)
-    
+
     # 当源路径和目标路径相同时不操作
     if src_path.resolve() == dst_path.resolve():
         return
@@ -218,26 +285,24 @@ def rename_save_image(_path:str,name:str,type:str):
     dst_path.parent.mkdir(parents=True, exist_ok=True)
 
     match src_path.suffix.lower():
-        case ".jpg"|".jpeg":
+        case ".jpg" | ".jpeg":
             shutil.copy(src_path, dst_path)
         case ".webp":
-            webp_to_jpg_pillow(src_path,dst_path)
+            webp_to_jpg_pillow(src_path, dst_path)
         case ".png":
-            png_to_jpg_pillow(src_path,dst_path)
+            png_to_jpg_pillow(src_path, dst_path)
 
+    logging.info("图片复制成功，已保存位置为：%s", dst_path)
 
-
-    logging.info("图片复制成功，已保存位置为：%s",dst_path)
-
-    #删除临时地址的文件
+    # 删除临时地址的文件
     delete_image(_path)
 
 
 def InsertNewMaker(name: str) -> int | None:
-    '''插入新的片商,成功返回 maker_id，失败返回 None'''
-    query = '''
+    """插入新的片商,成功返回 maker_id，失败返回 None"""
+    query = """
     INSERT INTO maker (cn_name, jp_name) VALUES (?, ?)
-    '''
+    """
     conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
     try:
@@ -254,10 +319,10 @@ def InsertNewMaker(name: str) -> int | None:
 
 
 def InsertNewLabel(name: str) -> int | None:
-    '''插入新的厂牌,成功返回 label_id，失败返回 None'''
-    query = '''
+    """插入新的厂牌,成功返回 label_id，失败返回 None"""
+    query = """
     INSERT INTO label (cn_name, jp_name) VALUES (?, ?)
-    '''
+    """
     conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
     try:
@@ -274,10 +339,10 @@ def InsertNewLabel(name: str) -> int | None:
 
 
 def InsertNewSeries(name: str) -> int | None:
-    '''插入新的系列,成功返回 series_id，失败返回 None'''
-    query = '''
+    """插入新的系列,成功返回 series_id，失败返回 None"""
+    query = """
     INSERT INTO series (cn_name, jp_name) VALUES (?, ?)
-    '''
+    """
     conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
     try:
@@ -293,13 +358,14 @@ def InsertNewSeries(name: str) -> int | None:
         conn.close()
 
 
-
-
-#----------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------
 #                                      私有数据库的插入数据
-#----------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------
 
-def insert_masturbation_record(work_id,serial_number,start_time,rating,tool_name,comment)->bool:
+
+def insert_masturbation_record(
+    work_id, serial_number, start_time, rating, tool_name, comment
+) -> bool:
     """
     向自慰记录表 masturbation 插入一条新的记录。调用后需 emit: global_signals.masterbation_changed
 
@@ -313,25 +379,29 @@ def insert_masturbation_record(work_id,serial_number,start_time,rating,tool_name
     返回:
     - bool: 插入是否成功，True表示成功，False表示失败
     """
-    success=False
+    success = False
     try:
-        conn = get_connection(PRIVATE_DATABASE,False)
+        conn = get_connection(PRIVATE_DATABASE, False)
         cursor = conn.cursor()
-        
-        #添加的自慰记录
-        cursor.execute("INSERT INTO masturbation (work_id,serial_number,start_time,tool_name,rating,comment) VALUES(?,?,?,?,?,?)",(work_id,serial_number,start_time,tool_name,rating,comment))
+
+        # 添加的自慰记录
+        cursor.execute(
+            "INSERT INTO masturbation (work_id,serial_number,start_time,tool_name,rating,comment) VALUES(?,?,?,?,?,?)",
+            (work_id, serial_number, start_time, tool_name, rating, comment),
+        )
         new_id = cursor.lastrowid
         conn.commit()
         logging.info(f"新插入的 masturbate_id 是: {new_id}")
-        success=True
+        success = True
     except Exception as e:
         conn.rollback()
-        logging.warning("插入失败:",e)
+        logging.warning("插入失败:", e)
     finally:
         cursor.close()
         conn.close()
 
     return success
+
 
 def insert_lovemaking_record(event_time, rating, comment) -> bool:
     """
@@ -345,25 +415,29 @@ def insert_lovemaking_record(event_time, rating, comment) -> bool:
     返回:
     - bool: 插入是否成功，True表示成功，False表示失败
     """
-    success=False
+    success = False
     try:
-        conn = get_connection(PRIVATE_DATABASE,False)
+        conn = get_connection(PRIVATE_DATABASE, False)
         cursor = conn.cursor()
-        
-        #添加的自慰记录
-        cursor.execute("INSERT INTO love_making (event_time,rating,comment) VALUES(?,?,?)",(event_time,rating,comment))
+
+        # 添加的自慰记录
+        cursor.execute(
+            "INSERT INTO love_making (event_time,rating,comment) VALUES(?,?,?)",
+            (event_time, rating, comment),
+        )
         new_id = cursor.lastrowid
         conn.commit()
         logging.info(f"新插入的 love_making_id 是: {new_id}")
-        success=True
+        success = True
     except Exception as e:
         conn.rollback()
-        logging.warning("插入失败:",e)
+        logging.warning("插入失败:", e)
     finally:
         cursor.close()
         conn.close()
 
     return success
+
 
 def insert_sexual_arousal_record(arousal_time, comment) -> bool:
     """
@@ -376,53 +450,61 @@ def insert_sexual_arousal_record(arousal_time, comment) -> bool:
     返回:
     - bool: 插入是否成功，True表示成功，False表示失败
     """
-    success=False
+    success = False
     try:
-        conn = get_connection(PRIVATE_DATABASE,False)
+        conn = get_connection(PRIVATE_DATABASE, False)
         cursor = conn.cursor()
-        
-        #添加的自慰记录
-        cursor.execute("INSERT INTO sexual_arousal (arousal_time,comment) VALUES(?,?)",(arousal_time,comment))
+
+        # 添加的自慰记录
+        cursor.execute(
+            "INSERT INTO sexual_arousal (arousal_time,comment) VALUES(?,?)",
+            (arousal_time, comment),
+        )
         new_id = cursor.lastrowid
         conn.commit()
         logging.info(f"新插入的 sexual_arousal_id 是: {new_id}")
-        success=True
+        success = True
     except Exception as e:
         conn.rollback()
-        logging.warning("插入失败:",e)
+        logging.warning("插入失败:", e)
     finally:
         cursor.close()
         conn.close()
 
     return success
 
-def insert_liked_actress(actress_id)->bool:
-    '''向私库中添加喜欢的女优。调用后需 emit: global_signals.like_actress_changed'''
-    from .db_utils import attach_private_db,detach_private_db
-    success=False
+
+def insert_liked_actress(actress_id) -> bool:
+    """向私库中添加喜欢的女优。调用后需 emit: global_signals.like_actress_changed"""
+    from .db_utils import attach_private_db, detach_private_db
+
+    success = False
     try:
-        #先查询后添加
-        conn = get_connection(DATABASE,False)
+        # 先查询后添加
+        conn = get_connection(DATABASE, False)
         cursor = conn.cursor()
-        query="""
+        query = """
 SELECT 
 (SELECT jp FROM actress_name WHERE actress_id=actress.actress_id AND redirect_actress_name_id is NULL)AS jp_name
 FROM actress 
 WHERE actress_id=?
 """
-        cursor.execute(query,(actress_id,))
-        jp_name=cursor.fetchone()[0]
+        cursor.execute(query, (actress_id,))
+        jp_name = cursor.fetchone()[0]
 
         attach_private_db(cursor)
 
-        cursor.execute("INSERT INTO priv.favorite_actress (actress_id,jp_name) VALUES(?,?)",(actress_id,jp_name))
+        cursor.execute(
+            "INSERT INTO priv.favorite_actress (actress_id,jp_name) VALUES(?,?)",
+            (actress_id, jp_name),
+        )
         new_id = cursor.lastrowid
         conn.commit()
         logging.info(f"新插入的 favorite_actress_id 是: {new_id}")
-        success=True
+        success = True
     except Exception as e:
         conn.rollback()
-        logging.warning("插入失败:",e)
+        logging.warning("插入失败:", e)
     finally:
         detach_private_db(cursor)
         cursor.close()
@@ -430,33 +512,38 @@ WHERE actress_id=?
 
     return success
 
-def insert_liked_work(work_id)->bool:
-    '''向私库中添加喜欢的作品。调用后需 emit: global_signals.like_work_changed'''
-    from .db_utils import attach_private_db,detach_private_db
-    success=False
+
+def insert_liked_work(work_id) -> bool:
+    """向私库中添加喜欢的作品。调用后需 emit: global_signals.like_work_changed"""
+    from .db_utils import attach_private_db, detach_private_db
+
+    success = False
     try:
-        #先查询后添加
-        conn = get_connection(DATABASE,False)
+        # 先查询后添加
+        conn = get_connection(DATABASE, False)
         cursor = conn.cursor()
-        query="""
+        query = """
 SELECT 
 serial_number
 FROM work 
 WHERE work_id=?
 """
-        cursor.execute(query,(work_id,))
-        serial_number=cursor.fetchone()[0]
+        cursor.execute(query, (work_id,))
+        serial_number = cursor.fetchone()[0]
 
         attach_private_db(cursor)
 
-        cursor.execute("INSERT INTO priv.favorite_work (work_id,serial_number) VALUES(?,?)",(work_id,serial_number))
+        cursor.execute(
+            "INSERT INTO priv.favorite_work (work_id,serial_number) VALUES(?,?)",
+            (work_id, serial_number),
+        )
         new_id = cursor.lastrowid
         conn.commit()
         logging.info(f"新插入的 favorite_work_id 是: {new_id}")
-        success=True
+        success = True
     except Exception as e:
         conn.rollback()
-        logging.warning("插入失败:",e)
+        logging.warning("插入失败:", e)
     finally:
         detach_private_db(cursor)
         cursor.close()
@@ -464,31 +551,35 @@ WHERE work_id=?
 
     return success
 
-def InsertAliasName(id,alias_chain:list[dict])->bool:
-    '''插入女优别名链。调用后需 emit: global_signals.actress_data_changed'''
-    conn = get_connection(DATABASE,False)
+
+def InsertAliasName(id, alias_chain: list[dict]) -> bool:
+    """插入女优别名链。调用后需 emit: global_signals.actress_data_changed"""
+    conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
-    success=False
+    success = False
     try:
-        cursor.execute("SELECT actress_name_id FROM actress_name WHERE actress_id=?",(id,))
-        cur_id=cursor.fetchone()[0]
-        
+        cursor.execute(
+            "SELECT actress_name_id FROM actress_name WHERE actress_id=?", (id,)
+        )
+        cur_id = cursor.fetchone()[0]
+
         for alias in reversed(alias_chain):
             print(alias)
-            #添加中文日文名
-            cursor.execute("INSERT INTO actress_name (actress_id,jp,kana,en,redirect_actress_name_id) VALUES(?,?,?,?,?)",
-                        (id,alias['jp'],alias['kana'],alias['en'],cur_id))
+            # 添加中文日文名
+            cursor.execute(
+                "INSERT INTO actress_name (actress_id,jp,kana,en,redirect_actress_name_id) VALUES(?,?,?,?,?)",
+                (id, alias["jp"], alias["kana"], alias["en"], cur_id),
+            )
             cur_id = cursor.lastrowid
 
         conn.commit()
         logging.info(f"")
-        success=True
+        success = True
     except Exception as e:
         conn.rollback()
-        logging.warning("插入失败:",e)
-        success= False
+        logging.warning("插入失败:", e)
+        success = False
     finally:
         cursor.close()
         conn.close()
     return success
-

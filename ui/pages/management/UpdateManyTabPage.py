@@ -11,25 +11,31 @@ from ui.widgets.CrawlerToolBox import CrawlerAutoPage
 
 
 class UpdateManyTabPage(LazyWidget):
-    #软件的设置
+    # 软件的设置
     def __init__(self):
         super().__init__()
+
     def _lazy_load(self):
         logging.info("----------加载批量更新窗口----------")
         from controller.MessageService import MessageBoxService
+
         self.msg = MessageBoxService(self)
 
-        #self.btn_search_actor=QPushButton("批量更新男优")
-        self.btn_search_story=Button("批量更新所有的故事")
+        # self.btn_search_actor=QPushButton("批量更新男优")
+        self.btn_search_story = Button("批量更新所有的故事")
         self.btn_search_story.setEnabled(False)
-        self.btn_search_actress=Button("更新热门女优")
+        self.btn_search_actress = Button("更新热门女优")
         self.btn_search_actress.setToolTip("更新javatext热门女优前50")
 
-        self.btn_update_needactress=Button("更新标记需要更新的女优数据")
-        self.btn_update_needactress.setToolTip("把所有被标记为需要更新的女优一个一个进行数据更新")
+        self.btn_update_needactress = Button("更新标记需要更新的女优数据")
+        self.btn_update_needactress.setToolTip(
+            "把所有被标记为需要更新的女优一个一个进行数据更新"
+        )
 
-        self.btn_update_maker_by_knowledge=Button("根据番号前缀判断片商")
-        self.btn_update_maker_by_knowledge.setToolTip("根据番号前缀把，那些确定的片商都给改了")
+        self.btn_update_maker_by_knowledge = Button("根据番号前缀判断片商")
+        self.btn_update_maker_by_knowledge.setToolTip(
+            "根据番号前缀把，那些确定的片商都给改了"
+        )
 
         self.btn_batch_translate_cn = Button("一键翻译标题/简介")
         self.btn_batch_translate_cn.setToolTip(
@@ -37,7 +43,7 @@ class UpdateManyTabPage(LazyWidget):
             "有日文简介且中文简介为空时翻译成 cn_story；二者皆无日文源的作品不会请求翻译。"
         )
 
-        #self.btn_search_actor.clicked.connect(update_actor_db)
+        # self.btn_search_actor.clicked.connect(update_actor_db)
         self.btn_search_story.clicked.connect(update_title_story_db)
         self.btn_search_actress.clicked.connect(self.task_search_actress)
 
@@ -60,21 +66,31 @@ class UpdateManyTabPage(LazyWidget):
         main_layout.addWidget(self._workspace_manager.widget())
         root = self._workspace_manager.get_root_pane()
 
-        def make_config(title: str, w: QWidget, closeable: bool = True) -> ContentConfig:
+        def make_config(
+            title: str, w: QWidget, closeable: bool = True
+        ) -> ContentConfig:
             cfg = self._workspace_manager.create_content_config()
             return cfg.set_window_title(title).set_widget(w).set_closeable(closeable)
 
         pane_crawler = self._workspace_manager.split(root, Placement.Right, ratio=0.72)
-        self._workspace_manager.fill_pane(root, make_config("批量操作", left_panel, closeable=False))
         self._workspace_manager.fill_pane(
-            pane_crawler, make_config("空字段补充爬取", self.crawler_auto_page, closeable=False)
+            root, make_config("批量操作", left_panel, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_crawler,
+            make_config("空字段补充爬取", self.crawler_auto_page, closeable=False),
         )
         self.btn_update_needactress.clicked.connect(self.searchActressinfo)
-        self.btn_update_maker_by_knowledge.clicked.connect(self.task_update_maker_by_prefix)
+        self.btn_update_maker_by_knowledge.clicked.connect(
+            self.task_update_maker_by_prefix
+        )
         self.btn_batch_translate_cn.clicked.connect(self.task_batch_translate_cn)
-        self.crawler_auto_page.btn_get_crawler.setToolTip("根据指定字段，补充爬取，该功能为对所有的片进行筛选，只对有空字段的进行爬取，而且只更新空字段")
-        self.crawler_auto_page.btn_get_crawler.clicked.connect(self.bulk_crawl_empty_fields)
-
+        self.crawler_auto_page.btn_get_crawler.setToolTip(
+            "根据指定字段，补充爬取，该功能为对所有的片进行筛选，只对有空字段的进行爬取，而且只更新空字段"
+        )
+        self.crawler_auto_page.btn_get_crawler.clicked.connect(
+            self.bulk_crawl_empty_fields
+        )
 
     @Slot()
     def task_search_actress(self):
@@ -128,21 +144,21 @@ class UpdateManyTabPage(LazyWidget):
 
     @Slot()
     def searchActressinfo(self):
-        #开始后台线程
-        from core.crawler.minnanoav import actress_need_update,SearchActressInfo
+        # 开始后台线程
+        from core.crawler.minnanoav import actress_need_update, SearchActressInfo
         from core.crawler.Worker import Worker
 
         if actress_need_update():
-            worker=Worker(SearchActressInfo)#传一个函数名进去
+            worker = Worker(SearchActressInfo)  # 传一个函数名进去
             worker.signals.finished.connect(self.on_result)
             QThreadPool.globalInstance().start(worker)
-            self.msg.show_info("开始更新","开始更新，可能需要一段时间")
+            self.msg.show_info("开始更新", "开始更新，可能需要一段时间")
         else:
-            self.msg.show_info("提示","没有要更新的女优")
+            self.msg.show_info("提示", "没有要更新的女优")
 
     @Slot(object)
-    def on_result(self,result:str):#Qsignal回传信息
-        self.msg.show_info("提示",result)
+    def on_result(self, result: str):  # Qsignal回传信息
+        self.msg.show_info("提示", result)
 
     def _get_selected_crawler_fields(self) -> set[str]:
         """读取爬虫勾选项，映射为标准字段名。"""
@@ -206,9 +222,7 @@ class UpdateManyTabPage(LazyWidget):
             if not serial:
                 continue
             per_work_fields = {
-                f
-                for f in selected_fields
-                if self._is_row_empty_for_field(row, f)
+                f for f in selected_fields if self._is_row_empty_for_field(row, f)
             }
             if not per_work_fields:
                 continue
@@ -220,10 +234,11 @@ class UpdateManyTabPage(LazyWidget):
                 queued += 1
 
         if not queued:
-            self.msg.show_info("提示", "没有匹配到需要更新的作品（勾选字段在该批作品中均已非空）")
+            self.msg.show_info(
+                "提示", "没有匹配到需要更新的作品（勾选字段在该批作品中均已非空）"
+            )
             return
 
-        self.msg.show_info("开始更新", f"已加入队列 {queued} 条（每条仅爬取其空白勾选字段）")
-
-
-
+        self.msg.show_info(
+            "开始更新", f"已加入队列 {queued} 条（每条仅爬取其空白勾选字段）"
+        )

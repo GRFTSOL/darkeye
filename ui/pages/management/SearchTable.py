@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import  QVBoxLayout, QHBoxLayout, QMessageBox, QFileDialog
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMessageBox, QFileDialog
 from PySide6.QtCore import Slot
 import logging
 
@@ -157,7 +157,9 @@ FROM
         """封装为：传入 SQL，用 sqlite 查询并写入 CSV。"""
         from utils.utils import export_sql_to_csv
 
-        file_path, _ = QFileDialog.getSaveFileName(self, "保存为 CSV 文件", "", "CSV Files (*.csv)")
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "保存为 CSV 文件", "", "CSV Files (*.csv)"
+        )
         if not file_path:
             return
 

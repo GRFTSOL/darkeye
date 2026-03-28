@@ -29,7 +29,9 @@ def exclude_genre_set() -> frozenset[str]:
     return _exclude_genre_cache
 
 
-def merge_crawl_results(results: Dict[str, dict], canonical_serial: str) -> CrawledWorkData:
+def merge_crawl_results(
+    results: Dict[str, dict], canonical_serial: str
+) -> CrawledWorkData:
     """合并各源结果为标准 CrawledWorkData（含同步翻译）。不依赖 CrawlerManager。"""
     javlib_result = results.get("javlib") or {}
     javtxt_result = results.get("javtxt") or {}
@@ -54,14 +56,16 @@ def merge_crawl_results(results: Dict[str, dict], canonical_serial: str) -> Craw
         or javdb_result.get("actress")
         or []
     )
-    #这里最好加一个屏蔽词
+    # 这里最好加一个屏蔽词
 
     def _urls(x):
         if x is None:
             return []
         return [x] if isinstance(x, str) else (x if isinstance(x, list) else [])
 
-    cover_list = [u for u in _urls(javlib_result.get("image")) if u and isinstance(u, str)]
+    cover_list = [
+        u for u in _urls(javlib_result.get("image")) if u and isinstance(u, str)
+    ]
     avdanurl = avdanyuwiki_result.get("cover") or ""
     if avdanurl:
         cover_list.append(avdanurl)
@@ -74,11 +78,7 @@ def merge_crawl_results(results: Dict[str, dict], canonical_serial: str) -> Craw
         or javdb_result.get("maker")
         or ""
     )
-    series = (
-        avdanyuwiki_result.get("series")
-        or javdb_result.get("series")
-        or ""
-    )
+    series = avdanyuwiki_result.get("series") or javdb_result.get("series") or ""
     label = (
         avdanyuwiki_result.get("label")
         or javlib_result.get("label")
@@ -121,14 +121,18 @@ def merge_crawl_results(results: Dict[str, dict], canonical_serial: str) -> Craw
         "cn_story": javtxt_result.get("cn_story", ""),
         "jp_story": javtxt_result.get("jp_story", ""),
         "cover_list": cover_list,
-        "fanart_list": fanart_list
+        "fanart_list": fanart_list,
     }
 
     try:
         if work_merge["cn_title"] == "" and work_merge["jp_title"] != "":
-            work_merge["cn_title"] = translate_text_sync(work_merge["jp_title"], fallback="empty")
+            work_merge["cn_title"] = translate_text_sync(
+                work_merge["jp_title"], fallback="empty"
+            )
         if work_merge["cn_story"] == "" and work_merge["jp_story"] != "":
-            work_merge["cn_story"] = translate_text_sync(work_merge["jp_story"], fallback="empty")
+            work_merge["cn_story"] = translate_text_sync(
+                work_merge["jp_story"], fallback="empty"
+            )
     except Exception as e:
         logging.warning(
             "merge_crawl_results 翻译失败，使用原文: %s\n%s",

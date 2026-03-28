@@ -2,13 +2,20 @@
 Force-directed view settings panel: UI and signals/slots only.
 Parent connects panel signals to view/session.
 """
+
 import logging
 import token
 from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QHBoxLayout,
-    QFormLayout, QRadioButton, QScrollArea, QSizePolicy
+    QWidget,
+    QVBoxLayout,
+    QPushButton,
+    QHBoxLayout,
+    QFormLayout,
+    QRadioButton,
+    QScrollArea,
+    QSizePolicy,
 )
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QColorDialog
@@ -49,7 +56,9 @@ def _make_color_button(
     btn.setCursor(Qt.PointingHandCursor)
 
     def _pick():
-        c = QColorDialog.getColor(btn._current_color, parent, "选择颜色", QColorDialog.ShowAlphaChannel)
+        c = QColorDialog.getColor(
+            btn._current_color, parent, "选择颜色", QColorDialog.ShowAlphaChannel
+        )
         if c.isValid():
             btn._current_color = c
             bc = btn._get_border_color()
@@ -83,7 +92,9 @@ class ForceViewSettingsPanel(QScrollArea):
     arrowScaleChanged = Signal(float)
     imageOverlayEnabledChanged = Signal(bool)
     graphNeighborDepthChanged = Signal(int)
-    nodeColorGroupChanged = Signal(str, "QColor")  # group: "actress"|"work"|"center"|"default"
+    nodeColorGroupChanged = Signal(
+        str, "QColor"
+    )  # group: "actress"|"work"|"center"|"default"
 
     # Simulation controls
     restartRequested = Signal()
@@ -110,6 +121,7 @@ class ForceViewSettingsPanel(QScrollArea):
         self._theme_manager: Optional["ThemeManager"] = None
         try:
             from app_context import get_theme_manager
+
             self._theme_manager = get_theme_manager()
         except ImportError as e:
             logging.debug(
@@ -181,7 +193,6 @@ class ForceViewSettingsPanel(QScrollArea):
         self.radio_graph_test = TokenRadioButton("2000点图", self)
         self.radio_graph_all.setChecked(True)
 
-
         effect_section.addLayout(effect_form)
 
         # --- Display Section ---
@@ -190,7 +201,7 @@ class ForceViewSettingsPanel(QScrollArea):
 
         self.show_image = ToggleSwitch(width=48, height=24)
         self.show_image.setChecked(True)
-        self.show_arrow= ToggleSwitch(width=48, height=24)
+        self.show_arrow = ToggleSwitch(width=48, height=24)
         self.show_arrow.setChecked(True)
 
         # Display parameters
@@ -290,7 +301,7 @@ class ForceViewSettingsPanel(QScrollArea):
         graph_type_layout.addWidget(self.radio_graph_all)
         graph_type_layout.addWidget(self.radio_graph_favorite)
         graph_type_layout.addWidget(self.radio_graph_test)
-        
+
         # Control buttons
         self.btn_fitinview = Button("适配视图", self)
         self.btn_restart = Button("Restart", self)
@@ -323,9 +334,7 @@ class ForceViewSettingsPanel(QScrollArea):
         # Create content container
         scroll_content = QWidget()
         # 设置内容区域的大小策略：横向固定，纵向可扩展
-        scroll_content.setSizePolicy(
-            QSizePolicy.Preferred, QSizePolicy.Preferred
-        )
+        scroll_content.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         scroll_layout = QVBoxLayout(scroll_content)
         scroll_layout.setContentsMargins(0, 0, 0, 0)
         scroll_layout.setSpacing(0)
@@ -360,7 +369,11 @@ class ForceViewSettingsPanel(QScrollArea):
 
     def _update_content_width(self):
         """更新内容区域的宽度以匹配视口"""
-        if hasattr(self, '_scroll_content') and self._scroll_content and self.viewport().width() > 0:
+        if (
+            hasattr(self, "_scroll_content")
+            and self._scroll_content
+            and self.viewport().width() > 0
+        ):
             # 只根据视口宽度锁定内容宽度，避免被滚动条遮挡或裁剪
             content_width = self.viewport().width()
             self._scroll_content.setFixedWidth(content_width)
@@ -375,6 +388,7 @@ class ForceViewSettingsPanel(QScrollArea):
         super().showEvent(event)
         # 延迟调用以确保布局完成
         from PySide6.QtCore import QTimer
+
         QTimer.singleShot(0, self._update_content_width)
 
     def _connect_internal(self):
@@ -387,7 +401,9 @@ class ForceViewSettingsPanel(QScrollArea):
         self.arrow_size.valueChanged.connect(
             lambda x: self.arrowScaleChanged.emit(float(x) / 10.0)
         )
-        self.graph_neighbor_depth.valueChanged.connect(self.graphNeighborDepthChanged.emit)
+        self.graph_neighbor_depth.valueChanged.connect(
+            self.graphNeighborDepthChanged.emit
+        )
 
         # Physics parameters
         self.many_body_strength.valueChanged.connect(self.manyBodyStrengthChanged.emit)
@@ -542,7 +558,11 @@ class ForceViewSettingsPanel(QScrollArea):
     def sizeHint(self):
         """返回面板理想尺寸，高度为完整内容所需高度 + 面板边距，供父组件计算“空间够则展开”。"""
         w = self.width() if self.width() > 0 else 250
-        content_h = self._cached_content_height if getattr(self, '_cached_content_height', 0) > 0 else 400
+        content_h = (
+            self._cached_content_height
+            if getattr(self, "_cached_content_height", 0) > 0
+            else 400
+        )
         # 加上面板布局的上下边距，避免父组件按此高度分配后，内部视口仍小于内容而出现滚动条
         h = content_h + self._panel_height_chrome()
         return QSize(w, h)

@@ -105,7 +105,9 @@ class CrawlerManager2(QObject):
         task.cancel_requested = True
         return True
 
-    def start_crawl(self, serial_numbers, withGUI=False, selected_fields: set[str] | None = None):
+    def start_crawl(
+        self, serial_numbers, withGUI=False, selected_fields: set[str] | None = None
+    ):
         if getattr(self, "_crawl_terminated", False):
             logging.info("检测到爬虫调度器处于终止状态：自动恢复后继续 start_crawl")
             self.resume_crawl()
@@ -122,7 +124,11 @@ class CrawlerManager2(QObject):
                 logging.info("任务 %s 已在队列中，跳过重复添加", serial_number)
                 continue
             self.request_queue.append(
-                (serial_number, withGUI, set(selected_fields) if selected_fields else None)
+                (
+                    serial_number,
+                    withGUI,
+                    set(selected_fields) if selected_fields else None,
+                )
             )
             logging.info(
                 "任务 %s 已入队，当前队列长度: %s",
@@ -317,7 +323,9 @@ class CrawlerManager2(QObject):
         else:
             logging.info("队列已空，停止后续调度")
 
-    def _execute_crawl(self, serial_number, withGUI=False, selected_fields: set[str] | None = None):
+    def _execute_crawl(
+        self, serial_number, withGUI=False, selected_fields: set[str] | None = None
+    ):
         task = CrawlerTask(
             serial_number,
             ["javlib", "javtxt", "avdanyuwiki", "javdb"],
@@ -339,7 +347,9 @@ class CrawlerManager2(QObject):
             worker = Worker(lambda: jump_to_javlib(serial))
             relay = ResultRelay(self, "javlib", serial)
             self._source_relays[("javlib", serial)] = relay
-            worker.signals.finished.connect(relay.handle, Qt.ConnectionType.QueuedConnection)
+            worker.signals.finished.connect(
+                relay.handle, Qt.ConnectionType.QueuedConnection
+            )
             self._crawl_pool.start(worker)
         elif source == "fanza":
             pass
@@ -349,7 +359,9 @@ class CrawlerManager2(QObject):
             worker = Worker(lambda: jump_to_javdb(serial))
             relay = ResultRelay(self, "javdb", serial)
             self._source_relays[("javdb", serial)] = relay
-            worker.signals.finished.connect(relay.handle, Qt.ConnectionType.QueuedConnection)
+            worker.signals.finished.connect(
+                relay.handle, Qt.ConnectionType.QueuedConnection
+            )
             self._crawl_pool.start(worker)
             print(f"已发送javdb请求，serial:{serial}")
         elif source == "javtxt":
@@ -358,7 +370,9 @@ class CrawlerManager2(QObject):
             worker = Worker(lambda: fetch_javtxt_movie_info(serial))
             relay = ResultRelay(self, "javtxt", serial)
             self._source_relays[("javtxt", serial)] = relay
-            worker.signals.finished.connect(relay.handle, Qt.ConnectionType.QueuedConnection)
+            worker.signals.finished.connect(
+                relay.handle, Qt.ConnectionType.QueuedConnection
+            )
             self._crawl_pool.start(worker)
         elif source == "avdanyuwiki":
             from core.crawler.avdanyuwiki import SearchInfoDanyukiwi
@@ -366,7 +380,9 @@ class CrawlerManager2(QObject):
             worker = Worker(lambda: SearchInfoDanyukiwi(serial))
             relay = ResultRelay(self, "avdanyuwiki", serial)
             self._source_relays[("avdanyuwiki", serial)] = relay
-            worker.signals.finished.connect(relay.handle, Qt.ConnectionType.QueuedConnection)
+            worker.signals.finished.connect(
+                relay.handle, Qt.ConnectionType.QueuedConnection
+            )
             self._crawl_pool.start(worker)
 
     @timeit
@@ -425,7 +441,9 @@ class CrawlerManager2(QObject):
                 serial, final_data = result
             else:
                 final_data = result
-                serial = getattr(final_data, "serial_number", None) if final_data else None
+                serial = (
+                    getattr(final_data, "serial_number", None) if final_data else None
+                )
             if not serial:
                 return
             if not final_data:

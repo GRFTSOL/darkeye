@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional, Callable, Union, TYPE_CHECKING
 if TYPE_CHECKING:
     from darkeye_ui.components import Sidebar  # type: ignore
 
+
 class Router(QObject):
     _instance = None
 
@@ -14,22 +15,27 @@ class Router(QObject):
         if Router._instance is not None:
             raise Exception("Router is a singleton!")
         Router._instance = self
-        
+
         self.stack = stack_widget
         self.sidebar = sidebar
         self.routes: Dict[str, Any] = {}
-        
+
         # 历史记录栈和指针
         self.history_stack = []
         self.current_index = -1
-        
+
     @classmethod
     def instance(cls):
         if cls._instance is None:
             raise Exception("Router has not been initialized yet!")
         return cls._instance
 
-    def register(self, route_name: str, page_source: Union[QWidget, Callable[[], QWidget]], sidebar_menu_id: Optional[str] = None):
+    def register(
+        self,
+        route_name: str,
+        page_source: Union[QWidget, Callable[[], QWidget]],
+        sidebar_menu_id: Optional[str] = None,
+    ):
         """
         注册路由
         :param route_name: 路由名称
@@ -39,7 +45,7 @@ class Router(QObject):
         self.routes[route_name] = {
             "source": page_source,
             "instance": None,  # 懒加载时，实例化后会存放在这里
-            "menu_id": sidebar_menu_id
+            "menu_id": sidebar_menu_id,
         }
         # 如果传入的是已经实例化的 Widget，直接存入 instance
         if isinstance(page_source, QWidget):
@@ -52,7 +58,7 @@ class Router(QObject):
         """获取页面实例，如果是懒加载且未实例化，则执行实例化"""
         if route_name not in self.routes:
             return None
-            
+
         route_info = self.routes[route_name]
         if route_info["instance"] is None:
             # 执行工厂函数
@@ -64,14 +70,17 @@ class Router(QObject):
                     route_info["instance"] = page_widget
                     self.stack.addWidget(page_widget)
                 except Exception as e:
-                    logging.error(f"Router: Failed to lazy load page '{route_name}': {e}")
+                    logging.error(
+                        f"Router: Failed to lazy load page '{route_name}': {e}"
+                    )
                     import traceback
+
                     logging.error(traceback.format_exc())
                     return None
             else:
                 logging.error(f"Router: Invalid page source for '{route_name}'")
                 return None
-                
+
         return route_info["instance"]
 
     def push(self, route_name: str, **kwargs):
@@ -84,17 +93,17 @@ class Router(QObject):
 
         # 如果是当前页面，且不是带参数的刷新，可以考虑是否记录
         # 这里简化处理：只要push就记录，除非完全一样且在栈顶（可选）
-        
+
         # 截断历史栈：如果当前指针不在末尾，丢弃后面的记录
         if self.current_index < len(self.history_stack) - 1:
-            self.history_stack = self.history_stack[:self.current_index + 1]
+            self.history_stack = self.history_stack[: self.current_index + 1]
 
         # 不记录与当前页面相同的导航（点击同一项两次不重复入栈）
         current_route = self.get_current_route()
         if current_route != route_name:
             self.history_stack.append(route_name)
             self.current_index += 1
-        
+
         # 执行实际跳转
         self._switch_to_view(route_name, **kwargs)
 
@@ -156,7 +165,7 @@ class Router(QObject):
 
         logging.info(f"Router: Switching view to '{route_name}' with params {kwargs}")
 
-        self.stack.setCurrentWidget(page)#切换到页面
+        self.stack.setCurrentWidget(page)  # 切换到页面
         if route_name == "setting":
             self.sidebar.clear_selection()
             # setting页面不需要return，可能后续还有逻辑？
@@ -169,7 +178,7 @@ class Router(QObject):
             pass
 
         if self.sidebar and menu_id:
-            self.sidebar.select(menu_id)#高亮选中的侧边栏
+            self.sidebar.select(menu_id)  # 高亮选中的侧边栏
 
         # 业务状态迁移到页：Router 只传参，页面自行处理
         if kwargs:
@@ -177,7 +186,9 @@ class Router(QObject):
                 try:
                     page.load_with_params(**kwargs)
                 except Exception as e:
-                    logging.error(f"Router: Failed to load page {route_name} with params: {e}")
+                    logging.error(
+                        f"Router: Failed to load page {route_name} with params: {e}"
+                    )
             elif hasattr(page, "update"):
                 # 兼容旧接口：单参数页面 (actress_id / work_id / actor_id)
                 for key in ("actress_id", "work_id", "actor_id"):
@@ -185,8 +196,7 @@ class Router(QObject):
                         try:
                             page.update(kwargs[key])
                         except Exception as e:
-                            logging.error(f"Router: Failed to update page {route_name}: {e}")
+                            logging.error(
+                                f"Router: Failed to update page {route_name}: {e}"
+                            )
                         break
-
-
-     

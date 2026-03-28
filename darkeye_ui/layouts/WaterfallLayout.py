@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QLayout
 from PySide6.QtCore import QSize, QPoint, QRect, Qt
 import logging
 
+
 class WaterfallLayout(QLayout):
     def __init__(self, parent=None, margin=10, spacing=10, column_width=220):
         super().__init__(parent)
@@ -29,10 +30,9 @@ class WaterfallLayout(QLayout):
     def hasHeightForWidth(self):
         return False
 
-    def sizeHint(self):#这个估算也是有问题的
-        #现在就是外部需要时默认撑开三列
-        return QSize(self.column_width * 4 + self.spacing() * 3,
-                     self.minimumHeight())
+    def sizeHint(self):  # 这个估算也是有问题的
+        # 现在就是外部需要时默认撑开三列
+        return QSize(self.column_width * 4 + self.spacing() * 3, self.minimumHeight())
 
     def minimumHeight(self):
         # 最低列高
@@ -46,7 +46,7 @@ class WaterfallLayout(QLayout):
                 widget.setParent(None)
                 widget.deleteLater()
         self._items.clear()
-        
+
     def setGeometry(self, rect):
         super().setGeometry(rect)
         if not self._items:
@@ -57,7 +57,9 @@ class WaterfallLayout(QLayout):
         column_count = max(1, max_width // (self.column_width + spacing))
         heights = [top] * column_count
 
-        total_layout_width = column_count * self.column_width + (column_count - 1) * spacing
+        total_layout_width = (
+            column_count * self.column_width + (column_count - 1) * spacing
+        )
         offset_x = left + (max_width - total_layout_width) // 2  # << 居中偏移
 
         for item in self._items:
@@ -68,8 +70,7 @@ class WaterfallLayout(QLayout):
             hint = item.sizeHint()
             h = hint.height()
 
-            item.setGeometry(QRect(QPoint(x, y),
-                                   QSize(self.column_width, h)))
+            item.setGeometry(QRect(QPoint(x, y), QSize(self.column_width, h)))
             heights[col] += h + spacing
 
         # 如果放在 scroll area，要撑开内容区高度

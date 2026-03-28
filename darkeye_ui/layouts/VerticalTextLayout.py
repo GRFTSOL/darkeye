@@ -4,75 +4,81 @@ from PySide6.QtCore import QRect, QPoint, QSize
 from PySide6.QtGui import QFontMetrics
 import re
 
-#用于排版竖向文本，包括中日文、标点、英文和数字的混合排版
-#标准参考：
-# 标点符号用法GB/T 15834-2011 
+# 用于排版竖向文本，包括中日文、标点、英文和数字的混合排版
+# 标准参考：
+# 标点符号用法GB/T 15834-2011
 
-#包括标题符号的替换、分块划分、布局计算、尺寸估计等功能
+# 包括标题符号的替换、分块划分、布局计算、尺寸估计等功能
 
-#以后所有的竖向排版都用这个类来处理
+# 以后所有的竖向排版都用这个类来处理
+
 
 @dataclass
 class TextBlock:
     """文字块的信息"""
+
     text: str
     is_english: bool
     rect: QRect
     rotation: float = 0  # 旋转角度
-    ascent: float = 0    # 基线位置（用于英文旋转）
+    ascent: float = 0  # 基线位置（用于英文旋转）
+
 
 class VerticalTextLayout:
     """竖排文字的排版计算类"""
-    def __init__(self, font_metrics: QFontMetrics, line_spacing: float, column_spacing: float):
+
+    def __init__(
+        self, font_metrics: QFontMetrics, line_spacing: float, column_spacing: float
+    ):
         self.fm = font_metrics
         self.line_spacing = line_spacing
         self.column_spacing = column_spacing
         self.char_height = self.fm.height() + self.line_spacing
         self.char_width = self.fm.maxWidth()
-        
+
     @staticmethod
     def replace_ellipsis(text: str) -> str:
         """替换标点符号为竖排专用符号，这个还有其他的解决方法
-        
+
         符合中文标点符号用法GB/T 15834-2011
-        
+
         Args:
             text: 原始文本
-            
+
         Returns:
             str: 替换标点后的文本
         """
         if text == "" or text is None:
             return ""
-            
+
         replacements = {
-            "，": "\uFE10",  # 顿号
-            "、": "\uFE11",  # 顿号
-            "。": "\uFE12",  # 句号
-            "：": "\uFE13",  # 冒号
-            "；": "\uFE14",  # 分号
-            "！": "\uFE15",  # 感叹号
-            "？": "\uFE16",  # 问号
-            "……": "\uFE19",  # 中文全角省略号
-            "\u2026": "\uFE19",  # 单个 U+2026
-            "\u22EF": "\uFE19",  # ⋯
-            "（": "\uFE35",  # 左圆括号
-            "）": "\uFE36",  # 右圆括号
-            "【": "\uFE3B",  # 左方括号
-            "】": "\uFE3C",  # 右方括号
-            "《": "\uFE3D",  # 左书名号
-            "》": "\uFE3E",  # 右书名号
-            "〈": "\uFE3F",  # 左单书名号
-            "〉": "\uFE40",  # 右单书名号
-            "「": "\uFE41",  # 左单引号（替代）
-            "」": "\uFE42",  # 右单引号（替代）
-            "『": "\uFE43",  # 左双引号
-            "』": "\uFE44",  # 右双引号
+            "，": "\ufe10",  # 顿号
+            "、": "\ufe11",  # 顿号
+            "。": "\ufe12",  # 句号
+            "：": "\ufe13",  # 冒号
+            "；": "\ufe14",  # 分号
+            "！": "\ufe15",  # 感叹号
+            "？": "\ufe16",  # 问号
+            "……": "\ufe19",  # 中文全角省略号
+            "\u2026": "\ufe19",  # 单个 U+2026
+            "\u22ef": "\ufe19",  # ⋯
+            "（": "\ufe35",  # 左圆括号
+            "）": "\ufe36",  # 右圆括号
+            "【": "\ufe3b",  # 左方括号
+            "】": "\ufe3c",  # 右方括号
+            "《": "\ufe3d",  # 左书名号
+            "》": "\ufe3e",  # 右书名号
+            "〈": "\ufe3f",  # 左单书名号
+            "〉": "\ufe40",  # 右单书名号
+            "「": "\ufe41",  # 左单引号（替代）
+            "」": "\ufe42",  # 右单引号（替代）
+            "『": "\ufe43",  # 左双引号
+            "』": "\ufe44",  # 右双引号
         }
-        
+
         for old, new in replacements.items():
             text = text.replace(old, new)
-            
+
         return text
 
     def split_text_blocks(self, text: str) -> List[Tuple[str, bool]]:
@@ -105,18 +111,18 @@ class VerticalTextLayout:
 
     def calculate_layout(self, text: str, width: int, height: int) -> List[TextBlock]:
         """计算文本布局
-        
+
         Args:
             text: 要排版的文本
             width: 可用宽度
             height: 可用高度
-            
+
         Returns:
             List[TextBlock]: 排版后的文本块列表
         """
         blocks = self.split_text_blocks(text)
         result = []
-        
+
         x = width - self.char_width  # 从右往左
         y = 0
 
@@ -140,13 +146,15 @@ class VerticalTextLayout:
 
                 # 计算文本框和旋转中心
                 rect = QRect(x, y, self.char_width, block_w)
-                result.append(TextBlock(
-                    text=text,
-                    is_english=True,
-                    rect=rect,
-                    rotation=90,
-                    ascent=self.fm.ascent()
-                ))
+                result.append(
+                    TextBlock(
+                        text=text,
+                        is_english=True,
+                        rect=rect,
+                        rotation=90,
+                        ascent=self.fm.ascent(),
+                    )
+                )
 
                 y += block_w + self.line_spacing
             else:
@@ -161,22 +169,18 @@ class VerticalTextLayout:
                             break
 
                     rect = QRect(x, y, self.char_width, self.char_height)
-                    result.append(TextBlock(
-                        text=ch,
-                        is_english=False,
-                        rect=rect
-                    ))
+                    result.append(TextBlock(text=ch, is_english=False, rect=rect))
                     y += self.char_height
 
         return result
 
     def calculate_size(self, text: str, height: int = 0) -> QSize:
         """计算文本需要的尺寸
-        
+
         Args:
             text: 要排版的文本
             height: 当前高度约束（0表示无约束）
-            
+
         Returns:
             QSize: 所需的尺寸
         """

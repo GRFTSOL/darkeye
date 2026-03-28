@@ -1,5 +1,6 @@
 # darkeye_ui/components/chamfer_button.py - 斜角按钮，令牌驱动，可配置斜角比例
 """斜角按钮：0=正方形，1=菱形，支持图标与选中/hover 状态，由设计令牌驱动。"""
+
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Union
 

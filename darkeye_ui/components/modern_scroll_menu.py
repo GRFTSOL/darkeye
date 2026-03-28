@@ -1,5 +1,6 @@
 # darkeye_ui/components/modern_scroll_menu.py - 导航/滚动菜单，由设计令牌驱动
 """标准导航滚动菜单：顶部 Tab 导航 + 内容区滚动，样式由设计令牌驱动。"""
+
 from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
@@ -91,7 +92,9 @@ class ModernScrollMenu(QWidget):
             sec_layout.addWidget(widget_instance)
             self.content_layout.addWidget(section_wrapper)
             self.section_widgets.append((section_wrapper, btn))
-            btn.clicked.connect(lambda chk, w=section_wrapper, b=btn: self.scroll_to_widget(w, b))
+            btn.clicked.connect(
+                lambda chk, w=section_wrapper, b=btn: self.scroll_to_widget(w, b)
+            )
 
             if i < len(content_dict) - 1:
                 self.content_layout.addWidget(self.create_separator())

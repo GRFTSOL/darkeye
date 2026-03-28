@@ -1,4 +1,4 @@
-import os,logging
+import os, logging
 import sqlite3
 from datetime import datetime
 import shutil
@@ -16,38 +16,39 @@ from config import (
 )
 
 
-def backup_database(database:Path,backup_dir:Path)->str:
-    #这个也有未知情况下的问题
-    #将目标database文件复制到backup_dir备份的文件夹下并打上时间戳
+def backup_database(database: Path, backup_dir: Path) -> str:
+    # 这个也有未知情况下的问题
+    # 将目标database文件复制到backup_dir备份的文件夹下并打上时间戳
     # 创建 backup 文件夹
-    #backup_dir = os.path.join(os.path.dirname(db_path), "av_backup")
+    # backup_dir = os.path.join(os.path.dirname(db_path), "av_backup")
     os.makedirs(backup_dir, exist_ok=True)
 
     # 时间戳格式的文件名
     timestamp = datetime.now().strftime("backup-%Y-%m-%d-%H-%M-%S.db")
     backup_path = os.path.join(backup_dir, timestamp)
 
-    src_conn=get_connection(database)
-    backup_conn=get_connection(backup_path)
+    src_conn = get_connection(database)
+    backup_conn = get_connection(backup_path)
     try:
         src_conn.backup(backup_conn)
         logging.info(f"SQLite 原子备份成功: {backup_path}")
     finally:
         backup_conn.close()
         src_conn.close()
-    '''
+    """
     # 原子备份（安全）
     with sqlite3.connect(database) as src_conn:
         with sqlite3.connect(backup_path) as backup_conn:
             src_conn.backup(backup_conn)
             logging.info(f"已使用 sqlite3 原子备份方式成功备份到: {backup_path}")
     #这个有问题，就是bachup的文件会被程序占用，非常的奇怪
-    '''
+    """
     return backup_path
 
+
 def restore_database(backup_path: Path, target_path: Path) -> bool:
-    #将备份的.db文件复制到目标.db目录下
-    #这个有风险需要后面更改
+    # 将备份的.db文件复制到目标.db目录下
+    # 这个有风险需要后面更改
     if not backup_path.exists():
         return False
     try:
@@ -58,7 +59,8 @@ def restore_database(backup_path: Path, target_path: Path) -> bool:
         logging.warning(f"[ERROR] Restore failed: {e}")
         return False
 
-def restore_backup_safely(backup_db: Path,active_db: Path)->bool:
+
+def restore_backup_safely(backup_db: Path, active_db: Path) -> bool:
     """
     安全恢复备份到正在被连接的 SQLite 数据库。
     不会直接覆盖文件，而是通过 SQL 将数据写入 active_db。
@@ -72,7 +74,7 @@ def restore_backup_safely(backup_db: Path,active_db: Path)->bool:
         return False
 
     active_conn = sqlite3.connect(active_db)
-    success=False
+    success = False
     try:
         # ATTACH 备份数据库
         active_conn.execute(f"ATTACH DATABASE '{backup_db}' AS backup_db;")
@@ -82,7 +84,7 @@ def restore_backup_safely(backup_db: Path,active_db: Path)->bool:
         tables = active_conn.execute(
             "SELECT name FROM backup_db.sqlite_master WHERE type='table';"
         ).fetchall()
-        #logging.debug(tables)
+        # logging.debug(tables)
         with active_conn:
             for (table_name,) in tables:
                 # 清空当前数据库中的表
@@ -96,13 +98,14 @@ def restore_backup_safely(backup_db: Path,active_db: Path)->bool:
         active_conn.execute("DETACH DATABASE backup_db;")
         active_conn.execute("PRAGMA wal_checkpoint(FULL);")
         logging.info(f"已安全恢复备份 {backup_db} 到 {active_db}")
-        success=True
+        success = True
     except Exception as e:
         logging.warning(f"[ERROR] Restore failed: {e}")
-        success=False
+        success = False
     finally:
         active_conn.close()
     return success
+
 
 def _copy_tree(src: Path, dst: Path, overwrite: bool = True) -> None:
     """递归拷贝目录 src 到 dst，支持覆盖控制。"""
@@ -128,6 +131,7 @@ def _copy_tree(src: Path, dst: Path, overwrite: bool = True) -> None:
                 shutil.copy2(src_file, dst_file)
             except Exception as e:
                 logging.warning(f"[backup] 拷贝文件失败 {src_file} -> {dst_file}: {e}")
+
 
 def create_resource_snapshot(snapshot_root: Path) -> Path | None:
     """
@@ -207,6 +211,7 @@ def create_resource_snapshot(snapshot_root: Path) -> Path | None:
     except Exception as e:
         logging.warning(f"[backup] 创建资源快照失败: {e}")
         return None
+
 
 def restore_snapshot(
     meta_path: Path,

@@ -14,7 +14,12 @@ from core.database.insert import (
     add_tag2work,
     insert_tag,
 )
-from core.database.query import exist_actress, exist_actor, get_tagid_by_keyword, get_workid_by_serialnumber
+from core.database.query import (
+    exist_actress,
+    exist_actor,
+    get_tagid_by_keyword,
+    get_workid_by_serialnumber,
+)
 from core.database.update import update_work_byhand_
 from core.schema.model import CrawledWorkData
 from utils.utils import text2tag_id_list
@@ -33,7 +38,9 @@ class DataUpdate:
         self.work = data
         self.manager = manager
         self.withGUI = withGUI
-        self.selected_fields: set[str] | None = set(selected_fields) if selected_fields else None
+        self.selected_fields: set[str] | None = (
+            set(selected_fields) if selected_fields else None
+        )
         self.work_id = None
         if withGUI:
             submit_db_raw(lambda: self._prepare_entities_and_relations_db()).result()
@@ -53,12 +60,12 @@ class DataUpdate:
                     "maker": self.maker_id,
                     "label": self.label_id,
                     "series": self.series_id,
-                    "fanart": self.work.fanart_url_list
+                    "fanart": self.work.fanart_url_list,
                 }
             )
         else:
             submit_db_raw(lambda: self._prepare_and_insert_work_non_gui()).result()
-            #self._prepare_and_insert_work_non_gui()
+            # self._prepare_and_insert_work_non_gui()
         self._schedule_cover_download()
 
     def __del__(self):
@@ -87,7 +94,9 @@ class DataUpdate:
                     if tag_id:
                         tag_id_list.append(tag_id)
                     else:
-                        success, e, tag_id = insert_tag(genre, 11, "#cccccc", "", None, [])
+                        success, e, tag_id = insert_tag(
+                            genre, 11, "#cccccc", "", None, []
+                        )
                         if success:
                             added_tag = True
                             tag_id_list.append(tag_id)
@@ -106,7 +115,7 @@ class DataUpdate:
                         id = exist_actress(actress)
                         self.actress_ids.append(id)
                         global_signals.actress_data_changed.emit()
-                        #自动调用爬虫去更新女优
+                        # 自动调用爬虫去更新女优
                         from PySide6.QtCore import QThreadPool
 
                         from core.crawler.Worker import Worker
@@ -116,9 +125,11 @@ class DataUpdate:
                             lambda aid=id, nm=actress: SearchSingleActressInfo(aid, nm)
                         )
                         worker.signals.finished.connect(
-                            lambda ok: global_signals.actress_data_changed.emit()
-                            if ok
-                            else None
+                            lambda ok: (
+                                global_signals.actress_data_changed.emit()
+                                if ok
+                                else None
+                            )
                         )
                         QThreadPool.globalInstance().start(worker)
                 else:
@@ -200,16 +211,16 @@ class DataUpdate:
                 elif isinstance(x, dict):
                     u = (x.get("url") or "").strip()
                     if u:
-                        items.append(
-                            {"url": u, "file": (x.get("file") or "").strip()}
-                        )
+                        items.append({"url": u, "file": (x.get("file") or "").strip()})
             if items:
                 self.fanart_json = json.dumps(items, ensure_ascii=False)
 
     def _schedule_cover_download(self):
         from config import TEMP_PATH
 
-        image_filename = self.work.serial_number.strip().lower().replace("-", "") + "pl.jpg"
+        image_filename = (
+            self.work.serial_number.strip().lower().replace("-", "") + "pl.jpg"
+        )
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         dst_name = f"image_{timestamp}.jpg"

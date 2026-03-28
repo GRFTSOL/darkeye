@@ -1,7 +1,9 @@
 """可显示的 Demo：把 LayoutTree 和 PaneWidget 放进窗口，以选中的窗格为节点进行拆分测试。"""
+
 import sys
 from pathlib import Path
-root_dir = Path(__file__).resolve().parents[3]  
+
+root_dir = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root_dir))
 
 from PySide6.QtWidgets import (
@@ -18,7 +20,6 @@ from PySide6.QtCore import Qt, QEvent, QObject
 
 from ui.demo.layout_tree import LayoutTree, SplitModelNode
 from ui.demo.pane_widget import PaneWidget
-
 
 SPLITTER_STYLE = """
     QSplitter::handle {
@@ -81,7 +82,11 @@ def main():
         pane.pane_empty.connect(on_pane_empty)
 
     p1 = PaneWidget(pane_id="p1")
-    p1.add_content("c1", "窗格 1", _placeholder("这是第一个窗格 (p1)\n点击窗格可选中，再点按钮以该窗格为节点拆分"))
+    p1.add_content(
+        "c1",
+        "窗格 1",
+        _placeholder("这是第一个窗格 (p1)\n点击窗格可选中，再点按钮以该窗格为节点拆分"),
+    )
     tree.add_pane_to_root(p1)
     register_pane(p1)
 
@@ -99,7 +104,9 @@ def main():
             _placeholder(f"窗格 p{pane_counter}\n在选中窗格右侧水平拆分加入"),
         )
         if tree.find_parent_of_pane(split_target) is not None:
-            tree.split(split_target, Qt.Horizontal, insert_before=False, new_pane=new_pane)
+            tree.split(
+                split_target, Qt.Horizontal, insert_before=False, new_pane=new_pane
+            )
         else:
             tree.add_pane_to_root(new_pane)
             split_target_holder[0] = new_pane
@@ -116,7 +123,9 @@ def main():
             _placeholder(f"窗格 p{pane_counter}\n在选中窗格下方垂直拆分加入"),
         )
         if tree.find_parent_of_pane(split_target) is not None:
-            tree.split(split_target, Qt.Vertical, insert_before=False, new_pane=new_pane)
+            tree.split(
+                split_target, Qt.Vertical, insert_before=False, new_pane=new_pane
+            )
         else:
             tree.add_pane_to_root(new_pane)
             split_target_holder[0] = new_pane
@@ -142,8 +151,15 @@ def main():
         """点击窗格时将其设为当前拆分目标。"""
 
         def eventFilter(self, obj, event):
-            if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
-                pos = event.globalPosition().toPoint() if hasattr(event, "globalPosition") else event.globalPos()
+            if (
+                event.type() == QEvent.MouseButtonPress
+                and event.button() == Qt.LeftButton
+            ):
+                pos = (
+                    event.globalPosition().toPoint()
+                    if hasattr(event, "globalPosition")
+                    else event.globalPos()
+                )
                 pane = _pane_under_cursor(tree, pos)
                 if pane is not None:
                     split_target_holder[0] = pane

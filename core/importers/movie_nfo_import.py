@@ -23,7 +23,12 @@ from core.database.insert import (
     insert_tag,
     rename_save_image,
 )
-from core.database.query import exist_actor, exist_actress, get_tagid_by_keyword, get_workid_by_serialnumber
+from core.database.query import (
+    exist_actor,
+    exist_actress,
+    get_tagid_by_keyword,
+    get_workid_by_serialnumber,
+)
 from core.database.query.work import (
     get_label_id_by_name,
     get_maker_id_by_name,
@@ -143,7 +148,9 @@ def _pick_work_cover_source(candidates: list[str]) -> str | None:
 
     large_locals = [p for p in locals_ok if _is_large_thumb_path(p)]
     small_locals = [p for p in locals_ok if _is_small_thumb_path(p)]
-    neutral_locals = [p for p in locals_ok if p not in large_locals and p not in small_locals]
+    neutral_locals = [
+        p for p in locals_ok if p not in large_locals and p not in small_locals
+    ]
 
     if large_locals:
         # 同为大图时优先 BigPic，再其它 large
@@ -178,7 +185,9 @@ def _work_cover_filename(serial_number: str) -> str:
     return serial_number.strip().lower().replace("-", "") + "pl.jpg"
 
 
-def _resolve_cast_from_nfo(cast: list[NfoCastEntry]) -> tuple[list[int], list[int], bool, bool]:
+def _resolve_cast_from_nfo(
+    cast: list[NfoCastEntry],
+) -> tuple[list[int], list[int], bool, bool]:
     """按 JAV NFO 常见顺序：首个库外人员建为女优，之后库外人员建为男优。"""
     actress_ids: list[int] = []
     actor_ids: list[int] = []
@@ -226,7 +235,9 @@ def _update_actor_image_only(actor_id: int, image_filename: str) -> None:
     conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
     try:
-        cursor.execute("UPDATE actor SET image_url=? WHERE actor_id=?", (image_filename, actor_id))
+        cursor.execute(
+            "UPDATE actor SET image_url=? WHERE actor_id=?", (image_filename, actor_id)
+        )
         conn.commit()
     finally:
         cursor.close()
@@ -415,10 +426,14 @@ def import_work_from_movie_nfo(path: Path) -> tuple[bool, str]:
         return False, f"番号「{parsed.serial_number}」已在库中，已跳过导入。"
 
     try:
-        maker_id, label_id, maker_added, label_added = _resolve_maker_label(parsed.studio_raw)
+        maker_id, label_id, maker_added, label_added = _resolve_maker_label(
+            parsed.studio_raw
+        )
         tag_ids, tag_added = _resolve_tag_names(list(dict.fromkeys(parsed.genre_names)))
         series_id, series_added = _resolve_series_from_nfo_tags(parsed.tag_names)
-        actress_ids, actor_ids, actress_added, actor_added = _resolve_cast_from_nfo(parsed.cast)
+        actress_ids, actor_ids, actress_added, actor_added = _resolve_cast_from_nfo(
+            parsed.cast
+        )
     except RuntimeError as e:
         return False, str(e)
 
@@ -473,7 +488,9 @@ def import_work_from_movie_nfo(path: Path) -> tuple[bool, str]:
         parsed.fanart_json,
     )
     if not ok:
-        logging.warning("InsertNewWorkByHand failed for NFO import: %s", parsed.serial_number)
+        logging.warning(
+            "InsertNewWorkByHand failed for NFO import: %s", parsed.serial_number
+        )
         return False, "写入数据库失败"
 
     global_signals.work_data_changed.emit()

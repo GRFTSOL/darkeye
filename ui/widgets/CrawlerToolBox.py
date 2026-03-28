@@ -14,6 +14,7 @@ from utils.utils import covert_fanza
 
 class CrawlerAutoPage(QWidget):
     """自动爬虫抓取信息页面"""
+
     def __init__(self):
         super().__init__()
         layout = QGridLayout(self)
@@ -33,20 +34,21 @@ class CrawlerAutoPage(QWidget):
         self.cb_series = TokenCheckBox("系列")
         self.cb_label = TokenCheckBox("厂牌")
         self.cb_fanart = TokenCheckBox("剧照")
-        self.btn_get_crawler = IconPushButton(icon_name="arrow_down_to_line", icon_size=24, out_size=32)
+        self.btn_get_crawler = IconPushButton(
+            icon_name="arrow_down_to_line", icon_size=24, out_size=32
+        )
 
-        #self.cb_release_date.setChecked(True)
-        #self.cb_director.setChecked(True)
-        #self.cb_cn_title.setChecked(True)
-        #self.cb_jp_title.setChecked(True)
-        #self.cb_cn_story.setChecked(True)
-        #self.cb_jp_story.setChecked(True)
-        #self.cb_actress.setChecked(True)
-        #self.cb_actor.setChecked(True)
-        #self.cb_cover.setChecked(True)
-        #self.cb_tag.setChecked(True)
-        #self.cb_runtime.setChecked(True)
-
+        # self.cb_release_date.setChecked(True)
+        # self.cb_director.setChecked(True)
+        # self.cb_cn_title.setChecked(True)
+        # self.cb_jp_title.setChecked(True)
+        # self.cb_cn_story.setChecked(True)
+        # self.cb_jp_story.setChecked(True)
+        # self.cb_actress.setChecked(True)
+        # self.cb_actor.setChecked(True)
+        # self.cb_cover.setChecked(True)
+        # self.cb_tag.setChecked(True)
+        # self.cb_runtime.setChecked(True)
 
         layout.addWidget(self.cb_release_date, 0, 0)
         layout.addWidget(self.cb_director, 0, 1)
@@ -73,12 +75,17 @@ def _apply_serial_transform(serial: str, transform: str | None) -> str:
     if transform == "fanza":
         return covert_fanza(serial)
     if transform == "supjav":
-        return serial.split("-")[-1] if serial.strip().upper().startswith("FC2-") else serial
+        return (
+            serial.split("-")[-1]
+            if serial.strip().upper().startswith("FC2-")
+            else serial
+        )
     return serial
 
 
 class CrawlerManualNavPage(QWidget):
     """手动导航页面，由外部 JSON 配置驱动（按钮名、跳转 URL、可选番号转换、说明）。"""
+
     def __init__(self):
         super().__init__()
         self._serial_provider: Callable[[], str] | None = None
@@ -110,6 +117,7 @@ class CrawlerManualNavPage(QWidget):
     def _make_click_handler(self, cfg: dict):
         def _on_click():
             self._open_nav_url(cfg)
+
         return _on_click
 
     def _open_nav_url(self, cfg: dict) -> None:

@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import logging
 
-#----------------------------------------------------------
+# ----------------------------------------------------------
 root_dir = Path(__file__).resolve().parents[2]  # 上两级
 sys.path.insert(0, str(root_dir))
 
@@ -25,8 +25,10 @@ from ui.basic import IconPushButton
 from darkeye_ui.components.state_toggle_button import StateToggleButton
 from core.graph.ImageOverlayWidget import ImageOverlayWidget
 
+
 class ForceDirectedViewWidget(QWidget):
-    '''控制面板+view的容器'''
+    """控制面板+view的容器"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -42,6 +44,7 @@ class ForceDirectedViewWidget(QWidget):
         self._theme_manager = None
         try:
             from app_context import get_theme_manager
+
             self._theme_manager = get_theme_manager()
         except ImportError as e:
             logging.debug(
@@ -54,7 +57,6 @@ class ForceDirectedViewWidget(QWidget):
         self.signal_connect()
         # 根据面板当前状态同步图片叠加层开关
         self.setImageOverlayEnabled(self.panel.show_image.isChecked())
-
 
     def init_ui(self):
         mainlayout = QVBoxLayout(self)
@@ -73,28 +75,36 @@ class ForceDirectedViewWidget(QWidget):
         self.image_overlay = ImageOverlayWidget(parent=self)
         # 不添加到布局，使用绝对定位
 
-        self.image_overlay.set_view_widget(self.view, self.image_update_timer)  # 设置view引用以监听scale变化
+        self.image_overlay.set_view_widget(
+            self.view, self.image_update_timer
+        )  # 设置view引用以监听scale变化
 
         # -------- Session：GraphManager -> 过滤 -> OpenGL View --------
         self.session = GraphViewSession()
         self.session.data_ready.connect(self._on_graph_data_ready)
         self.session.diff_changed.connect(self._on_graph_diff_changed)
 
+        # self.settings_button = IconPushButton(iconpath="settings.svg", iconsize=24,outsize=32,color="#5C5C5C", parent=self)
+        # self.settings_button=StateToggleButton(state1_icon="settings.svg",state1_color="#5C5C5C",state2_icon="x.svg",state2_color="#5C5C5C",iconsize=24,outsize=32,hoverable=True,parent=self)
+        self.settings_button = StateToggleButton(
+            state1_icon="settings",
+            state2_icon="x",
+            icon_size=24,
+            out_size=32,
+            hoverable=True,
+            parent=self,
+        )
 
-        #self.settings_button = IconPushButton(iconpath="settings.svg", iconsize=24,outsize=32,color="#5C5C5C", parent=self)
-        #self.settings_button=StateToggleButton(state1_icon="settings.svg",state1_color="#5C5C5C",state2_icon="x.svg",state2_color="#5C5C5C",iconsize=24,outsize=32,hoverable=True,parent=self)
-        self.settings_button=StateToggleButton(state1_icon="settings",state2_icon="x",icon_size=24,out_size=32,hoverable=True,parent=self)
-        
         self.panel = ForceViewSettingsPanel(self)
 
         self.settings_button.raise_()
         self.panel.raise_()
-        
+
     def signal_connect(self):
         self.settings_button.clicked.connect(self._toggle_panel)
         # View -> 业务逻辑
         self.view.nodeLeftClicked.connect(self._on_node_clicked)
-        
+
         self.panel.arrowEnabledChanged.connect(self.view.setArrowEnabled)
         self.panel.arrowScaleChanged.connect(self.view.setArrowScale)
         # Panel -> 图片叠加层开关
@@ -117,9 +127,7 @@ class ForceDirectedViewWidget(QWidget):
         self.panel.restartRequested.connect(self.view.restartSimulation)
         self.panel.pauseRequested.connect(self.view.pauseSimulation)
         self.panel.resumeRequested.connect(self.view.resumeSimulation)
-        self.panel.fitInViewRequested.connect( self.view.fitViewToContent)
-
-
+        self.panel.fitInViewRequested.connect(self.view.fitViewToContent)
 
         self.panel.addNodeRequested.connect(self.addnodetest)
         self.panel.removeNodeRequested.connect(self.removenodetest)
@@ -166,10 +174,9 @@ class ForceDirectedViewWidget(QWidget):
         _apply("color_primary", self.view.setHoverColor)
         _apply("color_text", self.view.setTextColor)
         _apply("color_bg_page", self.view.setTextDimColor)
-        
 
     def setGraphNeighborDepth(self, depth: int):
-        '''设置图邻居深度,用于这个中心过滤模式下的深度切换'''
+        """设置图邻居深度,用于这个中心过滤模式下的深度切换"""
         logging.debug(f"设置图邻居深度: {depth}")
         self.session.fast_calc_diff(depth)
 
@@ -221,20 +228,18 @@ class ForceDirectedViewWidget(QWidget):
             if self.image_update_timer is not None:
                 self.image_update_timer.stop()
 
-
     def addnodetest(self):
-        self.view.add_node_runtime("c200",10.0,10.0,"c200",7.0,QColor("#5C5C5C"))
-        self.view.add_node_runtime("c201",0.0,0.0,"c201",7.0,QColor("#257845"))
-
+        self.view.add_node_runtime("c200", 10.0, 10.0, "c200", 7.0, QColor("#5C5C5C"))
+        self.view.add_node_runtime("c201", 0.0, 0.0, "c201", 7.0, QColor("#257845"))
 
     def removenodetest(self):
         self.view.remove_node_runtime("c200")
-    
+
     def addedgetest(self):
-        self.view.add_edge_runtime("c200","c201")
+        self.view.add_edge_runtime("c200", "c201")
 
     def removeedgetest(self):
-        self.view.remove_edge_runtime("c200","c201")
+        self.view.remove_edge_runtime("c200", "c201")
 
     def _update_image_position(self):
         """定期更新图片位置，使其跟随节点移动"""
@@ -242,7 +247,10 @@ class ForceDirectedViewWidget(QWidget):
             return
 
         # 检查是否有图片正在显示
-        if not self.image_overlay.current_image or self.image_overlay.current_image.isNull():
+        if (
+            not self.image_overlay.current_image
+            or self.image_overlay.current_image.isNull()
+        ):
             return
 
         # 获取当前悬停的节点ID
@@ -252,7 +260,6 @@ class ForceDirectedViewWidget(QWidget):
 
         # 更新图片位置
         self.image_overlay.update_position_from_node_id(node_id, self.view)
-
 
     def _on_node_clicked(self, node_id: str) -> None:
         """
@@ -266,24 +273,39 @@ class ForceDirectedViewWidget(QWidget):
 
         if nodename.startswith("a"):
             from ui.navigation.router import Router
+
             Router.instance().push("single_actress", actress_id=int(nodename[1:]))
             print(f"跳转女优界面：{nodename}")
         elif nodename.startswith("w"):
             from ui.navigation.router import Router
-            #Router.instance().push("work", work_id=int(nodename[1:]))
-            Router.instance().push("shelf",work_id=int(nodename[1:]))
+
+            # Router.instance().push("work", work_id=int(nodename[1:]))
+            Router.instance().push("shelf", work_id=int(nodename[1:]))
             print(f"跳转作品界面：{nodename}")
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._update_panel_geometry()
         # 触发图片叠加层重新计算位置（如果当前正在显示图片）
-        if self.image_overlay.isVisible() and self.image_overlay.current_image and not self.image_overlay.current_image.isNull():
+        if (
+            self.image_overlay.isVisible()
+            and self.image_overlay.current_image
+            and not self.image_overlay.current_image.isNull()
+        ):
             # 直接触发位置更新，不需要重新调用on_node_hovered_with_info
-            if hasattr(self.image_overlay, '_update_widget_geometry') and self.image_overlay._last_hover_info:
-                node_id, x, y, radius, scale, dragging = self.image_overlay._last_hover_info
+            if (
+                hasattr(self.image_overlay, "_update_widget_geometry")
+                and self.image_overlay._last_hover_info
+            ):
+                node_id, x, y, radius, scale, dragging = (
+                    self.image_overlay._last_hover_info
+                )
                 if not dragging:
-                    self.image_overlay.image_rect = self.image_overlay._calculate_image_rect(x, y, radius, scale, node_id)
+                    self.image_overlay.image_rect = (
+                        self.image_overlay._calculate_image_rect(
+                            x, y, radius, scale, node_id
+                        )
+                    )
                     self.image_overlay._update_widget_geometry(x, y)
 
     def showEvent(self, event):
@@ -307,9 +329,9 @@ class ForceDirectedViewWidget(QWidget):
             logging.exception("ForceDirectedViewWidget: 首次显示后刷新 OpenGL 视图失败")
 
     def _update_panel_geometry(self) -> None:
-        '''悬浮的东西只能自己手动定位'''
+        """悬浮的东西只能自己手动定位"""
         rect = self.rect()
-        if rect.isEmpty():#外框
+        if rect.isEmpty():  # 外框
             return
         margin = 10
         offset_x = 0
@@ -322,14 +344,16 @@ class ForceDirectedViewWidget(QWidget):
         if self.panel.isVisible():
             panel_width: int = min(250, max(0, rect.width() - 2 * margin))
             # 计算最大可用高度(保留底部边距)
-            max_available_height = rect.height() -  2*margin - offset_y
+            max_available_height = rect.height() - 2 * margin - offset_y
             self.panel.setMaximumPanelHeight(max_available_height)
 
-            panel_height: int = min(self.panel.sizeHint().height(), max_available_height)
+            panel_height: int = min(
+                self.panel.sizeHint().height(), max_available_height
+            )
             self.panel.resize(panel_width, panel_height)
             self.panel.move(
-                max(margin, rect.width() - panel_width - margin-offset_x),
-                margin+offset_y,
+                max(margin, rect.width() - panel_width - margin - offset_x),
+                margin + offset_y,
             )
             self.panel.raise_()
             self.settings_button.raise_()
@@ -341,13 +365,15 @@ class ForceDirectedViewWidget(QWidget):
             self.panel.setVisible(True)
             # 延迟调整,确保可见后再计算
             from PySide6.QtCore import QTimer
+
             def delayed_adjust():
                 self.panel._adjust_panel_height()
                 self._update_panel_geometry()
                 self.panel.raise_()
                 self.settings_button.raise_()
+
             QTimer.singleShot(0, delayed_adjust)
-        
+
     def _on_node_color_group_changed(self, group: str, color: QColor) -> None:
         """面板修改某类节点颜色后，更新覆盖并实时推送到 view。"""
         self._color_overrides[group] = color
@@ -394,11 +420,13 @@ class ForceDirectedViewWidget(QWidget):
         # 触发一次重载
         self.session.new_load()
 
-    def load_graph(self,G):
+    def load_graph(self, G):
         pass
-        #self.view.load_graph(G)
+        # self.view.load_graph(G)
 
-    def _node_color(self, node_id: str, attr: dict | None, is_center: bool = False) -> QColor:
+    def _node_color(
+        self, node_id: str, attr: dict | None, is_center: bool = False
+    ) -> QColor:
         """
         根据节点 id / group 计算显示颜色。可由 panel 颜色覆盖（_color_overrides）。
         """
@@ -438,8 +466,6 @@ class ForceDirectedViewWidget(QWidget):
             edges.append(iv)
         pos: list[float] = []
 
-
-
         # 3. ids / labels / radii
         # ids: 传给 C++ 的是字符串列表（与 labels 同类型）；C++ 点击时发出m_id[下标]
         # nx 节点 id 就是 nodes[i]（女优 "a"+数字，作品 "w"+数字），已保存在 self._nodes 里。
@@ -457,7 +483,9 @@ class ForceDirectedViewWidget(QWidget):
             ids.append(str(node_id))
 
             data = G.nodes[node_id]
-            label = data.get("label", str(node_id))#label就是节点的标签，女优是姓名，作品是番号名
+            label = data.get(
+                "label", str(node_id)
+            )  # label就是节点的标签，女优是姓名，作品是番号名
             labels.append(str(label))
 
             deg = float(degrees.get(node_id, 1))
@@ -500,8 +528,6 @@ class ForceDirectedViewWidget(QWidget):
         if G is None:
             return
 
-        
-
         modify = bool(payload.get("modify", False))
         self._set_graph_from_networkx(G, modify=modify)
         # 如果此时控件还没真正显示出来（例如 overlay 延迟显示），标记在 showEvent 里补刷新
@@ -509,7 +535,7 @@ class ForceDirectedViewWidget(QWidget):
             self._pending_first_paint_refresh = True
         else:
             QTimer.singleShot(0, self._refresh_view_after_first_show)
-        
+
     def _on_graph_diff_changed(self, diff_list: list) -> None:
         """
         Session -> View：收到增量更新，调用增加点与减点的方法
@@ -549,17 +575,19 @@ class ForceDirectedViewWidget(QWidget):
                 color = self._node_color(node_id, attr, is_center=False)
 
                 # 坐标暂时传 0,0，由模拟自己调整布局
-                ops.append({
-                    "op": "add_node",
-                    "id": node_id,
-                    "x": 0.0,
-                    "y": 0.0,
-                    "attr": {
-                        "label": label,
-                        "radius": radius,
-                        "color": color,
-                    },
-                })
+                ops.append(
+                    {
+                        "op": "add_node",
+                        "id": node_id,
+                        "x": 0.0,
+                        "y": 0.0,
+                        "attr": {
+                            "label": label,
+                            "radius": radius,
+                            "color": color,
+                        },
+                    }
+                )
 
             elif op == "del_node":
                 node_id = item.get("id")
@@ -610,7 +638,7 @@ def main():
 
     # 2. 等图加载完成后再设置过滤器并加载视图（否则 reload() 时 G 仍为空）
     def on_graph_ready():
-        #view_session.set_filter(EgoFilter(center_id="a100", radius=3))
+        # view_session.set_filter(EgoFilter(center_id="a100", radius=3))
         view_session.new_load()
 
     if manager._initialized:
@@ -620,6 +648,7 @@ def main():
 
     window.show()
     sys.exit(app.exec())
+
 
 if __name__ == "__main__":
     main()

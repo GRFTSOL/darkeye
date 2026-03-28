@@ -76,7 +76,9 @@ def check_for_updates(
         if log_latest_json:
             # 直接打印远端 latest.json 内容，便于排查字段缺失/命名不一致
             try:
-                logging.info("latest.json 数据: %s", json.dumps(data, ensure_ascii=False))
+                logging.info(
+                    "latest.json 数据: %s", json.dumps(data, ensure_ascii=False)
+                )
             except Exception:
                 logging.info("latest.json 数据(非json序列化): %r", data)
 

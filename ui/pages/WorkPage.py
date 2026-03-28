@@ -1,15 +1,23 @@
-
-from PySide6.QtWidgets import QHBoxLayout, QWidget,QSizePolicy,QVBoxLayout
-from PySide6.QtCore import Slot,Qt,QTimer
-import sqlite3,logging
+from PySide6.QtWidgets import QHBoxLayout, QWidget, QSizePolicy, QVBoxLayout
+from PySide6.QtCore import Slot, Qt, QTimer
+import sqlite3, logging
 from ui.widgets import CompleterLineEdit, CoverCard, CoverCard2
 from ui.basic import HorizontalScrollArea
 from darkeye_ui.components import LazyScrollArea
 from darkeye_ui.components.icon_push_button import IconPushButton
 from config import DATABASE, get_work_large_cover_view, set_work_large_cover_view
 from core.database.db_queue import submit_db_raw
-from core.database.query import get_actressname, get_unique_director, get_actorname, get_serial_number, get_maker_name, get_actor_allname, get_label_name, get_series_name
-from core.database.db_utils import attach_private_db,detach_private_db
+from core.database.query import (
+    get_actressname,
+    get_unique_director,
+    get_actorname,
+    get_serial_number,
+    get_maker_name,
+    get_actor_allname,
+    get_label_name,
+    get_series_name,
+)
+from core.database.db_utils import attach_private_db, detach_private_db
 from darkeye_ui import LazyWidget
 from darkeye_ui.components.label import Label
 from darkeye_ui.components.rotate_button import RotateButton
@@ -19,53 +27,56 @@ from darkeye_ui.components.combo_box import ComboBox
 from ui.widgets.selectors.label_selector import LabelSelector
 from ui.widgets.selectors.maker_selector import MakerSelector
 from ui.widgets.selectors.series_selector import SeriesSelector
+
+
 class WorkPage(LazyWidget):
-    '''主要是展示作品的页面，包括筛选的装置，比如标签筛选，包括滚动加载'''
+    """主要是展示作品的页面，包括筛选的装置，比如标签筛选，包括滚动加载"""
+
     def __init__(self):
         super().__init__()
-        #这里后台执消耗时间的操作，比如首次数据的加载
+        # 这里后台执消耗时间的操作，比如首次数据的加载
 
-        
     def _lazy_load(self):
         logging.info("----------加载作品界面----------")
 
-        #pool = QThreadPool.globalInstance()
-        #cpu_count = pool.maxThreadCount()
-        #pool.setMaxThreadCount(cpu_count*3)  # 例如 I/O 密集型任务，3倍 CPU 核心
+        # pool = QThreadPool.globalInstance()
+        # cpu_count = pool.maxThreadCount()
+        # pool.setMaxThreadCount(cpu_count*3)  # 例如 I/O 密集型任务，3倍 CPU 核心
 
         self.last_scroll_value = 0  # 上一次滚动位置
-        self.keyword=None
-        self.tag_ids=None
-        self.actress=None
-        self.director=None
-        self.actor=None
-        self.title=None
-        self.serial_number=None
-        self.maker_id=None
-        self.label_id=None
-        self.series_id=None
-        self._green_mode=False#安全模式
-        self._large_cover_view=get_work_large_cover_view()# False: CoverCard + 窄列；True: CoverCard2 + 更宽列
-        self._work_column_standard=220
-        self._work_column_large=CoverCard2.CARD_WIDTH
+        self.keyword = None
+        self.tag_ids = None
+        self.actress = None
+        self.director = None
+        self.actor = None
+        self.title = None
+        self.serial_number = None
+        self.maker_id = None
+        self.label_id = None
+        self.series_id = None
+        self._green_mode = False  # 安全模式
+        self._large_cover_view = (
+            get_work_large_cover_view()
+        )  # False: CoverCard + 窄列；True: CoverCard2 + 更宽列
+        self._work_column_standard = 220
+        self._work_column_large = CoverCard2.CARD_WIDTH
 
-        self.order="添加逆序"#排序的内在的值
-        self.scope="公共库范围"
+        self.order = "添加逆序"  # 排序的内在的值
+        self.scope = "公共库范围"
 
-        #self.spacer_widget = QWidget()
-        #self.spacer_widget.setFixedHeight(70)
+        # self.spacer_widget = QWidget()
+        # self.spacer_widget.setFixedHeight(70)
 
-
-        #横向的区域
-        scroll=HorizontalScrollArea()
+        # 横向的区域
+        scroll = HorizontalScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setFixedHeight(32)
         scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        filterwidget=QWidget()
-        filterlayout=QHBoxLayout(filterwidget)
-        filterlayout.setContentsMargins(0,0,0,0)
+        filterwidget = QWidget()
+        filterlayout = QHBoxLayout(filterwidget)
+        filterlayout.setContentsMargins(0, 0, 0, 0)
         filterwidget.setFixedHeight(32)
         filterwidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         scroll.setWidget(filterwidget)
@@ -78,10 +89,10 @@ class WorkPage(LazyWidget):
         background: transparent;
     }
 """)
-        
+
         self.story_input = LineEdit()
-        self.title_input=LineEdit()
-        self.serial_number_input=CompleterLineEdit(
+        self.title_input = LineEdit()
+        self.serial_number_input = CompleterLineEdit(
             lambda: submit_db_raw(get_serial_number).result()
         )
         self.actress_input = CompleterLineEdit(
@@ -90,12 +101,12 @@ class WorkPage(LazyWidget):
         self.director_input = CompleterLineEdit(
             lambda: submit_db_raw(get_unique_director).result()
         )
-        self.actor_input=CompleterLineEdit(
+        self.actor_input = CompleterLineEdit(
             lambda: submit_db_raw(get_actorname).result()
         )
-        self.maker_selector=MakerSelector(submit_db_raw(get_maker_name).result())
-        self.label_selector=LabelSelector(submit_db_raw(get_label_name).result())
-        self.series_selector=SeriesSelector(submit_db_raw(get_series_name).result())
+        self.maker_selector = MakerSelector(submit_db_raw(get_maker_name).result())
+        self.label_selector = LabelSelector(submit_db_raw(get_label_name).result())
+        self.series_selector = SeriesSelector(submit_db_raw(get_series_name).result())
 
         self.story_input.setFixedWidth(100)
         self.title_input.setFixedWidth(100)
@@ -132,57 +143,78 @@ class WorkPage(LazyWidget):
             if w is not None:
                 filterlayout.setAlignment(w, Qt.AlignmentFlag.AlignVCenter)
 
-
-
-        self.info=Label()#用来显示信息
+        self.info = Label()  # 用来显示信息
         self.info.setFixedWidth(100)
 
-        #self.filter_btn =IconPushButton("search.svg")
-        self.btn_reload=RotateButton(icon_name="refresh_cw",icon_size=24,out_size=24)
-        self.btn_eraser=ShakeButton(icon_name="eraser",icon_size=24,out_size=24)
+        # self.filter_btn =IconPushButton("search.svg")
+        self.btn_reload = RotateButton(
+            icon_name="refresh_cw", icon_size=24, out_size=24
+        )
+        self.btn_eraser = ShakeButton(icon_name="eraser", icon_size=24, out_size=24)
 
-        #排序选择器
+        # 排序选择器
         self.order_combo = ComboBox()
-        self.order_combo.addItems(["添加逆序","添加顺序","番号顺序","番号逆序","制作商顺序","制作商逆序","更新时间顺序","更新时间逆序","发布时间逆序", "发布时间顺序", "拍摄年龄顺序","拍摄年龄逆序"])
+        self.order_combo.addItems(
+            [
+                "添加逆序",
+                "添加顺序",
+                "番号顺序",
+                "番号逆序",
+                "制作商顺序",
+                "制作商逆序",
+                "更新时间顺序",
+                "更新时间逆序",
+                "发布时间逆序",
+                "发布时间顺序",
+                "拍摄年龄顺序",
+                "拍摄年龄逆序",
+            ]
+        )
         self.order_combo.setCurrentText(self.order)
 
-
         self.scope_combo = ComboBox()
-        self.scope_combo.addItems(["公共库范围","收藏库范围","收藏未观看","已撸过"])
+        self.scope_combo.addItems(["公共库范围", "收藏库范围", "收藏未观看", "已撸过"])
         self.scope_combo.setCurrentText(self.scope)
 
         self.filter_widget = QWidget()
         self.filter_widget.setFixedHeight(40)
         self.filter_layout = QHBoxLayout(self.filter_widget)  # 直接传入 widget
-        self.filter_layout.setContentsMargins(10, 0, 10,0)
+        self.filter_layout.setContentsMargins(10, 0, 10, 0)
 
         self.filter_layout.addWidget(scroll, 1)
 
-        #self.filter_layout.addWidget(self.filter_btn)
+        # self.filter_layout.addWidget(self.filter_btn)
         self.filter_layout.addWidget(self.btn_reload)
         self.filter_layout.addWidget(self.btn_eraser)
         self.filter_layout.addWidget(self.info)
         self.filter_layout.addWidget(self.scope_combo)
         self.filter_layout.addWidget(self.order_combo)
 
-        self.btn_cover_view=IconPushButton(icon_name="library_big",icon_size=22,out_size=28)
+        self.btn_cover_view = IconPushButton(
+            icon_name="library_big", icon_size=22, out_size=28
+        )
         self._sync_cover_view_button()
         self.filter_layout.addWidget(self.btn_cover_view)
 
-        #加载影片的区域
-        _col = self._work_column_large if self._large_cover_view else self._work_column_standard
+        # 加载影片的区域
+        _col = (
+            self._work_column_large
+            if self._large_cover_view
+            else self._work_column_standard
+        )
         self.lazy_area = LazyScrollArea(column_width=_col)
         self.lazy_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        #self.lazy_area.verticalScrollBar().valueChanged.connect(self.handle_scroll)
+        # self.lazy_area.verticalScrollBar().valueChanged.connect(self.handle_scroll)
         from ui.widgets.selectors.TagSelector5 import TagSelector5
-        self.tagselector=TagSelector5()
+
+        self.tagselector = TagSelector5()
         self.tagselector.left_view.setFixedWidth(84)
         self.tagselector.left_widget.setFixedWidth(108)
-        self.hlayout=QHBoxLayout()#细分的layout
-        self.hlayout.addWidget(self.tagselector,0)
-        self.hlayout.addWidget(self.lazy_area,1)
+        self.hlayout = QHBoxLayout()  # 细分的layout
+        self.hlayout.addWidget(self.tagselector, 0)
+        self.hlayout.addWidget(self.lazy_area, 1)
 
-        #总体布局
+        # 总体布局
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
 
@@ -192,28 +224,27 @@ class WorkPage(LazyWidget):
         self.singal_connect()
 
         self.update_info()
-        '''懒加载'''
-        #这个如果要优化的话就是异步加载数据，然后加载UI
+        """懒加载"""
+        # 这个如果要优化的话就是异步加载数据，然后加载UI
 
-        self.lazy_area.set_loader(self.load_page)#这个最消耗时间
-        
-        self.filter_timer = QTimer(self)#防抖动
+        self.lazy_area.set_loader(self.load_page)  # 这个最消耗时间
+
+        self.filter_timer = QTimer(self)  # 防抖动
         self.filter_timer.setSingleShot(True)
         self.filter_timer.timeout.connect(self.apply_filter_real)
 
-
     def singal_connect(self):
-        '''信号连接'''
-        #self.filter_btn.clicked.connect(self.apply_filter)
+        """信号连接"""
+        # self.filter_btn.clicked.connect(self.apply_filter)
         self.btn_reload.clicked.connect(self.refresh)
 
-        #self.title_input.returnPressed.connect(self.apply_filter)
-        #self.story_input.returnPressed.connect(self.apply_filter)
-        #self.serial_number_input.returnPressed.connect(self.apply_filter)
-        #self.actress_input.returnPressed.connect(self.apply_filter)
-        #self.actor_input.returnPressed.connect(self.apply_filter)
-        #self.director_input.returnPressed.connect(self.apply_filter)
-        #self.maker_input.returnPressed.connect(self.apply_filter)
+        # self.title_input.returnPressed.connect(self.apply_filter)
+        # self.story_input.returnPressed.connect(self.apply_filter)
+        # self.serial_number_input.returnPressed.connect(self.apply_filter)
+        # self.actress_input.returnPressed.connect(self.apply_filter)
+        # self.actor_input.returnPressed.connect(self.apply_filter)
+        # self.director_input.returnPressed.connect(self.apply_filter)
+        # self.maker_input.returnPressed.connect(self.apply_filter)
 
         self.title_input.textChanged.connect(self.apply_filter)
         self.story_input.textChanged.connect(self.apply_filter)
@@ -230,7 +261,8 @@ class WorkPage(LazyWidget):
         self.tagselector.selection_changed.connect(self.apply_filter)
 
         from controller.GlobalSignalBus import global_signals
-        global_signals.green_mode_changed.connect(self.update_green_mode)#全局转发
+
+        global_signals.green_mode_changed.connect(self.update_green_mode)  # 全局转发
         global_signals.work_data_changed.connect(self.reload_input)
         global_signals.actress_data_changed.connect(self.actress_input.reload_items)
         global_signals.actor_data_changed.connect(self.actor_input.reload_items)
@@ -249,13 +281,19 @@ class WorkPage(LazyWidget):
     @Slot()
     def _toggle_cover_view(self) -> None:
         self._large_cover_view = not self._large_cover_view
-        col = self._work_column_large if self._large_cover_view else self._work_column_standard
+        col = (
+            self._work_column_large
+            if self._large_cover_view
+            else self._work_column_standard
+        )
         self.lazy_area.set_column_width(col)
         self._sync_cover_view_button()
         set_work_large_cover_view(self._large_cover_view)
         self.lazy_area.reset()
 
-    def load_with_params(self, actor_id=None, tag_id=None, serial_number=None, **kwargs):
+    def load_with_params(
+        self, actor_id=None, tag_id=None, serial_number=None, **kwargs
+    ):
         """
         根据路由参数加载筛选条件（业务状态由页面自身管理，Router 只传参）
         """
@@ -294,10 +332,9 @@ class WorkPage(LazyWidget):
         self.series_selector.reload_series()
 
     @Slot(bool)
-    def update_green_mode(self,green_mode:bool):
-        self._green_mode=green_mode
+    def update_green_mode(self, green_mode: bool):
+        self._green_mode = green_mode
         logging.debug(f"workpage的绿色模式{green_mode}")
-
 
     @Slot()
     def apply_filter(self):
@@ -309,18 +346,18 @@ class WorkPage(LazyWidget):
         try:
             self.keyword = self.story_input.text().strip()
             self.actress = self.actress_input.text().strip()
-            self.director=self.director_input.text().strip()
-            self.actor=self.actor_input.text().strip()
-            self.title=self.title_input.text().strip()
-            self.serial_number=self.serial_number_input.text().strip()
-            self.maker_id=self.maker_selector.get_maker()
-            self.label_id=self.label_selector.get_label()
-            self.series_id=self.series_selector.get_series_id()
+            self.director = self.director_input.text().strip()
+            self.actor = self.actor_input.text().strip()
+            self.title = self.title_input.text().strip()
+            self.serial_number = self.serial_number_input.text().strip()
+            self.maker_id = self.maker_selector.get_maker()
+            self.label_id = self.label_selector.get_label()
+            self.series_id = self.series_selector.get_series_id()
 
-            self.tag_ids=self.tagselector.get_selected_ids()
+            self.tag_ids = self.tagselector.get_selected_ids()
 
-            self.scope=self.scope_combo.currentText()
-            self.order=self.order_combo.currentText()
+            self.scope = self.scope_combo.currentText()
+            self.order = self.order_combo.currentText()
 
             self.lazy_area.reset()
             self.update_info()
@@ -328,27 +365,25 @@ class WorkPage(LazyWidget):
             logging.exception("WorkPage.apply_filter_real 执行失败")
 
     def update_info(self):
-        '''更新查询到几条数据'''
+        """更新查询到几条数据"""
         try:
-            num=len(self.load_data(0,0,True))
+            num = len(self.load_data(0, 0, True))
             if num is None:
                 self.info.setText("没有查询到数据")
             else:
-                #logging.debug(f"过滤总数:{num}")
-                self.info.setText("过滤总数:"+str(num))
+                # logging.debug(f"过滤总数:{num}")
+                self.info.setText("过滤总数:" + str(num))
         except Exception:
             logging.exception("WorkPage.update_info 执行失败")
             self.info.setText("过滤总数:0")
-            
 
-
-    def load_data(self, page_index: int, page_size: int,count:bool=False)->tuple:
+    def load_data(self, page_index: int, page_size: int, count: bool = False) -> tuple:
         """返回一个页面的 CoverCard 所需要的数据,这个是非常的快的，不消耗时间"""
         offset = page_index * page_size
 
         # 动态拼接 SQL,要怎么筛逻辑都在这里改
-        params=[]
-        query=f'''
+        params = []
+        query = f"""
 SELECT 
     work.serial_number, 
     work.cn_title, 
@@ -362,12 +397,12 @@ SELECT
     END AS standard
 FROM work
 LEFT JOIN work_tag_relation wtr ON work.work_id = wtr.work_id AND wtr.tag_id IN (1, 2, 3)
-        '''
+        """
         cte_parts = []
 
         # 拼with-----------------------------------------------------------------
         if self.actress:
-            withsql=f'''
+            withsql = f"""
 filtered_actresses AS (--先筛选名字中的actress_id,单独的
 SELECT 
     DISTINCT actress_id
@@ -375,12 +410,12 @@ FROM
     actress_name
 WHERE cn LIKE ? OR jp LIKE ?
 )
-'''
+"""
             cte_parts.append(withsql)
             params.extend([f"%{self.actress}%", f"%{self.actress}%"])
 
         if self.actor:
-            withsql=f'''
+            withsql = f"""
 filtered_actors AS (
 SELECT 
     DISTINCT actor_id
@@ -388,7 +423,7 @@ FROM
     actor_name
 WHERE cn LIKE ? OR jp LIKE ?
 )
-'''
+"""
             cte_parts.append(withsql)
             params.extend([f"%{self.actor}%", f"%{self.actor}%"])
 
@@ -396,176 +431,189 @@ WHERE cn LIKE ? OR jp LIKE ?
         if cte_parts:  # 如果有任何一个 CTE
             cte_sql = "WITH " + ",\n".join(cte_parts) + "\n"
 
-        query=cte_sql+query
+        query = cte_sql + query
 
         # 拼join----------------------------------------------------------------
-        if self.scope=="收藏库范围"or self.scope=="收藏未观看":
-            join="JOIN priv.favorite_work fav ON fav.work_id=work.work_id\n"
-            query+=join
-        
-        if self.scope=="已撸过":
-            join="JOIN priv.masturbation  ON priv.masturbation.work_id=work.work_id\n"
-            query+=join
+        if self.scope == "收藏库范围" or self.scope == "收藏未观看":
+            join = "JOIN priv.favorite_work fav ON fav.work_id=work.work_id\n"
+            query += join
 
-        if self.order=="拍摄年龄顺序"or self.order=="拍摄年龄逆序":
-            join="JOIN v_work_avg_age_info v ON work.work_id = v.work_id\n"
-            query+=join
+        if self.scope == "已撸过":
+            join = "JOIN priv.masturbation  ON priv.masturbation.work_id=work.work_id\n"
+            query += join
+
+        if self.order == "拍摄年龄顺序" or self.order == "拍摄年龄逆序":
+            join = "JOIN v_work_avg_age_info v ON work.work_id = v.work_id\n"
+            query += join
 
         if self.actress:
-            join='''
+            join = """
 JOIN work_actress_relation ON work_actress_relation.work_id=work.work_id
 JOIN actress ON actress.actress_id=work_actress_relation.actress_id
 JOIN filtered_actresses f ON actress.actress_id = f.actress_id
-'''
-            query+=join
+"""
+            query += join
         if self.actor:
-            join='''
+            join = """
 JOIN work_actor_relation ON work_actor_relation.work_id=work.work_id
 JOIN filtered_actors fa ON fa.actor_id = work_actor_relation.actor_id
-'''
-            query+=join
+"""
+            query += join
 
         if self.tag_ids:
-            placeholders = ','.join('?' for _ in self.tag_ids)
-            join=f'''LEFT JOIN work_tag_relation wtr2 ON work.work_id =wtr2.work_id AND wtr2.tag_id IN ({placeholders})\n'''
-            query+=join
+            placeholders = ",".join("?" for _ in self.tag_ids)
+            join = f"""LEFT JOIN work_tag_relation wtr2 ON work.work_id =wtr2.work_id AND wtr2.tag_id IN ({placeholders})\n"""
+            query += join
             params.extend(self.tag_ids)
-        
+
         # 拼where-----------------------------------------------------------------
-        where="WHERE is_deleted=0\n"#占位
-        query+=where
+        where = "WHERE is_deleted=0\n"  # 占位
+        query += where
         if self.keyword:
-            where="AND work.notes LIKE ?\n"
+            where = "AND work.notes LIKE ?\n"
             params.append(f"%{self.keyword}%")
-            query+=where
+            query += where
 
-        if self.order=="拍摄年龄顺序"or self.order=="拍摄年龄逆序":
-            where="AND v.avg_age IS NOT NULL\n"
-            query+=where
+        if self.order == "拍摄年龄顺序" or self.order == "拍摄年龄逆序":
+            where = "AND v.avg_age IS NOT NULL\n"
+            query += where
 
-        if self.order=="发布时间顺序"or self.order=="发布时间逆序":
-            where="AND work.release_date IS NOT NULL AND work.release_date!=''\n"
-            query+=where
+        if self.order == "发布时间顺序" or self.order == "发布时间逆序":
+            where = "AND work.release_date IS NOT NULL AND work.release_date!=''\n"
+            query += where
 
         if self.director:
-            where="AND work.director LIKE ?\n"
-            query+=where
+            where = "AND work.director LIKE ?\n"
+            query += where
             params.append(f"%{self.director}%")
 
         if self.actor:
             pass
 
         if self.serial_number:
-            where="AND work.serial_number LIKE ?\n"
-            query+=where
+            where = "AND work.serial_number LIKE ?\n"
+            query += where
             params.append(f"%{self.serial_number}%")
 
         if self.maker_id is not None:
-            where="AND work.maker_id = ?\n"
-            query+=where
+            where = "AND work.maker_id = ?\n"
+            query += where
             params.append(self.maker_id)
 
         if self.title:
-            where="AND work.cn_title LIKE ?\n"
-            query+=where
+            where = "AND work.cn_title LIKE ?\n"
+            query += where
             params.append(f"%{self.title}%")
         if self.label_id:
-            where="AND work.label_id = ?\n"
-            query+=where
+            where = "AND work.label_id = ?\n"
+            query += where
             params.append(self.label_id)
         if self.series_id:
-            where="AND work.series_id = ?\n"
-            query+=where
+            where = "AND work.series_id = ?\n"
+            query += where
             params.append(self.series_id)
 
-        if self.scope=="收藏未观看":
-            where="AND work.work_id NOT IN (SELECT work_id FROM priv.masturbation WHERE work_id IS NOT NULL)\n"
-            query+=where
+        if self.scope == "收藏未观看":
+            where = "AND work.work_id NOT IN (SELECT work_id FROM priv.masturbation WHERE work_id IS NOT NULL)\n"
+            query += where
         # 拼groupby-------------------------------------------------------
         if self.tag_ids:
             num_tags = len(self.tag_ids)
-            groupby=f"""
+            groupby = f"""
 GROUP BY work.work_id
 HAVING COUNT(DISTINCT wtr2.tag_id) = ?
             """
-            query+=groupby
+            query += groupby
             params.append(num_tags)
 
         # 拼order------------------------------------------------------------
         match self.order:
             case "发布时间顺序":
-                order="ORDER BY work.release_date\n"
+                order = "ORDER BY work.release_date\n"
             case "发布时间逆序":
-                order="ORDER BY work.release_date DESC\n"
+                order = "ORDER BY work.release_date DESC\n"
             case "拍摄年龄顺序":
-                order="ORDER BY (SELECT avg_age FROM v_work_avg_age_info WHERE work_id=work.work_id)\n"
+                order = "ORDER BY (SELECT avg_age FROM v_work_avg_age_info WHERE work_id=work.work_id)\n"
             case "拍摄年龄逆序":
-                order="ORDER BY (SELECT avg_age FROM v_work_avg_age_info WHERE work_id=work.work_id) DESC\n"
+                order = "ORDER BY (SELECT avg_age FROM v_work_avg_age_info WHERE work_id=work.work_id) DESC\n"
             case "添加逆序":
-                order="ORDER BY work.create_time DESC\n"
+                order = "ORDER BY work.create_time DESC\n"
             case "添加顺序":
-                order="ORDER BY work.create_time\n"
+                order = "ORDER BY work.create_time\n"
             case "番号顺序":
-                order="ORDER BY work.serial_number\n"
+                order = "ORDER BY work.serial_number\n"
             case "番号逆序":
-                order="ORDER BY work.serial_number DESC\n"
+                order = "ORDER BY work.serial_number DESC\n"
             case "制作商顺序":
-                order="ORDER BY work.maker_id IS NULL, work.maker_id, work.serial_number\n"
+                order = "ORDER BY work.maker_id IS NULL, work.maker_id, work.serial_number\n"
             case "制作商逆序":
-                order="ORDER BY work.maker_id IS NULL DESC, work.maker_id DESC, work.serial_number DESC\n"
+                order = "ORDER BY work.maker_id IS NULL DESC, work.maker_id DESC, work.serial_number DESC\n"
             case "更新时间逆序":
-                order="ORDER BY work.update_time DESC\n"
+                order = "ORDER BY work.update_time DESC\n"
             case "更新时间顺序":
-                order="ORDER BY work.update_time\n"
+                order = "ORDER BY work.update_time\n"
         if not count:
-            query +=f"{order} LIMIT ? OFFSET ?"#最后拼这个
+            query += f"{order} LIMIT ? OFFSET ?"  # 最后拼这个
             params.extend([page_size, offset])
-        #logging.debug(f"WorkPageExecute SQL\n{query}")
-        #logging.debug(f"{params}")
+        # logging.debug(f"WorkPageExecute SQL\n{query}")
+        # logging.debug(f"{params}")
 
         def _run_read():
             with sqlite3.connect(f"file:{DATABASE}?mode=ro", uri=True) as conn:
                 cursor = conn.cursor()
-                if self.scope == "收藏库范围" or self.scope == "收藏未观看" or self.scope == "已撸过":
+                if (
+                    self.scope == "收藏库范围"
+                    or self.scope == "收藏未观看"
+                    or self.scope == "已撸过"
+                ):
                     attach_private_db(cursor)
                 cursor.execute(query, params)
                 results = cursor.fetchall()
-                if self.scope == "收藏库范围" or self.scope == "收藏未观看" or self.scope == "已撸过":
+                if (
+                    self.scope == "收藏库范围"
+                    or self.scope == "收藏未观看"
+                    or self.scope == "已撸过"
+                ):
                     detach_private_db(cursor)
             return results
 
         return submit_db_raw(_run_read).result()
 
-    
     def load_page(self, page_index: int, page_size: int) -> list | None:
         """返回一个页面的封面卡片列表，在这里进行实际的构造"""
-        data=self.load_data(page_index,page_size)
+        data = self.load_data(page_index, page_size)
         if not data:
             return None
         result = []
-        for serial_number, title, cover_path,tag_id,work_id,standard in data:
-            color=CoverCard.backgroundcolor_from_tagid(tag_id)
+        for serial_number, title, cover_path, tag_id, work_id, standard in data:
+            color = CoverCard.backgroundcolor_from_tagid(tag_id)
             if self._large_cover_view:
                 card = CoverCard2(
-                    title, cover_path, serial_number, work_id, bool(standard),
-                    color=color, green_mode=self._green_mode,
+                    title,
+                    cover_path,
+                    serial_number,
+                    work_id,
+                    bool(standard),
+                    color=color,
+                    green_mode=self._green_mode,
                 )
             else:
                 card = CoverCard(
-                    title, cover_path, serial_number, work_id, bool(standard),
-                    color=color, green_mode=self._green_mode,
+                    title,
+                    cover_path,
+                    serial_number,
+                    work_id,
+                    bool(standard),
+                    color=color,
+                    green_mode=self._green_mode,
                 )
             result.append(card)
         return result
-    
-
 
     @Slot()
     def refresh(self):
         self.lazy_area.reset()
         self.update_info()
-
-
 
     @Slot()
     def handle_scroll(self, value):
@@ -575,15 +623,14 @@ HAVING COUNT(DISTINCT wtr2.tag_id) = ?
             # 向下滚动，隐藏顶部
             if self.filter_widget.isVisible():
                 self.filter_widget.hide()
-                #self.spacer_widget.hide()
+                # self.spacer_widget.hide()
                 self.tagselector.hide()
 
         elif direction < -5:
             # 向上滚动，显示顶部
             if not self.filter_widget.isVisible():
                 self.filter_widget.show()
-                #self.spacer_widget.show()
+                # self.spacer_widget.show()
                 self.tagselector.show()
 
         self.last_scroll_value = value
-

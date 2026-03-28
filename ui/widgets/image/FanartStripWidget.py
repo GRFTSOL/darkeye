@@ -96,7 +96,9 @@ class _FanartStripInner(QWidget):
             and event.buttons() & Qt.MouseButton.LeftButton
             and self._lp_timer.isActive()
         ):
-            if (event.position() - self._lp_start).manhattanLength() > QApplication.startDragDistance():
+            if (
+                event.position() - self._lp_start
+            ).manhattanLength() > QApplication.startDragDistance():
                 self._lp_timer.stop()
         super().mouseMoveEvent(event)
 
@@ -166,9 +168,7 @@ def _thumb_cache_token(path: str) -> tuple[str, int, int] | None:
 
 
 @lru_cache(maxsize=256)
-def _load_cached_thumb_pixmap(
-    path: str, mtime_ns: int, size: int
-) -> QPixmap | None:
+def _load_cached_thumb_pixmap(path: str, mtime_ns: int, size: int) -> QPixmap | None:
     del mtime_ns, size
     pixmap = QPixmap(path)
     if pixmap.isNull():
@@ -224,6 +224,7 @@ def _load_fanart_dialog_preview_task(path: str) -> tuple[str, object] | None:
         return ("fail", path)
     return ("ok", bytes(ba))
 
+
 _WIN_FILENAME_FORBIDDEN = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
@@ -264,9 +265,7 @@ def _fanart_download_task(url: str) -> tuple[str, str, str | None, str]:
     fd, tmp_path = tempfile.mkstemp(suffix=ext)
     os.close(fd)
     try:
-        ok, msg = download_image_with_retry(
-            url, tmp_path, timeout_s=30, retries=2
-        )
+        ok, msg = download_image_with_retry(url, tmp_path, timeout_s=30, retries=2)
         if not ok:
             try:
                 os.remove(tmp_path)
@@ -370,7 +369,9 @@ class FanartEditDialog(QDialog):
         self._img.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        self._img.setStyleSheet("QLabel { background-color: transparent; border: none; }")
+        self._img.setStyleSheet(
+            "QLabel { background-color: transparent; border: none; }"
+        )
         layout.addWidget(self._img, 1)
 
         nav = QHBoxLayout()
@@ -436,9 +437,7 @@ class FanartEditDialog(QDialog):
         url = (e.get("url") or "").strip()
         if not url:
             return
-        path = _thumb_path_for_entry(
-            e, self._fanart_root, self._legacy_cover_root
-        )
+        path = _thumb_path_for_entry(e, self._fanart_root, self._legacy_cover_root)
         if path:
             return
         self._start_fanart_download_async(self._index, url)
@@ -540,9 +539,7 @@ class FanartEditDialog(QDialog):
 
         e = self._entries[self._index]
         self._url.setText(e.get("url") or "")
-        path = _thumb_path_for_entry(
-            e, self._fanart_root, self._legacy_cover_root
-        )
+        path = _thumb_path_for_entry(e, self._fanart_root, self._legacy_cover_root)
         has_url = _entry_has_url(e)
         if path:
             self._preview_load_gen += 1
@@ -687,13 +684,17 @@ class _FanartThumbCell(QFrame):
         self._btn_close.clicked.connect(lambda: self.closeRequested.emit())
 
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(_THUMB_MARGIN, _THUMB_MARGIN, _THUMB_MARGIN, _THUMB_MARGIN)
+        lay.setContentsMargins(
+            _THUMB_MARGIN, _THUMB_MARGIN, _THUMB_MARGIN, _THUMB_MARGIN
+        )
         lay.setSpacing(0)
         self._label = QLabel()
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._label.setFixedSize(_THUMB_SIDE, _THUMB_SIDE)
         self._label.setWordWrap(True)
-        self._label.setStyleSheet("QLabel { background-color: transparent; border: none; }")
+        self._label.setStyleSheet(
+            "QLabel { background-color: transparent; border: none; }"
+        )
         self._label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         lay.addStretch(1)
         lay.addWidget(self._label, 0, Qt.AlignmentFlag.AlignHCenter)
@@ -809,10 +810,7 @@ class _FanartThumbCell(QFrame):
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         self._lp_timer.stop()
         self._lp_start = None
-        if (
-            event.button() == Qt.MouseButton.LeftButton
-            and not self._long_press_fired
-        ):
+        if event.button() == Qt.MouseButton.LeftButton and not self._long_press_fired:
             self.clicked.emit()
         self._long_press_fired = False
         super().mouseReleaseEvent(event)
@@ -889,9 +887,7 @@ class FanartStripWidget(QWidget):
 
         self._tail_cell: _FanartThumbCell | None = None
 
-        self.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(self._scroll, 1)
@@ -997,9 +993,7 @@ class FanartStripWidget(QWidget):
         self._tail_cell.setEnabled(self._can_add)
 
     def _thumb_payload_for_entry(self, entry: dict) -> tuple[QPixmap | None, bool]:
-        path = _thumb_path_for_entry(
-            entry, self._fanart_path, self._legacy_cover_path
-        )
+        path = _thumb_path_for_entry(entry, self._fanart_path, self._legacy_cover_path)
         return _thumb_pixmap_for_path(path), _entry_has_url(entry)
 
     def _populate_thumb_cell(
@@ -1082,9 +1076,7 @@ class FanartStripWidget(QWidget):
         self._thumb_cells.clear()
         for i, entry in enumerate(self._entries):
             cell = _FanartThumbCell()
-            self._populate_thumb_cell(
-                cell, entry, selected=self._selected_index == i
-            )
+            self._populate_thumb_cell(cell, entry, selected=self._selected_index == i)
             cell.clicked.connect(lambda idx=i: self._on_thumb_cell_clicked(idx))
             cell.doubleClicked.connect(lambda idx=i: self._on_thumb_cell_double(idx))
             cell.longPressed.connect(self._enter_edit_mode)

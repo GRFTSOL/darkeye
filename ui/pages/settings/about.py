@@ -54,7 +54,9 @@ def _spawn_detached_process(cmd, cwd):
         start_cmd = ["cmd", "/c", "start", ""] + list(cmd)
         start_flags = no_window | detached | new_group | breakaway
         try:
-            return subprocess.Popen(start_cmd, creationflags=start_flags, **popen_kwargs)
+            return subprocess.Popen(
+                start_cmd, creationflags=start_flags, **popen_kwargs
+            )
         except OSError as e:
             logging.debug(
                 "分离启动子进程失败，尝试其他 creationflags: %s",
@@ -70,7 +72,9 @@ def _spawn_detached_process(cmd, cwd):
         last_error = None
         for creationflags in dict.fromkeys(flag_candidates):
             try:
-                return subprocess.Popen(cmd, creationflags=creationflags, **popen_kwargs)
+                return subprocess.Popen(
+                    cmd, creationflags=creationflags, **popen_kwargs
+                )
             except OSError as err:
                 last_error = err
 
@@ -220,7 +224,13 @@ def run_update_check(
     done_state = {"notified": False}
     notifier = _UpdateCheckNotifier(parent)
 
-    def safe_emit(ok: bool, title: str, msg: str, is_update_available: bool, from_timeout: bool = False):
+    def safe_emit(
+        ok: bool,
+        title: str,
+        msg: str,
+        is_update_available: bool,
+        from_timeout: bool = False,
+    ):
         if done_state["notified"]:
             return
         done_state["notified"] = True
@@ -271,7 +281,9 @@ def maybe_auto_check_update(parent: QWidget) -> None:
 
     msg_svc = MessageBoxService(parent)
 
-    def on_done(ok: bool, title: str, msg: str, is_update_available: bool, from_timeout: bool):
+    def on_done(
+        ok: bool, title: str, msg: str, is_update_available: bool, from_timeout: bool
+    ):
         if not from_timeout:
             set_last_auto_update_check_week(week_key)
         if ok and is_update_available:
@@ -337,7 +349,9 @@ class LastPage(QWidget):
         )
         layout1.addWidget(btn_check_update)
         btn_local_update = Button("使用本地安装包更新…")
-        btn_local_update.setToolTip("选择从 GitHub Release 下载的 zip 或 tar.zst，由更新程序离线安装")
+        btn_local_update.setToolTip(
+            "选择从 GitHub Release 下载的 zip 或 tar.zst，由更新程序离线安装"
+        )
         btn_local_update.clicked.connect(
             lambda: _handle_local_package_update(self.msg, self)
         )
@@ -351,7 +365,9 @@ class LastPage(QWidget):
         layout1.addWidget(btn_feedback)
         btn_changelog = Button("版本记录")
         btn_changelog.clicked.connect(
-            lambda: QDesktopServices.openUrl(QUrl("https://de4321.github.io/darkeye/CHANGELOG/"))
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://de4321.github.io/darkeye/CHANGELOG/")
+            )
         )
         layout1.addWidget(btn_changelog)
 
@@ -370,17 +386,19 @@ class LastPage(QWidget):
         layout4.addWidget(Label("下载浏览器插件"))
         btn_firefox = Button("Firefox插件")
         btn_firefox.clicked.connect(
-            lambda: QDesktopServices.openUrl(QUrl("https://github.com/de4321/darkeye/releases"))
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://github.com/de4321/darkeye/releases")
+            )
         )
         layout4.addWidget(btn_firefox)
 
         btn_chrome = Button("Chrome/Edge插件")
         btn_chrome.clicked.connect(
-            lambda: QDesktopServices.openUrl(QUrl("https://github.com/de4321/darkeye/releases"))
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://github.com/de4321/darkeye/releases")
+            )
         )
         layout4.addWidget(btn_chrome)
-
-
 
         form_layout.addRow(Label("项目链接"), links_row)
         layout.addLayout(layout1)
@@ -389,13 +407,17 @@ class LastPage(QWidget):
         layout.addLayout(layout4)
         layout.addLayout(form_layout)
 
-
-
     def _on_check_update_clicked(self, btn: Button) -> None:
         btn.setEnabled(False)
         btn.setText("检查中...")
 
-        def on_done(ok: bool, title: str, msg: str, is_update_available: bool, from_timeout: bool):
+        def on_done(
+            ok: bool,
+            title: str,
+            msg: str,
+            is_update_available: bool,
+            from_timeout: bool,
+        ):
             btn.setText("检查更新")
             btn.setEnabled(True)
 

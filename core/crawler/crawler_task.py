@@ -25,6 +25,8 @@ class CrawlerTask:
         self.pending_sources: set[str] = set(sources)
         self.results: Dict[str, dict] = {}
         self.withGUI = withGUI
-        self.selected_fields: set[str] | None = set(selected_fields) if selected_fields else None
+        self.selected_fields: set[str] | None = (
+            set(selected_fields) if selected_fields else None
+        )
         self.workflow_state: CrawlWorkflowState = CrawlWorkflowState.CRAWLING
         self.cancel_requested: bool = False

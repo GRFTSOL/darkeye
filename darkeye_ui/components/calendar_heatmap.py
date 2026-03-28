@@ -1,5 +1,6 @@
 # darkeye_ui/components/calendar_heatmap.py - 日历热力图，由设计令牌驱动
 """标准日历热力图（仿 GitHub 风格），背景、边框、文字由设计令牌驱动。"""
+
 from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtCore import QDate, QRectF, QSize, Qt
@@ -59,7 +60,9 @@ class CalendarHeatmap(QWidget):
         self.columns = max(col for col, row in self.day_positions.values()) + 1
 
     def sizeHint(self) -> QSize:
-        total_width = self.columns * self.cell_width + (self.columns - 1) * self.cell_spacing
+        total_width = (
+            self.columns * self.cell_width + (self.columns - 1) * self.cell_spacing
+        )
         total_height = 7 * self.cell_height + 6 * self.cell_spacing
         return QSize(total_width, total_height)
 
@@ -92,7 +95,11 @@ class CalendarHeatmap(QWidget):
         font.setBold(True)
         painter.setFont(font)
         for i, wd in enumerate(self.week_days):
-            y = self.margin_top + i * (self.cell_height + self.cell_spacing) + self.cell_height * 0.8
+            y = (
+                self.margin_top
+                + i * (self.cell_height + self.cell_spacing)
+                + self.cell_height * 0.8
+            )
             painter.drawText(15, y, wd)
 
         self._draw_month_labels(painter)
@@ -133,7 +140,9 @@ class CalendarHeatmap(QWidget):
             if date.month() != current_month:
                 if first_col_of_month is not None:
                     last_col = col - 1
-                    self._draw_month_text(painter, current_month, first_col_of_month, last_col)
+                    self._draw_month_text(
+                        painter, current_month, first_col_of_month, last_col
+                    )
                 current_month = date.month()
                 first_col_of_month = col
             if i == len(sorted_dates) - 1:
@@ -141,11 +150,27 @@ class CalendarHeatmap(QWidget):
             elif first_col_of_month is None:
                 first_col_of_month = col
 
-    def _draw_month_text(self, painter: QPainter, month: int, first_col: int, last_col: int) -> None:
-        x = self.margin_left + ((first_col + last_col + 1) / 2) * (self.cell_width + self.cell_spacing)
+    def _draw_month_text(
+        self, painter: QPainter, month: int, first_col: int, last_col: int
+    ) -> None:
+        x = self.margin_left + ((first_col + last_col + 1) / 2) * (
+            self.cell_width + self.cell_spacing
+        )
         y = self.margin_top - 10
-        month_names = ["一月", "二月", "三月", "四月", "五月", "六月",
-                      "七月", "八月", "九月", "十月", "十一月", "十二月"]
+        month_names = [
+            "一月",
+            "二月",
+            "三月",
+            "四月",
+            "五月",
+            "六月",
+            "七月",
+            "八月",
+            "九月",
+            "十月",
+            "十一月",
+            "十二月",
+        ]
         text = month_names[month - 1]
         fm = painter.fontMetrics()
         text_w = fm.horizontalAdvance(text)

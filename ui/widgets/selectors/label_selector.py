@@ -17,7 +17,9 @@ class LabelSelector(ComboBox):
         self.setEditable(True)
         self.setInsertPolicy(ComboBox.InsertPolicy.NoInsert)
         self.setMaxVisibleItems(15)
-        self.setSizeAdjustPolicy(ComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.setSizeAdjustPolicy(
+            ComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
         self.setMinimumContentsLength(8)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.lineEdit().setFrame(False)
@@ -25,7 +27,9 @@ class LabelSelector(ComboBox):
         self._completion_model = QStringListModel([], self)
         self._completer = QCompleter(self._completion_model, self)
         self._completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        self._completer.setCompletionMode(QCompleter.CompletionMode.UnfilteredPopupCompletion)
+        self._completer.setCompletionMode(
+            QCompleter.CompletionMode.UnfilteredPopupCompletion
+        )
         self._completer.popup().setObjectName("DesignComboBoxPopup")
         self.setCompleter(self._completer)
 
@@ -71,7 +75,9 @@ class LabelSelector(ComboBox):
         self.clear()
         for rec in self._label_records:
             self.addItem(rec["display_name"], rec["label_id"])
-        self._completion_model.setStringList([rec["display_name"] for rec in self._label_records])
+        self._completion_model.setStringList(
+            [rec["display_name"] for rec in self._label_records]
+        )
         self.setCurrentIndex(0)
         self._selected_label_id = None
 

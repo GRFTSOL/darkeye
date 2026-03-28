@@ -1,60 +1,63 @@
-from PySide6.QtWidgets import QApplication,QSizePolicy
-from PySide6.QtCore import Qt, Signal,QTimer,QPoint,QSize,Slot,QThreadPool
+from PySide6.QtWidgets import QApplication, QSizePolicy
+from PySide6.QtCore import Qt, Signal, QTimer, QPoint, QSize, Slot, QThreadPool
 from PySide6.QtGui import QMouseEvent
 from controller.GlobalSignalBus import global_signals
 from darkeye_ui.components.label import Label
 
+
 class ClickableLabel(Label):
-    '''可点击并复制内容到剪贴板，并且有提示的 label 控件，
+    """可点击并复制内容到剪贴板，并且有提示的 label 控件，
     专门给那些名字使用，提供复制功能，还有右键跳转功能。
-    样式由主题 QLabel#DesignLabel 驱动，会随主题变色；若在外部对本品 setStyleSheet，避免写死 color，否则会覆盖主题颜色。'''
+    样式由主题 QLabel#DesignLabel 驱动，会随主题变色；若在外部对本品 setStyleSheet，避免写死 color，否则会覆盖主题颜色。"""
+
     clicked = Signal()
 
-    def __init__(self, text="xxx",actress_jump=False,parent=None):
+    def __init__(self, text="xxx", actress_jump=False, parent=None):
         if text is None:
-            text=""
+            text = ""
         super().__init__(text, parent)
         self.setCursor(Qt.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.actress_jump=actress_jump
-        self.setWordWrap(False)#禁止换行
+        self.actress_jump = actress_jump
+        self.setWordWrap(False)  # 禁止换行
 
-    def mouseReleaseEvent(self, event:QMouseEvent):
+    def mouseReleaseEvent(self, event: QMouseEvent):
         from core.crawler.jump import jump_minnanoav
         from core.database.query import exist_actress
+
         if event.button() == Qt.LeftButton:
             clipboard = QApplication.clipboard()
             clipboard.setText(self.text())
-            #global_signals.status_msg_changed.emit("复制文本到剪贴板")
+            # global_signals.status_msg_changed.emit("复制文本到剪贴板")
             self.show_copy_tip()
         if self.actress_jump:
             if event.button() == Qt.RightButton:
-                #跳转功能
+                # 跳转功能
                 jump_minnanoav(self.text())
-                '''
+                """
                 #合并女优的性名链条的问题，这个后面再解决，现在直插没有问题，但是合并链条就有问题
                 id=exist_actress(self.text())
                 if id:
                     from core.crawler.SearchActressInfo import SearchSingleActressInfo
                     #SearchSingleActressInfo(id,self.text())
                     self.searchActressinfo(id)
-        '''
+        """
         super().mouseReleaseEvent(event)
 
-
-    def searchActressinfo(self,id):
-        #开始后台线程
+    def searchActressinfo(self, id):
+        # 开始后台线程
         from core.crawler.minnanoav import SearchSingleActressInfo
         from core.crawler.Worker import Worker
-        worker=Worker(lambda id=id:SearchSingleActressInfo(id,self.text()))#传一个函数名进去
+
+        worker = Worker(
+            lambda id=id: SearchSingleActressInfo(id, self.text())
+        )  # 传一个函数名进去
         worker.signals.finished.connect(self.on_result)
         QThreadPool.globalInstance().start(worker)
-        
 
     @Slot(object)
-    def on_result(self,result:str):#Qsignal回传信息
+    def on_result(self, result: str):  # Qsignal回传信息
         pass
-
 
     def sizeHint(self):
         # 获取文本所需大小
@@ -62,7 +65,7 @@ class ClickableLabel(Label):
         text_width = fm.horizontalAdvance(self.text())
         text_height = fm.height()
         return QSize(text_width, text_height)
-    
+
     def show_copy_tip(self):
         # 获取主窗口
         main_window = self.window()
@@ -95,4 +98,3 @@ class ClickableLabel(Label):
         # 3秒后关闭并清除
         QTimer.singleShot(3000, self._copy_tip.close)
         QTimer.singleShot(3100, lambda: setattr(self, "_copy_tip", None))
-

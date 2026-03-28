@@ -4,7 +4,13 @@ from pathlib import Path
 from typing import Union
 
 from PySide6.QtCore import QModelIndex, Qt
-from PySide6.QtWidgets import QComboBox, QLineEdit, QStyledItemDelegate, QStyleOptionViewItem, QWidget
+from PySide6.QtWidgets import (
+    QComboBox,
+    QLineEdit,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+    QWidget,
+)
 
 from ui.base.SqliteQueryTableModel import SqliteQueryTableModel
 
@@ -15,7 +21,9 @@ from darkeye_ui.components.input import LineEdit
 class MakerComboDelegate(QStyledItemDelegate):
     """用于 maker_id 列的委托：表格中显示 ComboBox 编辑，表单中正确读写 maker_id。"""
 
-    def __init__(self, parent: QWidget, database: Union[str, Path], maker_col_index: int = 2):
+    def __init__(
+        self, parent: QWidget, database: Union[str, Path], maker_col_index: int = 2
+    ):
         super().__init__(parent)
         self._database = database
         self._maker_col_index = maker_col_index
@@ -29,7 +37,9 @@ class MakerComboDelegate(QStyledItemDelegate):
             self._maker_model.refresh()
         return self._maker_model
 
-    def createEditor(self, parent: QWidget, option: QStyleOptionViewItem, index: QModelIndex) -> QWidget:
+    def createEditor(
+        self, parent: QWidget, option: QStyleOptionViewItem, index: QModelIndex
+    ) -> QWidget:
         if index.column() == self._maker_col_index:
             editor = ComboBox(parent)
             model = self._get_maker_model()
@@ -48,7 +58,9 @@ class MakerComboDelegate(QStyledItemDelegate):
             combo_model = editor.model()
             if combo_model and maker_id_str is not None:
                 for row in range(combo_model.rowCount()):
-                    row_val = combo_model.data(combo_model.index(row, 0), Qt.ItemDataRole.EditRole)
+                    row_val = combo_model.data(
+                        combo_model.index(row, 0), Qt.ItemDataRole.EditRole
+                    )
                     if row_val is not None and str(row_val).strip() == maker_id_str:
                         editor.setCurrentIndex(row)
                         return
@@ -61,12 +73,16 @@ class MakerComboDelegate(QStyledItemDelegate):
             combo_model = editor.model()
             if combo_model and editor.currentIndex() >= 0:
                 row_idx = editor.currentIndex()
-                maker_id = combo_model.data(combo_model.index(row_idx, 0), Qt.ItemDataRole.EditRole)
+                maker_id = combo_model.data(
+                    combo_model.index(row_idx, 0), Qt.ItemDataRole.EditRole
+                )
                 model.setData(index, maker_id, Qt.ItemDataRole.EditRole)
         elif isinstance(editor, QLineEdit):
             model.setData(index, editor.text(), Qt.ItemDataRole.EditRole)
 
-    def updateEditorGeometry(self, editor: QWidget, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+    def updateEditorGeometry(
+        self, editor: QWidget, option: QStyleOptionViewItem, index: QModelIndex
+    ) -> None:
         margin = 0
         rect = option.rect.adjusted(margin, margin, -margin, -margin)
         editor.setGeometry(rect)

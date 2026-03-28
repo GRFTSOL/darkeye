@@ -2,11 +2,10 @@ import sys
 import numpy as np
 import psutil
 import matplotlib
+
 matplotlib.use("QtAgg")  # 使用 PySide6 兼容的后端
 
-from PySide6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QLabel, QPushButton
-)
+from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QPushButton
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -42,7 +41,7 @@ class MainWindow(QWidget):
 
         # 绘图
         ax = self.figure.clear()
-        ax=self.figure.add_subplot(111)
+        ax = self.figure.add_subplot(111)
         ax.plot(x, y, label="随机数据")
         ax.legend()
         self.canvas.draw()

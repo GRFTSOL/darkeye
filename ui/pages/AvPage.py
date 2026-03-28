@@ -196,9 +196,14 @@ class AvPage(LazyWidget):
                 for i, segment in enumerate(parts[:-1]):
                     parent_path = parent_path / segment
                     if parent_path not in dir_nodes:
-                        dir_item = QTreeWidgetItem(self._tree if i == 0 else dir_nodes[parent_path.parent], [segment])
+                        dir_item = QTreeWidgetItem(
+                            self._tree if i == 0 else dir_nodes[parent_path.parent],
+                            [segment],
+                        )
                         dir_nodes[parent_path] = dir_item
-                parent_item = dir_nodes[root_path / parts[0]] if len(parts) > 1 else self._tree
+                parent_item = (
+                    dir_nodes[root_path / parts[0]] if len(parts) > 1 else self._tree
+                )
                 for i in range(1, len(parts) - 1):
                     parent_path = root_path
                     for j in range(i + 1):
@@ -323,4 +328,5 @@ class AvPage(LazyWidget):
                 self._browser.setPlainText(f"未找到页面：{page}")
         else:
             from PySide6.QtGui import QDesktopServices
+
             QDesktopServices.openUrl(url)

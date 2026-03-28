@@ -1,11 +1,19 @@
 # vertical_line_edit.py
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import sys
 from PySide6.QtWidgets import QWidget, QApplication
-from PySide6.QtGui import QPainter, QFont, QColor, QKeyEvent, QGuiApplication, QClipboard
+from PySide6.QtGui import (
+    QPainter,
+    QFont,
+    QColor,
+    QKeyEvent,
+    QGuiApplication,
+    QClipboard,
+)
 from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
 from ui.basic.VerticalLineEdit import VerticalLineEdit
 

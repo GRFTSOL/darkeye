@@ -3,7 +3,14 @@ from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtCore import Qt, QPointF
 from PySide6.QtGui import QBrush, QColor, QPen, QPolygonF, QPainter
-from PySide6.QtWidgets import QFrame, QGraphicsLineItem, QGraphicsPolygonItem, QGraphicsScene, QGraphicsTextItem, QGraphicsView
+from PySide6.QtWidgets import (
+    QFrame,
+    QGraphicsLineItem,
+    QGraphicsPolygonItem,
+    QGraphicsScene,
+    QGraphicsTextItem,
+    QGraphicsView,
+)
 
 from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import LIGHT_TOKENS, ThemeTokens
@@ -19,6 +26,7 @@ class RadarChartWidget(QGraphicsView):
     values: 归一化后的列表
     show_values: 原始列表，可能会有""
     """
+
     def __init__(
         self,
         categories=None,
@@ -78,7 +86,6 @@ class RadarChartWidget(QGraphicsView):
         if self.categories and self.values is not None:
             self.update_chart()
 
-
     def draw_grid(self):
         num_categories = len(self.categories)
         for i in range(1, self.num_layers + 1):
@@ -113,9 +120,13 @@ class RadarChartWidget(QGraphicsView):
             x = self.center_x + (self.max_radius + 20) * math.cos(angle)
             y = self.center_y - (self.max_radius + 20) * math.sin(angle)
             text_item = QGraphicsTextItem(label)
-            text_item.setDefaultTextColor(QColor(getattr(self, "_color_label", "#333333")))
-            text_item.setPos(x - text_item.boundingRect().width() / 2,
-                             y - text_item.boundingRect().height() / 2)
+            text_item.setDefaultTextColor(
+                QColor(getattr(self, "_color_label", "#333333"))
+            )
+            text_item.setPos(
+                x - text_item.boundingRect().width() / 2,
+                y - text_item.boundingRect().height() / 2,
+            )
             self.myscene.addItem(text_item)
 
     def draw_data(self):
@@ -129,10 +140,14 @@ class RadarChartWidget(QGraphicsView):
             points.append(QPointF(x, y))
 
             label_text = QGraphicsTextItem(str(self.show_values[i]))
-            label_text.setPos(x + 10 * math.cos(angle) - label_text.boundingRect().width() / 2,
-                              y - 10 * math.sin(angle) - label_text.boundingRect().height() / 2)
+            label_text.setPos(
+                x + 10 * math.cos(angle) - label_text.boundingRect().width() / 2,
+                y - 10 * math.sin(angle) - label_text.boundingRect().height() / 2,
+            )
             self.myscene.addItem(label_text)
-            label_text.setDefaultTextColor(QColor(getattr(self, "_color_data_label", "#00aaff")))
+            label_text.setDefaultTextColor(
+                QColor(getattr(self, "_color_data_label", "#00aaff"))
+            )
 
         points.append(points[0])  # 闭合
         polygon = QPolygonF(points)

@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import  QVBoxLayout, QHBoxLayout, QAbstractItemView
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QAbstractItemView
 from PySide6.QtCore import Slot, Qt
 import logging
 
@@ -12,11 +12,11 @@ from darkeye_ui.components.button import Button
 from darkeye_ui.components.input import LineEdit
 from darkeye_ui.components.combo_box import ComboBox
 
+
 class RecycleBinPage(LazyWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.msg=MessageBoxService(self)
-
+        self.msg = MessageBoxService(self)
 
     def _lazy_load(self):
         logging.info("----------作品回收站页面----------")
@@ -28,7 +28,9 @@ class RecycleBinPage(LazyWidget):
 
     def config(self):
         """配置 model 与 view"""
-        self.model = SqliteQueryTableModel("SELECT * FROM work WHERE is_deleted=1", DATABASE, self)
+        self.model = SqliteQueryTableModel(
+            "SELECT * FROM work WHERE is_deleted=1", DATABASE, self
+        )
         if not self.model.refresh():
             self.msg.show_critical("错误", "无法加载数据，请查看日志。")
             return
@@ -41,10 +43,9 @@ class RecycleBinPage(LazyWidget):
     def init_ui(self):
         self.view = TokenTableView()
         # 按钮
-        self.btn_refresh=Button("刷新数据")
-        self.btn_delete=Button("彻底删除")
-        self.btn_restore=Button("恢复数据")
-
+        self.btn_refresh = Button("刷新数据")
+        self.btn_delete = Button("彻底删除")
+        self.btn_restore = Button("恢复数据")
 
         # 布局
         button_layout = QHBoxLayout()
@@ -52,17 +53,16 @@ class RecycleBinPage(LazyWidget):
         button_layout.addWidget(self.btn_delete)
         button_layout.addWidget(self.btn_restore)
 
+        self.serial_number = LineEdit()
+        self.studio = ComboBox()
 
-        self.serial_number=LineEdit()
-        self.studio=ComboBox()
-
-        self.searchWidget=ModelSearch()
+        self.searchWidget = ModelSearch()
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.view)
         layout.addWidget(self.searchWidget)
         layout.addLayout(button_layout)
-        
+
     def signal_connect(self):
         # 信号连接
         self.btn_refresh.clicked.connect(self.refresh_data)
@@ -77,8 +77,6 @@ class RecycleBinPage(LazyWidget):
             return
         logging.info("数据已刷新")
 
-
-
     @Slot()
     def delete(self):
         """彻底删除数据"""
@@ -87,12 +85,18 @@ class RecycleBinPage(LazyWidget):
             self.msg.show_warning("警告", "请先选择要删除的行")
             return
 
-        if not self.msg.ask_yes_no("确认删除", f"确定要彻底删除选中的 {len(selected_indexes)} 行吗？此操作不可撤销。"):
+        if not self.msg.ask_yes_no(
+            "确认删除",
+            f"确定要彻底删除选中的 {len(selected_indexes)} 行吗？此操作不可撤销。",
+        ):
             return
 
         from core.database.delete import delete_work
+
         for index in selected_indexes:
-            work_id = self.model.data(self.model.index(index.row(), 0), Qt.ItemDataRole.DisplayRole)
+            work_id = self.model.data(
+                self.model.index(index.row(), 0), Qt.ItemDataRole.DisplayRole
+            )
             if not delete_work(work_id):
                 self.msg.show_critical("错误", f"删除失败:")
                 return
@@ -101,16 +105,21 @@ class RecycleBinPage(LazyWidget):
 
     @Slot()
     def recover(self):
-        '''恢复数据'''
+        """恢复数据"""
         selected_indexes = self.view.selectionModel().selectedRows()
         if not selected_indexes:
             self.msg.show_critical("警告", "请先选择要恢复的行")
             return
-        if not self.msg.ask_yes_no("确认恢复", f"确定要恢复选中的 {len(selected_indexes)} 行吗？"):
+        if not self.msg.ask_yes_no(
+            "确认恢复", f"确定要恢复选中的 {len(selected_indexes)} 行吗？"
+        ):
             return
         from core.database.update import mark_undelete
+
         for index in selected_indexes:
-            work_id = self.model.data(self.model.index(index.row(), 0), Qt.ItemDataRole.DisplayRole)
+            work_id = self.model.data(
+                self.model.index(index.row(), 0), Qt.ItemDataRole.DisplayRole
+            )
             if not mark_undelete(work_id):
                 self.msg.show_critical("错误", "恢复失败，请查看日志。")
                 return

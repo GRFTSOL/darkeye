@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QScrollArea
 from PySide6.QtCore import Qt, Signal
 
+
 class HorizontalScrollArea(QScrollArea):
     # 滚动信号：传递当前滚动条值
     scrolled = Signal(int)

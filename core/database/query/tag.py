@@ -1,4 +1,5 @@
-'''标签域查询'''
+"""标签域查询"""
+
 import logging
 
 from config import DATABASE
@@ -6,8 +7,8 @@ from ..connection import get_connection
 
 
 def get_tag_type() -> list[dict]:
-    '''获得所有的tag_type'''
-    query = '''
+    """获得所有的tag_type"""
+    query = """
     SELECT
         tag_type_id,
         tag_type_name,
@@ -15,7 +16,7 @@ def get_tag_type() -> list[dict]:
     FROM
         tag_type
     ORDER BY tag_order
-            '''
+            """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
@@ -26,15 +27,15 @@ def get_tag_type() -> list[dict]:
 
 
 def get_alias_tag(tag_id: int) -> list[dict]:
-    '''获得那些被重定向后的tag'''
-    query = '''
+    """获得那些被重定向后的tag"""
+    query = """
     SELECT
         tag_id,
         tag_name,
         redirect_tag_id
     FROM tag
     WHERE redirect_tag_id=?
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (tag_id,))
@@ -45,10 +46,10 @@ def get_alias_tag(tag_id: int) -> list[dict]:
 
 
 def get_tags() -> list[tuple]:
-    '''读取所有的tag库里的信息
+    """读取所有的tag库里的信息
     供加载tag_selector使用
-    '''
-    query = '''
+    """
+    query = """
     SELECT
         tag_id,
         tag_name,
@@ -60,7 +61,7 @@ def get_tags() -> list[tuple]:
     JOIN tag_type ON tag_type.tag_type_id=tag.tag_type_id
     WHERE redirect_tag_id is NULL
     ORDER BY tag_type.tag_order,color
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
@@ -69,8 +70,8 @@ def get_tags() -> list[tuple]:
 
 
 def get_taginfo_by_id(tag_id: int) -> dict:
-    '''通过tag_id查询tag的所有的信息'''
-    query = '''
+    """通过tag_id查询tag的所有的信息"""
+    query = """
 SELECT
     tag_id,
     tag_name,
@@ -80,7 +81,7 @@ SELECT
     redirect_tag_id
 FROM tag
 WHERE tag_id=?
-'''
+"""
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (tag_id,))
@@ -91,7 +92,7 @@ WHERE tag_id=?
 
 
 def get_tagid_by_keyword(keyword: str, match_hole_word=False) -> list | int | None:
-    '''这个递归搜索到所有的没有重定向的tag'''
+    """这个递归搜索到所有的没有重定向的tag"""
     query = """
     WITH RECURSIVE tag_chain AS (
     -- 初始搜索
@@ -132,7 +133,7 @@ def get_tagid_by_keyword(keyword: str, match_hole_word=False) -> list | int | No
 
 
 def get_tag_name() -> list:
-    '''获得库中所有的tag_name'''
+    """获得库中所有的tag_name"""
     query = "SELECT tag_name FROM tag"
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
@@ -142,14 +143,14 @@ def get_tag_name() -> list:
 
 
 def get_tag_type_dict() -> dict:
-    '''获得tag_type与tag_type_id中的映射关系,这是一个一一映射关系'''
-    query = '''
+    """获得tag_type与tag_type_id中的映射关系,这是一个一一映射关系"""
+    query = """
     SELECT
         tag_type_id,
         tag_type_name
     FROM tag_type
     ORDER BY tag_order
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
@@ -159,13 +160,13 @@ def get_tag_type_dict() -> dict:
 
 
 def get_unique_tag_type() -> list:
-    '''获得tag_type'''
-    query = '''
+    """获得tag_type"""
+    query = """
     SELECT
     DISTINCT tag_type_name
     FROM tag_type
     ORDER BY tag_order
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
