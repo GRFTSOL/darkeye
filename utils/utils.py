@@ -13,64 +13,13 @@ from collections import OrderedDict
 import sqlite3
 from config import DATABASE
 
-
-# 番号相关
-def is_valid_serialnumber(code: str) -> bool:
-    """
-    检查番号是否符合格式：字母+可选数字 前缀，中间 "-"，后面为 1-5 位数字
-    如：ABP-123、IPX-1024、SSNI-009、CAWD-999
-    """
-    pattern = r"^[A-Z]{2,6}-\d{1,5}$"
-    return bool(re.match(pattern, code.upper()))
-
-
-def convert_fanza(serial_number: str) -> str:
-    """将传统的番号转化成fanza番号模式
-    例如 IPX-247   ---->   ipx00247
-    """
-    # 转换为小写
-    lower_code = serial_number.lower()
-    # 替换 - 为 00
-    converted_code = lower_code.replace("-", "00")
-    return converted_code
-
-
-def serial_number_equal(A: str, B: str) -> bool:
-    """
-    比较番号是否相等：
-    - 全部小写
-    - '-' 替换成 '00'
-    """
-
-    def normalize(s: str) -> str:
-        return s.lower().replace("-", "00")
-
-    return normalize(A) == normalize(B)
-
-
-def convert_special_serialnumber(serial_number: str) -> str:
-    # 转换为小写
-    lower_code = serial_number.lower()
-    # 删除 -
-    converted_code = lower_code.replace("-", "")
-    return converted_code
-
-
-def extract_serial_from_string(text: str) -> str | None:
-    """从字符串中提取首个番号，支持 IPX-247 或 IPX247 格式，返回标准格式（如 IPX-247）"""
-    if not text or not text.strip():
-        return None
-    text = text.strip().upper()
-    # 优先匹配带横线的标准格式
-    m = re.search(r"[A-Z]{2,6}-\d{1,5}", text)
-    if m:
-        return m.group(0)
-    # 匹配无横线格式，如 IPX247
-    m = re.search(r"[A-Z]{2,6}\d{1,5}", text)
-    if m:
-        s = m.group(0)
-        return re.sub(r"^([A-Z]+)(\d+)$", r"\1-\2", s)
-    return None
+from .serial_number import (
+    convert_fanza,
+    convert_special_serialnumber,
+    extract_serial_from_string,
+    is_valid_serialnumber,
+    serial_number_equal,
+)
 
 
 # 图片相关
