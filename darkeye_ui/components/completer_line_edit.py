@@ -82,7 +82,7 @@ class CompleterLineEdit(LineEdit):
         """
         :param loader_func: 返回项目列表的函数（在后台线程执行）
         :param parent: 父组件
-        :param theme_manager: 可选，用于主题切换时刷新弹出框颜色；未传则从 app_context 获取
+        :param theme_manager: 可选，用于主题切换时刷新弹出框颜色；未传则从 controller.app_context 获取
         """
         super().__init__(parent)
         self.items: list = []

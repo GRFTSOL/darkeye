@@ -1,5 +1,6 @@
-# app_context.py - 应用级单例/上下文，供 main 设置、各页面获取，避免循环导入
-# 使用方式：在 main.py 中 set_theme_manager(theme_mgr)；在任意页面 from app_context import get_theme_manager
+# 应用级单例/上下文，供 main 设置、各页面获取，避免循环导入
+# 使用方式：在 main.py 中 set_theme_manager(theme_mgr)；在任意页面
+#   from controller.app_context import get_theme_manager
 
 _theme_manager = None
 

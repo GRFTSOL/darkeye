@@ -114,7 +114,7 @@ class OctagonCard(QWidget, ShadowEffectMixin):
 
         if theme_manager is None:
             try:
-                from app_context import get_theme_manager
+                from controller.app_context import get_theme_manager
 
                 theme_manager = get_theme_manager()
             except Exception as e:

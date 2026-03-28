@@ -120,7 +120,7 @@ class ForceViewSettingsPanel(QScrollArea):
 
         self._theme_manager: Optional["ThemeManager"] = None
         try:
-            from app_context import get_theme_manager
+            from controller.app_context import get_theme_manager
 
             self._theme_manager = get_theme_manager()
         except ImportError as e:

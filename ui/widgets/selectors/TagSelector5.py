@@ -603,7 +603,7 @@ class TagSelector5(QWidget):
         # 背景与边框由设计令牌控制，见 _apply_left_view_styles
         self._theme_manager: Optional["ThemeManager"] = None
         try:
-            from app_context import get_theme_manager
+            from controller.app_context import get_theme_manager
 
             self._theme_manager = get_theme_manager()
         except Exception as e:

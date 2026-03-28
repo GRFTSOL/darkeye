@@ -1,7 +1,7 @@
 # ========== darkeye_ui 组件库使用说明 ==========
-# 1. 主题管理器：在任意页面通过 app_context.get_theme_manager() 获取，传给需要 theme_manager 的组件。
+# 1. 主题管理器：在任意页面通过 controller.app_context.get_theme_manager() 获取，传给需要 theme_manager 的组件。
 # 2. 示例（在某个 QWidget 页面内）：
-#    from app_context import get_theme_manager
+#    from controller.app_context import get_theme_manager
 #    from darkeye_ui import Button, Label, ToggleSwitch, StateToggleButton, IconPushButton
 #    theme_mgr = get_theme_manager()
 #    btn = Button("确定", theme_manager=theme_mgr)
@@ -39,7 +39,7 @@ def load_app_stylesheet(app):
     像下拉箭头这类依赖扩展令牌（如 chevron_down_arrow_path）的样式。
     """
     from darkeye_ui.design import ThemeManager, ThemeId
-    from app_context import set_theme_manager
+    from controller.app_context import set_theme_manager
 
     theme_mgr = ThemeManager()
     from config import get_theme_id, get_custom_primary
@@ -62,7 +62,7 @@ def apply_theme(theme_id):
     统一通过 ThemeManager.set_theme 处理，以保证像下拉箭头这类依赖扩展令牌的样式完整生效。
     """
     from PySide6.QtWidgets import QApplication
-    from app_context import get_theme_manager
+    from controller.app_context import get_theme_manager
     from darkeye_ui.design import ThemeId
 
     app = QApplication.instance()
@@ -83,14 +83,14 @@ def _run_main_app():
     show_splash = False
 
     # 初始化性能分析器（必须在log_config之前，因为log_config本身也需要时间）
-    from core.utils.profiler import get_profiler
+    from utils.profiler import get_profiler
 
     profiler = get_profiler()
     profiler.checkpoint("程序启动")
 
     # 导入日志配置（测量导入时间）
-    profiler.measure_import("core.utils.log_config")
-    from core.utils import log_config
+    profiler.measure_import("utils.log_config")
+    from utils import log_config
     import logging
 
     logger = logging.getLogger(__name__)

@@ -41,9 +41,9 @@
         ┌─────────────────────────────┼─────────────────────────────┐
         ▼                             ▼                             ▼
 ┌───────────────┐           ┌───────────────────┐           ┌───────────────┐
-│ config.py     │           │ app_context.py    │           │ 资源路径       │
-│ 路径/版本/    │           │ ThemeManager 单例 │           │ settings.ini  │
-│ settings.ini  │           │ 全局注入          │           │ resources/    │
+│ config.py     │           │ controller/       │           │ 资源路径       │
+│ 路径/版本/    │           │ app_context.py    │           │ settings.ini  │
+│ settings.ini  │           │ ThemeManager 单例 │           │ resources/    │
 └───────────────┘           └───────────────────┘           └───────────────┘
         │                             │
         └─────────────────────────────┼─────────────────────────────────────┐
@@ -66,7 +66,8 @@
         ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  控制器层：controller/                                                    │
-│  ShortcutRegistry、ShortcutBindings；GlobalSignalBus（数据变更信号）       │
+│  app_context（ThemeManager 单例）；ShortcutRegistry、ShortcutBindings；   │
+│  GlobalSignalBus（数据变更信号）；MessageService 等                        │
 └─────────────────────────────────────────────────────────────────────────┘
         │
         │ 依赖
@@ -109,17 +110,17 @@
 ### 4.1 入口与启动（main.py）
 
 - 设置 `QSG_RHI_BACKEND=opengl`、Qt 属性、OpenGL SurfaceFormat。
-- 初始化日志（`core.utils.log_config`）、性能分析（`core.utils.profiler`）。
+- 初始化日志（`utils.log_config`）、性能分析（`utils.profiler`）。
 - 可选首次启动协议（TermsDialog）。
 - **数据库**：`init_private_db` → `check_and_upgrade_private_db` → `check_and_upgrade_public_db` → `init_database`（见 [SCHEMA](SCHEMA.md)）。
 - **图**：`GraphManager.instance().initialize()` 异步建图。
-- **样式**：`load_app_stylesheet(app)` 注册 `ThemeManager` 到 `app_context`。
+- **样式**：`load_app_stylesheet(app)` 注册 `ThemeManager` 到 `controller.app_context`。
 - 创建并显示 `MainWindow`；`QTimer.singleShot(0, start_server)` 延迟启动 API，避免阻塞首帧。
 
 ### 4.2 配置与上下文
 
 - **config.py**：`resource_path` 兼容打包；从 `settings.ini` 读取路径（数据库、公/私库备份、女优/男优/封面图、SQL、敏感词、快捷键、爬虫导航按钮等）；`REQUIRED_PUBLIC_DB_VERSION` / `REQUIRED_PRIVATE_DB_VERSION` 用于迁移。
-- **app_context.py**：全局 `ThemeManager` 的 get/set，供各页面与 darkeye_ui 组件使用。
+- **controller/app_context.py**：全局 `ThemeManager` 的 get/set，供各页面与 darkeye_ui 组件使用。
 
 ### 4.3 核心层（core/）
 
@@ -187,9 +188,9 @@
 | 层次 | 目录/模块 | 核心职责 |
 |------|-----------|----------|
 | 入口 | main.py | 环境、数据库、图、样式、主窗口、延迟 API |
-| 配置 | config, app_context | 路径、版本、主题单例 |
+| 配置 | config | 路径、版本、settings.ini |
 | UI | ui/, darkeye_ui | 主窗口、路由、页面、设计系统与组件 |
-| 控制 | controller | 快捷键、全局信号总线 |
+| 控制 | controller | 主题上下文、快捷键、全局信号总线、MessageService |
 | 核心 | core/database, graph, crawler, dvd, … | 存储、图、爬虫、拟物 DVD、推荐 |
 | 服务 | server | FastAPI + Bridge，供插件与本地调用 |
 | 扩展 | extensions/firefox_capture | 浏览器端采集与推送 |

@@ -4,12 +4,12 @@
 import sys
 from pathlib import Path
 
-# 保证从项目根解析 config、ui、app_context
+# 保证从项目根解析 config、ui、controller
 _root = Path(__file__).resolve().parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from app_context import set_theme_manager
+from controller.app_context import set_theme_manager
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -936,7 +936,7 @@ def main():
     theme_mgr.set_theme(app, ThemeId.LIGHT)
     set_theme_manager(
         theme_mgr
-    )  # 供 Sidebar2 / ChamferButton 通过 app_context 获取，以随主题切换更新
+    )  # 供 Sidebar2 / ChamferButton 通过 controller.app_context 获取，以随主题切换更新
 
     win = QWidget()
     win.setWindowTitle("设计系统组件 Demo")

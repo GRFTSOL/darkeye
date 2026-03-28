@@ -39,7 +39,7 @@ docs = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["core*", "ui*", "controller*", "darkeye_ui*", "utils*"]
+include = ["core*", "ui*", "controller*", "darkeye_ui*", "utils*", "server*"]
 
 [tool.black]
 line-length = 88

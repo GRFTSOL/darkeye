@@ -10,7 +10,7 @@ def resolve_theme_manager(theme_manager: Any, caller: str) -> Any:
         return theme_manager
 
     try:
-        from app_context import get_theme_manager
+        from controller.app_context import get_theme_manager
     except ImportError as exc:
         warn_once(
             logger,

@@ -7,7 +7,7 @@ from PySide6.QtGui import QColor
 from darkeye_ui.components import Label, Button, ComboBox, ColorPicker, ToggleSwitch
 from darkeye_ui.design import ThemeId
 from config import get_theme_id, set_theme_id, get_custom_primary, set_custom_primary
-from app_context import get_theme_manager
+from controller.app_context import get_theme_manager
 from main import apply_theme
 from controller.GlobalSignalBus import global_signals
 
