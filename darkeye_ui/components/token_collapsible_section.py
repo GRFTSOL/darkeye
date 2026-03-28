@@ -99,10 +99,10 @@ class TokenCollapsibleSection(QWidget):
         self.updateGeometry()
         self.toggled.emit(checked)
 
-    def addWidget(self, widget) -> None:
+    def add_widget(self, widget) -> None:
         self.content_layout.addWidget(widget)
 
-    def addLayout(self, layout) -> None:
+    def add_layout(self, layout) -> None:
         self.content_layout.addLayout(layout)
 
     def expand(self) -> None:

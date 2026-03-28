@@ -384,13 +384,13 @@ class WorkInfo(TransparentWidget):
 
         self.title.setText(titletext)
         self.story.setText(storytext)
-        self.release_date.setTextDynamic(info["release_date"])
-        self.serial_number.setTextDynamic(info["serial_number"])
-        self.director.setTextDynamic(info["director"])
+        self.release_date.set_text_dynamic(info["release_date"])
+        self.serial_number.set_text_dynamic(info["serial_number"])
+        self.director.set_text_dynamic(info["director"])
         if info["studio_name"] is not None:
-            self.studio.setTextDynamic(info["studio_name"])
+            self.studio.set_text_dynamic(info["studio_name"])
         else:
-            self.studio.setTextDynamic("----")
+            self.studio.set_text_dynamic("----")
 
     @Slot()
     def on_clicked_delete(self):
@@ -407,7 +407,7 @@ class WorkInfo(TransparentWidget):
         from core.database.insert import insert_liked_work
         from core.database.delete import delete_favorite_work
 
-        if self.heart.get_statue():
+        if self.heart.get_state():
             """添加到喜欢"""
             insert_liked_work(self._work_id)
         else:
@@ -415,7 +415,7 @@ class WorkInfo(TransparentWidget):
             delete_favorite_work(self._work_id)
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.like_work_changed.emit()
+        global_signals.likeWorkChanged.emit()
 
     @Slot()
     def on_modify_clicked(self):
@@ -476,9 +476,9 @@ class WorkInfo(TransparentWidget):
 
         # 更新爱心状态
         if query_work(work_id):
-            self.heart.set_statue(True)
+            self.heart.set_state(True)
         else:
-            self.heart.set_statue(False)
+            self.heart.set_state(False)
 
 
 class SingleWork(QWidget):

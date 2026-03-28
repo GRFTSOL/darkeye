@@ -84,7 +84,7 @@ class ActorPage(LazyWidget):
         self.actorname_input.textChanged.connect(self.apply_filter)
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.actor_data_changed.connect(self.actorname_input.reload_items)
+        global_signals.actorDataChanged.connect(self.actorname_input.reload_items)
         self.btn_eraser.clicked.connect(self._clear_all_search)
 
     @Slot()

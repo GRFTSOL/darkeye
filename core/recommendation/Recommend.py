@@ -4,7 +4,7 @@ from config import DATABASE
 from core.database.connection import get_connection
 
 
-def randomRec() -> list[dict]:
+def random_rec() -> list[dict]:
     """读数据库的所有的片子，然后随机选7部，返回作品的基本数据的字典列表"""
 
     query = """
@@ -27,7 +27,7 @@ def randomRec() -> list[dict]:
     return result
 
 
-def recommendStart() -> list[dict]:
+def recommend_start() -> list[dict]:
     """推荐特定初始作品数,一方面用来测试"""
     # 安全测试，封面相对安全
     SerialNumber = [

@@ -239,8 +239,8 @@ class SeriesManagementPage(LazyWidget):
             self.refresh_data()
             from controller.GlobalSignalBus import global_signals
 
-            global_signals.series_data_changed.emit()
-            global_signals.work_data_changed.emit()
+            global_signals.seriesDataChanged.emit()
+            global_signals.workDataChanged.emit()
         except Exception as e:
             logging.exception("导入系列失败")
             self.msg.show_critical("导入失败", f"导入系列时发生错误：\n{e}")
@@ -271,8 +271,8 @@ class SeriesManagementPage(LazyWidget):
         QMessageBox.information(self, "提示", "保存成功")
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.series_data_changed.emit()
-        global_signals.work_data_changed.emit()
+        global_signals.seriesDataChanged.emit()
+        global_signals.workDataChanged.emit()
 
     @Slot()
     def revert_changes(self):
@@ -311,8 +311,8 @@ class SeriesManagementPage(LazyWidget):
         QMessageBox.information(self, "提示", "系列重定向成功")
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.series_data_changed.emit()
-        global_signals.work_data_changed.emit()
+        global_signals.seriesDataChanged.emit()
+        global_signals.workDataChanged.emit()
 
     def _redirect_series(self, source_series_id: int, target_series_id: int) -> bool:
         """将 source 系列重定向到 target，并把 source 名字合并到 target.aliases。"""

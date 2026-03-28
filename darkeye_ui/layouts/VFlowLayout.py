@@ -44,14 +44,14 @@ class VFlowLayout(QLayout):
 
     def widthForHeight(self, height: int) -> int:
         """给定height计算宽度，只有当使用layout的qwidget使用setfixedHight时会调用"""
-        calc_width = self.doLayout(QRect(0, 0, 0, height), testOnly=True)
+        calc_width = self.do_layout(QRect(0, 0, 0, height), testOnly=True)
         # logging.debug(calc_width)
         return calc_width
 
     def setGeometry(self, rect: QRect):
         """布局的核心，决定每个子项在父 widget 里的位置和大小"""
         super().setGeometry(rect)
-        self.doLayout(rect, False)
+        self.do_layout(rect, False)
 
     def sizeHint(self):
         """理想大小的尺寸估计"""
@@ -93,7 +93,7 @@ class VFlowLayout(QLayout):
             parent.update()
             parent.repaint()
 
-    def doLayout(self, rect: QRect, testOnly: bool):
+    def do_layout(self, rect: QRect, testOnly: bool):
         """这个是个非常好的方法，包括虚拟排列，可复用在计算尺寸的时候"""
         # 从最右边开始布局
         margins = self.contentsMargins()

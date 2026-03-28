@@ -232,8 +232,8 @@ class LabelManagementPage(LazyWidget):
             self.refresh_data()
             from controller.GlobalSignalBus import global_signals
 
-            global_signals.label_data_changed.emit()
-            global_signals.work_data_changed.emit()
+            global_signals.labelDataChanged.emit()
+            global_signals.workDataChanged.emit()
         except Exception as e:
             logging.exception("导入厂牌失败")
             self.msg.show_critical("导入失败", f"导入厂牌时发生错误：\n{e}")
@@ -264,8 +264,8 @@ class LabelManagementPage(LazyWidget):
         QMessageBox.information(self, "提示", "保存成功")
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.label_data_changed.emit()
-        global_signals.work_data_changed.emit()
+        global_signals.labelDataChanged.emit()
+        global_signals.workDataChanged.emit()
 
     @Slot()
     def revert_changes(self):
@@ -304,8 +304,8 @@ class LabelManagementPage(LazyWidget):
         QMessageBox.information(self, "提示", "厂牌重定向成功")
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.label_data_changed.emit()
-        global_signals.work_data_changed.emit()
+        global_signals.labelDataChanged.emit()
+        global_signals.workDataChanged.emit()
 
     def _redirect_label(self, source_label_id: int, target_label_id: int) -> bool:
         """将 source 厂牌重定向到 target，并把 source 名字合并到 target.aliases。"""

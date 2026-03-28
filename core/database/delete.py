@@ -13,7 +13,7 @@ from .connection import get_connection
 
 
 def delete_favorite_actress(actress_id) -> bool:
-    """删除私有库中喜欢的女优记录。调用后需 emit: global_signals.like_actress_changed"""
+    """删除私有库中喜欢的女优记录。调用后需 emit: global_signals.likeActressChanged"""
     success = False
     try:
         conn = sqlite3.connect(PRIVATE_DATABASE)
@@ -35,7 +35,7 @@ def delete_favorite_actress(actress_id) -> bool:
 
 
 def delete_favorite_work(work_id) -> bool:
-    """删除私有库中喜欢的作品记录。调用后需 emit: global_signals.like_work_changed"""
+    """删除私有库中喜欢的作品记录。调用后需 emit: global_signals.likeWorkChanged"""
     success = False
     try:
         conn = sqlite3.connect(PRIVATE_DATABASE)
@@ -57,7 +57,7 @@ def delete_favorite_work(work_id) -> bool:
 
 
 def delete_work(work_id: int) -> bool:
-    """彻底删除作品。调用后需 emit: global_signals.work_data_changed"""
+    """彻底删除作品。调用后需 emit: global_signals.workDataChanged"""
     from utils.utils import delete_image
 
     try:
@@ -91,7 +91,7 @@ def delete_work(work_id: int) -> bool:
 
 
 def delete_actress(actress_id: int) -> tuple[bool, str]:
-    """删除某个女优，包括名字。调用后需 emit: global_signals.actress_data_changed"""
+    """删除某个女优，包括名字。调用后需 emit: global_signals.actressDataChanged"""
     from utils.utils import delete_image
 
     try:
@@ -138,7 +138,7 @@ def delete_actress(actress_id: int) -> tuple[bool, str]:
 
 
 def delete_actor(actor_id: int) -> tuple[bool, str]:
-    """删除某个男优，包括名字。调用后需 emit: global_signals.actor_data_changed"""
+    """删除某个男优，包括名字。调用后需 emit: global_signals.actorDataChanged"""
     from utils.utils import delete_image
 
     try:
@@ -183,7 +183,7 @@ def delete_actor(actor_id: int) -> tuple[bool, str]:
 
 
 def delete_tag(tag_id: int) -> tuple[bool, str]:
-    """删除某个tag。调用后需 emit: global_signals.tag_data_changed"""
+    """删除某个tag。调用后需 emit: global_signals.tagDataChanged"""
 
     message = ""
     try:

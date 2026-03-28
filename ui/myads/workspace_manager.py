@@ -204,7 +204,7 @@ class WorkspaceManager:
 
     def _register_pane(self, pane: PaneWidget) -> None:
         """内部注册：连接信号、拖拽开始/结束时激活/恢复 overlay；closeable 由 manager 统一提供。"""
-        pane.pane_empty.connect(self._on_pane_empty)
+        pane.paneEmpty.connect(self._on_pane_empty)
         pane.set_drag_start_callback(self._drag_overlay.activate)
         pane.set_drag_end_callback(self._drag_overlay.deactivate)
         pane.set_get_content_closeable(
@@ -213,7 +213,7 @@ class WorkspaceManager:
         # 不再对每个 pane 设置 drop_handler，由 DragDropOverlay 统一命中与执行
 
     def _on_pane_empty(self, pane: PaneWidget) -> None:
-        pane.pane_empty.disconnect(self._on_pane_empty)
+        pane.paneEmpty.disconnect(self._on_pane_empty)
         self._layout_tree.remove_pane(pane)
         if not self._layout_tree.panes():
             new_pane = self._new_pane()
@@ -341,7 +341,7 @@ class WorkspaceManager:
 
         for pane in list(self._layout_tree.panes()):
             try:
-                pane.pane_empty.disconnect(self._on_pane_empty)
+                pane.paneEmpty.disconnect(self._on_pane_empty)
             except (TypeError, RuntimeError) as e:
                 logging.debug(
                     "load_layout: 断开 pane_empty 失败（可能未连接）: %s",

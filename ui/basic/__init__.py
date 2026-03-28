@@ -4,7 +4,7 @@
 
 from .Effect import ShadowEffectMixin
 from .ModelSearch import ModelSearch
-from .IconPushButton import IconPushButton
+
 
 from .MovableTableView import MovableTableView
 from .EditableTableView import EditableTableView

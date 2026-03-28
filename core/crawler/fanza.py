@@ -28,4 +28,4 @@ def on_fanza_finished(data: Dict):
     print(data)
 
 
-bridge.fanza_finished.connect(on_fanza_finished)
+bridge.fanzaFinished.connect(on_fanza_finished)

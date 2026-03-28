@@ -75,11 +75,11 @@ def main():
 
     def on_pane_empty(pane: PaneWidget):
         """关闭窗格最后一个 Tab 时从树中移除并回收该窗格。"""
-        pane.pane_empty.disconnect(on_pane_empty)
+        pane.paneEmpty.disconnect(on_pane_empty)
         tree.remove_pane(pane)
 
     def register_pane(pane: PaneWidget):
-        pane.pane_empty.connect(on_pane_empty)
+        pane.paneEmpty.connect(on_pane_empty)
 
     p1 = PaneWidget(pane_id="p1")
     p1.add_content(

@@ -438,17 +438,17 @@ def import_work_from_movie_nfo(path: Path) -> tuple[bool, str]:
         return False, str(e)
 
     if maker_added:
-        global_signals.maker_data_changed.emit()
+        global_signals.makerDataChanged.emit()
     if label_added:
-        global_signals.label_data_changed.emit()
+        global_signals.labelDataChanged.emit()
     if series_added:
-        global_signals.series_data_changed.emit()
+        global_signals.seriesDataChanged.emit()
     if tag_added:
-        global_signals.tag_data_changed.emit()
+        global_signals.tagDataChanged.emit()
     if actress_added:
-        global_signals.actress_data_changed.emit()
+        global_signals.actressDataChanged.emit()
     if actor_added:
-        global_signals.actor_data_changed.emit()
+        global_signals.actorDataChanged.emit()
 
     director = parsed.director.strip() or "----"
     jp_title = parsed.jp_title.strip() or None
@@ -493,12 +493,12 @@ def import_work_from_movie_nfo(path: Path) -> tuple[bool, str]:
         )
         return False, "写入数据库失败"
 
-    global_signals.work_data_changed.emit()
+    global_signals.workDataChanged.emit()
 
     img_act, img_actor = _apply_cast_portraits(parsed.cast)
     if img_act:
-        global_signals.actress_data_changed.emit()
+        global_signals.actressDataChanged.emit()
     if img_actor:
-        global_signals.actor_data_changed.emit()
+        global_signals.actorDataChanged.emit()
 
     return True, f"已从 NFO 导入作品：{parsed.serial_number}"

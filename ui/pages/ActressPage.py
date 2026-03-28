@@ -152,8 +152,8 @@ class ActressPage(LazyWidget):
 
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.actress_data_changed.connect(self.actressname_input.reload_items)
-        global_signals.actress_data_changed.connect(self.cup_combo.reload_items)
+        global_signals.actressDataChanged.connect(self.actressname_input.reload_items)
+        global_signals.actressDataChanged.connect(self.cup_combo.reload_items)
         self.btn_eraser.clicked.connect(self._clear_all_search)
 
     @Slot()

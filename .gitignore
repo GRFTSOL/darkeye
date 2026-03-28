@@ -112,7 +112,7 @@ compile_commands.json
 **/qrc_*.cpp
 
 #
-.cursor/
+
 .continue/
 
 report.xml

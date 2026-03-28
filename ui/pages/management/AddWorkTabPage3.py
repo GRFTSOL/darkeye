@@ -79,6 +79,12 @@ class ButtonState(Enum):
     DISABLED = 3
 
 
+def _property_changed_signal_name(snake_name: str) -> str:
+    """serial_number -> serialNumberChanged，与 ViewModel 上 Property 的 notify 信号一致。"""
+    head, *rest = snake_name.split("_")
+    return head + "".join(s[:1].upper() + s[1:] for s in rest if s) + "Changed"
+
+
 class Model:
     """纯放数据的model"""
 
@@ -127,28 +133,28 @@ class Model:
 class ViewModel(QObject):
     """实现数据与视图的双向绑定，这里是数据，使用Property"""
 
-    serial_number_changed = Signal(str)
-    director_changed = Signal(str)
-    release_date_changed = Signal(str)
-    notes_changed = Signal(str)
-    runtime_changed = Signal(int)
+    serialNumberChanged = Signal(str)
+    directorChanged = Signal(str)
+    releaseDateChanged = Signal(str)
+    notesChanged = Signal(str)
+    runtimeChanged = Signal(int)
 
-    cn_title_changed = Signal(str)
-    cn_story_changed = Signal(str)
-    jp_title_changed = Signal(str)
-    jp_story_changed = Signal(str)
+    cnTitleChanged = Signal(str)
+    cnStoryChanged = Signal(str)
+    jpTitleChanged = Signal(str)
+    jpStoryChanged = Signal(str)
 
-    cover_changed = Signal(str)
-    actress_changed = Signal("QList<int>")  # 这里不能使用list(int)要么直接list
-    actor_changed = Signal("QList<int>")
-    tag_changed = Signal("QList<int>")
-    maker_changed = Signal(int)
-    label_changed = Signal(int)
-    series_changed = Signal(int)
-    fanart_changed = Signal(list)
-    btn_state_changed = Signal(str, ButtonState)
+    coverChanged = Signal(str)
+    actressChanged = Signal("QList<int>")  # 这里不能使用list(int)要么直接list
+    actorChanged = Signal("QList<int>")
+    tagChanged = Signal("QList<int>")
+    makerChanged = Signal(int)
+    labelChanged = Signal(int)
+    seriesChanged = Signal(int)
+    fanartChanged = Signal(list)
+    btnStateChanged = Signal(str, ButtonState)
 
-    modify_state_changed = Signal(str, bool)  # 发出修改什么控件的信号
+    modifyStateChanged = Signal(str, bool)  # 发出修改什么控件的信号
     workload = Signal(str)  # 发送给view使用
 
     def __init__(self, model=None, message_service: IMessageService = None):
@@ -189,7 +195,7 @@ class ViewModel(QObject):
             value = ""
         if self.model._serial_number != value.strip().upper():  # 这里全部转成纯大写
             self.model._serial_number = value.strip().upper()
-            self.serial_number_changed.emit(value)
+            self.serialNumberChanged.emit(value)
 
             # 这里写番号转换的函数
             # print("Model updated:", self.model._serial_number)
@@ -202,7 +208,7 @@ class ViewModel(QObject):
             value = ""
         if self.model._director != value.strip():
             self.model._director = value.strip()
-            self.director_changed.emit(value)
+            self.directorChanged.emit(value)
 
     def get_release_date(self) -> str:
         return self.model._release_date
@@ -212,7 +218,7 @@ class ViewModel(QObject):
             value = ""
         if self.model._release_date != value.strip():
             self.model._release_date = value.strip()
-            self.release_date_changed.emit(value)
+            self.releaseDateChanged.emit(value)
             # print("Model updated:", self.model._release_date)
 
     def get_runtime(self) -> int:
@@ -222,7 +228,7 @@ class ViewModel(QObject):
         value = int(value) if value not in (None, "") else 0
         if self.model._runtime != value:
             self.model._runtime = value
-            self.runtime_changed.emit(value)
+            self.runtimeChanged.emit(value)
             # print("Model runtime updated:", self.model._runtime)
 
     def get_notes(self) -> str:
@@ -233,7 +239,7 @@ class ViewModel(QObject):
             value = ""
         if self.model._notes != value.strip():
             self.model._notes = value.strip()
-            self.notes_changed.emit(value)
+            self.notesChanged.emit(value)
             # print("Model Story updated:", self.model._notes)
 
     def get_cn_title(self) -> str:
@@ -244,7 +250,7 @@ class ViewModel(QObject):
             value = ""
         if self.model._cn_title != value.strip():
             self.model._cn_title = value.strip()
-            self.cn_title_changed.emit(value)
+            self.cnTitleChanged.emit(value)
             # print("cn_title updated:", self.model._cn_title)
 
     def get_cn_story(self) -> str:
@@ -255,7 +261,7 @@ class ViewModel(QObject):
             value = ""
         if self.model._cn_story != value.strip():
             self.model._cn_story = value.strip()
-            self.cn_story_changed.emit(value)
+            self.cnStoryChanged.emit(value)
             # print("cn_story updated:", self.model._cn_story)
 
     def get_jp_title(self) -> str:
@@ -266,7 +272,7 @@ class ViewModel(QObject):
             value = ""
         if self.model._jp_title != value.strip():
             self.model._jp_title = value.strip()
-            self.jp_title_changed.emit(value)
+            self.jpTitleChanged.emit(value)
             # print("jp_title updated:", self.model._jp_title)
 
     def get_jp_story(self) -> str:
@@ -277,7 +283,7 @@ class ViewModel(QObject):
             value = ""
         if self.model._jp_story != value.strip():
             self.model._jp_story = value.strip()
-            self.jp_story_changed.emit(value)
+            self.jpStoryChanged.emit(value)
             # print("jp_story updated:", self.model._jp_story)
 
     def get_cover(self) -> str:
@@ -289,7 +295,7 @@ class ViewModel(QObject):
         if self.model._cover != value:
             logging.debug(f"cover原地址为{self.model._cover}")
             self.model._cover = value
-            self.cover_changed.emit(value)
+            self.coverChanged.emit(value)
             logging.debug(f"cover地址改变为{value}")
 
     def get_actress(self) -> list[int]:
@@ -300,7 +306,7 @@ class ViewModel(QObject):
             self.model._actress != value
         ):  # 考虑要不要集合操作，不过问题不大，存的时候会有集合操作
             self.model._actress = value
-            self.actress_changed.emit(value)
+            self.actressChanged.emit(value)
             # print("Model updated:", self.model._actress)
 
     def get_actor(self) -> list[int]:
@@ -309,7 +315,7 @@ class ViewModel(QObject):
     def set_actor(self, value: list[int]):
         if self.model._actor != value:
             self.model._actor = value
-            self.actor_changed.emit(value)
+            self.actorChanged.emit(value)
             # print("Model updated:", self.model._actor)
 
     def get_tag(self) -> list[int]:
@@ -319,7 +325,7 @@ class ViewModel(QObject):
         """设置tag的id列表"""
         if self.model._tag != value:
             self.model._tag = value
-            self.tag_changed.emit(value)
+            self.tagChanged.emit(value)
             # print("Model updated _tag:", self.model._tag)
 
     def get_maker(self) -> int | None:
@@ -329,7 +335,7 @@ class ViewModel(QObject):
         maker_id = int(value) if value not in (None, "") else None
         if self.model._maker_id != maker_id:
             self.model._maker_id = maker_id
-            self.maker_changed.emit(maker_id if maker_id is not None else 0)
+            self.makerChanged.emit(maker_id if maker_id is not None else 0)
 
     def get_label(self) -> int | None:
         return self.model._label_id
@@ -338,7 +344,7 @@ class ViewModel(QObject):
         label_id = int(value) if value not in (None, "") else None
         if self.model._label_id != label_id:
             self.model._label_id = label_id
-            self.label_changed.emit(label_id if label_id is not None else 0)
+            self.labelChanged.emit(label_id if label_id is not None else 0)
 
     def get_series(self) -> int | None:
         return self.model._series_id
@@ -347,7 +353,7 @@ class ViewModel(QObject):
         series_id = int(value) if value not in (None, "") else None
         if self.model._series_id != series_id:
             self.model._series_id = series_id
-            self.series_changed.emit(series_id if series_id is not None else 0)
+            self.seriesChanged.emit(series_id if series_id is not None else 0)
 
     def get_fanart(self) -> list[dict]:
         return copy.deepcopy(self.model._fanart)
@@ -357,7 +363,7 @@ class ViewModel(QObject):
         if self._fanart_signature(new_v) == self._fanart_signature(self.model._fanart):
             return
         self.model._fanart = new_v
-        self.fanart_changed.emit(copy.deepcopy(new_v))
+        self.fanartChanged.emit(copy.deepcopy(new_v))
 
     def _fanart_signature(self, items: list[dict]) -> str:
         rows: list[dict] = []
@@ -395,7 +401,7 @@ class ViewModel(QObject):
             raise KeyError(f"Unknown state key: {key}")
         if self._btn_state[key] != value:
             self._btn_state[key] = value
-            self.btn_state_changed.emit(key, value)
+            self.btnStateChanged.emit(key, value)
             # logging.debug("更改按钮状态")
 
     def _noop_get(self):
@@ -408,37 +414,37 @@ class ViewModel(QObject):
         v = bool(value)
         if self._changed_flags[key] != v:
             self._changed_flags[key] = v
-            self.modify_state_changed.emit(key, v)
+            self.modifyStateChanged.emit(key, v)
 
     # -------------------- Property --------------------
-    modify_state = Property(str, _noop_get, set_state, notify=modify_state_changed)
+    modify_state = Property(str, _noop_get, set_state, notify=modifyStateChanged)
 
-    btn_state = Property(str, _noop_get, set_btn_state, notify=btn_state_changed)
+    btn_state = Property(str, _noop_get, set_btn_state, notify=btnStateChanged)
 
     serial_number = Property(
-        str, get_serial_number, set_serial_number, notify=serial_number_changed
+        str, get_serial_number, set_serial_number, notify=serialNumberChanged
     )
-    director = Property(str, get_director, set_director, notify=director_changed)
+    director = Property(str, get_director, set_director, notify=directorChanged)
     release_date = Property(
-        str, get_release_date, set_release_date, notify=release_date_changed
+        str, get_release_date, set_release_date, notify=releaseDateChanged
     )
-    notes = Property(str, get_notes, set_notes, notify=notes_changed)
+    notes = Property(str, get_notes, set_notes, notify=notesChanged)
 
-    runtime = Property(int, get_runtime, set_runtime, notify=runtime_changed)
+    runtime = Property(int, get_runtime, set_runtime, notify=runtimeChanged)
 
-    cn_title = Property(str, get_cn_title, set_cn_title, notify=cn_title_changed)
-    cn_story = Property(str, get_cn_story, set_cn_story, notify=cn_story_changed)
-    jp_title = Property(str, get_jp_title, set_jp_title, notify=jp_title_changed)
-    jp_story = Property(str, get_jp_story, set_jp_story, notify=jp_story_changed)
+    cn_title = Property(str, get_cn_title, set_cn_title, notify=cnTitleChanged)
+    cn_story = Property(str, get_cn_story, set_cn_story, notify=cnStoryChanged)
+    jp_title = Property(str, get_jp_title, set_jp_title, notify=jpTitleChanged)
+    jp_story = Property(str, get_jp_story, set_jp_story, notify=jpStoryChanged)
 
-    cover = Property(str, get_cover, set_cover, notify=cover_changed)
-    actress = Property(list, get_actress, set_actress, notify=actress_changed)
-    actor = Property(list, get_actor, set_actor, notify=actor_changed)
-    tag = Property(list, get_tag, set_tag, notify=tag_changed)
-    maker = Property(int, get_maker, set_maker, notify=maker_changed)
-    label = Property(int, get_label, set_label, notify=label_changed)
-    series = Property(int, get_series, set_series, notify=series_changed)
-    fanart = Property(list, get_fanart, set_fanart, notify=fanart_changed)
+    cover = Property(str, get_cover, set_cover, notify=coverChanged)
+    actress = Property(list, get_actress, set_actress, notify=actressChanged)
+    actor = Property(list, get_actor, set_actor, notify=actorChanged)
+    tag = Property(list, get_tag, set_tag, notify=tagChanged)
+    maker = Property(int, get_maker, set_maker, notify=makerChanged)
+    label = Property(int, get_label, set_label, notify=labelChanged)
+    series = Property(int, get_series, set_series, notify=seriesChanged)
+    fanart = Property(list, get_fanart, set_fanart, notify=fanartChanged)
 
     # ----------------------------------------------------------
     #                    提交修改函数
@@ -568,7 +574,7 @@ class ViewModel(QObject):
             logging.info("更新作品成功，番号：%s", serial_number)
             from controller.GlobalSignalBus import global_signals
 
-            global_signals.work_data_changed.emit()
+            global_signals.workDataChanged.emit()
             return True
         else:
             self.msg.show_warning("更新作品信息失败", f"未知原因")
@@ -582,7 +588,7 @@ class ViewModel(QObject):
             self.msg.show_info("添加作品成功", f"番号: {serial_number}")
             from controller.GlobalSignalBus import global_signals
 
-            global_signals.work_data_changed.emit()  # 发送给那些需要重新加载的东西
+            global_signals.workDataChanged.emit()  # 发送给那些需要重新加载的东西
             logging.info("添加作品成功，番号：%s", serial_number)
             return True
         else:
@@ -753,54 +759,54 @@ class ViewModel(QObject):
         self._cheakable = False  # True时开启检测变更
         logging.debug("关闭修改检测")
         # 文本类控件
-        self.notes_changed.connect(lambda: self.check_change("notes", self.get_notes()))
-        self.release_date_changed.connect(
+        self.notesChanged.connect(lambda: self.check_change("notes", self.get_notes()))
+        self.releaseDateChanged.connect(
             lambda: self.check_change("release_date", self.get_release_date())
         )
-        self.director_changed.connect(
+        self.directorChanged.connect(
             lambda: self.check_change("director", self.get_director())
         )
 
         # 多行文本控件
-        self.cn_title_changed.connect(
+        self.cnTitleChanged.connect(
             lambda: self.check_change("cn_title", self.get_cn_title())
         )
-        self.cn_story_changed.connect(
+        self.cnStoryChanged.connect(
             lambda: self.check_change("cn_story", self.get_cn_story())
         )
-        self.jp_title_changed.connect(
+        self.jpTitleChanged.connect(
             lambda: self.check_change("jp_title", self.get_jp_title())
         )
-        self.jp_story_changed.connect(
+        self.jpStoryChanged.connect(
             lambda: self.check_change("jp_story", self.get_jp_story())
         )
 
         # 选择器类控件
-        self.actress_changed.connect(
+        self.actressChanged.connect(
             lambda: self.check_change("actress_ids", self.get_actress())
         )
-        self.actor_changed.connect(
+        self.actorChanged.connect(
             lambda: self.check_change("actor_ids", self.get_actor())
         )
-        self.tag_changed.connect(lambda: self.check_change("tag_ids", self.get_tag()))
-        self.maker_changed.connect(
+        self.tagChanged.connect(lambda: self.check_change("tag_ids", self.get_tag()))
+        self.makerChanged.connect(
             lambda: self.check_change("maker_id", self.get_maker())
         )
-        self.label_changed.connect(
+        self.labelChanged.connect(
             lambda: self.check_change("label_id", self.get_label())
         )
-        self.series_changed.connect(
+        self.seriesChanged.connect(
             lambda: self.check_change("series_id", self.get_series())
         )
 
         # spinbox
-        self.runtime_changed.connect(
+        self.runtimeChanged.connect(
             lambda: self.check_change("runtime", self.get_runtime())
         )
 
         # 图片控件
-        self.cover_changed.connect(self.check_image_change)
-        self.fanart_changed.connect(self.check_fanart_change)
+        self.coverChanged.connect(self.check_image_change)
+        self.fanartChanged.connect(self.check_fanart_change)
 
     @Slot()
     def check_fanart_change(self):
@@ -891,7 +897,7 @@ class ViewModel(QObject):
             # Router.instance().push("work", work_id=work_id)
             Router.instance().push("shelf", work_id=work_id)
 
-    def appendTags(self, tag_list: list[int]):
+    def append_tags(self, tag_list: list[int]):
         """添加tag,不重复"""
         new_tag_list = list(set(self.tag) | set(tag_list))
         self.set_tag(new_tag_list)
@@ -1212,40 +1218,40 @@ class AddWorkTabPage3(LazyWidget):
         """双向绑定"""
         self._updating_flags = {}  # 单独弄一个标记是否在更新，避免绑定循环问题
         # --------- 模型 -> UI ----------
-        self.viewmodel.cover_changed.connect(
+        self.viewmodel.coverChanged.connect(
             self.coverdroplabel.set_image
         )  # 这些绑定实际上都是有点问题的，设置后会循环绑定的问题。
 
-        self.viewmodel.actress_changed.connect(self.actressselector.load_with_ids)
-        self.viewmodel.actor_changed.connect(self.actorselector.load_with_ids)
-        self.viewmodel.tag_changed.connect(self.tag_selector.load_with_ids)
-        self.viewmodel.maker_changed.connect(self.maker_model_to_ui)
-        self.viewmodel.label_changed.connect(self.label_model_to_ui)
-        self.viewmodel.series_changed.connect(self.series_model_to_ui)
+        self.viewmodel.actressChanged.connect(self.actressselector.load_with_ids)
+        self.viewmodel.actorChanged.connect(self.actorselector.load_with_ids)
+        self.viewmodel.tagChanged.connect(self.tag_selector.load_with_ids)
+        self.viewmodel.makerChanged.connect(self.maker_model_to_ui)
+        self.viewmodel.labelChanged.connect(self.label_model_to_ui)
+        self.viewmodel.seriesChanged.connect(self.series_model_to_ui)
 
         self._updating_flags["fanart"] = False
-        self.viewmodel.fanart_changed.connect(self.fanart_model_to_ui)
-        self.fanart_strip.fanart_changed.connect(self.fanart_ui_to_model)
+        self.viewmodel.fanartChanged.connect(self.fanart_model_to_ui)
+        self.fanart_strip.fanartChanged.connect(self.fanart_ui_to_model)
 
         # 这个是单向的model -> UI 没有问题
-        self.viewmodel.btn_state_changed.connect(self.update_commit_btn)
-        self.viewmodel.modify_state_changed.connect(self.modify_state_change)
+        self.viewmodel.btnStateChanged.connect(self.update_commit_btn)
+        self.viewmodel.modifyStateChanged.connect(self.modify_state_change)
         # --------- UI -> 模型 ----------
 
         # 对于选择器，可以在选择变化时更新模型,这些信号都是自定义的
-        self.actressselector.selection_changed.connect(
+        self.actressselector.selectionChanged.connect(
             lambda: self.viewmodel.set_actress(self.actressselector.get_selected_ids())
         )
-        self.actorselector.selection_changed.connect(
+        self.actorselector.selectionChanged.connect(
             lambda: self.viewmodel.set_actor(self.actorselector.get_selected_ids())
         )
-        self.tag_selector.selection_changed.connect(
+        self.tag_selector.selectionChanged.connect(
             lambda: self.viewmodel.set_tag(self.tag_selector.get_selected_ids())
         )
         self.input_maker.currentTextChanged.connect(lambda: self.maker_ui_to_model())
         self.input_label.currentTextChanged.connect(lambda: self.label_ui_to_model())
         self.input_series.currentTextChanged.connect(lambda: self.series_ui_to_model())
-        self.coverdroplabel.cover_changed.connect(  # coverdroplabel 可以在图片改变后发信号更新模型
+        self.coverdroplabel.coverChanged.connect(  # coverdroplabel 可以在图片改变后发信号更新模型
             lambda: self.viewmodel.set_cover(self.coverdroplabel.get_image())
         )
 
@@ -1259,7 +1265,9 @@ class AddWorkTabPage3(LazyWidget):
             widget.textChanged.connect(
                 lambda text, p=prop_name: self.lineedit_ui_to_model(p, text)
             )
-            vm_signal: SignalInstance = getattr(self.viewmodel, f"{prop_name}_changed")
+            vm_signal: SignalInstance = getattr(
+                self.viewmodel, _property_changed_signal_name(prop_name)
+            )
             vm_signal.connect(
                 lambda text, w=widget, p=prop_name: self.lineedit_model_to_ui(
                     w, p, text
@@ -1271,7 +1279,7 @@ class AddWorkTabPage3(LazyWidget):
         self.input_runtime.valueChanged.connect(
             lambda value: self.runtime_ui_to_model(value)
         )
-        self.viewmodel.runtime_changed.connect(
+        self.viewmodel.runtimeChanged.connect(
             lambda value: self.runtime_model_to_ui(value)
         )
 
@@ -1288,7 +1296,9 @@ class AddWorkTabPage3(LazyWidget):
             widget.textChanged.connect(
                 lambda p=prop_name, w=widget: self.textedit_ui_to_model(w, p)
             )  # 匿名函数作为槽函数
-            vm_signal: SignalInstance = getattr(self.viewmodel, f"{prop_name}_changed")
+            vm_signal: SignalInstance = getattr(
+                self.viewmodel, _property_changed_signal_name(prop_name)
+            )
             vm_signal.connect(
                 lambda text, w=widget, p=prop_name: self.textedit_model_to_ui(
                     w, p, text
@@ -1322,7 +1332,7 @@ class AddWorkTabPage3(LazyWidget):
             self.forceview.session.new_load()
         else:
             manager.initialize()
-            manager.initialization_finished.connect(self.forceview.session.new_load)
+            manager.initializationFinished.connect(self.forceview.session.new_load)
 
     # 处理绑定循环的问题
     def textedit_ui_to_model(self, widget: QPlainTextEdit, prop_name: str):
@@ -1440,10 +1450,10 @@ class AddWorkTabPage3(LazyWidget):
     # ----------------------------------------------------------
     def signal_connect(self):
         """按钮信号连接"""
-        self.viewmodel.serial_number_changed.connect(
+        self.viewmodel.serialNumberChanged.connect(
             self.viewmodel.on_work_selected
         )  # 核心
-        self.viewmodel.serial_number_changed.connect(self._sync_fanart_add_enabled)
+        self.viewmodel.serialNumberChanged.connect(self._sync_fanart_add_enabled)
         self.input_serial_number.returnPressed.connect(
             self.viewmodel._load_from_db
         )  # 按enter后查询
@@ -1459,13 +1469,13 @@ class AddWorkTabPage3(LazyWidget):
         self.btn_add_work.clicked.connect(self.viewmodel.submit)
         self.crawler_auto_page.btn_get_crawler.clicked.connect(self.crawler2)
 
-        global_signals.gui_update.connect(self.update_gui)
-        global_signals.download_success.connect(self.update_cover)
-        global_signals.work_data_changed.connect(self.input_serial_number.reload_items)
-        global_signals.work_data_changed.connect(self.input_director.reload_items)
-        global_signals.maker_data_changed.connect(self.input_maker.reload_makers)
-        global_signals.label_data_changed.connect(self.input_label.reload_labels)
-        global_signals.series_data_changed.connect(self.input_series.reload_series)
+        global_signals.guiUpdate.connect(self.update_gui)
+        global_signals.downloadSuccess.connect(self.update_cover)
+        global_signals.workDataChanged.connect(self.input_serial_number.reload_items)
+        global_signals.workDataChanged.connect(self.input_director.reload_items)
+        global_signals.makerDataChanged.connect(self.input_maker.reload_makers)
+        global_signals.labelDataChanged.connect(self.input_label.reload_labels)
+        global_signals.seriesDataChanged.connect(self.input_series.reload_series)
 
         self._sync_fanart_add_enabled()
 

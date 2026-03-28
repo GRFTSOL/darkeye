@@ -546,7 +546,7 @@ class TagSelector5(QWidget):
     """
 
     success = Signal(bool)
-    selection_changed = Signal()
+    selectionChanged = Signal()
 
     def __init__(self, enbale_mutex_check=True):
         super().__init__()
@@ -760,7 +760,7 @@ class TagSelector5(QWidget):
         self.btn_expand.clicked.connect(self.toggle_panel)
         self.btn_reload_tag.clicked.connect(self.reload_tag)
         self.btn_clear.clicked.connect(self.clear_left_tags)
-        global_signals.tag_data_changed.connect(self.reload_tag)
+        global_signals.tagDataChanged.connect(self.reload_tag)
 
     def load_tags(self):
         """
@@ -887,7 +887,7 @@ class TagSelector5(QWidget):
         self.left_view.custom_items.append(item)
 
         self.selected_ids.add(tag_id)
-        self.selection_changed.emit()
+        self.selectionChanged.emit()
 
         self.left_view.update_layout()
 
@@ -932,7 +932,7 @@ class TagSelector5(QWidget):
                     self.panel.tag_emit_tabwidget.setCurrentIndex(i)
                     break
 
-        self.selection_changed.emit()
+        self.selectionChanged.emit()
 
     def check_mutex_with_selected(self, new_tag_data) -> str | None:
         """互斥检查"""

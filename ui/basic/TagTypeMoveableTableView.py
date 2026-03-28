@@ -16,7 +16,7 @@ class TagTypeMoveableTableView(BaseMovableTableView):
         logging.debug(data)
         # order = ['actress_name_id','cn','jp','kana','en','level','redirect_actress_name_id']
         # data = sort_dict_list_by_keys(data, order)
-        self.model.setNewData(data)
+        self.model.set_new_data(data)
         self._apply_column_settings()
 
     def _apply_column_settings(self):

@@ -116,16 +116,16 @@ class InboxPage(QWidget):
 
         hint_label = Label(
             "左：request_queue；中：active 任务（含工作流阶段与封面下载）；右："
-            "download_task_finished 收尾状态。"
+            "downloadTaskFinished 收尾状态。"
         )
         hint_label.setWordWrap(True)
         hint_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         root_layout.addWidget(hint_label)
 
     def _connect_signals(self) -> None:
-        global_signals.download_task_started.connect(self._on_task_started)
-        global_signals.download_task_progress.connect(self._on_task_progress)
-        global_signals.download_task_finished.connect(self._on_task_finished)
+        global_signals.downloadTaskStarted.connect(self._on_task_started)
+        global_signals.downloadTaskProgress.connect(self._on_task_progress)
+        global_signals.downloadTaskFinished.connect(self._on_task_finished)
 
     def _init_poll_timer(self) -> None:
         self._poll_timer = QTimer(self)

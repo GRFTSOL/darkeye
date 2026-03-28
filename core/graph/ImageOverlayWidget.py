@@ -46,7 +46,7 @@ class ImageOverlayWidget(QWidget):
         self.setGeometry(0, 0, 0, 0)
 
         # 连接全局图片加载器的信号
-        global_image_loader.image_loaded.connect(self._on_image_loaded)
+        global_image_loader.imageLoaded.connect(self._on_image_loaded)
 
         # 当前显示的状态
         self.current_image: Optional[QImage] = None

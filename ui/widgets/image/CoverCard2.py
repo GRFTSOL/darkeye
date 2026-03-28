@@ -114,15 +114,15 @@ class CoverCard2(QWidget):
         return False
 
     def signal_connect(self):
-        self.image_label.jump_to_modify_work.connect(
+        self.image_label.jumpToModifyWork.connect(
             lambda: Router.instance().push(
                 "work_edit", serial_number=self.serial_number
             )
         )
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.green_mode_changed.connect(self._update_green_mode)
-        global_signals.work_data_changed.connect(self._update_card)
+        global_signals.greenModeChanged.connect(self._update_green_mode)
+        global_signals.workDataChanged.connect(self._update_card)
 
     def focusInEvent(self, event):
         super().focusInEvent(event)

@@ -58,7 +58,7 @@ class AddActressDialog(QDialog):
                 self.success.emit()
                 from controller.GlobalSignalBus import global_signals
 
-                global_signals.actress_data_changed.emit()
+                global_signals.actressDataChanged.emit()
             else:
                 self.msg.show_warning("添加新女优失败", f"重复女优")
             self.accept()  # 关闭对话框

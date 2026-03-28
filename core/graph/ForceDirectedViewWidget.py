@@ -21,7 +21,6 @@ from cpp_bindings.forced_direct_view.PyForceView import ForceViewOpenGL
 from core.graph.graph_session import GraphViewSession
 from core.graph.graph_filter import PassThroughFilter, EgoFilter
 from core.graph.ForceViewSettingsPanel import ForceViewSettingsPanel
-from ui.basic import IconPushButton
 from darkeye_ui.components.state_toggle_button import StateToggleButton
 from core.graph.ImageOverlayWidget import ImageOverlayWidget
 
@@ -56,7 +55,7 @@ class ForceDirectedViewWidget(QWidget):
         self.init_ui()
         self.signal_connect()
         # 根据面板当前状态同步图片叠加层开关
-        self.setImageOverlayEnabled(self.panel.show_image.isChecked())
+        self.set_image_overlay_enabled(self.panel.show_image.isChecked())
 
     def init_ui(self):
         mainlayout = QVBoxLayout(self)
@@ -81,8 +80,8 @@ class ForceDirectedViewWidget(QWidget):
 
         # -------- Session：GraphManager -> 过滤 -> OpenGL View --------
         self.session = GraphViewSession()
-        self.session.data_ready.connect(self._on_graph_data_ready)
-        self.session.diff_changed.connect(self._on_graph_diff_changed)
+        self.session.dataReady.connect(self._on_graph_data_ready)
+        self.session.diffChanged.connect(self._on_graph_diff_changed)
 
         # self.settings_button = IconPushButton(iconpath="settings.svg", iconsize=24,outsize=32,color="#5C5C5C", parent=self)
         # self.settings_button=StateToggleButton(state1_icon="settings.svg",state1_color="#5C5C5C",state2_icon="x.svg",state2_color="#5C5C5C",iconsize=24,outsize=32,hoverable=True,parent=self)
@@ -108,7 +107,7 @@ class ForceDirectedViewWidget(QWidget):
         self.panel.arrowEnabledChanged.connect(self.view.setArrowEnabled)
         self.panel.arrowScaleChanged.connect(self.view.setArrowScale)
         # Panel -> 图片叠加层开关
-        self.panel.imageOverlayEnabledChanged.connect(self.setImageOverlayEnabled)
+        self.panel.imageOverlayEnabledChanged.connect(self.set_image_overlay_enabled)
         # 连接图片悬停信号（先经过总开关判断）
         self.view.nodeHoveredWithInfo.connect(self._on_view_node_hovered_with_info)
 
@@ -116,23 +115,25 @@ class ForceDirectedViewWidget(QWidget):
         self.panel.centerStrengthChanged.connect(self.view.setCenterStrength)
         self.panel.linkStrengthChanged.connect(self.view.setLinkStrength)
         self.panel.linkDistanceChanged.connect(self.view.setLinkDistance)
-        self.panel.neighbordeepthChanged.connect(self.view.setNeighborDepth)
-        self.panel.graphNeighborDepthChanged.connect(self.setGraphNeighborDepth)
+        self.panel.neighborDepthChanged.connect(self.view.setNeighborDepth)
+        self.panel.graphNeighborDepthChanged.connect(self.set_graph_neighbor_depth)
 
         self.panel.radiusFactorChanged.connect(self.view.setRadiusFactor)
-        self.panel.linkwidthFactorChanged.connect(self.view.setSideWidthFactor)
-        self.panel.textThresholdFactorChanged.connect(self.view.setTextThresholdFactor)
-        self.panel.nodeColorGroupChanged.connect(self._on_node_color_group_changed)
+        self.panel.linkWidthFactorChanged.connect(self.view.setSideWidthFactor)
+        self.panel.textThresholdFactorChanged.connect(
+            self.view.setTextThresholdFactor
+        )
+        self.panel.nodeColorGroupChanged.connect(self._on_nodeColorGroupChanged)
 
         self.panel.restartRequested.connect(self.view.restartSimulation)
         self.panel.pauseRequested.connect(self.view.pauseSimulation)
         self.panel.resumeRequested.connect(self.view.resumeSimulation)
         self.panel.fitInViewRequested.connect(self.view.fitViewToContent)
 
-        self.panel.addNodeRequested.connect(self.addnodetest)
-        self.panel.removeNodeRequested.connect(self.removenodetest)
-        self.panel.addEdgeRequested.connect(self.addedgetest)
-        self.panel.removeEdgeRequested.connect(self.removeedgetest)
+        self.panel.addNodeRequested.connect(self._on_addNodeRequested)
+        self.panel.removeNodeRequested.connect(self._on_removeNodeRequested)
+        self.panel.addEdgeRequested.connect(self._on_addEdgeRequested)
+        self.panel.removeEdgeRequested.connect(self._on_removeEdgeRequested)
 
         self.panel.graphModeChanged.connect(self._switch_graph)
         self.panel.contentSizeChanged.connect(
@@ -145,11 +146,11 @@ class ForceDirectedViewWidget(QWidget):
             self._apply_theme_from_tokens()
 
         # View -> panel (update labels)
-        self.view.fpsUpdated.connect(self.panel.setFps)
-        self.view.tickTimeUpdated.connect(self.panel.setTickTime)
-        self.view.paintTimeUpdated.connect(self.panel.setPaintTime)
-        self.view.scaleChanged.connect(self.panel.setScale)
-        self.view.alphaUpdated.connect(self.panel.setAlpha)
+        self.view.fpsUpdated.connect(self.panel.set_fps)
+        self.view.tickTimeUpdated.connect(self.panel.set_tick_time)
+        self.view.paintTimeUpdated.connect(self.panel.set_paint_time)
+        self.view.scaleChanged.connect(self.panel.set_scale)
+        self.view.alphaUpdated.connect(self.panel.set_alpha)
 
     @Slot()
     def _apply_theme_from_tokens(self) -> None:
@@ -175,7 +176,7 @@ class ForceDirectedViewWidget(QWidget):
         _apply("color_text", self.view.setTextColor)
         _apply("color_bg_page", self.view.setTextDimColor)
 
-    def setGraphNeighborDepth(self, depth: int):
+    def set_graph_neighbor_depth(self, depth: int):
         """设置图邻居深度,用于这个中心过滤模式下的深度切换"""
         logging.debug(f"设置图邻居深度: {depth}")
         self.session.fast_calc_diff(depth)
@@ -204,7 +205,7 @@ class ForceDirectedViewWidget(QWidget):
                 node_id, x, y, radius, scale, dragging
             )
 
-    def setImageOverlayEnabled(self, enabled: bool) -> None:
+    def set_image_overlay_enabled(self, enabled: bool) -> None:
         """
         开关图片叠加层：
         - 控制悬浮图片控件可见性
@@ -228,17 +229,17 @@ class ForceDirectedViewWidget(QWidget):
             if self.image_update_timer is not None:
                 self.image_update_timer.stop()
 
-    def addnodetest(self):
+    def _on_addNodeRequested(self):
         self.view.add_node_runtime("c200", 10.0, 10.0, "c200", 7.0, QColor("#5C5C5C"))
         self.view.add_node_runtime("c201", 0.0, 0.0, "c201", 7.0, QColor("#257845"))
 
-    def removenodetest(self):
+    def _on_removeNodeRequested(self):
         self.view.remove_node_runtime("c200")
 
-    def addedgetest(self):
+    def _on_addEdgeRequested(self):
         self.view.add_edge_runtime("c200", "c201")
 
-    def removeedgetest(self):
+    def _on_removeEdgeRequested(self):
         self.view.remove_edge_runtime("c200", "c201")
 
     def _update_image_position(self):
@@ -345,7 +346,7 @@ class ForceDirectedViewWidget(QWidget):
             panel_width: int = min(250, max(0, rect.width() - 2 * margin))
             # 计算最大可用高度(保留底部边距)
             max_available_height = rect.height() - 2 * margin - offset_y
-            self.panel.setMaximumPanelHeight(max_available_height)
+            self.panel.set_maximum_panel_height(max_available_height)
 
             panel_height: int = min(
                 self.panel.sizeHint().height(), max_available_height
@@ -374,7 +375,7 @@ class ForceDirectedViewWidget(QWidget):
 
             QTimer.singleShot(0, delayed_adjust)
 
-    def _on_node_color_group_changed(self, group: str, color: QColor) -> None:
+    def _on_nodeColorGroupChanged(self, group: str, color: QColor) -> None:
         """面板修改某类节点颜色后，更新覆盖并实时推送到 view。"""
         self._color_overrides[group] = color
         ids = self.view.getNodeIds()
@@ -644,7 +645,7 @@ def main():
     if manager._initialized:
         on_graph_ready()
     else:
-        manager.initialization_finished.connect(on_graph_ready)
+        manager.initializationFinished.connect(on_graph_ready)
 
     window.show()
     sys.exit(app.exec())

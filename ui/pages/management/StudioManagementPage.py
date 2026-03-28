@@ -313,8 +313,8 @@ class StudioManagementPage(LazyWidget):
             self.refresh_data()
             from controller.GlobalSignalBus import global_signals
 
-            global_signals.maker_data_changed.emit()
-            global_signals.work_data_changed.emit()
+            global_signals.makerDataChanged.emit()
+            global_signals.workDataChanged.emit()
         except Exception as e:
             logging.exception("导入片商前缀失败")
             self.msg.show_critical("导入失败", f"导入片商前缀时发生错误：\n{e}")
@@ -395,8 +395,8 @@ class StudioManagementPage(LazyWidget):
                 QMessageBox.information(self, "提示", "保存成功")
                 from controller.GlobalSignalBus import global_signals
 
-                global_signals.maker_data_changed.emit()
-                global_signals.work_data_changed.emit()
+                global_signals.makerDataChanged.emit()
+                global_signals.workDataChanged.emit()
 
     @Slot()
     def revert_changes(self):
@@ -455,8 +455,8 @@ class StudioManagementPage(LazyWidget):
         QMessageBox.information(self, "提示", "片商重定向成功")
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.maker_data_changed.emit()
-        global_signals.work_data_changed.emit()
+        global_signals.makerDataChanged.emit()
+        global_signals.workDataChanged.emit()
 
     def _redirect_maker(self, source_maker_id: int, target_maker_id: int) -> bool:
         """将 source 片商重定向到 target，并把 source 名字合并到 target.aliases。"""

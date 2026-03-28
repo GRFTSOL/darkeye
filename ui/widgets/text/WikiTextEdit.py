@@ -120,7 +120,7 @@ class WikiTextEdit(TextEdit):
 
     # 信号：当点击了内部链接时触发，参数为 (target, alias)
     # 如果处理了该信号，可以阻止默认的跳转行为（如果有的话）
-    link_activated = Signal(str)
+    linkActivated = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -169,7 +169,7 @@ class WikiTextEdit(TextEdit):
         self._current_selected_text = None
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.work_data_changed.connect(self._on_model_changed)
+        global_signals.workDataChanged.connect(self._on_model_changed)
 
     def set_completer_func(self, func):
         """设置自动补全的函数，通过自动调用函数获取补全词库"""
@@ -457,7 +457,7 @@ class WikiTextEdit(TextEdit):
                 router.push("work", work_id=work_id)
             else:
                 # 没找到则只发射信号，供外部处理（如搜索）
-                self.link_activated.emit(target)
+                self.linkActivated.emit(target)
 
     def keyPressEvent(self, event):
         """处理键盘事件，主要负责拦截导航键"""
@@ -624,7 +624,7 @@ if __name__ == "__main__":
     editor.set_completer_list(sample_data)
 
     # 监听点击事件
-    editor.link_activated.connect(lambda target: print(f"外部监听到链接点击: {target}"))
+    editor.linkActivated.connect(lambda target: print(f"外部监听到链接点击: {target}"))
 
     layout.addWidget(editor)
 

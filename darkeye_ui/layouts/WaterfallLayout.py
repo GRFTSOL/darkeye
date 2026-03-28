@@ -38,7 +38,7 @@ class WaterfallLayout(QLayout):
         # 最低列高
         return max((item.sizeHint().height() for item in self._items), default=0)
 
-    def clearItems(self):
+    def clear_items(self):
         for i in reversed(range(len(self._items))):
             item = self.takeAt(i)
             widget = item.widget()

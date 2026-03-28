@@ -83,7 +83,7 @@ class MplCanvas(FigureCanvas):
         # self.ax = self.fig.add_subplot(111)
         super().__init__(self.fig)
 
-    def plotWorkActressAge(self, scope):
+    def plot_work_actress_age(self, scope):
         """绘制作品的拍摄年龄的分布，频率图"""
         from core.database.query import fetch_work_actress_avg_age
 
@@ -150,7 +150,7 @@ class MplCanvas(FigureCanvas):
         self.ax.legend()
         self.draw()
 
-    def plotWorkReleaseYear(self, scope):
+    def plot_work_release_year(self, scope):
         """绘制作品发行年份分布直方图"""
         from core.database.query import fetch_work_release_by_year_by_scope
 
@@ -187,7 +187,7 @@ class MplCanvas(FigureCanvas):
         self.ax.set_ylabel("数量", fontsize=12)
         self.draw()
 
-    def plotActressDebutYear(self, scope):
+    def plot_actress_debut_year(self, scope):
         """女优出道年份的分布直方图"""
         from core.database.query import fetch_actress_debut_by_year_by_scope
 
@@ -224,7 +224,7 @@ class MplCanvas(FigureCanvas):
         self.ax.set_ylabel("数量", fontsize=12)
         self.draw()
 
-    def Draw3DsizeDis(self):
+    def draw_3d_size_dis(self):
         """画女优的3维的散点图，颜色代表罩杯"""
         # 这个现在有问题后面再改
         bodyData = get_actress_body_data()
@@ -398,7 +398,7 @@ class MplCanvas(FigureCanvas):
         self.draw()
 
     # 绘制女优的腰臀比分布
-    def draw_actressBodyWH_ratio(self, scope):
+    def draw_actress_body_wh_ratio(self, scope):
         from core.database.query import fetch_actress_waist_hip_stats
 
         tuple_list = fetch_actress_waist_hip_stats(scope)
@@ -461,7 +461,7 @@ class MplCanvas(FigureCanvas):
         self.draw()
 
     # 导演的拍片的数量
-    def draw_directorBar(self, scope: int):
+    def draw_director_bar(self, scope: int):
         from core.database.query import fetch_top_directors_by_scope
 
         tuple_list = fetch_top_directors_by_scope(scope)
@@ -502,7 +502,7 @@ class MplCanvas(FigureCanvas):
         self.draw()
 
     # 最喜欢的女优
-    def draw_mostlikeActress(self):
+    def draw_most_like_actress(self):
         tuple_list = get_actress_by_plane()
         actress = [item[0] for item in tuple_list]
         num = [item[1] for item in tuple_list]
@@ -540,7 +540,7 @@ class MplCanvas(FigureCanvas):
         self.draw()
 
     # 片商的统计数量
-    def draw_studioBar(self, scope: int):
+    def draw_studio_bar(self, scope: int):
         from core.database.query import fetch_top_studios_by_scope
 
         tuple_list = fetch_top_studios_by_scope(scope)
@@ -575,7 +575,7 @@ class MplCanvas(FigureCanvas):
         # self.fig.tight_layout()
         self.draw()
 
-    def draw_addTimeDistribution(self):
+    def draw_add_time_distribution(self):
         """作品数量按添加时间的分布
         横轴时间，纵轴总数量
         未来加上从0开始，类似github的starhistory那种样子的，包括手工样式
@@ -646,7 +646,7 @@ class MplCanvas(FigureCanvas):
         """
         self.draw()
 
-    def draw_workTagCloud(self, scope: int):
+    def draw_work_tag_cloud(self, scope: int):
         """绘制词云
         用wordcloud库
         """
@@ -673,7 +673,7 @@ class MplCanvas(FigureCanvas):
         file = Path(TEMP_PATH) / "tag_cloud_1600x900.png"
         wc.to_file(file)  # 保存到临时文件
 
-    def plotActressDebutAge(self):
+    def plot_actress_debut_age(self):
         """绘制女优出道年龄的分布，频率图"""
         from core.database.query import fetch_actress_debut_age
 

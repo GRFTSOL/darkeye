@@ -2,12 +2,12 @@ from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QAbstractItemVi
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, Signal, Slot
 from core.database.query import get_actress_allname
 import logging
-from ui.basic import IconPushButton
+from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.token_table_view import TokenTableView
 
 
 class MovableTableModel(QAbstractTableModel):
-    data_updated = Signal(list)
+    dataUpdated = Signal(list)
 
     def __init__(self, data=None):
         super().__init__()
@@ -72,28 +72,30 @@ class MovableTableModel(QAbstractTableModel):
                 # 发出数据更改信号
                 self.dataChanged.emit(index, index)
                 logging.debug("发射修改model信号")
-                self.data_updated.emit(self._data)  # 发出信号
+                self.dataUpdated.emit(self._data)  # 发出信号
                 logging.debug(self._data)
                 return True
         return False
 
-    def moveRow(self, sourceRow, destinationRow):
+    def move_row(self, source_row, destination_row):
         """移动行数据"""
-        if sourceRow == destinationRow:
+        if source_row == destination_row:
             return False
 
-        if 0 <= sourceRow < len(self._data) and 0 <= destinationRow < len(self._data):
+        if 0 <= source_row < len(self._data) and 0 <= destination_row < len(
+            self._data
+        ):
             # 移动数据
-            row_data = self._data.pop(sourceRow)
-            self._data.insert(destinationRow, row_data)
+            row_data = self._data.pop(source_row)
+            self._data.insert(destination_row, row_data)
 
             # 通知视图更新
             self.layoutChanged.emit()
-            self.data_updated.emit(self._data)  # 发出数据改变信号
+            self.dataUpdated.emit(self._data)  # 发出数据改变信号
             return True
         return False
 
-    def addRow(self):
+    def add_row(self):
         """添加新行"""
         # 创建一个空字典，包含所有列但值为空
         new_row = {key: "" for key in self._headers}
@@ -101,20 +103,20 @@ class MovableTableModel(QAbstractTableModel):
         self.beginInsertRows(QModelIndex(), len(self._data), len(self._data))
         self._data.append(new_row)
         self.endInsertRows()
-        self.data_updated.emit(self._data)  # 发出数据改变信号
+        self.dataUpdated.emit(self._data)  # 发出数据改变信号
         return True
 
-    def removeRow(self, row, parent=QModelIndex()):
+    def remove_row(self, row, parent=QModelIndex()):
         """删除指定行"""
         if 0 <= row < len(self._data):
             self.beginRemoveRows(parent, row, row)
             self._data.pop(row)
             self.endRemoveRows()
-            self.data_updated.emit(self._data)  # 发出信号
+            self.dataUpdated.emit(self._data)  # 发出信号
             return True
         return False
 
-    def setNewData(self, data):
+    def set_new_data(self, data):
         """更新整个数据集"""
         self.beginResetModel()
 
@@ -172,10 +174,10 @@ class MovableTableView(QWidget):
 
     def setup_buttons(self):
         """创建按钮"""
-        self.btn_up = IconPushButton("triangle-up.svg")
-        self.btn_down = IconPushButton("triangle-down.svg")
-        self.btn_add = IconPushButton("list-plus.svg")
-        self.btn_delete = IconPushButton("list-x.svg")
+        self.btn_up = IconPushButton("triangle_up", icon_size=24, out_size=24)
+        self.btn_down = IconPushButton("triangle_down", icon_size=24, out_size=24)
+        self.btn_add = IconPushButton("list_plus", icon_size=24, out_size=24)
+        self.btn_delete = IconPushButton("list_x", icon_size=24, out_size=24)
         # self.btn_refresh = QPushButton("刷新")
         # self.btn_save = QPushButton("保存")
         # self.btn_print = QPushButton("打印数据")
@@ -210,7 +212,7 @@ class MovableTableView(QWidget):
         if current_index.isValid():
             current_row = current_index.row()
             if current_row > 0:  # 不是第一行才能上移
-                self.model.moveRow(current_row, current_row - 1)
+                self.model.move_row(current_row, current_row - 1)
                 # 更新选中行
                 new_index = self.model.index(current_row - 1, 0)
                 self.tableView.setCurrentIndex(new_index)
@@ -221,7 +223,7 @@ class MovableTableView(QWidget):
         if current_index.isValid():
             current_row = current_index.row()
             if current_row < self.model.rowCount() - 1:  # 不是最后一行才能下移
-                self.model.moveRow(current_row, current_row + 1)
+                self.model.move_row(current_row, current_row + 1)
                 # 更新选中行
                 new_index = self.model.index(current_row + 1, 0)
                 self.tableView.setCurrentIndex(new_index)
@@ -241,7 +243,7 @@ class MovableTableView(QWidget):
 
     def add_row(self):
         """添加新行"""
-        self.model.addRow()
+        self.model.add_row()
         # 选中新添加的行
         last_row = self.model.rowCount() - 1
         self.tableView.selectRow(last_row)
@@ -253,7 +255,7 @@ class MovableTableView(QWidget):
         current_index = self.tableView.currentIndex()
         if current_index.isValid():
             row = current_index.row()
-            self.model.removeRow(row)
+            self.model.remove_row(row)
             # 更新按钮状态
             self.update_button_state()
 
@@ -273,11 +275,11 @@ class MovableTableView(QWidget):
         try:
             # TODO: 在这里实现从SQLite读取数据的逻辑
             # data = your_sqlite_read_function()
-            # self.model.setNewData(data)
+            # self.model.set_new_data(data)
             data = get_actress_allname(
                 self._actress_id
             )  # 这里要改掉，改从viewmodel里读数据，而不是直接从数据库读，然后最后的提交一起提交
-            self.model.setNewData(data)
+            self.model.set_new_data(data)
             self.tableView.setColumnHidden(0, True)
             self.tableView.setColumnHidden(5, True)
             self.tableView.setColumnHidden(6, True)
@@ -318,7 +320,7 @@ class MovableTableView(QWidget):
         ]
         actress_name = sort_dict_list_by_keys(actress_name, order)
 
-        self.model.setNewData(actress_name)
+        self.model.set_new_data(actress_name)
         self.tableView.setColumnHidden(0, True)
         self.tableView.setColumnHidden(5, True)
         self.tableView.setColumnHidden(6, True)

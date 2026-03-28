@@ -86,8 +86,8 @@ class ForceViewSettingsPanel(QScrollArea):
     # Display parameters
     radiusFactorChanged = Signal(float)
     textThresholdFactorChanged = Signal(float)
-    linkwidthFactorChanged = Signal(float)
-    neighbordeepthChanged = Signal(int)
+    linkWidthFactorChanged = Signal(float)
+    neighborDepthChanged = Signal(int)
     arrowEnabledChanged = Signal(bool)
     arrowScaleChanged = Signal(float)
     imageOverlayEnabledChanged = Signal(bool)
@@ -193,7 +193,7 @@ class ForceViewSettingsPanel(QScrollArea):
         self.radio_graph_test = TokenRadioButton("2000点图", self)
         self.radio_graph_all.setChecked(True)
 
-        effect_section.addLayout(effect_form)
+        effect_section.add_layout(effect_form)
 
         # --- Display Section ---
         display_section = TokenCollapsibleSection("显示", self._theme_manager, self)
@@ -288,7 +288,7 @@ class ForceViewSettingsPanel(QScrollArea):
             color_column.addLayout(pair)
         display_form.addRow(Label("节点颜色"), color_column)
 
-        display_section.addLayout(display_form)
+        display_section.add_layout(display_form)
 
         # --- Test Section ---
         test_section = TokenCollapsibleSection("测试", self._theme_manager, self)
@@ -312,15 +312,15 @@ class ForceViewSettingsPanel(QScrollArea):
         self.btn_add_edge = Button("加边", self)
         self.btn_remove_edge = Button("减边", self)
 
-        test_section.addWidget(self.btn_fitinview)
-        test_section.addWidget(self.btn_restart)
-        test_section.addWidget(self.btn_pause)
-        test_section.addWidget(self.btn_resume)
-        test_section.addWidget(self.show_coordinate_sys)
-        test_section.addWidget(self.btn_add_node)
-        test_section.addWidget(self.btn_remove_node)
-        test_section.addWidget(self.btn_add_edge)
-        test_section.addWidget(self.btn_remove_edge)
+        test_section.add_widget(self.btn_fitinview)
+        test_section.add_widget(self.btn_restart)
+        test_section.add_widget(self.btn_pause)
+        test_section.add_widget(self.btn_resume)
+        test_section.add_widget(self.show_coordinate_sys)
+        test_section.add_widget(self.btn_add_node)
+        test_section.add_widget(self.btn_remove_node)
+        test_section.add_widget(self.btn_add_edge)
+        test_section.add_widget(self.btn_remove_edge)
 
         form_layout = QFormLayout()
         form_layout.addRow(Label("图类型"), graph_type_layout)
@@ -329,7 +329,7 @@ class ForceViewSettingsPanel(QScrollArea):
         form_layout.addRow(Label("当前缩放"), self.label_scale)
         form_layout.addRow(Label("当前帧率"), self.label_fps)
         form_layout.addRow(Label("当前模拟热度"), self.label_alpha)
-        test_section.addLayout(form_layout)
+        test_section.add_layout(form_layout)
 
         # Create content container
         scroll_content = QWidget()
@@ -406,7 +406,9 @@ class ForceViewSettingsPanel(QScrollArea):
         )
 
         # Physics parameters
-        self.many_body_strength.valueChanged.connect(self.manyBodyStrengthChanged.emit)
+        self.many_body_strength.valueChanged.connect(
+            self.manyBodyStrengthChanged.emit
+        )
         self.center_strength.valueChanged.connect(
             lambda x: self.centerStrengthChanged.emit(float(x) / 1000.0)
         )
@@ -416,7 +418,7 @@ class ForceViewSettingsPanel(QScrollArea):
         self.link_length.valueChanged.connect(self.linkDistanceChanged.emit)
 
         # Display parameters
-        self.neighbor_depth.valueChanged.connect(self.neighbordeepthChanged.emit)
+        self.neighbor_depth.valueChanged.connect(self.neighborDepthChanged.emit)
         self.node_size.valueChanged.connect(
             lambda x: self.radiusFactorChanged.emit(float(x) / 100.0)
         )
@@ -424,7 +426,7 @@ class ForceViewSettingsPanel(QScrollArea):
             lambda x: self.textThresholdFactorChanged.emit(float(x) / 100.0)
         )
         self.link_width.valueChanged.connect(
-            lambda x: self.linkwidthFactorChanged.emit(float(x) / 100.0)
+            lambda x: self.linkWidthFactorChanged.emit(float(x) / 100.0)
         )
 
         # Simulation controls
@@ -491,7 +493,7 @@ class ForceViewSettingsPanel(QScrollArea):
         )
         # 滑块样式
         for s in self._sliders:
-            s.setStyleFromTokens(t)
+            s.set_style_from_tokens(t)
         # 颜色按钮边框（节点颜色 257-260 不改，仅更新边框）
         for btn in self._color_buttons:
             c = getattr(btn, "_current_color", None)
@@ -502,27 +504,27 @@ class ForceViewSettingsPanel(QScrollArea):
 
     # --- Slots for parent to push view state into labels ---
 
-    def setFps(self, value: float):
+    def set_fps(self, value: float):
         """Update FPS display."""
         self.label_fps.setText(f"{value:.2f}")
 
-    def setTickTime(self, ms: float):
+    def set_tick_time(self, ms: float):
         """Update tick time display."""
         self.label_cal.setText(f"{ms:.3f}ms")
 
-    def setPaintTime(self, ms: float):
+    def set_paint_time(self, ms: float):
         """Update paint time display."""
         self.label_paint.setText(f"{ms:.3f}ms")
 
-    def setScale(self, value: float):
+    def set_scale(self, value: float):
         """Update scale display."""
         self.label_scale.setText(f"{value:.2f}")
 
-    def setAlpha(self, value: float):
+    def set_alpha(self, value: float):
         """Update simulation alpha display."""
         self.label_alpha.setText(f"{value:.2f}")
 
-    def setMaximumPanelHeight(self, max_height: int):
+    def set_maximum_panel_height(self, max_height: int):
         """设置面板的最大高度"""
         self._max_panel_height = max_height
         # 更新内容宽度

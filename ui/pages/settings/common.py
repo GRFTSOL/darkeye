@@ -74,7 +74,7 @@ class CommonPage(QWidget):
         main_layout.addRow(Label("主色"), self.primary_color_row)
         main_layout.addRow(Label("主题"), self.theme_choose)
         main_layout.addRow(Label("绿色模式"), self.greenmode)
-        self.greenmode.toggled.connect(global_signals.green_mode_changed.emit)
+        self.greenmode.toggled.connect(global_signals.greenModeChanged.emit)
 
     def _update_primary_picker_state(self):
         theme_mgr = get_theme_manager()

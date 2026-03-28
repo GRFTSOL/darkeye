@@ -30,8 +30,8 @@ class HomePage(QWidget):
             logging.info("HomePage: 收藏列表为空，DVD 书架不加载任何作品。")
 
         # 监听全局作品数据变更信号，自动刷新首页收藏书架
-        global_signals.work_data_changed.connect(self._refresh_favorites)
-        global_signals.like_work_changed.connect(self._refresh_favorites)
+        global_signals.workDataChanged.connect(self._refresh_favorites)
+        global_signals.likeWorkChanged.connect(self._refresh_favorites)
 
     def _load_favorite_work_ids(self) -> list[int]:
         """从公库 + 私库加载按片商前缀排序后的收藏作品 work_id 列表。"""

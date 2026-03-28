@@ -57,7 +57,7 @@ class AddSexualArousalDialog(QDialog):
             self.msg.show_info("提示", "成功提交一次记录")
             from controller.GlobalSignalBus import global_signals
 
-            global_signals.sexarousal_changed.emit()
+            global_signals.sexarousalChanged.emit()
             self.accept()  # 关闭对话框
         else:
             self.msg.show_info("提示", "提交失败")

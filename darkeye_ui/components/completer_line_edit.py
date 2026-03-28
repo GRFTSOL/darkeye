@@ -71,7 +71,7 @@ class CompleterLoaderRunnable(QRunnable):
 class CompleterLineEdit(LineEdit):
     """支持传入加载函数的单行输入，带弹出补全；异步加载 + 缓存。弹出框由设计令牌驱动（objectName=DesignCompleterPopup）。"""
 
-    items_loaded = Signal(int, list)
+    itemsLoaded = Signal(int, list)
 
     def __init__(
         self,
@@ -92,7 +92,7 @@ class CompleterLineEdit(LineEdit):
         theme_manager = resolve_theme_manager(theme_manager, "CompleterLineEdit")
         self._theme_manager = theme_manager
         self.setup_completer()
-        self.items_loaded.connect(self._on_items_loaded)
+        self.itemsLoaded.connect(self._on_items_loaded)
         self.installEventFilter(self)
         self.load_items()
         if self._theme_manager is not None:
@@ -109,7 +109,7 @@ class CompleterLineEdit(LineEdit):
             return
         self._load_seq += 1
         seq = self._load_seq
-        runnable = CompleterLoaderRunnable(self.loader_func, seq, self.items_loaded)
+        runnable = CompleterLoaderRunnable(self.loader_func, seq, self.itemsLoaded)
         QThreadPool.globalInstance().start(runnable)
 
     @Slot(int, list)

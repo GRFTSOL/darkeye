@@ -23,15 +23,15 @@ class GraphViewSession(QObject):
     将全局 diff 按当前 filter 进行裁剪/转换，得到会话内子图的增量 diff，然后发给 UI。
     """
 
-    data_ready = Signal(dict)  # 发射这个信号用于产生新的图，刷新全图
+    dataReady = Signal(dict)  # 发射这个信号用于产生新的图，刷新全图
     # 增量 diff：实际发射的是 list[dict]（见 _on_global_diff / fast_calc_diff）
-    diff_changed = Signal(list)  # 这个信号用于增量加点，不改变视口范围
+    diffChanged = Signal(list)  # 这个信号用于增量加点，不改变视口范围
 
     def __init__(self):
         super().__init__()
         self._filter: GraphFilter = PassThroughFilter()
         self.manager = GraphManager.instance()
-        self.manager.graph_diff_signal.connect(self._on_global_diff)
+        self.manager.graphDiffSignal.connect(self._on_global_diff)
 
         self.sub_G = None
 
@@ -146,7 +146,7 @@ class GraphViewSession(QObject):
             setattr(self._filter, "_valid_nodes", None)
         self.sub_G = self.apply_filter(G)
         print(diff_list)
-        self.diff_changed.emit(diff_list)
+        self.diffChanged.emit(diff_list)
 
     def new_load(self):
         """全新的加载，后面的图是刷新式的，意味着所有点与边的位置都变了"""
@@ -156,7 +156,7 @@ class GraphViewSession(QObject):
 
         self.sub_G = self.apply_filter(G)
 
-        self.data_ready.emit(
+        self.dataReady.emit(
             {"cmd": "load_graph", "graph": self.sub_G, "modify": False}
         )
 
@@ -204,4 +204,4 @@ class GraphViewSession(QObject):
             if not new_sub_G.has_edge(u, v):
                 diff_list.append({"op": "del_edge", "u": u, "v": v})
 
-        self.diff_changed.emit(diff_list)  # 这个继续转发出去
+        self.diffChanged.emit(diff_list)  # 这个继续转发出去

@@ -105,8 +105,8 @@ class MainWindow(QMainWindow):
         # 1. 定义工厂函数
         def create_home():
             # from ui.pages.CoverBrowser import CoverBrowser
-            # from core.recommendation.Recommend import randomRec
-            # return CoverBrowser(randomRec())
+            # from core.recommendation.Recommend import random_rec
+            # return CoverBrowser(random_rec())
             from ui.pages.HomePage import HomePage
 
             return HomePage()
@@ -258,7 +258,7 @@ class MainWindow(QMainWindow):
         """信号连接"""
         from server.bridge import bridge
 
-        bridge.capture_received.connect(self.handle_capture_data)
+        bridge.captureReceived.connect(self.handle_capture_data)
 
     def closeEvent(self, event) -> None:
         logging.info("--------------------程序关闭--------------------")

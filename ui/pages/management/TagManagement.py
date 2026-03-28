@@ -28,6 +28,12 @@ from darkeye_ui.components.input import LineEdit
 from darkeye_ui.components.combo_box import ComboBox
 
 
+def _property_changed_signal_name(snake_name: str) -> str:
+    """tag_name -> tagNameChanged，与 ViewModel Property 的 notify 信号一致。"""
+    head, *rest = snake_name.split("_")
+    return head + "".join(s[:1].upper() + s[1:] for s in rest if s) + "Changed"
+
+
 class SignalTagView(QWidget):
     """展示标签的容器"""
 
@@ -72,21 +78,21 @@ class Model:
 
 
 class ViewModel(QObject):
-    tag_id_changed = Signal(int)
-    tag_name_changed = Signal(str)
-    tag_type_id_changed = Signal(int)
-    tag_color_changed = Signal(str)
-    tag_detail_changed = Signal(str)
-    tag_redirect_tag_id = Signal(int | None)
-    tag_alias_changed = Signal(list)
-    after_delete = Signal()
-    load_tag_selector = Signal(list)  # 发射要加载的信号
+    tagIdChanged = Signal(int)
+    tagNameChanged = Signal(str)
+    tagTypeIdChanged = Signal(int)
+    tagColorChanged = Signal(str)
+    tagDetailChanged = Signal(str)
+    tagRedirectTagIdChanged = Signal(int | None)
+    tagAliasChanged = Signal(list)
+    afterDelete = Signal()
+    loadTagSelector = Signal(list)  # 发射要加载的信号
 
     def __init__(self, model=None, message_service: IMessageService = None):
         super().__init__()
         self.model: Model = model
         self.msg = message_service
-        # self.tag_name_changed.connect(self.on_tag_name_changed)
+        # self.tagNameChanged.connect(self.on_tag_name_changed)
         # tag_name与tag_name_id的映射关系存在这里面
         self.tag_type_map = get_tag_type_dict()
 
@@ -100,9 +106,9 @@ class ViewModel(QObject):
         if self.model._tag_id != value:
             self.model._tag_id = value
             if value is not None:
-                self.tag_id_changed.emit(value)
+                self.tagIdChanged.emit(value)
 
-    tag_id = Property(int, get_tag_id, set_tag_id, notify=tag_id_changed)
+    tag_id = Property(int, get_tag_id, set_tag_id, notify=tagIdChanged)
 
     def get_tag_name(self) -> str:
         return self.model._tag_name
@@ -110,9 +116,9 @@ class ViewModel(QObject):
     def set_tag_name(self, value: str):
         if self.model._tag_name != value.strip():
             self.model._tag_name = value.strip()
-            self.tag_name_changed.emit(value)
+            self.tagNameChanged.emit(value)
 
-    tag_name = Property(str, get_tag_name, set_tag_name, notify=tag_name_changed)
+    tag_name = Property(str, get_tag_name, set_tag_name, notify=tagNameChanged)
 
     # --- tag_type property ---
     def get_tag_type_id(self) -> int:
@@ -125,10 +131,10 @@ class ViewModel(QObject):
         if self.model._tag_type_id != clean_value:
             self.model._tag_type_id = clean_value
             logging.debug("设置model中的tag_type_id")
-            self.tag_type_id_changed.emit(clean_value)
+            self.tagTypeIdChanged.emit(clean_value)
 
     tag_type_id = Property(
-        int, get_tag_type_id, set_tag_type_id, notify=tag_type_id_changed
+        int, get_tag_type_id, set_tag_type_id, notify=tagTypeIdChanged
     )
 
     # --- tag_color property ---
@@ -139,9 +145,9 @@ class ViewModel(QObject):
         clean_value = value.strip()
         if self.model._tag_color != clean_value:
             self.model._tag_color = clean_value
-            self.tag_color_changed.emit(clean_value)
+            self.tagColorChanged.emit(clean_value)
 
-    tag_color = Property(str, get_tag_color, set_tag_color, notify=tag_color_changed)
+    tag_color = Property(str, get_tag_color, set_tag_color, notify=tagColorChanged)
 
     # --- tag_detail property ---
     def get_tag_detail(self) -> str:
@@ -151,10 +157,10 @@ class ViewModel(QObject):
         clean_value = value.strip()
         if self.model._tag_detail != clean_value:
             self.model._tag_detail = clean_value
-            self.tag_detail_changed.emit(clean_value)
+            self.tagDetailChanged.emit(clean_value)
 
     tag_detail = Property(
-        str, get_tag_detail, set_tag_detail, notify=tag_detail_changed
+        str, get_tag_detail, set_tag_detail, notify=tagDetailChanged
     )
 
     # --- tag_redirect_tag_id property ---
@@ -165,14 +171,14 @@ class ViewModel(QObject):
         if self.model._tag_redirect_tag_id != value:
             self.model._tag_redirect_tag_id = value
             if value is not None:
-                self.tag_redirect_tag_id.emit(value)
+                self.tagRedirectTagIdChanged.emit(value)
 
     # Corrected Property declaration
     tag_redirect_tag_id = Property(
         int,
         get_tag_redirect_tag_id,
         set_tag_redirect_tag_id,
-        notify=tag_redirect_tag_id,
+        notify=tagRedirectTagIdChanged,
     )
 
     def get_tag_alias(self) -> list[dict]:
@@ -185,9 +191,9 @@ class ViewModel(QObject):
         value = sort_dict_list_by_keys(value, order)
         if self.model._tag_alias != value:
             self.model._tag_alias = value
-            self.tag_alias_changed.emit(value)
+            self.tagAliasChanged.emit(value)
 
-    tag_alias = Property(list, get_tag_alias, set_tag_alias, notify=tag_alias_changed)
+    tag_alias = Property(list, get_tag_alias, set_tag_alias, notify=tagAliasChanged)
 
     def load_tag_by_id(self, tag_id):
         """通过tag_id加载tag的信息"""
@@ -224,7 +230,7 @@ class ViewModel(QObject):
 
         if update_tag(**data):
             self.msg.show_info("更新Tag信息成功", f"tag_id: {data["tag_id"]}")
-            global_signals.tag_data_changed.emit()  # 发射标签数据变更信号
+            global_signals.tagDataChanged.emit()  # 发射标签数据变更信号
             return True
         else:
             self.msg.show_warning("更新tag信息失败", f"未知原因")
@@ -241,11 +247,11 @@ class ViewModel(QObject):
         success, message, id = insert_tag(**data)
         if success:
             self.msg.show_info(f"添加新tag成功", f"tag_name: {data["tag_name"]}")
-            global_signals.tag_data_changed.emit()  # 发射标签数据变更信号
+            global_signals.tagDataChanged.emit()  # 发射标签数据变更信号
             # 这里要重新加载新的tag
             tag_id = get_tagid_by_keyword(data["tag_name"], match_hole_word=True)
             if tag_id:
-                self.load_tag_selector.emit([tag_id])  # 发射要加载的信号
+                self.loadTagSelector.emit([tag_id])  # 发射要加载的信号
             return True
         else:
             self.msg.show_warning("插入新tag失败", f"{message}")
@@ -260,7 +266,7 @@ class ViewModel(QObject):
             success, message = delete_tag(self.get_tag_id())
             if success:
                 self.msg.show_info("删除成功", message)
-                self.after_delete.emit()
+                self.afterDelete.emit()
                 self._clear_all_info()
 
             else:
@@ -405,8 +411,8 @@ class TagManagement(LazyWidget):
         )  # 改变model
 
         # model-UI
-        self.vm.tag_color_changed.connect(self.colorpick_model_to_ui)
-        self.vm.tag_type_id_changed.connect(
+        self.vm.tagColorChanged.connect(self.colorpick_model_to_ui)
+        self.vm.tagTypeIdChanged.connect(
             lambda key: self.tag_type.setCurrentText(
                 self.vm.tag_type_map.get(key) or ""
             )
@@ -419,7 +425,9 @@ class TagManagement(LazyWidget):
             widget.textChanged.connect(
                 lambda text, p=prop_name: self.lineedit_ui_to_model(p, text)
             )  # 这里匿名函数作为槽函数
-            vm_signal: SignalInstance = getattr(self.vm, f"{prop_name}_changed")
+            vm_signal: SignalInstance = getattr(
+                self.vm, _property_changed_signal_name(prop_name)
+            )
             vm_signal.connect(
                 lambda text, w=widget, p=prop_name: self.lineedit_model_to_ui(
                     w, p, text
@@ -427,21 +435,21 @@ class TagManagement(LazyWidget):
             )  # 这里匿名函数作为槽函数
 
         # model-> tablemodel
-        self.vm.tag_alias_changed.connect(self.alias_view.updatedata)
-        self.alias_view.model.data_updated.connect(self.vm.set_tag_alias)
+        self.vm.tagAliasChanged.connect(self.alias_view.updatedata)
+        self.alias_view.model.dataUpdated.connect(self.vm.set_tag_alias)
 
-        self.vm.tag_name_changed.connect(self.updatelivetag_name)
-        self.vm.tag_color_changed.connect(self.updatelivetag_color)
-        self.vm.tag_detail_changed.connect(self.updatelivetag_detail)
+        self.vm.tagNameChanged.connect(self.updatelivetag_name)
+        self.vm.tagColorChanged.connect(self.updatelivetag_color)
+        self.vm.tagDetailChanged.connect(self.updatelivetag_detail)
 
     def signal_connect(self):
-        self.tag_selector.selection_changed.connect(self.on_tag_change)
+        self.tag_selector.selectionChanged.connect(self.on_tag_change)
         self.btn_commit.clicked.connect(self.vm.commit)
         self.btn_change.clicked.connect(self.change_tag_color)
         self.btn_print.clicked.connect(lambda: print(self.vm.model.to_dict()))
         self.btn_delete.clicked.connect(self.vm.delete)
-        self.vm.after_delete.connect(self.after_delete)
-        self.vm.load_tag_selector.connect(self.tag_selector.load_with_ids)
+        self.vm.afterDelete.connect(self.after_delete)
+        self.vm.loadTagSelector.connect(self.tag_selector.load_with_ids)
         self.btn_tag_type.clicked.connect(self.modify_tag_type)
         self.btn_redirect.clicked.connect(self.redirect_tag_121)
 
@@ -464,7 +472,7 @@ class TagManagement(LazyWidget):
     @Slot(str)
     def updatelivetag_name(self, tag_name: str):
         if self.livetaglabel:
-            self.livetaglabel.setTextDynamic(tag_name)
+            self.livetaglabel.set_text_dynamic(tag_name)
 
     @Slot(str)
     def updatelivetag_color(self, tag_color: str):

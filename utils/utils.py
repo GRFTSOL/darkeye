@@ -107,7 +107,7 @@ def delete_image(path):
         logging.info("图片%s已删除", file_path)
 
 
-def conver2jpg(image_path):
+def convert_to_jpg(image_path):
     """把图片转成jpg"""
 
 

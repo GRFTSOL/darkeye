@@ -32,7 +32,7 @@ class AlphaSliderCustom(QWidget):
 
         self._dragging = False  # 是否正在拖拽
 
-    def setValue(self, value: int):
+    def set_value(self, value: int):
         """外部设置值"""
         value = max(0, min(255, value))
         if value != self._value:
@@ -40,7 +40,7 @@ class AlphaSliderCustom(QWidget):
             self.update()
             self.valueChanged.emit(value)
 
-    def setColor(self, color: QColor):
+    def set_color(self, color: QColor):
         """设置当前主颜色（不带 alpha）"""
         self._current_color = QColor(color)
         self.update()
@@ -212,7 +212,7 @@ class TestWindow(QWidget):
         layout.addWidget(self.label)
 
         # 模拟从颜色选择器来的颜色
-        self.slider.setColor(QColor(255, 80, 180))
+        self.slider.set_color(QColor(255, 80, 180))
 
     def on_value_changed(self, value):
         self.label.setText(f"Alpha: {value} / 255 ({value/255:.2f})")

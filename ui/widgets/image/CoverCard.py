@@ -86,7 +86,7 @@ class CoverCard(QWidget):
 
     def signal_connect(self):
         """信号转接"""
-        self.image_label.jump_to_modify_work.connect(
+        self.image_label.jumpToModifyWork.connect(
             lambda: Router.instance().push(
                 "work_edit", serial_number=self.serial_number
             )
@@ -94,8 +94,8 @@ class CoverCard(QWidget):
 
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.green_mode_changed.connect(self._update_green_mode)
-        global_signals.work_data_changed.connect(self._update_card)
+        global_signals.greenModeChanged.connect(self._update_green_mode)
+        global_signals.workDataChanged.connect(self._update_card)
 
     @Slot()
     def _update_card(self):

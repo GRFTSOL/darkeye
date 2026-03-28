@@ -17,7 +17,7 @@ from darkeye_ui.components.token_table_view import TokenTableView
 
 
 class MovableTableModel(QAbstractTableModel):
-    data_updated = Signal(list)
+    dataUpdated = Signal(list)
 
     def __init__(self, data=None):
         super().__init__()
@@ -82,28 +82,30 @@ class MovableTableModel(QAbstractTableModel):
                 # 发出数据更改信号
                 self.dataChanged.emit(index, index)
                 logging.debug("发射修改model信号")
-                self.data_updated.emit(self._data)  # 发出信号
+                self.dataUpdated.emit(self._data)  # 发出信号
                 logging.debug(self._data)
                 return True
         return False
 
-    def moveRow(self, sourceRow, destinationRow):
+    def move_row(self, source_row, destination_row):
         """移动行数据"""
-        if sourceRow == destinationRow:
+        if source_row == destination_row:
             return False
 
-        if 0 <= sourceRow < len(self._data) and 0 <= destinationRow < len(self._data):
+        if 0 <= source_row < len(self._data) and 0 <= destination_row < len(
+            self._data
+        ):
             # 移动数据
-            row_data = self._data.pop(sourceRow)
-            self._data.insert(destinationRow, row_data)
+            row_data = self._data.pop(source_row)
+            self._data.insert(destination_row, row_data)
 
             # 通知视图更新
             self.layoutChanged.emit()
-            self.data_updated.emit(self._data)  # 发出数据改变信号
+            self.dataUpdated.emit(self._data)  # 发出数据改变信号
             return True
         return False
 
-    def addRow(self):
+    def add_row(self):
         """添加新行"""
         # 创建一个空字典，包含所有列但值为空
         new_row = {key: "" for key in self._headers}
@@ -111,20 +113,20 @@ class MovableTableModel(QAbstractTableModel):
         self.beginInsertRows(QModelIndex(), len(self._data), len(self._data))
         self._data.append(new_row)
         self.endInsertRows()
-        self.data_updated.emit(self._data)  # 发出数据改变信号
+        self.dataUpdated.emit(self._data)  # 发出数据改变信号
         return True
 
-    def removeRow(self, row, parent=QModelIndex()):
+    def remove_row(self, row, parent=QModelIndex()):
         """删除指定行"""
         if 0 <= row < len(self._data):
             self.beginRemoveRows(parent, row, row)
             self._data.pop(row)
             self.endRemoveRows()
-            self.data_updated.emit(self._data)  # 发出信号
+            self.dataUpdated.emit(self._data)  # 发出信号
             return True
         return False
 
-    def setNewData(self, data):
+    def set_new_data(self, data):
         """更新整个数据集"""
         self.beginResetModel()
 
@@ -215,7 +217,7 @@ class EditableTableView(QWidget):
 
     def add_row(self):
         """添加新行"""
-        self.model.addRow()
+        self.model.add_row()
         # 选中新添加的行
         last_row = self.model.rowCount() - 1
         self.tableView.selectRow(last_row)
@@ -227,7 +229,7 @@ class EditableTableView(QWidget):
         current_index = self.tableView.currentIndex()
         if current_index.isValid():
             row = current_index.row()
-            self.model.removeRow(row)
+            self.model.remove_row(row)
             # 更新按钮状态
             self.update_button_state()
 
@@ -267,7 +269,7 @@ class EditableTableView(QWidget):
         order = ["tag_id", "tag_name", "redirect_tag_id"]
         alias_tag = sort_dict_list_by_keys(alias_tag, order)
 
-        self.model.setNewData(alias_tag)
+        self.model.set_new_data(alias_tag)
         self.tableView.setColumnHidden(0, True)
         self.tableView.setColumnHidden(2, True)
 

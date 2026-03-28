@@ -123,7 +123,7 @@ class VerticalTagLabel(TokenVLabel):
         """动态设置颜色"""
         text_color = get_text_color_from_background(QColor(background_color))
         hover_color = get_hover_color_from_background(QColor(background_color))
-        self.setColors(background_color, text_color, hover_color)
+        self.set_colors(background_color, text_color, hover_color)
 
 
 class VShowTagLabel(TokenVLabel):
@@ -148,7 +148,7 @@ class VShowTagLabel(TokenVLabel):
         """动态设置颜色"""
         text_color = get_text_color_from_background(QColor(background_color))
         hover_color = get_hover_color_from_background(QColor(background_color))
-        self.setColors(background_color, text_color, hover_color)
+        self.set_colors(background_color, text_color, hover_color)
 
 
 class VerticalActressLabel(TokenVLabel):

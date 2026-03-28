@@ -140,7 +140,7 @@ class MenuButton(QWidget):
 
 class Sidebar(QWidget):
     itemClicked = Signal(str)
-    selectedChanged = Signal(str)
+    selectionChanged = Signal(str)
     backwardClicked = Signal()
     forwardClicked = Signal()
 
@@ -290,7 +290,7 @@ class Sidebar(QWidget):
             if btn:
                 btn.set_selected(False)
             self._current_id = None
-            self.selectedChanged.emit("")
+            self.selectionChanged.emit("")
         else:
             prev_btn = self.buttons.get(self._current_id)
             if prev_btn:
@@ -299,7 +299,7 @@ class Sidebar(QWidget):
             if new_btn:
                 new_btn.set_selected(True)
             self._current_id = menu_id
-            self.selectedChanged.emit(menu_id)
+            self.selectionChanged.emit(menu_id)
         self.itemClicked.emit(menu_id)
 
     def _on_settings_clicked(self) -> None:
@@ -321,7 +321,7 @@ class Sidebar(QWidget):
         if btn:
             btn.set_selected(False)
         self._current_id = None
-        self.selectedChanged.emit("")
+        self.selectionChanged.emit("")
 
     def select(self, menu_id: str) -> None:
         if self._current_id != menu_id:
@@ -332,7 +332,7 @@ class Sidebar(QWidget):
             if new_btn:
                 new_btn.set_selected(True)
             self._current_id = menu_id
-            self.selectedChanged.emit(menu_id)
+            self.selectionChanged.emit(menu_id)
 
     def toggle_menu(self) -> None:
         if self._is_expanded:

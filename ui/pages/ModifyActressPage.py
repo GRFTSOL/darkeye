@@ -14,7 +14,7 @@ import logging
 from darkeye_ui import LazyWidget
 from controller.MessageService import MessageBoxService, IMessageService
 
-from ui.basic import MovableTableView, IconPushButton
+from ui.basic import MovableTableView
 from core.database.query import get_actress_allname, get_serial_number
 from ui.widgets import ActressAvatarDropWidget
 from ui.widgets.text.WikiTextEdit import WikiTextEdit
@@ -68,20 +68,20 @@ class Model:
 
 
 class ViewModel(QObject):
-    actress_id_Changed = Signal(int)
-    height_Changed = Signal(int)
-    cup_Changed = Signal(str)
-    birthday_Changed = Signal(str)
-    hip_Changed = Signal(int)
-    waist_Changed = Signal(int)
-    bust_Changed = Signal(int)
-    debut_date_Changed = Signal(str)
-    need_update_Changed = Signal(bool)
+    actressIdChanged = Signal(int)
+    heightChanged = Signal(int)
+    cupChanged = Signal(str)
+    birthdayChanged = Signal(str)
+    hipChanged = Signal(int)
+    waistChanged = Signal(int)
+    bustChanged = Signal(int)
+    debutDateChanged = Signal(str)
+    needUpdateChanged = Signal(bool)
     # 用 str 以避免 Qt 的 Signal(int) 在接收到空字符串/非数字时转换失败
-    minnano_id_Changed = Signal(str)
-    image_urlA_Changed = Signal(str)
-    actress_name_Changed = Signal(list)
-    notes_Changed = Signal(str)
+    minnanoIdChanged = Signal(str)
+    imageUrlAChanged = Signal(str)
+    actressNameChanged = Signal(list)
+    notesChanged = Signal(str)
 
     def __init__(self, model: Model = None, message_service: IMessageService = None):
         super().__init__()
@@ -90,8 +90,8 @@ class ViewModel(QObject):
 
         bridge = ServerBridge()
 
-        bridge.actressid_received.connect(self.set_minnano_id)
-        bridge.minnano_actress_capture_received.connect(self.apply_minnano_capture)
+        bridge.actressIdReceived.connect(self.set_minnano_id)
+        bridge.minnanoActressCaptureReceived.connect(self.apply_minnano_capture)
 
     def get_actress_id(self):
         return self.model._actress_id
@@ -99,10 +99,10 @@ class ViewModel(QObject):
     def set_actress_id(self, value: int):
         if self.model._actress_id != value:
             self.model._actress_id = value
-            self.actress_id_Changed.emit(value)
+            self.actressIdChanged.emit(value)
 
     actress_id = Property(
-        int, get_actress_id, set_actress_id, notify=actress_id_Changed
+        int, get_actress_id, set_actress_id, notify=actressIdChanged
     )
 
     def get_height(self):
@@ -111,9 +111,9 @@ class ViewModel(QObject):
     def set_height(self, value: int):
         if self.model._height != value:
             self.model._height = value
-            self.height_Changed.emit(value)
+            self.heightChanged.emit(value)
 
-    height = Property(int, get_height, set_height, notify=height_Changed)
+    height = Property(int, get_height, set_height, notify=heightChanged)
 
     def get_cup(self):
         return self.model._cup
@@ -121,10 +121,10 @@ class ViewModel(QObject):
     def set_cup(self, value: str):
         if self.model._cup != value:
             self.model._cup = value
-            self.cup_Changed.emit(value)
+            self.cupChanged.emit(value)
             # logging.debug(f"cup changed to {value}")
 
-    cup = Property(str, get_cup, set_cup, notify=cup_Changed)
+    cup = Property(str, get_cup, set_cup, notify=cupChanged)
 
     def get_birthday(self):
         return self.model._birthday
@@ -132,9 +132,9 @@ class ViewModel(QObject):
     def set_birthday(self, value: str):
         if self.model._birthday != value:
             self.model._birthday = value
-            self.birthday_Changed.emit(value)
+            self.birthdayChanged.emit(value)
 
-    birthday = Property(str, get_birthday, set_birthday, notify=birthday_Changed)
+    birthday = Property(str, get_birthday, set_birthday, notify=birthdayChanged)
 
     def get_hip(self):
         return self.model._hip
@@ -142,9 +142,9 @@ class ViewModel(QObject):
     def set_hip(self, value: int):
         if self.model._hip != value:
             self.model._hip = value
-            self.hip_Changed.emit(value)
+            self.hipChanged.emit(value)
 
-    hip = Property(int, get_hip, set_hip, notify=hip_Changed)
+    hip = Property(int, get_hip, set_hip, notify=hipChanged)
 
     def get_waist(self):
         return self.model._waist
@@ -152,9 +152,9 @@ class ViewModel(QObject):
     def set_waist(self, value: int):
         if self.model._waist != value:
             self.model._waist = value
-            self.waist_Changed.emit(value)
+            self.waistChanged.emit(value)
 
-    waist = Property(int, get_waist, set_waist, notify=waist_Changed)
+    waist = Property(int, get_waist, set_waist, notify=waistChanged)
 
     def get_bust(self):
         return self.model._bust
@@ -162,9 +162,9 @@ class ViewModel(QObject):
     def set_bust(self, value: int):
         if self.model._bust != value:
             self.model._bust = value
-            self.bust_Changed.emit(value)
+            self.bustChanged.emit(value)
 
-    bust = Property(int, get_bust, set_bust, notify=bust_Changed)
+    bust = Property(int, get_bust, set_bust, notify=bustChanged)
 
     def get_debut_date(self):
         return self.model._debut_date
@@ -172,10 +172,10 @@ class ViewModel(QObject):
     def set_debut_date(self, value: str):
         if self.model._debut_date != value:
             self.model._debut_date = value
-            self.debut_date_Changed.emit(value)
+            self.debutDateChanged.emit(value)
 
     debut_date = Property(
-        str, get_debut_date, set_debut_date, notify=debut_date_Changed
+        str, get_debut_date, set_debut_date, notify=debutDateChanged
     )
 
     def get_need_update(self):
@@ -184,10 +184,10 @@ class ViewModel(QObject):
     def set_need_update(self, value: bool):
         if self.model._need_update != value:
             self.model._need_update = value
-            self.need_update_Changed.emit(value)
+            self.needUpdateChanged.emit(value)
 
     need_update = Property(
-        bool, get_need_update, set_need_update, notify=need_update_Changed
+        bool, get_need_update, set_need_update, notify=needUpdateChanged
     )
 
     def get_image_urlA(self):
@@ -196,10 +196,10 @@ class ViewModel(QObject):
     def set_image_urlA(self, value: str):
         if self.model._image_urlA != value:
             self.model._image_urlA = value
-            self.image_urlA_Changed.emit(value)
+            self.imageUrlAChanged.emit(value)
 
     image_urlA = Property(
-        str, get_image_urlA, set_image_urlA, notify=image_urlA_Changed
+        str, get_image_urlA, set_image_urlA, notify=imageUrlAChanged
     )
 
     def get_actress_name(self):
@@ -222,10 +222,10 @@ class ViewModel(QObject):
         value = sort_dict_list_by_keys(value, order)
         if self.model._actress_name != value:
             self.model._actress_name = value
-            self.actress_name_Changed.emit(value)
+            self.actressNameChanged.emit(value)
 
     actress_name = Property(
-        list, get_actress_name, set_actress_name, notify=actress_name_Changed
+        list, get_actress_name, set_actress_name, notify=actressNameChanged
     )
 
     def get_notes(self):
@@ -237,9 +237,9 @@ class ViewModel(QObject):
         normalized = value.strip()
         if self.model._notes != normalized:
             self.model._notes = normalized
-            self.notes_Changed.emit(normalized)
+            self.notesChanged.emit(normalized)
 
-    notes = Property(str, get_notes, set_notes, notify=notes_Changed)
+    notes = Property(str, get_notes, set_notes, notify=notesChanged)
 
     def get_minnano_id(self):
         return self.model._minnano_id
@@ -258,10 +258,10 @@ class ViewModel(QObject):
 
         if self.model._minnano_id != normalized:
             self.model._minnano_id = normalized
-            self.minnano_id_Changed.emit(normalized)
+            self.minnanoIdChanged.emit(normalized)
 
     minnano_id = Property(
-        str, get_minnano_id, set_minnano_id, notify=minnano_id_Changed
+        str, get_minnano_id, set_minnano_id, notify=minnanoIdChanged
     )
 
     def load(self, actress_id: int):
@@ -478,7 +478,7 @@ class ViewModel(QObject):
             self.msg.show_info("提示", message)
             from controller.GlobalSignalBus import global_signals
 
-            global_signals.actress_data_changed.emit()
+            global_signals.actressDataChanged.emit()
         else:
             self.msg.show_warning("提示", message)
 
@@ -510,12 +510,16 @@ class ModifyActressPage(LazyWidget):
     def init_ui(self):
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
-        # mainlayout.addSpacing(70)
 
         hlayout = QHBoxLayout()
         mainlayout.addLayout(hlayout)
         self.moveable_name = MovableTableView()
         self.avatar = ActressAvatarDropWidget("actress")
+        # 列表页里 Label+大图默认 sizeHint 很大，且基类 setMaximumHeight(800) 会允许被行高一起拉高
+        self.avatar.setMaximumHeight(300)
+        self.avatar.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
 
         self.notes_panel = QWidget()
         notes_vlayout = QVBoxLayout(self.notes_panel)
@@ -524,10 +528,16 @@ class ModifyActressPage(LazyWidget):
         self.input_notes = WikiTextEdit()
         self.input_notes.set_completer_func(get_serial_number)
         self.input_notes.setMinimumWidth(280)
+        self.input_notes.setMinimumHeight(120)
         self.input_notes.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
         notes_vlayout.addWidget(self.input_notes, 1)
+
+        self.moveable_name.tableView.setMinimumHeight(160)
+        self.moveable_name.tableView.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
 
         self.basic = QWidget()
         self.basic.setFixedWidth(300)
@@ -605,49 +615,49 @@ class ModifyActressPage(LazyWidget):
         """双向绑定"""
         # 实际上下面都会有循环绑定的问题，后面需要改
         self.input_height.valueChanged.connect(self.vm.set_height)
-        self.vm.height_Changed.connect(self.input_height.setValue)
+        self.vm.heightChanged.connect(self.input_height.setValue)
 
         self.input_hip.valueChanged.connect(self.vm.set_hip)
-        self.vm.hip_Changed.connect(self.input_hip.setValue)
+        self.vm.hipChanged.connect(self.input_hip.setValue)
 
         self.input_waist.valueChanged.connect(self.vm.set_waist)
-        self.vm.waist_Changed.connect(self.input_waist.setValue)
+        self.vm.waistChanged.connect(self.input_waist.setValue)
 
         self.input_bust.valueChanged.connect(self.vm.set_bust)
-        self.vm.bust_Changed.connect(self.input_bust.setValue)
+        self.vm.bustChanged.connect(self.input_bust.setValue)
 
         self.input_cup.currentTextChanged.connect(self.vm.set_cup)
-        self.vm.cup_Changed.connect(self.input_cup.setCurrentText)  # 这里有问题
+        self.vm.cupChanged.connect(self.input_cup.setCurrentText)  # 这里有问题
 
         self.input_birthday.textChanged.connect(self.vm.set_birthday)
-        self.vm.birthday_Changed.connect(self.input_birthday.setText)
+        self.vm.birthdayChanged.connect(self.input_birthday.setText)
 
         self.input_debut_date.textChanged.connect(self.vm.set_debut_date)
-        self.vm.debut_date_Changed.connect(self.input_debut_date.setText)
+        self.vm.debutDateChanged.connect(self.input_debut_date.setText)
 
         self.need_update.toggled.connect(self.vm.set_need_update)
-        self.vm.need_update_Changed.connect(self.need_update.setChecked)
+        self.vm.needUpdateChanged.connect(self.need_update.setChecked)
 
         # minnano_id的绑定
         self.input_minnano_id.textChanged.connect(self.vm.set_minnano_id)
-        self.vm.minnano_id_Changed.connect(self.input_minnano_id.setText)
+        self.vm.minnanoIdChanged.connect(self.input_minnano_id.setText)
 
         # tablemodel与viewmodel的绑定
         # TODO 这里存在循环绑定的问题
-        self.moveable_name.model.data_updated.connect(self.vm.set_actress_name)
-        self.vm.actress_name_Changed.connect(
+        self.moveable_name.model.dataUpdated.connect(self.vm.set_actress_name)
+        self.vm.actressNameChanged.connect(
             self.moveable_name.updatedata
         )  # 这个实际上有点违反原则，pyside6信号传字典时顺序不可控
 
-        self.vm.image_urlA_Changed.connect(
+        self.vm.imageUrlAChanged.connect(
             self.avatar.set_image
         )  # 这些绑定实际上都是有点问题的，不过先不管了
-        self.avatar.cover_changed.connect(  # coverdroplabel 可以在图片改变后发信号更新模型
+        self.avatar.coverChanged.connect(  # coverdroplabel 可以在图片改变后发信号更新模型
             lambda: self.vm.set_image_urlA(self.avatar.get_image())
         )
 
         self.input_notes.textChanged.connect(self._notes_ui_to_vm)
-        self.vm.notes_Changed.connect(self._notes_vm_to_ui)
+        self.vm.notesChanged.connect(self._notes_vm_to_ui)
 
     def _notes_ui_to_vm(self):
         if self._notes_binding_lock:

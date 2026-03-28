@@ -90,14 +90,14 @@ class TokenVLabel(QLabel):
             self.hover_color = QColor(t.color_primary)
         self.update()
 
-    def setTextDynamic(self, new_text: str) -> None:
+    def set_text_dynamic(self, new_text: str) -> None:
         new_text = new_text or ""
         super().setText(new_text)
         self._fixed_size = self._calculate_size(None, None)
         self.setFixedSize(self._fixed_size)
         self.update()
 
-    def setColors(
+    def set_colors(
         self, background_color: str, text_color: str, hover_color: Optional[str] = None
     ) -> None:
         self.background_color = QColor(background_color)

@@ -44,7 +44,7 @@ class DataUpdate:
         self.work_id = None
         if withGUI:
             submit_db_raw(lambda: self._prepare_entities_and_relations_db()).result()
-            global_signals.gui_update.emit(
+            global_signals.guiUpdate.emit(
                 {
                     "serial_number": self.work.serial_number,
                     "director": self.work.director,
@@ -102,7 +102,7 @@ class DataUpdate:
                             tag_id_list.append(tag_id)
             self.tag_id_list = tag_id_list
             if added_tag:
-                global_signals.tag_data_changed.emit()
+                global_signals.tagDataChanged.emit()
 
         self.actress_ids = []
         if self._want("actress"):
@@ -114,7 +114,7 @@ class DataUpdate:
                         logging.info("添加女优成功:%s", actress)
                         id = exist_actress(actress)
                         self.actress_ids.append(id)
-                        global_signals.actress_data_changed.emit()
+                        global_signals.actressDataChanged.emit()
                         # 自动调用爬虫去更新女优
                         from PySide6.QtCore import QThreadPool
 
@@ -126,7 +126,7 @@ class DataUpdate:
                         )
                         worker.signals.finished.connect(
                             lambda ok: (
-                                global_signals.actress_data_changed.emit()
+                                global_signals.actressDataChanged.emit()
                                 if ok
                                 else None
                             )
@@ -145,7 +145,7 @@ class DataUpdate:
                         logging.info("添加男优成功:%s", actor)
                         id = exist_actor(actor)
                         self.actor_ids.append(id)
-                        global_signals.actor_data_changed.emit()
+                        global_signals.actorDataChanged.emit()
                 else:
                     self.actor_ids.append(id)
 
@@ -166,7 +166,7 @@ class DataUpdate:
                     logging.error("插入新的片商失败:%s", maker_name)
                     return
                 logging.info("插入新的片商:%s,maker_id:%s", maker_name, maker_id)
-                global_signals.maker_data_changed.emit()
+                global_signals.makerDataChanged.emit()
             else:
                 logging.info("片商已存在:%s,maker_id:%s", maker_name, maker_id)
             self.maker_id = maker_id
@@ -181,7 +181,7 @@ class DataUpdate:
                     logging.error("插入新的厂牌失败:%s", label_name)
                     return
                 logging.info("插入新的厂牌:%s,label_id:%s", label_name, label_id)
-                global_signals.label_data_changed.emit()
+                global_signals.labelDataChanged.emit()
             else:
                 logging.info("厂牌已存在:%s,label_id:%s", label_name, label_id)
             self.label_id = label_id
@@ -196,7 +196,7 @@ class DataUpdate:
                     logging.error("插入新的系列失败:%s", series_name)
                     return
                 logging.info("插入新的系列:%s,series_id:%s", series_name, series_id)
-                global_signals.series_data_changed.emit()
+                global_signals.seriesDataChanged.emit()
             else:
                 logging.info("系列已存在:%s,series_id:%s", series_name, series_id)
             self.series_id = series_id
@@ -250,7 +250,7 @@ class DataUpdate:
     def _on_download_finished(self, success, temp_path, image_filename):
         if success:
             if self.withGUI:
-                global_signals.download_success.emit(temp_path)
+                global_signals.downloadSuccess.emit(temp_path)
             else:
                 self.insert_cover(temp_path, image_filename)
 
@@ -292,7 +292,7 @@ class DataUpdate:
         if self._want("tag"):
             add_tag2work(self.work_id, tag_ids=self.tag_id_list)
 
-        global_signals.work_data_changed.emit()
+        global_signals.workDataChanged.emit()
 
     def insert_cover(self, temp_path, image_filename):
         from core.database.insert import rename_save_image

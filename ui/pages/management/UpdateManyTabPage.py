@@ -80,7 +80,7 @@ class UpdateManyTabPage(LazyWidget):
             pane_crawler,
             make_config("空字段补充爬取", self.crawler_auto_page, closeable=False),
         )
-        self.btn_update_needactress.clicked.connect(self.searchActressinfo)
+        self.btn_update_needactress.clicked.connect(self.search_actress_info)
         self.btn_update_maker_by_knowledge.clicked.connect(
             self.task_update_maker_by_prefix
         )
@@ -119,7 +119,7 @@ class UpdateManyTabPage(LazyWidget):
         if result is None:
             self.msg.show_info("错误", "更新失败，请查看日志")
             return
-        global_signals.work_data_changed.emit()
+        global_signals.workDataChanged.emit()
         self.msg.show_info("完成", str(result))
 
     @Slot()
@@ -139,11 +139,11 @@ class UpdateManyTabPage(LazyWidget):
         if result is None:
             self.msg.show_info("错误", "批量翻译失败，请查看日志")
             return
-        global_signals.work_data_changed.emit()
+        global_signals.workDataChanged.emit()
         self.msg.show_info("完成", str(result))
 
     @Slot()
-    def searchActressinfo(self):
+    def search_actress_info(self):
         # 开始后台线程
         from core.crawler.minnanoav import actress_need_update, SearchActressInfo
         from core.crawler.Worker import Worker

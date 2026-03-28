@@ -406,77 +406,77 @@ class DvdBridge(QObject):
         self._set_expanded_work_release_date(release_date)
 
     @Slot(float)
-    def onCameraXChanged(self, camera_x: float) -> None:
+    def on_camera_x_changed(self, camera_x: float) -> None:
         self._view._on_camera_x_changed(camera_x)
 
     @Slot(float)
-    def setCameraX(self, v: float) -> None:
+    def set_camera_x(self, v: float) -> None:
         self._view.set_camera_target(v)
 
     @Slot(float, float)
-    def scrollCameraBy(self, delta: float, max_camera_x: float) -> None:
+    def scroll_camera_by(self, delta: float, max_camera_x: float) -> None:
         self._view.scroll_camera_by(delta, max_camera_x)
 
     @Slot(str)
-    def copyToClipboard(self, text: str) -> None:
+    def copy_to_clipboard(self, text: str) -> None:
         """将文本复制到系统剪贴板。"""
         if text:
             QApplication.clipboard().setText(text)
 
     @Slot(int)
-    def onCdClicked(self, virtual_index: int) -> None:
+    def on_cd_clicked(self, virtual_index: int) -> None:
         self._view.show_video_menu_for_index(virtual_index)
 
     @Slot(int)
-    def refreshExpandedFavoriteState(self, virtual_index: int) -> None:
+    def refresh_expanded_favorite_state(self, virtual_index: int) -> None:
         self._view._refresh_expanded_favorite_state(virtual_index)
 
     @Slot(int)
-    def refreshExpandedWorkMeta(self, virtual_index: int) -> None:
+    def refresh_expanded_work_meta(self, virtual_index: int) -> None:
         self._view._refresh_expanded_work_meta(virtual_index)
 
     @Slot(int)
-    def onHeartClicked(self, virtual_index: int) -> None:
+    def on_heart_clicked(self, virtual_index: int) -> None:
         self._view._on_heart_clicked(virtual_index)
 
     @Slot(int)
-    def onEditClicked(self, virtual_index: int) -> None:
+    def on_edit_clicked(self, virtual_index: int) -> None:
         self._view._on_edit_clicked(virtual_index)
 
     @Slot(int)
-    def onDeleteClicked(self, virtual_index: int) -> None:
+    def on_delete_clicked(self, virtual_index: int) -> None:
         self._view._on_delete_clicked(virtual_index)
 
     @Slot(int)
-    def onTagClicked(self, tag_id: int) -> None:
+    def on_tag_clicked(self, tag_id: int) -> None:
         self._view._on_tag_clicked(tag_id)
 
     @Slot(int)
-    def onActressClicked(self, actress_id: int) -> None:
+    def on_actress_clicked(self, actress_id: int) -> None:
         self._view._on_actress_clicked(actress_id)
 
     @Slot(int)
-    def onActorClicked(self, actor_id: int) -> None:
+    def on_actor_clicked(self, actor_id: int) -> None:
         self._view._on_actor_clicked(actor_id)
 
     @Slot()
-    def onDirectorClicked(self) -> None:
+    def on_director_clicked(self) -> None:
         self._view._on_director_clicked()
 
     @Slot()
-    def onStudioClicked(self) -> None:
+    def on_studio_clicked(self) -> None:
         self._view._on_studio_clicked()
 
     @Slot()
-    def onLabelClicked(self) -> None:
+    def on_label_clicked(self) -> None:
         self._view._on_label_clicked()
 
     @Slot()
-    def onSeriesClicked(self) -> None:
+    def on_series_clicked(self) -> None:
         self._view._on_series_clicked()
 
     @Slot(int, int)
-    def selectionChanged(
+    def selection_changed(
         self, selected_delegate_index: int, expanded_delegate_index: int
     ) -> None:
         """QML 选中/展开变化时调用，用于显示或隐藏力导向图 overlay。"""
@@ -485,12 +485,12 @@ class DvdBridge(QObject):
         )
 
     @Slot(float, float)
-    def setForceViewAnchor(self, screen_x: float, screen_y: float) -> None:
+    def set_force_view_anchor(self, screen_x: float, screen_y: float) -> None:
         """QML 传入选中 DVD 的 2D 投影坐标，用于将力导向图 overlay 定位到其左侧。"""
         self._view._update_forceview_geometry(screen_x, screen_y)
 
     @Slot(float, float)
-    def setFanartStripAnchor(self, screen_x: float, screen_y: float) -> None:
+    def set_fanart_strip_anchor(self, screen_x: float, screen_y: float) -> None:
         """QML 传入光碟下方锚点的 2D 投影坐标，用于将剧照横条叠在 Quick 视图内、位于光碟下方。"""
         self._view._update_fanart_strip_geometry(screen_x, screen_y)
 
@@ -546,7 +546,7 @@ class DvdShelfView(QWidget):
         self._forceview_show_timer = QTimer(self)
         self._forceview_show_timer.setSingleShot(True)
         self._forceview_show_timer.timeout.connect(self._show_forceview_after_animation)
-        # 力导向图 overlay：叠在 3D 视图上，由 QML 通过 setForceViewAnchor 提供位置（选中 DVD 的 2D 投影左侧）。
+        # 力导向图 overlay：叠在 3D 视图上，由 QML 通过 set_force_view_anchor 提供位置（选中 DVD 的 2D 投影左侧）。
         self._forceview_container = QWidget(self)
         self._forceview_container.setVisible(False)
         forceview_container_layout = QVBoxLayout(self._forceview_container)
@@ -786,7 +786,7 @@ class DvdShelfView(QWidget):
         if update_work_byhand_(int(wid), fanart=raw):
             from controller.GlobalSignalBus import global_signals
 
-            global_signals.work_data_changed.emit()
+            global_signals.workDataChanged.emit()
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
@@ -824,7 +824,7 @@ class DvdShelfView(QWidget):
             self._forceview.session.new_load()
         else:
             manager.initialize()
-            manager.initialization_finished.connect(self._forceview.session.new_load)
+            manager.initializationFinished.connect(self._forceview.session.new_load)
 
     def work_count(self) -> int:
         return len(self._work_ids)
@@ -1132,7 +1132,7 @@ class DvdShelfView(QWidget):
         )
 
     @Slot(int, result=bool)
-    def loadworkid(self, work_id: int) -> bool:
+    def load_work_id(self, work_id: int) -> bool:
         """找到并展开特定的dvd"""
         try:
             virtual_index = self._work_ids.index(int(work_id))
@@ -1299,7 +1299,7 @@ class DvdShelfView(QWidget):
         self._bridge.set_expanded_favorited(not is_fav)
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.like_work_changed.emit()
+        global_signals.likeWorkChanged.emit()
 
     def _on_edit_clicked(self, virtual_index: int) -> None:
         """编辑点击：跳转作品编辑页，参考 SingleWorkPage.on_modify_clicked。"""
@@ -1325,7 +1325,7 @@ class DvdShelfView(QWidget):
                 msg.show_info("成功", "已标记删除")
                 from controller.GlobalSignalBus import global_signals
 
-                global_signals.work_data_changed.emit()
+                global_signals.workDataChanged.emit()
 
     def _on_tag_clicked(self, tag_id: int) -> None:
         """标签点击：跳转作品列表页（按 tag 筛选）。"""

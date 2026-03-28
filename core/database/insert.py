@@ -13,7 +13,7 @@ from .connection import get_connection
 
 
 def InsertNewActress(ch_name, jp_name) -> bool:
-    """插入女优数据。调用后需 emit: global_signals.actress_data_changed"""
+    """插入女优数据。调用后需 emit: global_signals.actressDataChanged"""
     conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
     success = False
@@ -41,7 +41,7 @@ def InsertNewActress(ch_name, jp_name) -> bool:
 
 
 def InsertNewActor(cn_name, jp_name) -> bool:
-    """插入男优数据。调用后需 emit: global_signals.actor_data_changed"""
+    """插入男优数据。调用后需 emit: global_signals.actorDataChanged"""
     conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
     success = False
@@ -70,7 +70,7 @@ def InsertNewActor(cn_name, jp_name) -> bool:
 
 
 def InsertNewWork(serial_number: str) -> int:
-    """添加新作品。调用后需 emit: global_signals.work_data_changed"""
+    """添加新作品。调用后需 emit: global_signals.workDataChanged"""
     conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
     success = False
@@ -112,7 +112,7 @@ def InsertNewWorkByHand(
     series_id,
     fanart=None,
 ) -> bool:
-    """手动添加新作品。调用后需 emit: global_signals.work_data_changed"""
+    """手动添加新作品。调用后需 emit: global_signals.workDataChanged"""
     success = False
     try:
         maker_id = int(maker_id) if maker_id not in (None, "") else None
@@ -184,7 +184,7 @@ def insert_tag(
     tag_redirect_tag_id: int,
     tag_alias: list[dict],
 ) -> tuple[bool, str, int | None]:
-    """插入标签。调用后需 emit: global_signals.tag_data_changed"""
+    """插入标签。调用后需 emit: global_signals.tagDataChanged"""
     success = False
     try:
         conn = get_connection(DATABASE, False)
@@ -220,7 +220,7 @@ def insert_tag(
 
 
 def add_tag2work(work_id: int, tag_ids: list[int]) -> bool:
-    """给作品添加标签,只添加没有的,是直写入数据库。调用后需 emit: global_signals.work_data_changed"""
+    """给作品添加标签,只添加没有的,是直写入数据库。调用后需 emit: global_signals.workDataChanged"""
     success = False
     try:
         conn = get_connection(DATABASE, False)
@@ -367,7 +367,7 @@ def insert_masturbation_record(
     work_id, serial_number, start_time, rating, tool_name, comment
 ) -> bool:
     """
-    向自慰记录表 masturbation 插入一条新的记录。调用后需 emit: global_signals.masterbation_changed
+    向自慰记录表 masturbation 插入一条新的记录。调用后需 emit: global_signals.masterbationChanged
 
     参数:
     - work_id: 关联作品的ID（整数）
@@ -405,7 +405,7 @@ def insert_masturbation_record(
 
 def insert_lovemaking_record(event_time, rating, comment) -> bool:
     """
-    向做爱记录表 lovemaking 插入一条新的记录。调用后需 emit: global_signals.lovemaking_changed
+    向做爱记录表 lovemaking 插入一条新的记录。调用后需 emit: global_signals.lovemakingChanged
 
     参数:
     - event_time: 做爱事件的时间，文本格式（如“YYYY-MM-DD HH:MM”）
@@ -441,7 +441,7 @@ def insert_lovemaking_record(event_time, rating, comment) -> bool:
 
 def insert_sexual_arousal_record(arousal_time, comment) -> bool:
     """
-    向晨勃记录表 sexual_arousal 插入一条新的记录。调用后需 emit: global_signals.sexarousal_changed
+    向晨勃记录表 sexual_arousal 插入一条新的记录。调用后需 emit: global_signals.sexarousalChanged
 
     参数:
     - arousal_time: 晨勃时间，文本格式（如“YYYY-MM-DD HH:MM”）
@@ -475,7 +475,7 @@ def insert_sexual_arousal_record(arousal_time, comment) -> bool:
 
 
 def insert_liked_actress(actress_id) -> bool:
-    """向私库中添加喜欢的女优。调用后需 emit: global_signals.like_actress_changed"""
+    """向私库中添加喜欢的女优。调用后需 emit: global_signals.likeActressChanged"""
     from .db_utils import attach_private_db, detach_private_db
 
     success = False
@@ -514,7 +514,7 @@ WHERE actress_id=?
 
 
 def insert_liked_work(work_id) -> bool:
-    """向私库中添加喜欢的作品。调用后需 emit: global_signals.like_work_changed"""
+    """向私库中添加喜欢的作品。调用后需 emit: global_signals.likeWorkChanged"""
     from .db_utils import attach_private_db, detach_private_db
 
     success = False
@@ -553,7 +553,7 @@ WHERE work_id=?
 
 
 def InsertAliasName(id, alias_chain: list[dict]) -> bool:
-    """插入女优别名链。调用后需 emit: global_signals.actress_data_changed"""
+    """插入女优别名链。调用后需 emit: global_signals.actressDataChanged"""
     conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
     success = False

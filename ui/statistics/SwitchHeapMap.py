@@ -117,7 +117,7 @@ class SwitchHeapMap(QWidget):
         main_layout.addLayout(left_layout)
         main_layout.addWidget(self.buttonlist)
 
-        self.buttonlist.switch_year.connect(self.update)
+        self.buttonlist.switchYear.connect(self.update)
 
         # 异步加载初始数据
         self._load_initial_data(today_year)
@@ -242,7 +242,7 @@ class SwitchHeapMap(QWidget):
 
 
 class ButtonList(QScrollArea):
-    switch_year = Signal(int)
+    switchYear = Signal(int)
 
     def __init__(self, items: list[str]):
         super().__init__()
@@ -300,4 +300,4 @@ class ButtonList(QScrollArea):
         self.vbox.addStretch(1)
 
     def on_button_clicked(self, idx: int):
-        self.switch_year.emit(int(self.group.button(idx).text()))
+        self.switchYear.emit(int(self.group.button(idx).text()))

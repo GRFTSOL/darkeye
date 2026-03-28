@@ -45,7 +45,7 @@ if __name__ == "__main__":
     editor.set_completer_list(sample_data)
 
     # 监听点击事件
-    editor.link_activated.connect(lambda target: print(f"外部监听到链接点击: {target}"))
+    editor.linkActivated.connect(lambda target: print(f"外部监听到链接点击: {target}"))
 
     layout.addWidget(editor)
 

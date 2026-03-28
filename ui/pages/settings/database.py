@@ -129,9 +129,9 @@ class DBSettingPage(QWidget):
         self.btn_commit.clicked.connect(self.submit)
 
         self.btn_backupDB.clicked.connect(self.backup_db_public)
-        self.btn_restoreDB.clicked.connect(lambda: self.restoreDBnew("public"))
+        self.btn_restoreDB.clicked.connect(lambda: self.restore_db_new("public"))
         self.btn_backupDB2.clicked.connect(self.backup_db_private)
-        self.btn_restoreDB2.clicked.connect(lambda: self.restoreDB("private"))
+        self.btn_restoreDB2.clicked.connect(lambda: self.restore_db("private"))
         self.btn_rebuildprivatelink.clicked.connect(self.rebuildprivatelink)
         self.btn_import_nfo.clicked.connect(self.import_work_from_nfo_file)
 
@@ -156,7 +156,7 @@ class DBSettingPage(QWidget):
         logging.debug("保存设置")
 
     @Slot()
-    def restoreDB(self, access_level: str):
+    def restore_db(self, access_level: str):
         if access_level == "public":
             backup_path = DATABASE_BACKUP_PATH
             target_path = DATABASE
@@ -191,7 +191,7 @@ class DBSettingPage(QWidget):
             self.msg.show_critical("恢复失败", "数据库恢复失败，请检查文件是否有效。")
 
     @Slot()
-    def restoreDBnew(self, access_level: str):
+    def restore_db_new(self, access_level: str):
         if access_level == "public":
             backup_path = DATABASE_BACKUP_PATH
             target_path = DATABASE

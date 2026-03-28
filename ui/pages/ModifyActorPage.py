@@ -46,14 +46,14 @@ class Model:
 
 
 class ViewModel(QObject):
-    actor_id_Changed = Signal(int)
+    actorIdChanged = Signal(int)
 
-    need_update_Changed = Signal(bool)
-    image_url_Changed = Signal(str)
-    actor_name_Changed = Signal(list)
-    fat_Changed = Signal(int)
-    handsome_Changed = Signal(int)
-    notes_Changed = Signal(str)
+    needUpdateChanged = Signal(bool)
+    imageUrlChanged = Signal(str)
+    actorNameChanged = Signal(list)
+    fatChanged = Signal(int)
+    handsomeChanged = Signal(int)
+    notesChanged = Signal(str)
 
     def __init__(self, model: Model = None, message_service: IMessageService = None):
         super().__init__()
@@ -66,9 +66,9 @@ class ViewModel(QObject):
     def set_actor_id(self, value: int):
         if self.model._actor_id != value:
             self.model._actor_id = value
-            self.actor_id_Changed.emit(value)
+            self.actorIdChanged.emit(value)
 
-    actor_id = Property(int, get_actor_id, set_actor_id, notify=actor_id_Changed)
+    actor_id = Property(int, get_actor_id, set_actor_id, notify=actorIdChanged)
 
     def get_fat(self):
         return self.model._fat
@@ -76,9 +76,9 @@ class ViewModel(QObject):
     def set_fat(self, value: int):
         if self.model._fat != value:
             self.model._fat = value
-            self.fat_Changed.emit(value)
+            self.fatChanged.emit(value)
 
-    fat = Property(int, get_fat, set_fat, notify=fat_Changed)
+    fat = Property(int, get_fat, set_fat, notify=fatChanged)
 
     def get_handsome(self):
         return self.model._handsome
@@ -86,9 +86,9 @@ class ViewModel(QObject):
     def set_handsome(self, value: int):
         if self.model._handsome != value:
             self.model._handsome = value
-            self.handsome_Changed.emit(value)
+            self.handsomeChanged.emit(value)
 
-    handsome = Property(int, get_handsome, set_handsome, notify=handsome_Changed)
+    handsome = Property(int, get_handsome, set_handsome, notify=handsomeChanged)
 
     def get_image_url(self):
         return self.model._image_url
@@ -96,9 +96,9 @@ class ViewModel(QObject):
     def set_image_url(self, value: str):
         if self.model._image_url != value:
             self.model._image_url = value
-            self.image_url_Changed.emit(value)
+            self.imageUrlChanged.emit(value)
 
-    image_urlA = Property(str, get_image_url, set_image_url, notify=image_url_Changed)
+    image_urlA = Property(str, get_image_url, set_image_url, notify=imageUrlChanged)
 
     def get_actor_name(self):
         logging.debug("读取actor_name数据")
@@ -112,10 +112,10 @@ class ViewModel(QObject):
         value = sort_dict_list_by_keys(value, order)
         if self.model._actor_name != value:
             self.model._actor_name = value
-            self.actor_name_Changed.emit(value)
+            self.actorNameChanged.emit(value)
 
     actor_name = Property(
-        list, get_actor_name, set_actor_name, notify=actor_name_Changed
+        list, get_actor_name, set_actor_name, notify=actorNameChanged
     )
 
     def get_notes(self):
@@ -127,9 +127,9 @@ class ViewModel(QObject):
         normalized = value.strip()
         if self.model._notes != normalized:
             self.model._notes = normalized
-            self.notes_Changed.emit(normalized)
+            self.notesChanged.emit(normalized)
 
-    notes = Property(str, get_notes, set_notes, notify=notes_Changed)
+    notes = Property(str, get_notes, set_notes, notify=notesChanged)
 
     def load(self, actor_id: int):
         """加载"""
@@ -280,27 +280,27 @@ class ModifyActorPage(LazyWidget):
         # 实际上下面都会有循环绑定的问题，后面需要改
 
         self.input_handsome.valueChanged.connect(self.vm.set_handsome)
-        self.vm.handsome_Changed.connect(self.input_handsome.setValue)
+        self.vm.handsomeChanged.connect(self.input_handsome.setValue)
 
         self.input_fat.valueChanged.connect(self.vm.set_fat)
-        self.vm.fat_Changed.connect(self.input_fat.setValue)
+        self.vm.fatChanged.connect(self.input_fat.setValue)
 
         # tablemodel与viewmodel的绑定
         # TODO 这里存在循环绑定的问题
-        self.moveable_name.model.data_updated.connect(self.vm.set_actor_name)
-        self.vm.actor_name_Changed.connect(
+        self.moveable_name.model.dataUpdated.connect(self.vm.set_actor_name)
+        self.vm.actorNameChanged.connect(
             self.moveable_name.updatedata
         )  # 这个实际上有点违反原则，pyside6信号传字典时顺序不可控
 
-        self.vm.image_url_Changed.connect(
+        self.vm.imageUrlChanged.connect(
             self.avatar.set_image
         )  # 这些绑定实际上都是有点问题的，不过先不管了
-        self.avatar.cover_changed.connect(  # coverdroplabel 可以在图片改变后发信号更新模型
+        self.avatar.coverChanged.connect(  # coverdroplabel 可以在图片改变后发信号更新模型
             lambda: self.vm.set_image_url(self.avatar.get_image())
         )
 
         self.input_notes.textChanged.connect(self._notes_ui_to_vm)
-        self.vm.notes_Changed.connect(self._notes_vm_to_ui)
+        self.vm.notesChanged.connect(self._notes_vm_to_ui)
 
     def _notes_ui_to_vm(self):
         if self._notes_binding_lock:

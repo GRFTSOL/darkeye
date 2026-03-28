@@ -13,7 +13,7 @@ from darkeye_ui.components.token_list_view import TokenListView
 
 
 class ActressSelector(QWidget):
-    selection_changed = Signal()  # 下方被选择的列表改变了
+    selectionChanged = Signal()  # 下方被选择的列表改变了
     # 弹出添加作品的窗口
 
     def __init__(self):
@@ -93,7 +93,7 @@ class ActressSelector(QWidget):
 
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.actress_data_changed.connect(self.refresh_right_list)
+        global_signals.actressDataChanged.connect(self.refresh_right_list)
 
     def load_actress_from_db(self, exclude_ids=None):
         exclude_ids = exclude_ids or []
@@ -141,7 +141,7 @@ class ActressSelector(QWidget):
         self.update_model(self.receive_actress_model, self.receive_actress_items)
         self.filter_choose_actress_items(self.search_box.text())
 
-        self.selection_changed.emit()  # 发射信号
+        self.selectionChanged.emit()  # 发射信号
 
     @Slot()
     def move_to_right(self):
@@ -160,7 +160,7 @@ class ActressSelector(QWidget):
         self.update_model(self.receive_actress_model, self.receive_actress_items)
         self.filter_choose_actress_items(self.search_box.text())
 
-        self.selection_changed.emit()  # 发射信号
+        self.selectionChanged.emit()  # 发射信号
 
     def refresh_right_list(self):
         """这个是新添加女优后才刷新已选择侧列表"""
@@ -175,7 +175,7 @@ class ActressSelector(QWidget):
         self.update_model(self.choose_actress_model, self.choose_actress_all_items)
         # 根据搜索框文本筛选
         self.filter_choose_actress_items(self.search_box.text())
-        self.selection_changed.emit()
+        self.selectionChanged.emit()
 
     def update_model(self, model: QStandardItemModel, items: list):
         model.clear()
@@ -290,4 +290,4 @@ class ActressSelector(QWidget):
 
         self.update_model(self.receive_actress_model, self.receive_actress_items)
         self.filter_choose_actress_items(self.search_box.text())
-        self.selection_changed.emit()
+        self.selectionChanged.emit()

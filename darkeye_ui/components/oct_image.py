@@ -47,7 +47,7 @@ class ImageLoaderRunnable(QRunnable):
 class OctImage(QLabel):
     """正八边形图片展示组件，支持异步加载与可选投影。不绑定业务路径，适合放入组件库。"""
 
-    image_ready = Signal(QImage)
+    imageReady = Signal(QImage)
 
     def __init__(
         self,
@@ -77,14 +77,14 @@ class OctImage(QLabel):
             else:
                 self._path = (self._base_path / image_path) if self._base_path else p
 
-        self.image_ready.connect(self._set_pixmap)
+        self.imageReady.connect(self._set_pixmap)
         self._show_image_async()
 
     def _show_image_async(self):
         if not self._path or not self._path.exists():
             self.setText("无图片")
             return
-        runnable = ImageLoaderRunnable(self._path, self.size(), self.image_ready)
+        runnable = ImageLoaderRunnable(self._path, self.size(), self.imageReady)
         QThreadPool.globalInstance().start(runnable)
 
     def _set_pixmap(self, img: QImage):

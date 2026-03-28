@@ -71,10 +71,10 @@ class GraphManager(QObject):
     # 信号定义：发送增量更新操作列表
     # Payload structure: List[Dict]
     # [{'op': 'add_node', 'id': 'w1', 'attr': {...}}, {'op': 'add_edge', 'u': 'w1', 'v': 'w2', 'attr': {...}}, ...]
-    graph_diff_signal = Signal(list)
-    initialization_finished = Signal()
+    graphDiffSignal = Signal(list)
+    initializationFinished = Signal()
     # 内部信号：用于在主线程中执行信号连接
-    _connect_signals_requested = Signal()
+    _connectSignalsRequested = Signal()
 
     """
     这里维护总图G，所有节点和边都在G中，
@@ -95,7 +95,7 @@ class GraphManager(QObject):
         self._initializing = False
 
         # 连接内部信号到处理函数（在主线程中执行）
-        self._connect_signals_requested.connect(self._connect_signals_handler)
+        self._connectSignalsRequested.connect(self._connect_signals_handler)
 
     @classmethod
     def instance(cls) -> "GraphManager":
@@ -154,18 +154,18 @@ class GraphManager(QObject):
 
             # 连接信号必须在主线程执行，否则会触发 "Cannot create children for a parent
             # that is in a different thread"。使用信号槽机制将 connect 投递到主线程。
-            self._connect_signals_requested.emit()
+            self._connectSignalsRequested.emit()
 
             logging.info(
                 f"Graph initialized. Nodes: {self.G.number_of_nodes()}, Edges: {self.G.number_of_edges()}"
             )
-            self.initialization_finished.emit()
+            self.initializationFinished.emit()
 
         except Exception as e:
             logging.error(f"GraphManager initialization failed: {e}")
             # 即使失败也标记为完成，避免死锁等待，或者需要一个 failed 信号
             self._initialized = True  # 标记为已完成（虽然是失败的）以允许后续逻辑继续
-            self.initialization_finished.emit()
+            self.initializationFinished.emit()
         finally:
             self._initializing = False
 
@@ -243,13 +243,13 @@ class GraphManager(QObject):
 
     def _connect_signals_handler(self):
         """
-        在主线程中处理信号连接，由 _connect_signals_requested 信号触发
+        在主线程中处理信号连接，由 _connectSignalsRequested 信号触发
         """
         try:
             from controller.GlobalSignalBus import global_signals
 
-            global_signals.work_data_changed.connect(self.update_recent_changes)
-            logging.info("绑定 work_data_changed -> update_recent_changes")
+            global_signals.workDataChanged.connect(self.update_recent_changes)
+            logging.info("绑定 workDataChanged -> update_recent_changes")
         except Exception as e:
             logging.error(f"绑定信号失败: {e}")
 
@@ -395,7 +395,7 @@ class GraphManager(QObject):
 
         if changes:
             logging.info(f"图更新完成，共 {len(changes)} 个变更操作")
-            self.graph_diff_signal.emit(changes)
+            self.graphDiffSignal.emit(changes)
         else:
             logging.info("图增量更新完成。无拓扑变更。")
 

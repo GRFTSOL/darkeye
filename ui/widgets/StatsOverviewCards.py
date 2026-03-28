@@ -79,12 +79,12 @@ class StatsOverviewCards(QWidget):
         layout.addLayout(cards_row)
 
         # 连接全局信号，数据变更时刷新统计
-        global_signals.work_data_changed.connect(self._refresh_stats)
-        global_signals.actress_data_changed.connect(self._refresh_stats)
-        global_signals.actor_data_changed.connect(self._refresh_stats)
-        global_signals.tag_data_changed.connect(self._refresh_stats)
-        global_signals.like_work_changed.connect(self._refresh_stats)
-        global_signals.like_actress_changed.connect(self._refresh_stats)
+        global_signals.workDataChanged.connect(self._refresh_stats)
+        global_signals.actressDataChanged.connect(self._refresh_stats)
+        global_signals.actorDataChanged.connect(self._refresh_stats)
+        global_signals.tagDataChanged.connect(self._refresh_stats)
+        global_signals.likeWorkChanged.connect(self._refresh_stats)
+        global_signals.likeActressChanged.connect(self._refresh_stats)
 
         # 初始异步加载
         self._refresh_stats()

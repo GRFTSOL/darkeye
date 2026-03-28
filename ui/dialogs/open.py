@@ -1,32 +1,32 @@
-def openAddActorDialog():
+def open_add_actor_dialog():
     from ui.dialogs import AddActorDialog
 
     dialog = AddActorDialog()
     dialog.exec()
 
 
-def openAddSexualArousalDialog():
+def open_add_sexual_arousal_dialog():
     from ui.dialogs import AddSexualArousalDialog
 
     dialog = AddSexualArousalDialog()
     dialog.exec()
 
 
-def openAddMasturbationDialog():
+def open_add_masturbation_dialog():
     from ui.dialogs import AddMasturbationDialog
 
     dialog = AddMasturbationDialog()
     dialog.exec()
 
 
-def openAddQuickWorkDialog():
+def open_add_quick_work_dialog():
     from ui.dialogs import AddQuickWork
 
     dialog = AddQuickWork()
     dialog.exec()
 
 
-def openAddMakeLoveDialog():
+def open_add_make_love_dialog():
     from ui.dialogs import AddMakeLoveDialog
 
     dialog = AddMakeLoveDialog()
@@ -36,7 +36,7 @@ def openAddMakeLoveDialog():
 from ui.pages.management.AddWorkTabPage3 import AddWorkTabPage3
 
 
-def openAddActressDialog(addworktab: AddWorkTabPage3):
+def open_add_actress_dialog(addworktab: AddWorkTabPage3):
     from ui.dialogs import AddActressDialog
 
     dialog = AddActressDialog()

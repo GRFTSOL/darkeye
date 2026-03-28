@@ -151,9 +151,9 @@ class SingleActressInfo(QWidget):
 
         # 更新爱心状态
         if query_actress(actress_id):
-            self.heart.set_statue(True)
+            self.heart.set_state(True)
         else:
-            self.heart.set_statue(False)
+            self.heart.set_state(False)
 
         # 更新头像（image_urlA 为相对路径，需拼上 ACTRESSIMAGES_PATH 才能正确加载）
         image_url_a = actress.get("image_urlA")
@@ -331,10 +331,10 @@ class SingleActressInfo(QWidget):
         from core.database.delete import delete_favorite_actress
         from controller.GlobalSignalBus import global_signals
 
-        if self.heart.get_statue():
+        if self.heart.get_state():
             """添加到喜欢"""
             insert_liked_actress(self._actress_id)
         else:
             """删除"""
             delete_favorite_actress(self._actress_id)
-        global_signals.like_actress_changed.emit()
+        global_signals.likeActressChanged.emit()

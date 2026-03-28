@@ -561,9 +561,9 @@ class CoverBrowser(QWidget):
         self.update_tag()
 
     def refresh_CoverBroswer(self):
-        from core.recommendation.Recommend import randomRec
+        from core.recommendation.Recommend import random_rec
 
-        self.update_works(randomRec())
+        self.update_works(random_rec())
 
 
 class CoverTagButton(QPushButton):

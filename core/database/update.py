@@ -2,7 +2,7 @@
 更新数据库的操作都在这里。
 
 【写操作后信号发射规范】
-写操作完成后，调用方负责 emit 对应的 global_signals.*_changed 信号。
+写操作完成后，调用方负责 emit 对应的 global_signals 全局信号（小驼峰命名）。
 详见 docs/write_ops_signal_mapping.md 映射表。
 """
 
@@ -23,7 +23,7 @@ from .query.work import get_works_for_auto_cn_translation
 
 
 def update_tag_type(tag_type_data: list[dict]) -> bool:
-    """更新tag_type。调用后需 emit: global_signals.tag_data_changed"""
+    """更新tag_type。调用后需 emit: global_signals.tagDataChanged"""
     # 1.计算需要删除的部分然后删除
     # 获得当前所有的tag_type_id的集合
     conn = get_connection(DATABASE, False)
@@ -69,7 +69,7 @@ def update_tag_type(tag_type_data: list[dict]) -> bool:
 
 # 需要外键检查的
 def UpdateWorkTags(work_id, new_tag_ids) -> bool:
-    """更高效地更新作品标签关系（只删除不再需要的，只添加新的）。调用后需 emit: global_signals.work_data_changed"""
+    """更高效地更新作品标签关系（只删除不再需要的，只添加新的）。调用后需 emit: global_signals.workDataChanged"""
     try:
         conn = get_connection(DATABASE, False)
         cursor = conn.cursor()
@@ -208,7 +208,7 @@ def update_work_byhand(
     series_id,
     fanart=None,
 ) -> bool:
-    """更新作品的信息，默认番号是不会出错的。调用后需 emit: global_signals.work_data_changed"""
+    """更新作品的信息，默认番号是不会出错的。调用后需 emit: global_signals.workDataChanged"""
     try:
         maker_id = int(maker_id) if maker_id not in (None, "") else None
         label_id = int(label_id) if label_id not in (None, "") else None
@@ -280,7 +280,7 @@ def update_work_byhand_(work_id: int, **fields) -> bool:
     """
     动态更新作品的信息，传入什么字段就更新什么字段,只能更新最基本的。
     例如：update_work_byhand(1, director="A", cn_title="标题")
-    调用后需 emit: global_signals.work_data_changed
+    调用后需 emit: global_signals.workDataChanged
     """
     if not fields:
         return False  # 没有字段传入，不更新
@@ -337,7 +337,7 @@ def update_work_byhand_(work_id: int, **fields) -> bool:
 
 
 def update_work_actor(work_id: int, actor_ids: list) -> bool:
-    """更新作品的男优关系。调用后需 emit: global_signals.work_data_changed"""
+    """更新作品的男优关系。调用后需 emit: global_signals.workDataChanged"""
     try:
         conn = get_connection(DATABASE, False)
         cursor = conn.cursor()
@@ -366,7 +366,7 @@ def check_workcover_integrity():
 
 
 def update_db_actress(id: int, data: dict):
-    """更新女优名字，身材信息数据。调用后需 emit: global_signals.actress_data_changed"""
+    """更新女优名字，身材信息数据。调用后需 emit: global_signals.actressDataChanged"""
 
     conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
@@ -406,7 +406,7 @@ def update_db_actress(id: int, data: dict):
 
 
 def update_actress_image(id: int, image_url):
-    """更新女优头像地址。调用后需 emit: global_signals.actress_data_changed"""
+    """更新女优头像地址。调用后需 emit: global_signals.actressDataChanged"""
 
     conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
@@ -430,7 +430,7 @@ def update_actress_image(id: int, image_url):
 
 
 def update_actress_minnano_id(id, minnano_actress_id):
-    """更新女优 minnano 信息。调用后需 emit: global_signals.actress_data_changed（若影响展示）"""
+    """更新女优 minnano 信息。调用后需 emit: global_signals.actressDataChanged（若影响展示）"""
     conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
     cursor = conn.cursor()
@@ -473,7 +473,7 @@ def update_work_javtxt(id, javtxt_id):
 
 
 def update_titlestory(serial_number, cn_title, jp_title, cn_story, jp_story):
-    """更新故事进去。调用后需 emit: global_signals.work_data_changed"""
+    """更新故事进去。调用后需 emit: global_signals.workDataChanged"""
     conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
     cursor = conn.cursor()
@@ -496,7 +496,7 @@ def update_titlestory(serial_number, cn_title, jp_title, cn_story, jp_story):
 
 
 def update_tag_color(tag_ids: list, color):
-    """更新tag的color。调用后需 emit: global_signals.tag_data_changed"""
+    """更新tag的color。调用后需 emit: global_signals.tagDataChanged"""
     conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
     cursor = conn.cursor()
@@ -568,7 +568,7 @@ def update_tag(
     tag_alias: list[dict],
 ) -> bool:
     """
-    更新标签信息。调用后需 emit: global_signals.tag_data_changed
+    更新标签信息。调用后需 emit: global_signals.tagDataChanged
     参数示例:
             "tag_id": self._tag_id,
             "tag_name":self._tag_name,
@@ -649,7 +649,7 @@ WHERE redirect_tag_id=?""",
 
 
 def mark_delete(work_id) -> bool:
-    """将作品标记为已删除。调用后需 emit: global_signals.work_data_changed"""
+    """将作品标记为已删除。调用后需 emit: global_signals.workDataChanged"""
     conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
     cursor = conn.cursor()
@@ -669,7 +669,7 @@ def mark_delete(work_id) -> bool:
 
 
 def mark_undelete(work_id) -> bool:
-    """将作品标记为未删除。调用后需 emit: global_signals.work_data_changed"""
+    """将作品标记为未删除。调用后需 emit: global_signals.workDataChanged"""
     conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
     cursor = conn.cursor()
@@ -785,7 +785,7 @@ def update_actress_byhand(
     minnano_url,
     notes="",
 ):
-    """更新女优信息。调用后需 emit: global_signals.actress_data_changed
+    """更新女优信息。调用后需 emit: global_signals.actressDataChanged
     参数示例: {
             "actress_id": self._actress_id,
             "height": self._height,
@@ -842,7 +842,7 @@ def update_actress_byhand(
 
 
 def update_actor_byhand(actor_id, handsome, fat, image_url, actor_name, notes=""):
-    """更新男优信息。调用后需 emit: global_signals.actor_data_changed"""
+    """更新男优信息。调用后需 emit: global_signals.actorDataChanged"""
 
     conn = get_connection(DATABASE, False)
     logging.info("数据库打开成功")
@@ -939,7 +939,7 @@ def update_actor_name(cursor: Cursor, actor_name: list[dict], actor_id) -> bool:
 
 
 def redirect_tag_121(tag_id0, tag_id1):
-    """标签重定向,1对1。调用后需 emit: global_signals.tag_data_changed
+    """标签重定向,1对1。调用后需 emit: global_signals.tagDataChanged
     tag_id0是需要被删除的标签
     tag_id1是被指向的标签
     """
@@ -1003,7 +1003,7 @@ def _serial_prefix_for_maker_lookup(serial: str) -> str:
 
 def update_work_maker_from_prefix_relation() -> str:
     """按 prefix_maker_relation 更新 work.maker_id（番号为 serial_number，前缀为首个 '-' 之前段）。
-    调用成功后需由调用方 emit: global_signals.work_data_changed
+    调用成功后需由调用方 emit: global_signals.workDataChanged
     """
     conn = get_connection(DATABASE, False)
     cursor = conn.cursor()
@@ -1080,7 +1080,7 @@ def batch_translate_missing_cn_fields() -> str:
     """
     后台批量翻译：jp_title→cn_title（缺省时）、jp_story→cn_story（缺省时）。
     若某行 jp_title 与 jp_story 均无有效日文，则不会选中；翻译失败则跳过该字段写入。
-    调用后需 emit: global_signals.work_data_changed
+    调用后需 emit: global_signals.workDataChanged
     """
     rows = get_works_for_auto_cn_translation()
     if not rows:

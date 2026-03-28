@@ -44,7 +44,7 @@ def _container_qss_from_tokens(t: "ThemeTokens") -> str:
 class _CoverDropLabel(QLabel):
     """内部可拖放封面 QLabel，保持原有显示与拖放逻辑；文字与边框颜色由设计令牌控制。"""
 
-    cover_changed = Signal()
+    coverChanged = Signal()
 
     def __init__(self, theme_manager: Optional["ThemeManager"] = None):
         super().__init__()
@@ -111,7 +111,7 @@ class _CoverDropLabel(QLabel):
                 if self.is_image(file_path):
                     self._path = self.temp_save_image(file_path)
                     self._show_right_harf()
-                    self.cover_changed.emit()
+                    self.coverChanged.emit()
                 else:
                     self.msg.show_info("文件类型错误", f"不是图片文件：{file_path}")
         else:
@@ -160,7 +160,7 @@ class _CoverDropLabel(QLabel):
             if self.is_image(file_path):
                 self._path = self.temp_save_image(file_path)
                 self._show_right_harf()  # 拖入后显示，实现绑定
-                self.cover_changed.emit()
+                self.coverChanged.emit()
             else:
                 self.msg.show_info("文件类型错误", f"不是图片文件：{file_path}")
 
@@ -281,7 +281,7 @@ class _CoverDropLabel(QLabel):
         )  # 这里拼接的规则A/B当B是绝对路径时返回B否则拼接,这个非常的神奇，虽然会运行两次，但是靠bug然后完成了需求，因为这个可能会传进来临时的绝对路径
         logging.debug("图片路径是:%s", self._path)
         self._show_right_harf()
-        self.cover_changed.emit()
+        self.coverChanged.emit()
 
     def get_image(self) -> str:
         """返回现在的 URL（绝对路径）。"""
@@ -291,7 +291,7 @@ class _CoverDropLabel(QLabel):
 class CoverDropWidget(QWidget):
     """可拖动式添加封面的控件，在父容器内按宽高比占满并居中，不产生滚动条。文字与边框由设计令牌控制。"""
 
-    cover_changed = Signal()
+    coverChanged = Signal()
 
     def __init__(
         self, aspect_ratio: float = 0.7, theme_manager: Optional["ThemeManager"] = None
@@ -301,7 +301,7 @@ class CoverDropWidget(QWidget):
         self._inner = _CoverDropLabel(theme_manager=theme_manager)
         self._inner._aspect_ratio = aspect_ratio
         self._inner.setParent(self)
-        self._inner.cover_changed.connect(self.cover_changed.emit)
+        self._inner.coverChanged.connect(self.coverChanged.emit)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.setMinimumSize(0, 0)
 

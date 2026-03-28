@@ -28,7 +28,7 @@ class ClickableLabel(Label):
         if event.button() == Qt.LeftButton:
             clipboard = QApplication.clipboard()
             clipboard.setText(self.text())
-            # global_signals.status_msg_changed.emit("复制文本到剪贴板")
+            # global_signals.statusMsgChanged.emit("复制文本到剪贴板")
             self.show_copy_tip()
         if self.actress_jump:
             if event.button() == Qt.RightButton:
@@ -40,11 +40,11 @@ class ClickableLabel(Label):
                 if id:
                     from core.crawler.SearchActressInfo import SearchSingleActressInfo
                     #SearchSingleActressInfo(id,self.text())
-                    self.searchActressinfo(id)
+                    self.search_actress_info(id)
         """
         super().mouseReleaseEvent(event)
 
-    def searchActressinfo(self, id):
+    def search_actress_info(self, id):
         # 开始后台线程
         from core.crawler.minnanoav import SearchSingleActressInfo
         from core.crawler.Worker import Worker

@@ -203,14 +203,14 @@ class ShelfPage(QWidget):
         self.series_selector.currentTextChanged.connect(self.apply_filter)
         self.order_combo.currentTextChanged.connect(self.apply_filter)
         self.scope_combo.currentTextChanged.connect(self.apply_filter)
-        self.tagselector.selection_changed.connect(self.apply_filter)
+        self.tagselector.selectionChanged.connect(self.apply_filter)
 
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.green_mode_changed.connect(self.update_green_mode)
-        global_signals.work_data_changed.connect(self.reload_input)
-        global_signals.actress_data_changed.connect(self.actress_input.reload_items)
-        global_signals.actor_data_changed.connect(self.actor_input.reload_items)
+        global_signals.greenModeChanged.connect(self.update_green_mode)
+        global_signals.workDataChanged.connect(self.reload_input)
+        global_signals.actressDataChanged.connect(self.actress_input.reload_items)
+        global_signals.actorDataChanged.connect(self.actor_input.reload_items)
 
         self.btn_eraser.clicked.connect(self._clear_all_search)
 
@@ -260,12 +260,12 @@ class ShelfPage(QWidget):
 
             self._clear_filters_for_jump()
 
-            if self.shelf_view.loadworkid(target_work_id):
+            if self.shelf_view.load_work_id(target_work_id):
                 return
 
             # Delay one event-loop tick so a freshly lazy-loaded page can finish applying its initial data.
             QTimer.singleShot(
-                0, lambda wid=target_work_id: self.shelf_view.loadworkid(wid)
+                0, lambda wid=target_work_id: self.shelf_view.load_work_id(wid)
             )
             return
 

@@ -64,7 +64,7 @@ class AddMakeLoveDialog(QDialog):
             self.msg.show_info("提示", "成功提交一次做爱记录")
             from controller.GlobalSignalBus import global_signals
 
-            global_signals.lovemaking_changed.emit()
+            global_signals.lovemakingChanged.emit()
             self.accept()  # 关闭对话框
         else:
             self.msg.show_warning("提示", "提交失败")

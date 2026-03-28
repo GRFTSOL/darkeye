@@ -73,7 +73,7 @@ def main():
     status_btn.clicked.connect(on_status)
     btn_layout.addWidget(status_btn)
 
-    pane.pane_empty.connect(lambda p: print("pane_empty 信号:", p.pane_id))
+    pane.paneEmpty.connect(lambda p: print("pane_empty 信号:", p.pane_id))
     layout.addLayout(btn_layout)
 
     win.setCentralWidget(central)

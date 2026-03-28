@@ -39,7 +39,7 @@ class _RatingHeartLabel(QLabel):
 class HeartRatingWidget(QWidget):
     """爱心打分控件（1–5 颗心）。"""
 
-    rating_changed = Signal(int)
+    ratingChanged = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -61,7 +61,7 @@ class HeartRatingWidget(QWidget):
         return self.rating
 
     def emit_rating(self, value: int) -> None:
-        self.rating_changed.emit(value)
+        self.ratingChanged.emit(value)
 
     def update_hearts(self) -> None:
         active = self.hover_index if self.hover_index != -1 else self.rating

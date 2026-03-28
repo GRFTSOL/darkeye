@@ -23,7 +23,7 @@ def jump_to_javdb(serial_number):
     # 3. 连接信号
     # 注意：这里需要确保 signal 是唯一的或者能正确断开
     # 如果 bridge 是单例，connect 会累积，所以要在 finally 里 disconnect
-    bridge.javdb_finished.connect(temp_callback)
+    bridge.javdbFinished.connect(temp_callback)
 
     try:
         # 4. 发送请求
@@ -41,7 +41,7 @@ def jump_to_javdb(serial_number):
     finally:
         # 6. 清理：必须断开连接，否则下次请求会触发旧的回调
         try:
-            bridge.javdb_finished.disconnect(temp_callback)
+            bridge.javdbFinished.disconnect(temp_callback)
         except Exception as e:
             logging.debug(
                 "jump_to_javdb: 断开临时回调失败（可能未连接）: %s",

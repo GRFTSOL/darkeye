@@ -204,7 +204,7 @@ def top_actresses():
 
             from controller.GlobalSignalBus import global_signals
 
-            global_signals.actress_data_changed.emit()
+            global_signals.actressDataChanged.emit()
         else:
             logging.info(f"热门女优{actress}已存在")
     return True

@@ -28,8 +28,8 @@ View3D {
         ? mapFrom3DScene(_forceViewAnchor.scenePosition)
         : Qt.point(-10000, -10000)
     on_ForceViewScreenPointChanged: {
-        if (_forceViewScreenPoint.x > -9999 && typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.setForceViewAnchor === "function")
-            dvdBridge.setForceViewAnchor(_forceViewScreenPoint.x, _forceViewScreenPoint.y)
+        if (_forceViewScreenPoint.x > -9999 && typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.set_force_view_anchor === "function")
+            dvdBridge.set_force_view_anchor(_forceViewScreenPoint.x, _forceViewScreenPoint.y)
     }
 
     // 展开态操作按钮（爱心/编辑/删除）的 3D 锚点映射，key=delegate index。
@@ -82,20 +82,20 @@ View3D {
         ? mapFrom3DScene(_fanartStripAnchor.scenePosition)
         : Qt.point(-10000, -10000)
     on_FanartStripScreenPointChanged: {
-        if (_fanartStripScreenPoint.x > -9999 && typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.setFanartStripAnchor === "function")
-            dvdBridge.setFanartStripAnchor(_fanartStripScreenPoint.x, _fanartStripScreenPoint.y)
+        if (_fanartStripScreenPoint.x > -9999 && typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.set_fanart_strip_anchor === "function")
+            dvdBridge.set_fanart_strip_anchor(_fanartStripScreenPoint.x, _fanartStripScreenPoint.y)
     }
 
     // 选中/展开变化时通知 Bridge，用于在左侧显示或隐藏力导向图。
     Connections {
         target: view3d
         function onSelectedDelegateIndexChanged() {
-            if (typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.selectionChanged === "function")
-                dvdBridge.selectionChanged(view3d.selectedDelegateIndex, view3d.expandedDelegateIndex)
+            if (typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.selection_changed === "function")
+                dvdBridge.selection_changed(view3d.selectedDelegateIndex, view3d.expandedDelegateIndex)
         }
         function onExpandedDelegateIndexChanged() {
-            if (typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.selectionChanged === "function")
-                dvdBridge.selectionChanged(view3d.selectedDelegateIndex, view3d.expandedDelegateIndex)
+            if (typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.selection_changed === "function")
+                dvdBridge.selection_changed(view3d.selectedDelegateIndex, view3d.expandedDelegateIndex)
         }
     }
 
@@ -363,7 +363,7 @@ View3D {
                                     item.cdClicked.connect(function() {
                                         var vIdx = virtualIndex
                                         if (typeof dvdBridge !== "undefined" && dvdBridge)
-                                            dvdBridge.onCdClicked(vIdx)
+                                            dvdBridge.on_cd_clicked(vIdx)
                                     })
                                 }
                                 if (typeof item.closeAnimationFinished !== "undefined") {
@@ -460,14 +460,14 @@ View3D {
                 scrollUnits = wheel.angleDelta.y / 120
             var delta = -scrollUnits * step
             if (typeof dvdBridge !== "undefined" && dvdBridge) {
-                if (typeof dvdBridge.scrollCameraBy !== "undefined")
-                    dvdBridge.scrollCameraBy(delta, shelfLen)
+                if (typeof dvdBridge.scroll_camera_by !== "undefined")
+                    dvdBridge.scroll_camera_by(delta, shelfLen)
                 else {
                     var baseCameraX = (typeof dvdBridge.cameraTargetX !== "undefined")
                         ? dvdBridge.cameraTargetX
                         : dvdBridge.cameraX
                     var newVal = Math.max(0, Math.min(shelfLen, baseCameraX + delta))
-                    dvdBridge.setCameraX(newVal)
+                    dvdBridge.set_camera_x(newVal)
                 }
             } else {
                 view3d.cameraX = Math.max(0, Math.min(shelfLen, view3d.cameraX + delta))
@@ -597,12 +597,12 @@ View3D {
             target: view3d
             function onExpandedDelegateIndexChanged() {
                 if (typeof dvdBridge !== "undefined" && dvdBridge)
-                    dvdBridge.refreshExpandedWorkMeta(view3d.expandedDelegateIndex >= 0
+                    dvdBridge.refresh_expanded_work_meta(view3d.expandedDelegateIndex >= 0
                         ? view3d.expandedVirtualIndexFor(view3d.expandedDelegateIndex) : -1)
             }
             function onFullyExpandedDelegateIndexChanged() {
                 if (typeof dvdBridge !== "undefined" && dvdBridge && view3d.fullyExpandedDelegateIndex >= 0)
-                    dvdBridge.refreshExpandedWorkMeta(view3d.expandedVirtualIndexFor(view3d.fullyExpandedDelegateIndex))
+                    dvdBridge.refresh_expanded_work_meta(view3d.expandedVirtualIndexFor(view3d.fullyExpandedDelegateIndex))
             }
         }
 
@@ -659,7 +659,7 @@ View3D {
                     hoverEnabled: true
                     onClicked: {
                         if (typeof dvdBridge !== "undefined" && dvdBridge && dvdBridge.expandedWorkCode)
-                            dvdBridge.copyToClipboard(dvdBridge.expandedWorkCode)
+                            dvdBridge.copy_to_clipboard(dvdBridge.expandedWorkCode)
                     }
                     Text {
                         id: codeText
@@ -717,7 +717,7 @@ View3D {
                                 hoverEnabled: true
                                 onClicked: {
                                     if (typeof dvdBridge !== "undefined" && dvdBridge && modelData)
-                                        dvdBridge.onTagClicked(modelData.tag_id)
+                                        dvdBridge.on_tag_clicked(modelData.tag_id)
                                 }
                             }
                         }
@@ -758,7 +758,7 @@ View3D {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     if (typeof dvdBridge !== "undefined" && dvdBridge && modelData)
-                                        dvdBridge.onActressClicked(modelData.actress_id)
+                                        dvdBridge.on_actress_clicked(modelData.actress_id)
                                 }
                             }
                         }
@@ -799,7 +799,7 @@ View3D {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     if (typeof dvdBridge !== "undefined" && dvdBridge && modelData)
-                                        dvdBridge.onActorClicked(modelData.actor_id)
+                                        dvdBridge.on_actor_clicked(modelData.actor_id)
                                 }
                             }
                         }
@@ -835,7 +835,7 @@ View3D {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (typeof dvdBridge !== "undefined" && dvdBridge)
-                                dvdBridge.onDirectorClicked()
+                                dvdBridge.on_director_clicked()
                         }
                     }
                 }
@@ -870,7 +870,7 @@ View3D {
                         cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                         onClicked: {
                             if (typeof dvdBridge !== "undefined" && dvdBridge)
-                                dvdBridge.onStudioClicked()
+                                dvdBridge.on_studio_clicked()
                         }
                     }
                 }
@@ -910,7 +910,7 @@ View3D {
                         cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                         onClicked: {
                             if (typeof dvdBridge !== "undefined" && dvdBridge)
-                                dvdBridge.onLabelClicked()
+                                dvdBridge.on_label_clicked()
                         }
                     }
                 }
@@ -950,7 +950,7 @@ View3D {
                         cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                         onClicked: {
                             if (typeof dvdBridge !== "undefined" && dvdBridge)
-                                dvdBridge.onSeriesClicked()
+                                dvdBridge.on_series_clicked()
                         }
                     }
                 }
@@ -994,11 +994,11 @@ View3D {
             target: view3d
             function onExpandedDelegateIndexChanged() {
                 if (view3d.expandedDelegateIndex >= 0 && typeof dvdBridge !== "undefined" && dvdBridge)
-                    dvdBridge.refreshExpandedFavoriteState(view3d.expandedVirtualIndexFor(view3d.expandedDelegateIndex))
+                    dvdBridge.refresh_expanded_favorite_state(view3d.expandedVirtualIndexFor(view3d.expandedDelegateIndex))
             }
             function onFullyExpandedDelegateIndexChanged() {
                 if (view3d.fullyExpandedDelegateIndex >= 0 && typeof dvdBridge !== "undefined" && dvdBridge)
-                    dvdBridge.refreshExpandedFavoriteState(view3d.expandedVirtualIndexFor(view3d.fullyExpandedDelegateIndex))
+                    dvdBridge.refresh_expanded_favorite_state(view3d.expandedVirtualIndexFor(view3d.fullyExpandedDelegateIndex))
             }
         }
 
@@ -1027,7 +1027,7 @@ View3D {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (typeof dvdBridge !== "undefined" && dvdBridge)
-                            dvdBridge.onHeartClicked(actionOverlay.expandedVirtualIndex)
+                            dvdBridge.on_heart_clicked(actionOverlay.expandedVirtualIndex)
                     }
                 }
             }
@@ -1049,7 +1049,7 @@ View3D {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (typeof dvdBridge !== "undefined" && dvdBridge)
-                            dvdBridge.onEditClicked(actionOverlay.expandedVirtualIndex)
+                            dvdBridge.on_edit_clicked(actionOverlay.expandedVirtualIndex)
                     }
                 }
             }
@@ -1071,7 +1071,7 @@ View3D {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (typeof dvdBridge !== "undefined" && dvdBridge)
-                            dvdBridge.onDeleteClicked(actionOverlay.expandedVirtualIndex)
+                            dvdBridge.on_delete_clicked(actionOverlay.expandedVirtualIndex)
                     }
                 }
             }

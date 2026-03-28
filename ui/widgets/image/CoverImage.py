@@ -79,8 +79,8 @@ class CoverImage(QLabel):
     异步加载图片
     """
 
-    jump_to_modify_work = Signal()  # 发射修改作品的信号
-    image_ready = Signal(QImage)  # 用信号回到 UI 线程
+    jumpToModifyWork = Signal()  # 发射修改作品的信号
+    imageReady = Signal(QImage)  # 用信号回到 UI 线程
 
     def __init__(
         self,
@@ -103,10 +103,10 @@ class CoverImage(QLabel):
         self._standard = standard
         # self.setStyleSheet("border: 1px solid red; border-radius: 4px;")
         # 绑定信号
-        self.image_ready.connect(self._set_pixmap)
+        self.imageReady.connect(self._set_pixmap)
         self._update_image()
 
-        global_signals.green_mode_changed.connect(
+        global_signals.greenModeChanged.connect(
             self._update_masaic
         )  # 这个东西要管得到新创建的和老的
 
@@ -129,7 +129,7 @@ class CoverImage(QLabel):
             self.setText("无封面")
             return
         runnable = ImageLoaderRunnable(
-            self._path, self._aspect_ratio, self.size(), self.image_ready
+            self._path, self._aspect_ratio, self.size(), self.imageReady
         )
         QThreadPool.globalInstance().start(runnable)
 
@@ -138,7 +138,7 @@ class CoverImage(QLabel):
             self.setText("无封面")
             return
         runnable = ImageLoaderRunnable2(
-            self._path, self._aspect_ratio, self.size(), self.image_ready
+            self._path, self._aspect_ratio, self.size(), self.imageReady
         )
         QThreadPool.globalInstance().start(runnable)
 
@@ -155,7 +155,7 @@ class CoverImage(QLabel):
     def mouseReleaseEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.RightButton:
 
-            QTimer.singleShot(0, lambda: self.jump_to_modify_work.emit())
+            QTimer.singleShot(0, lambda: self.jumpToModifyWork.emit())
             logging.debug(f"跳转到修改作品界面")
             event.accept()  # 消费掉右键事件
         if event.button() == Qt.MouseButton.LeftButton:
@@ -171,8 +171,8 @@ class CoverImage(QLabel):
 class CoverImageFixed(QLabel):
     """固定 120×81 缩略图，整图异步缩放适配，不区分 standard / 裁半逻辑。"""
 
-    jump_to_modify_work = Signal()
-    image_ready = Signal(QImage)
+    jumpToModifyWork = Signal()
+    imageReady = Signal(QImage)
     FIXED_SIZE = QSize(240, 162)
 
     def __init__(
@@ -186,9 +186,9 @@ class CoverImageFixed(QLabel):
         self._masaic = green_mode
         self.setFixedSize(self.FIXED_SIZE)
         self.setAlignment(Qt.AlignCenter)
-        self.image_ready.connect(self._set_pixmap)
+        self.imageReady.connect(self._set_pixmap)
         self._update_image()
-        global_signals.green_mode_changed.connect(self._update_masaic)
+        global_signals.greenModeChanged.connect(self._update_masaic)
 
     @Slot(bool)
     def _update_masaic(self, is_masaic: bool):
@@ -202,7 +202,7 @@ class CoverImageFixed(QLabel):
             self.setText("无封面")
             return
         runnable = ImageLoaderRunnable2(
-            self._path, 0.0, self.FIXED_SIZE, self.image_ready
+            self._path, 0.0, self.FIXED_SIZE, self.imageReady
         )
         QThreadPool.globalInstance().start(runnable)
 
@@ -217,7 +217,7 @@ class CoverImageFixed(QLabel):
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.RightButton:
-            QTimer.singleShot(0, lambda: self.jump_to_modify_work.emit())
+            QTimer.singleShot(0, lambda: self.jumpToModifyWork.emit())
             logging.debug("跳转到修改作品界面")
             event.accept()
         if event.button() == Qt.MouseButton.LeftButton:

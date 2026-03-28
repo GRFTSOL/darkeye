@@ -26,7 +26,7 @@ def is_temp_path(path: str | Path) -> bool:
 class ActressAvatarDropWidget(Label):
     """可拖动式添加封面的Label"""
 
-    cover_changed = Signal()
+    coverChanged = Signal()
 
     def __init__(self, type="actress"):
         super().__init__()
@@ -100,7 +100,7 @@ class ActressAvatarDropWidget(Label):
                 if self.is_image(file_path):
                     self._path = self.temp_save_image(file_path)
                     self._show_image()
-                    self.cover_changed.emit()
+                    self.coverChanged.emit()
                 else:
                     self.msg.show_info("文件类型错误", f"不是图片文件：{file_path}")
         else:
@@ -117,7 +117,7 @@ class ActressAvatarDropWidget(Label):
             if self.is_image(file_path):
                 self._path = self.temp_save_image(file_path)
                 self._show_image()  # 拖入后显示，实现绑定
-                self.cover_changed.emit()
+                self.coverChanged.emit()
             else:
                 self.msg.show_info("文件类型错误", f"不是图片文件：{file_path}")
 
@@ -214,7 +214,7 @@ class ActressAvatarDropWidget(Label):
             self.setPixmap(QPixmap())
             self.setText(self.show_text)
             if cover_changed:
-                self.cover_changed.emit()
+                self.coverChanged.emit()
             return
 
         p = Path(relative_image_path)
@@ -223,7 +223,7 @@ class ActressAvatarDropWidget(Label):
         else:
             self._path = str(self.base_path / relative_image_path)
         self._show_image()
-        self.cover_changed.emit()
+        self.coverChanged.emit()
 
     def get_image(self) -> str:
         """返回现在的URL"""

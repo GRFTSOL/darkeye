@@ -28,7 +28,7 @@ __all__ = [
 
 class CrawlerManager2(QObject):
     _instance = None
-    task_finished = Signal(str, dict)
+    taskFinished = Signal(str, dict)
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -67,18 +67,18 @@ class CrawlerManager2(QObject):
 
             from server.bridge import bridge
 
-            bridge.captureone_received.connect(
+            bridge.captureOneReceived.connect(
                 lambda serial_number: self.start_crawl([serial_number]),
                 Qt.ConnectionType.QueuedConnection,
             )
 
             try:
-                global_signals.download_task_finished.connect(
+                global_signals.downloadTaskFinished.connect(
                     self._on_download_task_finished,
                     Qt.ConnectionType.QueuedConnection,
                 )
             except Exception:
-                logging.exception("连接 download_task_finished 信号失败")
+                logging.exception("连接 downloadTaskFinished 信号失败")
 
             self._restore_unfinished_from_ini()
 

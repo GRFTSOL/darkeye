@@ -80,19 +80,19 @@ class PersonalDataPage(LazyWidget):
         mainlayout.addWidget(calendar_heatmap, alignment=Qt.AlignCenter)
 
         # 全局信号总线触发
-        global_signals.masterbation_changed.connect(work_sale_cycle.update_day)
-        global_signals.like_work_changed.connect(work_sale_cycle.update_day)
-        global_signals.masterbation_changed.connect(most_like_actress30.update_actress)
-        global_signals.masterbation_changed.connect(most_like_actress180.update_actress)
-        global_signals.masterbation_changed.connect(most_like_actress365.update_actress)
+        global_signals.masterbationChanged.connect(work_sale_cycle.update_day)
+        global_signals.likeWorkChanged.connect(work_sale_cycle.update_day)
+        global_signals.masterbationChanged.connect(most_like_actress30.update_actress)
+        global_signals.masterbationChanged.connect(most_like_actress180.update_actress)
+        global_signals.masterbationChanged.connect(most_like_actress365.update_actress)
         from datetime import datetime
 
         def refresh_heatmap():
             calendar_heatmap.update(datetime.now().year, force_refresh=True)
 
-        global_signals.masterbation_changed.connect(refresh_heatmap)
-        global_signals.lovemaking_changed.connect(refresh_heatmap)
-        global_signals.sexarousal_changed.connect(refresh_heatmap)
+        global_signals.masterbationChanged.connect(refresh_heatmap)
+        global_signals.lovemakingChanged.connect(refresh_heatmap)
+        global_signals.sexarousalChanged.connect(refresh_heatmap)
 
 
 class OctagonCard(QWidget, ShadowEffectMixin):

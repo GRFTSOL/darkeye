@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, Signal, Slot
 
 import logging
-from ui.basic import IconPushButton
+from darkeye_ui.components.icon_push_button import IconPushButton
 from .BaseMoveableTableModel import BaseMoveableTableModel
 from darkeye_ui.components.token_table_view import TokenTableView
 
@@ -54,10 +54,10 @@ class BaseMovableTableView(QWidget):
 
     def setup_buttons(self):
         """创建按钮"""
-        self.btn_up = IconPushButton("triangle-up.svg")
-        self.btn_down = IconPushButton("triangle-down.svg")
-        self.btn_add = IconPushButton("list-plus.svg")
-        self.btn_delete = IconPushButton("list-x.svg")
+        self.btn_up = IconPushButton("triangle_up", icon_size=24, out_size=24)
+        self.btn_down = IconPushButton("triangle_down", icon_size=24, out_size=24)
+        self.btn_add = IconPushButton("list_plus", icon_size=24, out_size=24)
+        self.btn_delete = IconPushButton("list_x", icon_size=24, out_size=24)
         self.btn_refresh = QPushButton("刷新")
         self.btn_save = QPushButton("保存")
         # self.btn_print = QPushButton("打印数据")
@@ -93,7 +93,7 @@ class BaseMovableTableView(QWidget):
         if current_index.isValid():
             current_row = current_index.row()
             if current_row > 0:  # 不是第一行才能上移
-                self.model.moveRow(current_row, current_row - 1)
+                self.model.move_row(current_row, current_row - 1)
                 # 更新选中行
                 new_index = self.model.index(current_row - 1, 0)
                 self.tableView.setCurrentIndex(new_index)
@@ -104,7 +104,7 @@ class BaseMovableTableView(QWidget):
         if current_index.isValid():
             current_row = current_index.row()
             if current_row < self.model.rowCount() - 1:  # 不是最后一行才能下移
-                self.model.moveRow(current_row, current_row + 1)
+                self.model.move_row(current_row, current_row + 1)
                 # 更新选中行
                 new_index = self.model.index(current_row + 1, 0)
                 self.tableView.setCurrentIndex(new_index)
@@ -124,7 +124,7 @@ class BaseMovableTableView(QWidget):
 
     def add_row(self):
         """添加新行"""
-        self.model.addRow()
+        self.model.add_row()
         # 选中新添加的行
         last_row = self.model.rowCount() - 1
         self.tableView.selectRow(last_row)
@@ -136,7 +136,7 @@ class BaseMovableTableView(QWidget):
         current_index = self.tableView.currentIndex()
         if current_index.isValid():
             row = current_index.row()
-            self.model.removeRow(row)
+            self.model.remove_row(row)
             # 更新按钮状态
             self.update_button_state()
 

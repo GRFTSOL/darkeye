@@ -231,7 +231,7 @@ class DraggableTabBar(ClosableTabBar):
 class PaneWidget(QWidget):
     """窗格 = Tab 栏 + 内容区（StackedWidget），每个 Tab 对应一个内容页。"""
 
-    pane_empty = Signal(object)  # 参数为 self（被关闭的 PaneWidget）
+    paneEmpty = Signal(object)  # 参数为 self（被关闭的 PaneWidget）
 
     def __init__(self, pane_id: str = "", parent=None):
         super().__init__(parent)
@@ -360,7 +360,7 @@ class PaneWidget(QWidget):
         self._refresh_tab_bar_layout()
         QTimer.singleShot(0, self._refresh_tab_bar_layout)
         if self._tab_bar.count() == 0:
-            self.pane_empty.emit(self)
+            self.paneEmpty.emit(self)
         return True
 
     def current_content_id(self) -> str | None:

@@ -22,7 +22,7 @@ from .basic import fetch_url
 # 有年份内的重名问题，这个问题可以通过哪年出道的数据来解决
 
 
-def isActress(response):
+def is_actress(response):
     """判断是否返回多个搜索结果"""
     soup = BeautifulSoup(response.text, "html.parser")
     target = soup.find(class_="headline")
@@ -209,7 +209,7 @@ def analyse(resopnse) -> dict:
     return new_data
 
 
-def choosehtml(response, name):
+def choose_html(response, name):
     """遇到多选项页面后需二次点击,大概占10%,现在这个失效了，需要更新"""
     soup = BeautifulSoup(response.text, "html.parser")
     details_tds = soup.find_all("td", class_="details")
@@ -303,12 +303,12 @@ def SearchActressInfo() -> str:
 
             if response.status_code == 200:  # 判断请求成功
                 logging.info("--------------------请求成功--------------------")
-                if isActress(response):  # 判断是否是真的女优信息页面
+                if is_actress(response):  # 判断是否是真的女优信息页面
                     logging.info("遇到多搜索结果准备跳转")
                     new_data = {"日文名": name}  # 默认字典
                     # 提取页面，点进去
                     urlA = "https://www.minnano-av.com/"
-                    urlB = choosehtml(response, name)
+                    urlB = choose_html(response, name)
                     if urlB:
                         url = urlA + urlB
                         try:
@@ -427,12 +427,12 @@ def SearchSingleActressInfo(actress_id, name: str) -> bool:
 
     if response.status_code == 200:  # 判断请求成功
         logging.info("--------------------请求成功--------------------")
-        if isActress(response):  # 判断是否是真的女优信息页面
+        if is_actress(response):  # 判断是否是真的女优信息页面
             logging.info("遇到多搜索结果准备跳转")
             new_data = {"日文名": name}  # 默认字典
             # 提取页面，点进去
             urlA = "https://www.minnano-av.com/"
-            urlB = choosehtml(response, name)
+            urlB = choose_html(response, name)
             if urlB:
                 url = urlA + urlB
                 response = fetch_url(url=url, headers=headers, timeout=10)

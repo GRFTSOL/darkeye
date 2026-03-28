@@ -112,7 +112,7 @@ async def receive_minnano_actress_capture(body: Dict[str, Any]):
     """
     try:
         logger.info("Received minnano actress capture from extension")
-        bridge.minnano_actress_capture_received.emit(body)
+        bridge.minnanoActressCaptureReceived.emit(body)
         return {"status": "success", "message": "Data received"}
     except Exception as e:
         logger.error(f"Error processing minnano actress capture: {e}")
@@ -135,7 +135,7 @@ async def receive_actressid(data: Dict[str, Any]):
             id = -1
 
         logger.info(f"actressid:{id}")
-        bridge.actressid_received.emit(id)
+        bridge.actressIdReceived.emit(id)
         return {"status": "success", "message": "Data received"}
     except Exception as e:
         logger.error(f"Error processing capture data: {e}")
@@ -150,7 +150,7 @@ async def receive_capture(data: Dict[str, Any]):
     try:
         logger.info(f"Received capture data from: {data.get('url', 'unknown')}")
         # 发射信号，将数据传递给主线程
-        bridge.capture_received.emit(data)
+        bridge.captureReceived.emit(data)
         return {"status": "success", "message": "Data received"}
     except Exception as e:
         logger.error(f"Error processing capture data: {e}")
@@ -166,7 +166,7 @@ async def captureone(data: Dict[str, Any]):
     try:
         logger.info(f"Received capture data from: {data.get('url', 'unknown')}")
         # 发射信号，将数据传递给主线程
-        bridge.captureone_received.emit(str(data["content"]))
+        bridge.captureOneReceived.emit(str(data["content"]))
         print(str(data["content"]))
 
         return {"status": "success", "message": "Data received"}
@@ -243,9 +243,9 @@ async def receive_crawler_result(data: Dict[str, Any]):
         web = data.get("web", "")  # 根据爬取的网站分流
         if web == "javlib":
             # logging.info(f"收到的javlib数据为{data.get('data',{})}")
-            bridge.javlib_finished.emit(data.get("data", {}))
+            bridge.javlibFinished.emit(data.get("data", {}))
         elif web == "javdb":
-            bridge.javdb_finished.emit(data.get("data", {}))
+            bridge.javdbFinished.emit(data.get("data", {}))
         elif web == "fanza":
             pass
         else:

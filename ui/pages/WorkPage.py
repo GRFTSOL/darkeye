@@ -258,14 +258,14 @@ class WorkPage(LazyWidget):
 
         self.order_combo.currentTextChanged.connect(self.apply_filter)
         self.scope_combo.currentTextChanged.connect(self.apply_filter)
-        self.tagselector.selection_changed.connect(self.apply_filter)
+        self.tagselector.selectionChanged.connect(self.apply_filter)
 
         from controller.GlobalSignalBus import global_signals
 
-        global_signals.green_mode_changed.connect(self.update_green_mode)  # 全局转发
-        global_signals.work_data_changed.connect(self.reload_input)
-        global_signals.actress_data_changed.connect(self.actress_input.reload_items)
-        global_signals.actor_data_changed.connect(self.actor_input.reload_items)
+        global_signals.greenModeChanged.connect(self.update_green_mode)  # 全局转发
+        global_signals.workDataChanged.connect(self.reload_input)
+        global_signals.actressDataChanged.connect(self.actress_input.reload_items)
+        global_signals.actorDataChanged.connect(self.actor_input.reload_items)
 
         self.btn_eraser.clicked.connect(self._clear_all_search)
         self.btn_cover_view.clicked.connect(self._toggle_cover_view)

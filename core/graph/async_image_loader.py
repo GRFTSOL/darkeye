@@ -77,7 +77,7 @@ def get_work_image(work_id: int) -> QImage:
 class AsyncImageLoader(QObject):
     """异步图片加载器，使用后台线程加载图片避免阻塞UI"""
 
-    image_loaded = Signal()
+    imageLoaded = Signal()
 
     def __init__(self):
         super().__init__()
@@ -117,7 +117,7 @@ class AsyncImageLoader(QObject):
         try:
             img = get_actress_image(actress_id)
             self.cache[f"a{actress_id}"] = img
-            self.image_loaded.emit()
+            self.imageLoaded.emit()
         except Exception as e:
             logging.warning(f"Async load actress error: {e}")
         finally:
@@ -128,7 +128,7 @@ class AsyncImageLoader(QObject):
         try:
             img = get_work_image(work_id)
             self.cache[f"w{work_id}"] = img
-            self.image_loaded.emit()
+            self.imageLoaded.emit()
         except Exception as e:
             logging.warning(f"Async load work error: {e}")
         finally:

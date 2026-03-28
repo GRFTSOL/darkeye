@@ -53,7 +53,7 @@ class AddActorDialog(QDialog):
                 self.success.emit(True)
                 from controller.GlobalSignalBus import global_signals
 
-                global_signals.actor_data_changed.emit()
+                global_signals.actorDataChanged.emit()
             else:
                 self.msg.show_warning("添加新男优失败", f"重复男优")
                 self.success.emit(False)  # 发出信号

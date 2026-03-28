@@ -118,60 +118,60 @@ class PlotTabPage(LazyWidget):
         self.btn_ageDistribution.clicked.connect(self.age_distribution)
         self.btn_heightDistribution.clicked.connect(self.height_distribution)
         self.btn_cupDistribution.clicked.connect(self.cup_distribution)
-        self.btn_BWH_Distribution.clicked.connect(self.canvas.Draw3DsizeDis)
+        self.btn_BWH_Distribution.clicked.connect(self.canvas.draw_3d_size_dis)
         self.btn_directorStat.clicked.connect(self.director_bar)
         self.btn_ActressBodyHWratio.clicked.connect(self.actress_body_wh_ratio)
-        self.btn_mostLikeActress.clicked.connect(self.canvas.draw_mostlikeActress)
+        self.btn_mostLikeActress.clicked.connect(self.canvas.draw_most_like_actress)
         self.btn_makerStat.clicked.connect(self.studio_bar)
         self.btn_addTimeDistribution.clicked.connect(
-            self.canvas.draw_addTimeDistribution
+            self.canvas.draw_add_time_distribution
         )
-        self.btn_TagWordClould.clicked.connect(self.tagWordCloud)
+        self.btn_TagWordClould.clicked.connect(self.tag_word_cloud)
         self.btn_workReleaseYearDistribution.clicked.connect(
-            self.workReleaseYear_distribution
+            self.work_release_year_distribution
         )
         self.btn_actressDebutYearDistribution.clicked.connect(
-            self.ActressDebutYearDistribution
+            self.actress_debut_year_distribution
         )
         self.btn_actress_debutage_distribution.clicked.connect(
-            self.canvas.plotActressDebutAge
+            self.canvas.plot_actress_debut_age
         )
 
     @Slot()
-    def ActressDebutYearDistribution(self):
+    def actress_debut_year_distribution(self):
         """女优出道年份分布直方图"""
         if self.rbtn_collect.isChecked():
-            self.canvas.plotActressDebutYear(0)
+            self.canvas.plot_actress_debut_year(0)
         elif self.rbtn_singlwork.isChecked():
-            self.canvas.plotActressDebutYear(1)
+            self.canvas.plot_actress_debut_year(1)
         elif self.rbtn_plane.isChecked():
-            self.canvas.plotActressDebutYear(2)
+            self.canvas.plot_actress_debut_year(2)
         elif self.rbtn_public.isChecked():
-            self.canvas.plotActressDebutYear(-1)
+            self.canvas.plot_actress_debut_year(-1)
 
     @Slot()
     def age_distribution(self):
         # 根据选择的状态绘制不同的图
         if self.rbtn_collect.isChecked():
-            self.canvas.plotWorkActressAge(0)
+            self.canvas.plot_work_actress_age(0)
         elif self.rbtn_singlwork.isChecked():
-            self.canvas.plotWorkActressAge(1)
+            self.canvas.plot_work_actress_age(1)
         elif self.rbtn_plane.isChecked():
-            self.canvas.plotWorkActressAge(2)
+            self.canvas.plot_work_actress_age(2)
         elif self.rbtn_public.isChecked():
-            self.canvas.plotWorkActressAge(-1)
+            self.canvas.plot_work_actress_age(-1)
 
     @Slot()
-    def workReleaseYear_distribution(self):
+    def work_release_year_distribution(self):
         """作品发行年份分布直方图"""
         if self.rbtn_collect.isChecked():
-            self.canvas.plotWorkReleaseYear(0)
+            self.canvas.plot_work_release_year(0)
         elif self.rbtn_singlwork.isChecked():
-            self.canvas.plotWorkReleaseYear(1)
+            self.canvas.plot_work_release_year(1)
         elif self.rbtn_plane.isChecked():
-            self.canvas.plotWorkReleaseYear(2)
+            self.canvas.plot_work_release_year(2)
         elif self.rbtn_public.isChecked():
-            self.canvas.plotWorkReleaseYear(-1)
+            self.canvas.plot_work_release_year(-1)
 
     @Slot()
     def height_distribution(self):
@@ -201,42 +201,42 @@ class PlotTabPage(LazyWidget):
     def actress_body_wh_ratio(self):
         # 女优身材臀腰比
         if self.rbtn_collect.isChecked():
-            self.canvas.draw_actressBodyWH_ratio(0)
+            self.canvas.draw_actress_body_wh_ratio(0)
         elif self.rbtn_singlwork.isChecked():
-            self.canvas.draw_actressBodyWH_ratio(1)
+            self.canvas.draw_actress_body_wh_ratio(1)
         elif self.rbtn_plane.isChecked():
-            self.canvas.draw_actressBodyWH_ratio(2)
+            self.canvas.draw_actress_body_wh_ratio(2)
         elif self.rbtn_public.isChecked():
-            self.canvas.draw_actressBodyWH_ratio(-1)
+            self.canvas.draw_actress_body_wh_ratio(-1)
 
     @Slot()
     def director_bar(self):
         if self.rbtn_collect.isChecked():
-            self.canvas.draw_directorBar(0)
+            self.canvas.draw_director_bar(0)
         elif self.rbtn_singlwork.isChecked():
-            self.canvas.draw_directorBar(1)
+            self.canvas.draw_director_bar(1)
         elif self.rbtn_plane.isChecked():
-            self.canvas.draw_directorBar(2)
+            self.canvas.draw_director_bar(2)
         elif self.rbtn_public.isChecked():
-            self.canvas.draw_directorBar(-1)
+            self.canvas.draw_director_bar(-1)
 
     @Slot()
     def studio_bar(self):
         if self.rbtn_collect.isChecked():
-            self.canvas.draw_studioBar(0)
+            self.canvas.draw_studio_bar(0)
         elif self.rbtn_singlwork.isChecked():
-            self.canvas.draw_studioBar(1)
+            self.canvas.draw_studio_bar(1)
         elif self.rbtn_plane.isChecked():
-            self.canvas.draw_studioBar(2)
+            self.canvas.draw_studio_bar(2)
         elif self.rbtn_public.isChecked():
-            self.canvas.draw_studioBar(-1)
+            self.canvas.draw_studio_bar(-1)
 
-    def tagWordCloud(self):
+    def tag_word_cloud(self):
         if self.rbtn_collect.isChecked():
-            self.canvas.draw_workTagCloud(0)
+            self.canvas.draw_work_tag_cloud(0)
         elif self.rbtn_singlwork.isChecked():
-            self.canvas.draw_workTagCloud(1)
+            self.canvas.draw_work_tag_cloud(1)
         elif self.rbtn_plane.isChecked():
-            self.canvas.draw_workTagCloud(2)
+            self.canvas.draw_work_tag_cloud(2)
         elif self.rbtn_public.isChecked():
-            self.canvas.draw_workTagCloud(-1)
+            self.canvas.draw_work_tag_cloud(-1)

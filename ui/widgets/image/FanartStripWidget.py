@@ -833,7 +833,7 @@ class FanartStripWidget(QWidget):
     ``set_preview_download_persist``，会再调用该回调（用于浏览场景下写回数据库）。
     """
 
-    fanart_changed = Signal(list)
+    fanartChanged = Signal(list)
 
     def __init__(
         self,
@@ -1101,7 +1101,7 @@ class FanartStripWidget(QWidget):
         self._on_add()
 
     def _emit(self) -> None:
-        self.fanart_changed.emit(copy.deepcopy(self._entries))
+        self.fanartChanged.emit(copy.deepcopy(self._entries))
 
     def run_fanart_download(
         self,
