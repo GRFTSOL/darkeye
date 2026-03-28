@@ -125,8 +125,10 @@
           };
 
           data.release_date = getPanelValue("日期:");
-          data.length = getPanelValue("時長:");
-          data.director = getPanelValue("導演:");
+          const lengthRaw = getPanelValue("時長:");
+          const lengthMatch = lengthRaw.match(/\d+/);
+          data.length = lengthMatch ? lengthMatch[0] : "0";
+          data.director = getPanelValue("導演:")|| "----";
           data.maker = getPanelValue("片商:")|| "----";
           data.label = getPanelValue("發行:")|| "----";
           data.series= getPanelValue("系列:") || "----";

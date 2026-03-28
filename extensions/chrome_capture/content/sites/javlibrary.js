@@ -77,8 +77,10 @@
 
         const dateElement = document.querySelector("#video_date .text");
         data.release_date = dateElement ? dateElement.textContent.trim() : "";
+
         const lengthElement = document.querySelector("#video_length .text");
         data.length = lengthElement ? lengthElement.textContent.trim() : "";
+
         const directorElement = document.querySelector("#video_director .text");
         data.director = directorElement ? directorElement.textContent.trim() : "";
 
@@ -88,11 +90,12 @@
         const labelElement = document.querySelector("#video_label .text");
         data.label = labelElement ? labelElement.textContent.trim() : "";
 
-
         const genreElements = document.querySelectorAll("#video_genres .genre a");
         data.genre = Array.from(genreElements).map(el => el.textContent.trim());
+
         const castElements = document.querySelectorAll("#video_cast .star a");
         data.actress = Array.from(castElements).map(el => el.textContent.trim());
+
         const imgElement = document.querySelector("#video_jacket_img");
         data.image = imgElement ? imgElement.src : "";
 
