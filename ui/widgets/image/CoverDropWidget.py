@@ -51,7 +51,12 @@ class _CoverDropLabel(QLabel):
             try:
                 from app_context import get_theme_manager
                 theme_manager = get_theme_manager()
-            except Exception:
+            except Exception as e:
+                logging.debug(
+                    "_CoverDropLabel: 获取主题管理器失败: %s",
+                    e,
+                    exc_info=True,
+                )
                 theme_manager = None
         self._theme_manager = theme_manager
         # 当外部需要强调提示（例如“封面已修改未保存”）时，允许覆盖边框样式。

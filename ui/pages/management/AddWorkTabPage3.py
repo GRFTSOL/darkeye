@@ -398,8 +398,12 @@ class ViewModel(QObject):
                         f = (o.get("file") or "").strip()
                         if f:
                             old_files.add(f)
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logging.warning(
+                    "fanart 旧 JSON 无效，跳过孤儿文件解析: %s",
+                    e,
+                    exc_info=True,
+                )
         new_files: set[str] = set()
         if new_json_str:
             try:
@@ -408,8 +412,12 @@ class ViewModel(QObject):
                         f = (o.get("file") or "").strip()
                         if f:
                             new_files.add(f)
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logging.warning(
+                    "fanart 新 JSON 无效，跳过孤儿文件解析: %s",
+                    e,
+                    exc_info=True,
+                )
         for f in old_files - new_files:
             for base in (FANART_PATH, WORKCOVER_PATH):
                 p = base / f

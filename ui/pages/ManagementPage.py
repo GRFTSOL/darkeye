@@ -71,7 +71,7 @@ class ManagementPage(QWidget):
                 if info:
                     serial_number = info.get("serial_number")
             except Exception:
-                pass
+                logging.exception("ManagementPage.load_with_params: 根据 work_id 查询作品失败")
         if serial_number is None:
             return
         self.tab_widget.setCurrentWidget(self.worktab)

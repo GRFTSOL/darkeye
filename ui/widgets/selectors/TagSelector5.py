@@ -536,8 +536,12 @@ class TagSelector5(QWidget):
         try:
             from app_context import get_theme_manager
             self._theme_manager = get_theme_manager()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug(
+                "TagSelector5: 获取主题管理器失败，左侧样式将用默认令牌: %s",
+                e,
+                exc_info=True,
+            )
         self._apply_left_view_styles()
         if self._theme_manager is not None:
             self._theme_manager.themeChanged.connect(self._apply_left_view_styles)

@@ -1,3 +1,4 @@
+import logging
 import re
 from pathlib import Path
 
@@ -270,6 +271,7 @@ class AvPage(LazyWidget):
                 text = path.read_text(encoding="utf-8")
                 self._editor.setPlainText(text)
             except Exception:
+                logging.exception("AvPage: 读取 Markdown 到编辑器失败 path=%s", path)
                 self._editor.setPlainText("")
         self._editor.blockSignals(False)
         self._edit_dirty = False
@@ -290,7 +292,7 @@ class AvPage(LazyWidget):
             path.write_text(self._editor.toPlainText(), encoding="utf-8")
             self._edit_dirty = False
         except Exception:
-            pass
+            logging.exception("AvPage: 自动保存 Markdown 失败 path=%s", path)
 
     def _switch_to_preview(self) -> None:
         if self._stack.currentIndex() == 1 and self._edit_dirty and self._current_path:

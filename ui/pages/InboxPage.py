@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Dict
 
@@ -158,6 +159,10 @@ class InboxPage(QWidget):
 
             manager = get_manager()
         except Exception:
+            logging.debug(
+                "InboxPage: 获取 CrawlerManager 失败（可能未初始化）",
+                exc_info=True,
+            )
             return
 
         try:
@@ -169,6 +174,10 @@ class InboxPage(QWidget):
 
             queue_serials, running_serials = manager.inbox_snapshot()
         except Exception:
+            logging.debug(
+                "InboxPage: 读取爬虫队列快照失败",
+                exc_info=True,
+            )
             return
 
         for state in self._tasks.values():
@@ -191,6 +200,11 @@ class InboxPage(QWidget):
             try:
                 state.workflow = manager.get_serial_workflow_state(serial)
             except Exception:
+                logging.debug(
+                    "InboxPage: get_serial_workflow_state 失败 serial=%s",
+                    serial,
+                    exc_info=True,
+                )
                 state.workflow = None
 
         for serial in list(self._tasks.keys()):

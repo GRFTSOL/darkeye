@@ -1,6 +1,7 @@
 """工作区管理类：持布局树、窗格工厂、拖拽与预览，供 WorkspaceDemoWidget 等容器使用。"""
 
 import json
+import logging
 from pathlib import Path
 from typing import Callable
 
@@ -331,8 +332,12 @@ class WorkspaceManager:
         for pane in list(self._layout_tree.panes()):
             try:
                 pane.pane_empty.disconnect(self._on_pane_empty)
-            except (TypeError, RuntimeError):
-                pass
+            except (TypeError, RuntimeError) as e:
+                logging.debug(
+                    "load_layout: 断开 pane_empty 失败（可能未连接）: %s",
+                    e,
+                    exc_info=True,
+                )
             self._layout_tree.remove_pane(pane)
 
         def pane_factory(pid: str) -> PaneWidget:

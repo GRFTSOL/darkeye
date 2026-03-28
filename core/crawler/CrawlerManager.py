@@ -221,7 +221,13 @@ class CrawlerManager2(QObject):
             return ""
         try:
             return str(serial).strip()
-        except Exception:
+        except Exception as e:
+            logging.debug(
+                "_norm_serial: 无法规范化输入 %r: %s",
+                serial,
+                e,
+                exc_info=True,
+            )
             return ""
 
     def _load_unfinished_from_ini(self) -> list[str]:

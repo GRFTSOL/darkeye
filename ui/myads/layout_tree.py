@@ -1,6 +1,7 @@
 """阶段二：布局树与 QSplitter 动态管理。"""
 '''测试文件在tests/'''
 import json
+import logging
 from pathlib import Path
 
 from PySide6.QtWidgets import QSplitter, QWidget
@@ -446,15 +447,23 @@ def _dict_to_model_node(d: dict) -> ModelNode:
                 ratios = [float(x) for x in ratios_raw]
                 if ratios:
                     sizes = _ratios_to_sizes(ratios)
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as e:
+                logging.debug(
+                    "布局 JSON: size_ratios 解析失败，将尝试 sizes: %s",
+                    e,
+                    exc_info=True,
+                )
         if sizes is None:
             sizes_raw = d.get("sizes")
             if isinstance(sizes_raw, list) and len(sizes_raw) == len(children):
                 try:
                     sizes = [int(x) for x in sizes_raw]
-                except (TypeError, ValueError):
-                    pass
+                except (TypeError, ValueError) as e:
+                    logging.debug(
+                        "布局 JSON: sizes 解析失败，使用默认拆分比例: %s",
+                        e,
+                        exc_info=True,
+                    )
         return SplitModelNode(orientation, children, sizes=sizes)
     raise ValueError("layout node must have type: 'split' or 'pane'")
 

@@ -64,8 +64,13 @@ def download_image_with_retry(
                 import os
                 if os.path.exists(save_path):
                     os.remove(save_path)
-            except Exception:
-                pass
+            except Exception as rm_exc:
+                logging.debug(
+                    "下载失败后清理半成品文件失败 path=%s: %s",
+                    save_path,
+                    rm_exc,
+                    exc_info=True,
+                )
 
             if attempt < max(0, retries):
                 time.sleep(backoff_base_s * (2 ** attempt) + random.uniform(0.0, 0.2))

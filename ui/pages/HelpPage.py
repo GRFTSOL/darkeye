@@ -1,3 +1,5 @@
+import logging
+
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QIcon
@@ -25,6 +27,7 @@ class HelpPage(QWidget):
                 text = HELP_MD_PATH.read_text(encoding="utf-8")
                 self._text.setMarkdown(text)
             except Exception:
+                logging.exception("HelpPage: 读取帮助文档失败 path=%s", HELP_MD_PATH)
                 self._text.setPlainText("帮助文件无法读取。")
         else:
             self._text.setPlainText("帮助文件不存在或无法读取。")

@@ -101,8 +101,14 @@ class SqliteEditableTableModel(QAbstractTableModel):
                 k = int(val.strip())
                 if k in cache:
                     return cache[k]
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            logger.debug(
+                "_relation_display: 外键显示值规范化失败 col=%s val=%r: %s",
+                col,
+                val,
+                e,
+                exc_info=True,
+            )
         return str(val)
 
     def data(self, index: QModelIndex, role: int):

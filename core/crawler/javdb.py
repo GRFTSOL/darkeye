@@ -41,7 +41,11 @@ def jump_to_javdb(serial_number):
         # 6. 清理：必须断开连接，否则下次请求会触发旧的回调
         try:
             bridge.javdb_finished.disconnect(temp_callback)
-        except Exception:
-            pass # 防止未连接时断开报错
+        except Exception as e:
+            logging.debug(
+                "jump_to_javdb: 断开临时回调失败（可能未连接）: %s",
+                e,
+                exc_info=True,
+            )
 
 

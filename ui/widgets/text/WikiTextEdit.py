@@ -1,4 +1,5 @@
 from pathlib import Path
+import logging
 import sys
 root_dir = Path(__file__).resolve().parents[3]  # 上两级
 sys.path.insert(0, str(root_dir))
@@ -476,8 +477,12 @@ class WikiTextEdit(TextEdit):
             self.completer.setCompletionPrefix(completion_prefix)
             try:
                 self.completer.popup().setCurrentIndex(self.completer.completionModel().index(0, 0))
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(
+                    "WikiTextEdit: 更新补全 popup 当前项失败（可能无候选）: %s",
+                    e,
+                    exc_info=True,
+                )
         
         # 关键：刷新 popup 位置
         cr = self.cursorRect()

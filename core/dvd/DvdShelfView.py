@@ -1209,8 +1209,13 @@ class DvdShelfView(QWidget):
                 parsed = json.loads(raw_fanart)
                 if isinstance(parsed, list):
                     fanart_entries = [e for e in parsed if isinstance(e, dict)]
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logging.warning(
+                    "DvdShelfView: work fanart 字段 JSON 无效 work_id=%s: %s",
+                    work_id,
+                    e,
+                    exc_info=True,
+                )
         self._fanart_preview_work_id = work_id
         self._fanart_strip.set_entries(fanart_entries)
         has_fanart = len(fanart_entries) > 0

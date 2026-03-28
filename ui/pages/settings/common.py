@@ -1,5 +1,7 @@
 """常规设置页面：主题、主色、绿色模式等。"""
 
+import logging
+
 from PySide6.QtWidgets import QHBoxLayout, QFormLayout, QWidget
 from PySide6.QtGui import QColor
 from darkeye_ui.components import Label, Button, ComboBox, ColorPicker, ToggleSwitch
@@ -39,7 +41,9 @@ class CommonPage(QWidget):
                     idx = next(i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid == theme_mgr.current())
                     self.theme_choose.setCurrentIndex(idx)
                 except StopIteration:
-                    pass
+                    logging.debug(
+                        "常规设置: theme_mgr.current() 未匹配 THEME_OPTIONS，保持下拉默认选中项"
+                    )
         self.theme_choose.currentIndexChanged.connect(self._on_theme_changed)
 
         # 主色选择器（置于主题行上方，仅亮色/暗色主题可调）

@@ -43,8 +43,12 @@ class ForceDirectedViewWidget(QWidget):
         try:
             from app_context import get_theme_manager
             self._theme_manager = get_theme_manager()
-        except ImportError:
-            pass
+        except ImportError as e:
+            logging.debug(
+                "ForceDirectedViewWidget: 无法导入主题管理器: %s",
+                e,
+                exc_info=True,
+            )
 
         self.init_ui()
         self.signal_connect()
@@ -300,7 +304,7 @@ class ForceDirectedViewWidget(QWidget):
                 self.view.update()
         except Exception:
             # 不要让 UI 因为兜底逻辑崩溃
-            pass
+            logging.exception("ForceDirectedViewWidget: 首次显示后刷新 OpenGL 视图失败")
 
     def _update_panel_geometry(self) -> None:
         '''悬浮的东西只能自己手动定位'''

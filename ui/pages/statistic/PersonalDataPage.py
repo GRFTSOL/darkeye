@@ -109,8 +109,12 @@ class OctagonCard(QWidget, ShadowEffectMixin):
             try:
                 from app_context import get_theme_manager
                 theme_manager = get_theme_manager()
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(
+                    "OctagonCard: 获取主题管理器失败: %s",
+                    e,
+                    exc_info=True,
+                )
         self._theme_manager = theme_manager
         if self._theme_manager is not None:
             self._theme_manager.themeChanged.connect(self._on_theme_changed)

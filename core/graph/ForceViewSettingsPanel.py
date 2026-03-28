@@ -2,6 +2,7 @@
 Force-directed view settings panel: UI and signals/slots only.
 Parent connects panel signals to view/session.
 """
+import logging
 import token
 from typing import TYPE_CHECKING, Optional
 
@@ -110,8 +111,12 @@ class ForceViewSettingsPanel(QScrollArea):
         try:
             from app_context import get_theme_manager
             self._theme_manager = get_theme_manager()
-        except ImportError:
-            pass
+        except ImportError as e:
+            logging.debug(
+                "ForceViewSettingsPanel: 无法导入主题管理器: %s",
+                e,
+                exc_info=True,
+            )
 
         self._sliders: list[ClickableSlider] = []
         self._color_buttons: list[QPushButton] = []

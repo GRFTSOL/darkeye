@@ -270,8 +270,13 @@ def _fanart_download_task(url: str) -> tuple[str, str, str | None, str]:
         if not ok:
             try:
                 os.remove(tmp_path)
-            except OSError:
-                pass
+            except OSError as e:
+                logging.debug(
+                    "Fanart 下载失败：清理临时文件失败 %s: %s",
+                    tmp_path,
+                    e,
+                    exc_info=True,
+                )
             return ("err", msg or "下载失败", None, "")
         rename_save_image(tmp_path, dest_name, "fanart")
         return ("ok", "", dest_name, url)
@@ -280,8 +285,13 @@ def _fanart_download_task(url: str) -> tuple[str, str, str | None, str]:
         try:
             if os.path.isfile(tmp_path):
                 os.remove(tmp_path)
-        except OSError:
-            pass
+        except OSError as rm_err:
+            logging.debug(
+                "Fanart 异常后清理临时文件失败 %s: %s",
+                tmp_path,
+                rm_err,
+                exc_info=True,
+            )
         return ("err", str(e), None, "")
 
 
@@ -597,7 +607,10 @@ class FanartEditDialog(QDialog):
             self._img.setText("图片未下载" if has_url else "无预览")
         except RuntimeError:
             # 对话框已销毁时仍可能收到队列中的回调
-            pass
+            logging.debug(
+                "Fanart 预览: 对话框已销毁仍收到加载回调，已忽略",
+                exc_info=True,
+            )
 
     def _go_prev(self) -> None:
         if self._n <= 1:

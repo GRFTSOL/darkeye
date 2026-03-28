@@ -35,7 +35,13 @@ def _parse_version_tuple(v: str) -> Optional[tuple[int, ...]]:
         for p in parts:
             parsed.append(int(p))
         return tuple(parsed)
-    except Exception:
+    except Exception as e:
+        logging.debug(
+            "版本号解析失败 version=%r: %s",
+            v,
+            e,
+            exc_info=True,
+        )
         return None
 
 

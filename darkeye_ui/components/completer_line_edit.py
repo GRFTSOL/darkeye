@@ -11,6 +11,8 @@ from ..design.tokens import LIGHT_TOKENS
 if TYPE_CHECKING:
     from ..design.theme_manager import ThemeManager
 
+_log = get_logger(__name__)
+
 
 def _popup_qss_from_tokens(t) -> str:
     """根据当前主题令牌生成 DesignCompleterPopup 的 QSS，使弹出框随主题变色。"""
@@ -135,8 +137,12 @@ class CompleterLineEdit(LineEdit):
         if old is not None:
             try:
                 old.popup().hide()
-            except RuntimeError:
-                pass
+            except RuntimeError as e:
+                _log.debug(
+                    "setup_completer: 隐藏旧补全 popup 失败（可能已销毁）: %s",
+                    e,
+                    exc_info=True,
+                )
         # 无 parent 的 QCompleter 由 setCompleter 接管；直接 setCompleter(新) 会换下旧 completer，
         # 勿再 setCompleter(None)+deleteLater(old)，否则 PySide 下易出现 C++ 对象已被销毁的 RuntimeError。
         self.completer1 = QCompleter(self.items)

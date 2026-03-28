@@ -115,11 +115,60 @@ Firefox 插件已加载（上一节的步骤）
 
 标准NFO文件的格式参考 https://kodi.wiki/view/NFO_files/Templates 其中的movie
 
+举例单个的nfo的格式要是这个样子
+```
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<movie>
+  <source>https://javdb.com/v/zkAxQ</source>
+  <plot>
+  </plot>
+  <title>神回！神回！！神回！！！…ハリウッドか！って位の世界観！！！雨のネオン街を颯爽と歩く謎のフルフェイス全身ラバー美女！！！…ブレードランナーか！！！これが激レアなんです！！！そしてこんな格好で外歩く様な女はアッチ(セックス)の方もスゲーに決まってるんです！！！年初めにこんな〝どエロい〟女見たらもぉ普通のAV見れなくなっちゃうから気をつけて！！！マジ半端ないエロさです！！！：夜の巷を徘徊する〝激レア素人〟！！ 11</title>
+  <director>
+  </director>
+  <rating>0</rating>
+  <criticrating>
+  </criticrating>
+  <year>2019</year>
+  <mpaa>
+  </mpaa>
+  <customrating>
+  </customrating>
+  <countrycode>
+  </countrycode>
+  <premiered>2019-01-03</premiered>
+  <release>2019-01-03</release>
+  <runtime>94</runtime>
+  <country>
+  </country>
+  <studio>プレステージプレミアム(PRESTIGE PREMIUM)</studio>
+  <id>MIUM-359</id>
+  <num>MIUM-359</num>
+  <genre>HDTV</genre>
+  <genre>苗條</genre>
+  <genre>蕩婦</genre>
+  <genre>巨乳</genre>
+  <genre>美臀</genre>
+  <genre>女優按摩棒</genre>
+  <tag>夜の巷を徘徊する激レア素人</tag>
+  <thumb>C:\Users\yin\Desktop\BigPic\MIUM-359.jpg</thumb>
+  <thumb>E:\Jvedio-5.3.1\data\Daxoel\pic\SmallPic\MIUM-359.jpg</thumb>
+  <fanart>
+    <thumb preview="https://c0.jdbstatic.com/samples/zk/zkAxQ_l_0.jpg">https://c0.jdbstatic.com/samples/zk/zkAxQ_l_0.jpg</thumb>
+    <thumb preview="https://c0.jdbstatic.com/samples/zk/zkAxQ_l_1.jpg">https://c0.jdbstatic.com/samples/zk/zkAxQ_l_1.jpg</thumb>
+    <thumb preview="https://c0.jdbstatic.com/samples/zk/zkAxQ_l_2.jpg">https://c0.jdbstatic.com/samples/zk/zkAxQ_l_2.jpg</thumb>
+    <thumb preview="https://c0.jdbstatic.com/samples/zk/zkAxQ_l_3.jpg">https://c0.jdbstatic.com/samples/zk/zkAxQ_l_3.jpg</thumb>
+  </fanart>
+  <actor>
+    <name>二宮和香</name>
+    <thumb>https://www.javsee.in/pics/actress/p37_a.jpg</thumb>
+  </actor>
+  <actor>
+    <name>森林原人</name>
+    <thumb>https://c0.jdbstatic.com/avatars/pp/PpQ0.jpg</thumb>
+  </actor>
+</movie>
+```
 
-|NFO|对应|
-| --- | --- |
-|<id>or<num>|番号|
-|       |     |
 
 
 

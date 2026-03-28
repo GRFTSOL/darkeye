@@ -45,14 +45,27 @@ class ShortcutRegistry:
         self._initialized = True
 
     def load_config(self):
-        """加载本地 JSON，如果不存在则返回空"""
-        if os.path.exists(self.config_path):
-            try:
-                with open(self.config_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except:
-                return {}
-        return {}
+        """加载本地 JSON；不存在或无效则返回空 dict 并打日志"""
+        if not os.path.exists(self.config_path):
+            return {}
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
+            logging.warning(
+                "加载快捷键配置失败，将使用空配置: %s (%s)",
+                self.config_path,
+                e,
+            )
+            return {}
+        if not isinstance(data, dict):
+            logging.warning(
+                "快捷键配置根节点须为 JSON 对象，实际为 %s，将使用空配置: %s",
+                type(data).__name__,
+                self.config_path,
+            )
+            return {}
+        return data
 
     def save_config(self):
         """保存当前用户设置到本地"""

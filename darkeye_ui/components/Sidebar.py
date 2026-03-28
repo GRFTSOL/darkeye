@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Sequence, Union
 
@@ -258,7 +259,12 @@ class Sidebar(QWidget):
         if self._theme_manager is not None:
             try:
                 self._tokens = self._theme_manager.tokens()
-            except Exception:
+            except Exception as e:
+                logging.debug(
+                    "Sidebar: 读取主题令牌失败，将不设 tokens: %s",
+                    e,
+                    exc_info=True,
+                )
                 self._tokens = None
         else:
             self._tokens = None

@@ -55,8 +55,12 @@ def _spawn_detached_process(cmd, cwd):
         start_flags = no_window | detached | new_group | breakaway
         try:
             return subprocess.Popen(start_cmd, creationflags=start_flags, **popen_kwargs)
-        except OSError:
-            pass
+        except OSError as e:
+            logging.debug(
+                "分离启动子进程失败，尝试其他 creationflags: %s",
+                e,
+                exc_info=True,
+            )
 
         flag_candidates = [
             detached | new_group | breakaway,
