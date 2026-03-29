@@ -1295,7 +1295,7 @@
 <li><code>core/</code>: 核心业务逻辑</li>
 <li><code>crawler/</code>: 爬虫管理（CrawlerManager）、多源抓取与清洗。</li>
 <li><code>database/</code>: 连接管理（sqlite3 <code>get_connection</code>）、init/migrations、query/insert/update/delete、model。无 ORM，无 Repository 中间层。</li>
-<li><code>graph/</code>: 关系图：<code>graph_manager.py</code>（单例，维护总图、增量信号）、<code>graph_session.py</code>（会话与过滤）、<code>ForceDirectedViewWidget.py</code>（与 C++ OpenGL 视图协作）、<code>graph_filter.py</code>、<code>graph.py</code>（图生成）、<code>async_image_loader.py</code>、<code>ForceViewSettingsPanel.py</code>。</li>
+<li><code>graph/</code>: 关系图：<code>graph_manager.py</code>（单例，维护总图、增量信号）、<code>graph_session.py</code>（会话与过滤）、<code>force_directed_view_widget.py</code>（与 C++ OpenGL 视图协作）、<code>graph_filter.py</code>、<code>graph.py</code>（图生成）、<code>async_image_loader.py</code>、<code>force_view_settings_panel.py</code>。</li>
 <li><code>recommendation/</code>: 推荐逻辑（如随机推荐）。</li>
 <li><code>schema/</code>, <code>cv/</code>, <code>utils/</code>: 数据模型、图像、日志/性能等工具。</li>
 <li><code>controller/</code>: 全局信号（<code>GlobalSignalBus</code>）、快捷键（<code>ShortcutRegistry</code> / <code>ShortcutBindings</code>）、状态栏（<code>StatusManager</code>）、任务与通知（<code>TaskManager</code> / <code>TaskListWindow</code>）。</li>

@@ -1099,9 +1099,9 @@
         ┌─────────────────────────────┼─────────────────────────────┐
         ▼                             ▼                             ▼
 ┌───────────────┐           ┌───────────────────┐           ┌───────────────┐
-│ config.py     │           │ app_context.py    │           │ 资源路径       │
-│ 路径/版本/    │           │ ThemeManager 单例 │           │ settings.ini  │
-│ settings.ini  │           │ 全局注入          │           │ resources/    │
+│ config.py     │           │ controller/       │           │ 资源路径       │
+│ 路径/版本/    │           │ app_context.py    │           │ settings.ini  │
+│ settings.ini  │           │ ThemeManager 单例 │           │ resources/    │
 └───────────────┘           └───────────────────┘           └───────────────┘
         │                             │
         └─────────────────────────────┼─────────────────────────────────────┐
@@ -1124,7 +1124,8 @@
         ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  控制器层：controller/                                                    │
-│  ShortcutRegistry、ShortcutBindings；GlobalSignalBus（数据变更信号）       │
+│  app_context（ThemeManager 单例）；ShortcutRegistry、ShortcutBindings；   │
+│  GlobalSignalBus（数据变更信号）；MessageService 等                        │
 └─────────────────────────────────────────────────────────────────────────┘
         │
         │ 依赖
@@ -1164,17 +1165,17 @@
 <h3 id="41-mainpy">4.1 入口与启动（main.py）<a class="headerlink" href="#41-mainpy" title="Permanent link">&para;</a></h3>
 <ul>
 <li>设置 <code>QSG_RHI_BACKEND=opengl</code>、Qt 属性、OpenGL SurfaceFormat。</li>
-<li>初始化日志（<code>core.utils.log_config</code>）、性能分析（<code>core.utils.profiler</code>）。</li>
+<li>初始化日志（<code>utils.log_config</code>）、性能分析（<code>utils.profiler</code>）。</li>
 <li>可选首次启动协议（TermsDialog）。</li>
 <li><strong>数据库</strong>：<code>init_private_db</code> → <code>check_and_upgrade_private_db</code> → <code>check_and_upgrade_public_db</code> → <code>init_database</code>（见 <a href="../SCHEMA/">SCHEMA</a>）。</li>
 <li><strong>图</strong>：<code>GraphManager.instance().initialize()</code> 异步建图。</li>
-<li><strong>样式</strong>：<code>load_app_stylesheet(app)</code> 注册 <code>ThemeManager</code> 到 <code>app_context</code>。</li>
+<li><strong>样式</strong>：<code>load_app_stylesheet(app)</code> 注册 <code>ThemeManager</code> 到 <code>controller.app_context</code>。</li>
 <li>创建并显示 <code>MainWindow</code>；<code>QTimer.singleShot(0, start_server)</code> 延迟启动 API，避免阻塞首帧。</li>
 </ul>
 <h3 id="42">4.2 配置与上下文<a class="headerlink" href="#42" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>config.py</strong>：<code>resource_path</code> 兼容打包；从 <code>settings.ini</code> 读取路径（数据库、公/私库备份、女优/男优/封面图、SQL、敏感词、快捷键、爬虫导航按钮等）；<code>REQUIRED_PUBLIC_DB_VERSION</code> / <code>REQUIRED_PRIVATE_DB_VERSION</code> 用于迁移。</li>
-<li><strong>app_context.py</strong>：全局 <code>ThemeManager</code> 的 get/set，供各页面与 darkeye_ui 组件使用。</li>
+<li><strong>controller/app_context.py</strong>：全局 <code>ThemeManager</code> 的 get/set，供各页面与 darkeye_ui 组件使用。</li>
 </ul>
 <h3 id="43-core">4.3 核心层（core/）<a class="headerlink" href="#43-core" title="Permanent link">&para;</a></h3>
 <table>
@@ -1278,8 +1279,8 @@
 </tr>
 <tr>
 <td>配置</td>
-<td>config, app_context</td>
-<td>路径、版本、主题单例</td>
+<td>config</td>
+<td>路径、版本、settings.ini</td>
 </tr>
 <tr>
 <td>UI</td>
@@ -1289,7 +1290,7 @@
 <tr>
 <td>控制</td>
 <td>controller</td>
-<td>快捷键、全局信号总线</td>
+<td>主题上下文、快捷键、全局信号总线、MessageService</td>
 </tr>
 <tr>
 <td>核心</td>

@@ -525,15 +525,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#113" class="md-nav__link">
+  <a href="#120" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1.1.3
+        1.2.0(未发布)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="1.1.3">
+    <nav class="md-nav" aria-label="1.2.0(未发布)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -847,15 +847,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#113" class="md-nav__link">
+  <a href="#120" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1.1.3
+        1.2.0(未发布)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="1.1.3">
+    <nav class="md-nav" aria-label="1.2.0(未发布)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1006,39 +1006,90 @@
 <ul>
 <li>[ ] UGC，类似死亡搁浅的分布式同步信息方案，可采纳与不采集</li>
 </ul>
-<p>## 1.x.x(路线图)
- - [ ] C++重写稳定模块
- - [ ] tag计算器，高级tag过滤系统，tag重定向
- - [ ] 重构tag系统，弄成三层tag匹配i18n,加上良好的同步方式
- - [ ] graph系统的更改，关联算法，社区发现算法，过滤
- - [ ] 作品信息文本导出
- - [ ] 刮削保存到原视频文件夹里面
- - [ ] 男女优加备注与连接
- - [ ] 详情页播放按钮放大
- - [ ] 刮削保存到原视频文件夹里面,这个等后面爬虫功能完善了
- - [ ] FC2爬取支持
- - [ ] 冷门番号爬取支持
- - [ ] 重绘图用qchart移除对matplotlib的依赖
- - [ ] dmm 1080p分辨率封面下载
- - [ ] 科普知识与serverless更新
- - [ ] 爬虫的重构与插件化爬虫
- - [ ] 绿色模式，现在实现了一半，不过貌似没用
- - [ ] i18n,未来打算支持简体中文，繁体中文，日文，韩文与一切能支持竖排的语言。
- - [ ] 以竖排风格为核心，优化UI的界面
- - [ ] 编辑界面高级停靠系统的保存
- - [ ] 其他格式的信息导出功能，目前只能导.csv，还没想好怎么导出
- - [ ] Jvideo/jellyfin/Kodi/Emby的数据导入
- - [ ] 更好的翻译，现在默认的google翻译不太好用。然后爬取的东西也不好
- - [ ] 提示封面是否高清
- - [ ] NFO数据的导入与导出</p>
+<p>## 1.x.x(路线图)</p>
 <ul>
-<li>[ ] 男女优加备注与连接-改数据库</li>
-<li>[ ] 添加时长，label maker -改数据库</li>
+<li>[ ] C++重写稳定模块</li>
+<li>[ ] tag计算器，高级tag过滤系统，tag重定向</li>
+<li>[ ] 重构tag系统，弄成三层tag匹配i18n,加上良好的同步方式</li>
+<li>[ ] graph系统的更改，关联算法，社区发现算法，过滤，把note互联后的计算上</li>
+<li>[ ] 重绘图,用qchart移除对matplotlib的依赖</li>
+<li>[ ] 作品信息文本导出</li>
+<li>[ ] 刮削保存到原视频文件夹里面</li>
+<li>[ ] 爬虫数据流节点化，就像ue5蓝图那样</li>
+<li>
+<p>[ ] 爬虫的重构与插件化爬虫</p>
+</li>
+<li>
+<p>[ ] 详情页播放按钮放大-这个需求应该没有了，有的页面已经不用了</p>
+</li>
+<li>[ ] 刮削保存到原视频文件夹里面,这个等后面爬虫功能完善了</li>
+<li>[ ] FC2爬取支持</li>
+<li>
+<p>[ ] 冷门番号爬取支持</p>
+</li>
+<li>
+<p>[ ] dmm 1080p分辨率封面下载</p>
+</li>
+<li>
+<p>[ ] 科普知识与serverless更新</p>
+</li>
+<li>
+<p>[ ] 绿色模式，现在实现了一半，不过貌似没用</p>
+</li>
+<li>[ ] i18n,未来打算支持简体中文，繁体中文，日文，韩文与一切能支持竖排的语言。</li>
+<li>[ ] 以竖排风格为核心，优化UI的界面</li>
+<li>
+<p>[ ] 编辑界面高级停靠系统的保存，包括高级停靠区的继续开发</p>
+</li>
+<li>
+<p>[ ] Jvideo/jellyfin/Kodi/Emby的数据导入，这个现在变成统一的nfc数据的导出</p>
+</li>
+<li>[ ] 其他格式的信息导出功能，目前只能导.csv，还没想好怎么导出</li>
+<li>
+<p>[ ] NFO数据的导出，挂削数据的导出</p>
+</li>
+<li>
+<p>[ ] 全部后台线程读写数据库</p>
+</li>
+<li>[ ] 提示封面是否高清</li>
+<li>[ ] notes互联，通过<code>[[movie:xxxx]] [[actress:xxxx]] [[actor:xxxx]]</code>中种方式实现互联与跳转，包括预览，加入图系统</li>
+<li>[ ] 更好的翻译，现在默认的google翻译不太好用。然后爬取的东西也不好，先考虑技术方案</li>
+<li>
+<p>[ ] graph加上series的互联</p>
+</li>
+<li>
+<p>[ ] 新版编译后至少50个爬虫的测试，包括新爬测试，里面包含的番号要全，正常的就不说了，但是冷门的要包含</p>
+</li>
+<li>[ ] dvd展开的重构，包括可以看背面，dvd不同宽度的盒子，更多的动画可以看dvd背面</li>
+<li>[ ] HXAD-015片商爬虫问题</li>
+<li>[ ] NFO导入优化问题，男女优判断问题，无番号问题。</li>
+<li>[ ] 过滤栏不够宽滚动与combobox滚动冲突问题</li>
 </ul>
-<h2 id="113">1.1.3<a class="headerlink" href="#113" title="Permanent link">&para;</a></h2>
+<h2 id="120">1.2.0(未发布)<a class="headerlink" href="#120" title="Permanent link">&para;</a></h2>
 <h3 id="_1">新功能<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] NFO数据的导入</li>
+<li>[x] 男女优加备注与连接-改数据库</li>
+<li>[x] 爬虫抓取的信息修改</li>
+<li>[x] 添加runtime，label series  -改数据库</li>
+<li>[x] 手动添加番号里面添加字母排序与一键移除FC2等东西，因为这些东西暂时不支持。</li>
+<li>[x] 二次处理补充没有爬到的信息</li>
+<li>[x] 展示面板切换可在瀑布流与网格间切换</li>
+<li>[x] 添加剧照爬取与存储</li>
+<li>[x] 增加剧照的展示功能，包括点击自动下载</li>
+<li>[x] 增加批量删除的界面</li>
+</ul>
 <h3 id="_2">改功能<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] 侧边栏的选中颜色变得更鲜艳</li>
+<li>[x] 暂时取消爬虫调度能力，包括停止，删除，减少复杂度，后面等爬虫系统重做后再加，现在只能手动关闭软件后重新添加了。</li>
+<li>[x] 添加女优后自动调用爬虫去更新女优</li>
+</ul>
 <h3 id="bug">修bug<a class="headerlink" href="#bug" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[x] 瀑布流单个页面大小问题，刷新时不正常无论有无maker全变半页大小，后面刷一下后正常</li>
+<li>[x]bug dvd架子那一页，如果在展开的时候切换范围和顺序，然后再点击展开，后面如果切换路由导航打开某个dvd时就会出现左侧信息换了，但是dvd的贴图没有换的bug。这个要操作几次后才会出问题</li>
+</ul>
 <h2 id="112">1.1.2<a class="headerlink" href="#112" title="Permanent link">&para;</a></h2>
 <h3 id="_3">新功能<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
 <ul>
@@ -1070,7 +1121,7 @@
 <li>[x] 优化了打开切换opengl时的上下的闪烁问题</li>
 </ul>
 <h2 id="111">1.1.1<a class="headerlink" href="#111" title="Permanent link">&para;</a></h2>
-<p>添加了更多的排序选项，包括按番号排序与按片商排序</p>
+<p>添加了更多的排序选项，包括按番号排序与按片商排序d</p>
 <h2 id="110">1.1.0<a class="headerlink" href="#110" title="Permanent link">&para;</a></h2>
 <ul>
 <li>更改私有数据库的unique要求，取消唯一性要求</li>

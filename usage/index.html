@@ -581,6 +581,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#nfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        方式四：导入NFO文件（开发中）
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -638,45 +649,6 @@
       
     </span>
   </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_12" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        版本迁移
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="版本迁移">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#111" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1.1.1之前
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#112" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        迁移到1.1.2
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -980,6 +952,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#nfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        方式四：导入NFO文件（开发中）
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1037,45 +1020,6 @@
       
     </span>
   </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#_12" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        版本迁移
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="版本迁移">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#111" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1.1.1之前
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#112" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        迁移到1.1.2
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1168,9 +1112,9 @@ Firefox 插件已加载（上一节的步骤）
 <p><img alt="" src="../assets/%E6%89%AB%E6%8F%8F%E8%A7%86%E9%A2%91.jpg" />
 软件会：</p>
 <p>扫描你设置的文件夹</p>
-<p>从文件名中尝试提取番号</p>
-<p>把识别到的结果放入爬虫队列，慢慢去网上补全信息（约 20 秒一次请求）</p>
+<p>从文件名中尝试提取番号,把识别到的结果放入爬虫队列，慢慢去网上补全信息（约 20 秒一次请求）</p>
 <p>重要提示：</p>
+<p>测试下来大概连续100次爬虫会触发javdb的反爬，然后就不行了。如果有上千部片子，挂半小时休息半小时，然后慢慢爬。</p>
 <p>这一步的识别准确度目前不高，只是帮你省一点力气。</p>
 <p>建议在「管理 -&gt; 添加/修改作品」里，后面手动检查和修正关键信息。</p>
 <h3 id="_6">方式三：纯手动添加番号<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
@@ -1179,6 +1123,62 @@ Firefox 插件已加载（上一节的步骤）
 会弹出「快速添加作品」窗口
 <img alt="" src="../assets/add_work.JPG" />
 输入标准的番号一定要大写，然后点击添加，爬虫会自动的去整理</p>
+<h3 id="nfo">方式四：导入NFO文件（开发中）<a class="headerlink" href="#nfo" title="Permanent link">&para;</a></h3>
+<p>标准NFO文件的格式参考 https://kodi.wiki/view/NFO_files/Templates 其中的movie</p>
+<p>举例单个的nfo的格式要是这个样子</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;yes&quot;?&gt;
+&lt;movie&gt;
+  &lt;source&gt;https://javdb.com/v/zkAxQ&lt;/source&gt;
+  &lt;plot&gt;
+  &lt;/plot&gt;
+  &lt;title&gt;神回！神回！！神回！！！…ハリウッドか！って位の世界観！！！雨のネオン街を颯爽と歩く謎のフルフェイス全身ラバー美女！！！…ブレードランナーか！！！これが激レアなんです！！！そしてこんな格好で外歩く様な女はアッチ(セックス)の方もスゲーに決まってるんです！！！年初めにこんな〝どエロい〟女見たらもぉ普通のAV見れなくなっちゃうから気をつけて！！！マジ半端ないエロさです！！！：夜の巷を徘徊する〝激レア素人〟！！ 11&lt;/title&gt;
+  &lt;director&gt;
+  &lt;/director&gt;
+  &lt;rating&gt;0&lt;/rating&gt;
+  &lt;criticrating&gt;
+  &lt;/criticrating&gt;
+  &lt;year&gt;2019&lt;/year&gt;
+  &lt;mpaa&gt;
+  &lt;/mpaa&gt;
+  &lt;customrating&gt;
+  &lt;/customrating&gt;
+  &lt;countrycode&gt;
+  &lt;/countrycode&gt;
+  &lt;premiered&gt;2019-01-03&lt;/premiered&gt;
+  &lt;release&gt;2019-01-03&lt;/release&gt;
+  &lt;runtime&gt;94&lt;/runtime&gt;
+  &lt;country&gt;
+  &lt;/country&gt;
+  &lt;studio&gt;プレステージプレミアム(PRESTIGE PREMIUM)&lt;/studio&gt;
+  &lt;id&gt;MIUM-359&lt;/id&gt;
+  &lt;num&gt;MIUM-359&lt;/num&gt;
+  &lt;genre&gt;HDTV&lt;/genre&gt;
+  &lt;genre&gt;苗條&lt;/genre&gt;
+  &lt;genre&gt;蕩婦&lt;/genre&gt;
+  &lt;genre&gt;巨乳&lt;/genre&gt;
+  &lt;genre&gt;美臀&lt;/genre&gt;
+  &lt;genre&gt;女優按摩棒&lt;/genre&gt;
+  &lt;tag&gt;夜の巷を徘徊する激レア素人&lt;/tag&gt;
+  &lt;thumb&gt;C:\Users\yin\Desktop\BigPic\MIUM-359.jpg&lt;/thumb&gt;
+  &lt;thumb&gt;E:\Jvedio-5.3.1\data\Daxoel\pic\SmallPic\MIUM-359.jpg&lt;/thumb&gt;
+  &lt;fanart&gt;
+    &lt;thumb preview=&quot;https://c0.jdbstatic.com/samples/zk/zkAxQ_l_0.jpg&quot;&gt;https://c0.jdbstatic.com/samples/zk/zkAxQ_l_0.jpg&lt;/thumb&gt;
+    &lt;thumb preview=&quot;https://c0.jdbstatic.com/samples/zk/zkAxQ_l_1.jpg&quot;&gt;https://c0.jdbstatic.com/samples/zk/zkAxQ_l_1.jpg&lt;/thumb&gt;
+    &lt;thumb preview=&quot;https://c0.jdbstatic.com/samples/zk/zkAxQ_l_2.jpg&quot;&gt;https://c0.jdbstatic.com/samples/zk/zkAxQ_l_2.jpg&lt;/thumb&gt;
+    &lt;thumb preview=&quot;https://c0.jdbstatic.com/samples/zk/zkAxQ_l_3.jpg&quot;&gt;https://c0.jdbstatic.com/samples/zk/zkAxQ_l_3.jpg&lt;/thumb&gt;
+  &lt;/fanart&gt;
+  &lt;actor&gt;
+    &lt;name&gt;二宮和香&lt;/name&gt;
+    &lt;thumb&gt;https://www.javsee.in/pics/actress/p37_a.jpg&lt;/thumb&gt;
+  &lt;/actor&gt;
+  &lt;actor&gt;
+    &lt;name&gt;森林原人&lt;/name&gt;
+    &lt;thumb&gt;https://c0.jdbstatic.com/avatars/pp/PpQ0.jpg&lt;/thumb&gt;
+  &lt;/actor&gt;
+&lt;/movie&gt;
+</code></pre>
+<p>这样子就可以导入进来。</p>
+<p>在设置-&gt;导入单个NFO数据</p>
 <h2 id="_7">作品信息不完整？<a class="headerlink" href="#_7" title="Permanent link">&para;</a></h2>
 <p>比如没有封面的，没有标题的，还有fc2那种啥都没有的，因为爬虫的网站没有对应的信息。此时可以右键点击进入编辑区
 <img alt="" src="../assets/%E4%BD%9C%E5%93%81%E4%BF%A1%E6%81%AF%E4%B8%8D%E5%AE%8C%E6%95%B4.JPG" /></p>
@@ -1249,28 +1249,13 @@ Firefox 插件已加载（上一节的步骤）
 <p>点击跳转
 <img alt="" src="../assets/%E6%89%8B%E5%8A%A8%E9%80%89%E6%8B%A9%E5%A5%B3%E4%BC%981.jpg" /></p>
 <p>选择正确的女优，点击
-<img alt="" src="../assets/%E6%89%8B%E5%8A%A8%E9%80%89%E6%8B%A9%E5%A5%B3%E4%BC%982.jpg" /></p>
+<img alt="" src="assets/手动选择女优2.jpg" /></p>
 <p>如果装了插件，右下角会有一个采集按钮，点击
-<img alt="" src="../assets/%E6%89%8B%E5%8A%A8%E9%80%89%E6%8B%A9%E5%A5%B3%E4%BC%983.jpg" /></p>
+<img alt="" src="assets/手动选择女优3.jpg" /></p>
 <p>采集后信息会更新到面板上，然后点击提交就行，右边的中文需要自己慢慢编辑，最顶上的就是有优先显示的。现在默认显示的名字是cn最上面一栏，现在就是白石もも
-<img alt="" src="../assets/%E6%89%8B%E5%8A%A8%E9%80%89%E6%8B%A9%E5%A5%B3%E4%BC%984.jpg" /></p>
+<img alt="" src="assets/手动选择女优4.jpg" /></p>
 <h2 id="_11">男优是灰的？<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h2>
 <p>这个没有办法，只能手动收集信息。</p>
-<h2 id="_12">版本迁移<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h2>
-<h3 id="111">1.1.1之前<a class="headerlink" href="#111" title="Permanent link">&para;</a></h3>
-<p>所有的数据库文件均在<code>resources/public</code>和<code>resources/private</code>这两个文件夹的下面。</p>
-<p>在没有数据库迁移工具时只能手动复制主要的文件夹，<code>resources/public</code>和<code>resources/private</code>，把对应的文件夹移动到新版本的对应的位置就行了。</p>
-<p>有迁移工具后，点击备份私库与公库，然后选择电脑上的一个位置，用新的版本点击还原后选择对应的meta.json和.db文件然后重启软件。现在暂时做不到无缝，总有问题。</p>
-<p>还有就是settings.ini这个配置文件里面存了包括界面颜色，视频文件夹地址等信息，也一并移动过去。</p>
-<p>现在绿色版只能是这样来版本迁移，后面如果有安装版应该是自动版本迁移。</p>
-<h3 id="112">迁移到1.1.2<a class="headerlink" href="#112" title="Permanent link">&para;</a></h3>
-<p>1.1.2以前数据库文件均在<code>resources/public</code>和<code>resources/private</code>，之后需要把这两个文件移动到<code>data</code>下面，然后把settings.ini也移动到<code>data</code>文件夹下面。
-<code>data</code>文件夹下面还有
-- <code>settings.ini</code> 设置
-- <code>shortcuts.json</code>用户自定义快捷键
-- <code>crawler_nav_buttons.json</code>json驱动的外链，用户可以自行编辑网站
-迁移后这个文件夹应该长这样
-<img alt="" src="../assets/data.JPG" /></p>
 
 
 

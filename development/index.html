@@ -642,10 +642,27 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="运行">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        代码规范
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         打包发布
@@ -800,10 +817,27 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="运行">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        代码规范
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#_4" class="md-nav__link">
+  <a href="#_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         打包发布
@@ -860,7 +894,21 @@ Ctrl + Shift + P</p>
 <p>venv
 python main.py</p>
 <p>或者直接按F5</p>
-<h2 id="_4">打包发布<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h2>
+<h3 id="_4">代码规范<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<p>官方样式指南，约定包括：
+缩进：4 个空格，不用 Tab 混用。
+行长：常见约定每行 ≤79（文档/注释）或 ≤88/100（很多项目用工具放宽）。
+命名：模块/包 lowercase；类 CapWords；函数/方法/变量 lower_with_underscores；常量 ALL_CAPS；私有约定 _leading_underscore。
+qt信号，小驼峰</p>
+<p>导入：标准库 → 第三方 → 本地，各组空一行；尽量不用 import *。
+空格：运算符两侧、逗号后等留白习惯；不在括号里无故加空格。
+字符串：与同文件已有风格一致；无特殊理由可优先双引号或统一用一种。
+PEP 257
+docstring 的写法和格式约定。</p>
+<p>类型注解
+PEP 484 及后续（typing / | 联合类型等），是否强制由项目决定。</p>
+<p>使用black作为代码的风格的整理</p>
+<h2 id="_5">打包发布<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
 <p>在powershell里，刚刚创建的conda 虚拟环境中，运行build-pyinstaller.ps1，这个是快速打包，大概打包时间200s，
 确定无问题后，可以用build-nuitka.ps1打包，这个打包后提升速度，但是包体大一点，打包时间3000s
 打包后的结构，一个绿色的可移动的文件夹，运行main.exe就能运行，这个pyinstaller是高度精简后的，如果要多加库，需要改里面的文件</p>
