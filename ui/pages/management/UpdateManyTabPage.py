@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 from PySide6.QtCore import Slot, QThreadPool
+import json
 import logging
 
 from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfig
@@ -208,6 +209,7 @@ class UpdateManyTabPage(LazyWidget):
             "maker": self.crawler_auto_page.cb_maker,
             "series": self.crawler_auto_page.cb_series,
             "label": self.crawler_auto_page.cb_label,
+            "fanart": self.crawler_auto_page.cb_fanart,
         }
         for field_name, checkbox in field_map.items():
             if checkbox.isChecked():
@@ -224,6 +226,28 @@ class UpdateManyTabPage(LazyWidget):
         if field_name == "cover":
             val = row.get("image_url")
             return val is None or str(val).strip() == ""
+        if field_name == "fanart":
+            raw = row.get("fanart")
+            if raw is None:
+                return True
+            s = str(raw).strip()
+            if not s or s == "[]":
+                return True
+            try:
+                parsed = json.loads(s)
+            except (json.JSONDecodeError, TypeError):
+                return True
+            if not isinstance(parsed, list) or len(parsed) == 0:
+                return True
+            for item in parsed:
+                if not isinstance(item, dict):
+                    continue
+                if (
+                    str(item.get("url") or "").strip()
+                    or str(item.get("file") or "").strip()
+                ):
+                    return False
+            return True
         if field_name == "runtime":
             val = row.get("runtime")
             try:

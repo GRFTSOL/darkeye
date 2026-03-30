@@ -394,6 +394,7 @@ def get_works_for_bulk_crawl_fields() -> list[dict]:
         w.maker_id,
         w.label_id,
         w.series_id,
+        w.fanart,
         (SELECT COUNT(1) FROM work_actress_relation war WHERE war.work_id = w.work_id) AS actress_count,
         (SELECT COUNT(1) FROM work_actor_relation wor WHERE wor.work_id = w.work_id) AS actor_count,
         (SELECT COUNT(1) FROM work_tag_relation wtr WHERE wtr.work_id = w.work_id) AS tag_count
