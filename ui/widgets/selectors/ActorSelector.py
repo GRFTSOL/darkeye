@@ -3,6 +3,7 @@ from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtCore import Qt, QItemSelection, Signal, Slot
 import sqlite3
 import logging
+import time
 from config import DATABASE
 from controller.message_service import MessageBoxService
 
@@ -111,7 +112,7 @@ FROM actor a
 JOIN actor_name ON actor_name.actor_id=a.actor_id
 """
         try:
-            logging.info("ActorSelector加载男优数据库")
+            t0 = time.perf_counter()
             with sqlite3.connect(DATABASE) as conn:
                 cursor = conn.cursor()
                 cursor.execute(query)
@@ -130,6 +131,12 @@ JOIN actor_name ON actor_name.actor_id=a.actor_id
                 item.setEditable(False)
                 items.append(item)
 
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            logging.info(
+                "ActorSelector 加载男优数据库完成，耗时 %.2f ms，共 %d 条",
+                elapsed_ms,
+                len(items),
+            )
             return items
         except Exception as e:
             self.msg.show_critical("数据库错误", f"无法读取数据：\n{e}")

@@ -165,6 +165,18 @@ def _pick_work_cover_source(candidates: list[str]) -> str | None:
     return None
 
 
+# NFO 中这类地址易 SSL 失败且价值低，直接跳过下载。
+_BLOCKED_NFO_IMAGE_URL_PREFIXES: tuple[str, ...] = (
+    "https://www.javsee.in",
+    "http://www.javsee.in",
+)
+
+
+def _is_blocked_nfo_remote_image_url(url: str) -> bool:
+    low = (url or "").strip().lower()
+    return any(low.startswith(p) for p in _BLOCKED_NFO_IMAGE_URL_PREFIXES)
+
+
 def _prepare_local_image_path(src: str) -> str | None:
     """供 rename_save_image 使用的本地绝对路径；http(s) 先下载到临时文件。"""
     s = (src or "").strip()
@@ -172,6 +184,9 @@ def _prepare_local_image_path(src: str) -> str | None:
         return None
     low = s.lower()
     if low.startswith("http://") or low.startswith("https://"):
+        if _is_blocked_nfo_remote_image_url(s):
+            logging.debug("NFO 图片 URL 已屏蔽（不下载）：%s", s[:120])
+            return None
         TEMP_PATH.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         dest = TEMP_PATH / f"nfo_img_{ts}.jpg"
@@ -258,7 +273,10 @@ def _apply_cast_portraits(cast: list[NfoCastEntry]) -> tuple[bool, bool]:
             continue
         local = _prepare_local_image_path(thumb)
         if not local:
-            logging.warning("NFO 头像无法解析或下载：%s", thumb[:80])
+            if _is_blocked_nfo_remote_image_url(thumb):
+                logging.debug("NFO 头像跳过已屏蔽域名：%s", thumb[:80])
+            else:
+                logging.warning("NFO 头像无法解析或下载：%s", thumb[:80])
             continue
         aid = exist_actress(name)
         if aid is not None:
@@ -410,10 +428,26 @@ def _resolve_tag_names(names: list[str]) -> tuple[list[int], bool]:
     return tag_ids, tag_added
 
 
-def import_work_from_movie_nfo(path: Path) -> tuple[bool, str]:
+def emit_after_nfo_batch_import() -> None:
+    """批量 NFO 导入结束后统一刷新 UI（单次 emit，替代逐文件 emit）。"""
+    global_signals.makerDataChanged.emit()
+    global_signals.labelDataChanged.emit()
+    global_signals.seriesDataChanged.emit()
+    global_signals.tagDataChanged.emit()
+    global_signals.actressDataChanged.emit()
+    global_signals.actorDataChanged.emit()
+    global_signals.workDataChanged.emit()
+
+
+def import_work_from_movie_nfo(
+    path: Path, *, emit_ui_signals: bool = True
+) -> tuple[bool, str]:
     """
     从 NFO 导入一条作品。番号已存在则跳过写入。
     返回 (是否视为成功, 提示文案)。已跳过导入时返回 (False, 说明番号已存在)。
+
+    :param emit_ui_signals: 为 False 时不发射全局数据变更信号（供批量导入结束后统一刷新）。
+    这个是主流程
     """
     p = Path(path)
     if not p.is_file():
@@ -438,18 +472,19 @@ def import_work_from_movie_nfo(path: Path) -> tuple[bool, str]:
     except RuntimeError as e:
         return False, str(e)
 
-    if maker_added:
-        global_signals.makerDataChanged.emit()
-    if label_added:
-        global_signals.labelDataChanged.emit()
-    if series_added:
-        global_signals.seriesDataChanged.emit()
-    if tag_added:
-        global_signals.tagDataChanged.emit()
-    if actress_added:
-        global_signals.actressDataChanged.emit()
-    if actor_added:
-        global_signals.actorDataChanged.emit()
+    if emit_ui_signals:
+        if maker_added:
+            global_signals.makerDataChanged.emit()
+        if label_added:
+            global_signals.labelDataChanged.emit()
+        if series_added:
+            global_signals.seriesDataChanged.emit()
+        if tag_added:
+            global_signals.tagDataChanged.emit()
+        if actress_added:
+            global_signals.actressDataChanged.emit()
+        if actor_added:
+            global_signals.actorDataChanged.emit()
 
     director = parsed.director.strip() or "----"
     jp_title = parsed.jp_title.strip() or None
@@ -466,6 +501,8 @@ def import_work_from_movie_nfo(path: Path) -> tuple[bool, str]:
             cover_name = _work_cover_filename(parsed.serial_number)
             rename_save_image(local_cover, cover_name, "cover")
             image_url = cover_name
+        elif _is_blocked_nfo_remote_image_url(cover_src):
+            logging.debug("NFO 作品封面跳过已屏蔽域名：%s", cover_src[:120])
         else:
             logging.warning("NFO 作品封面无法加载：%s", cover_src[:120])
 
@@ -494,12 +531,14 @@ def import_work_from_movie_nfo(path: Path) -> tuple[bool, str]:
         )
         return False, "写入数据库失败"
 
-    global_signals.workDataChanged.emit()
+    if emit_ui_signals:
+        global_signals.workDataChanged.emit()
 
     img_act, img_actor = _apply_cast_portraits(parsed.cast)
-    if img_act:
-        global_signals.actressDataChanged.emit()
-    if img_actor:
-        global_signals.actorDataChanged.emit()
+    if emit_ui_signals:
+        if img_act:
+            global_signals.actressDataChanged.emit()
+        if img_actor:
+            global_signals.actorDataChanged.emit()
 
     return True, f"已从 NFO 导入作品：{parsed.serial_number}"

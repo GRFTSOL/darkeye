@@ -1,7 +1,9 @@
 from PySide6.QtWidgets import QHBoxLayout, QWidget, QVBoxLayout, QLineEdit, QListView
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtCore import Qt, QItemSelection, Signal, Slot
-import sqlite3, logging
+import sqlite3
+import logging
+import time
 
 from config import DATABASE
 from controller.message_service import MessageBoxService
@@ -99,7 +101,7 @@ class ActressSelector(QWidget):
         exclude_ids = exclude_ids or []
         # 数据库有没有被正确的读取是一个问题，数据库的版本与软件的版本要对上
         try:
-            logging.info("ActressSelector加载女优数据库")
+            t0 = time.perf_counter()
             with sqlite3.connect(DATABASE) as conn:
                 cursor = conn.cursor()
                 cursor.execute(
@@ -118,6 +120,12 @@ class ActressSelector(QWidget):
                 # 设置只读不可编辑
                 item.setEditable(False)
                 items.append(item)
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            logging.info(
+                "ActressSelector 加载女优数据库完成，耗时 %.2f ms，共 %d 条",
+                elapsed_ms,
+                len(items),
+            )
             return items
 
         except Exception as e:
