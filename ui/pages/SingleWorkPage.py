@@ -9,14 +9,21 @@ from PySide6.QtWidgets import (
     QLayoutItem,
     QMenu,
 )
-from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor, QFont
+from PySide6.QtGui import (
+    QPixmap,
+    QPainter,
+    QLinearGradient,
+    QColor,
+    QFont,
+    QImage,
+)
 from PySide6.QtCore import Qt, QPointF, Signal, Slot
 import logging
 
 from darkeye_ui.components import TokenVLabel
 from darkeye_ui.layouts import VFlowLayout
 from darkeye_ui.components.heart_label import HeartLabel
-from config import WORKCOVER_PATH, ICONS_PATH
+from config import WORKCOVER_PATH
 from ui.widgets.text.VerticalTagLabel2 import (
     VerticalActressLabel,
     VerticalTagLabel,
@@ -78,20 +85,15 @@ class Cover(QLabel):
     def load_cover(self):
         """加载"""
         if self._path is None:
-            path = str(ICONS_PATH / "none.png")
-            pixmap = QPixmap(path)
-            if pixmap.isNull():
-                logging.info(f"加载失败: {path}")
-                pixmap = QPixmap(800, 600)
-                pixmap.fill(Qt.black)
-            self.original_pixmap = pixmap
+            img = QImage(800, 600, QImage.Format_ARGB32)
+            img.fill(QColor(0, 0, 0, 0))
+            self.original_pixmap = QPixmap.fromImage(img)
             return
 
-        from PySide6.QtGui import QImage
-
-        imgmap = QImage(str(WORKCOVER_PATH / self._path))
+        cover_path = str(WORKCOVER_PATH / self._path)
+        imgmap = QImage(cover_path)
         if imgmap.isNull():
-            logging.info(f"加载失败: {path}")
+            logging.info(f"加载失败: {cover_path}")
             imgmap = QImage(800, 600)
             imgmap.fill(Qt.black)
         self.original_pixmap = QPixmap.fromImage(

@@ -33,6 +33,7 @@ from darkeye_ui.components.button import Button
 from darkeye_ui.components.input import LineEdit
 from darkeye_ui.components.combo_box import ComboBox
 from ui.widgets.selectors.maker_selector import MakerSelector
+from darkeye_ui.design.icon import get_builtin_icon
 
 
 class MakerRedirectDialog(QDialog):
@@ -205,12 +206,12 @@ class StudioManagementPage(LazyWidget):
         self.btn_export_maker_prefix = Button()
         self.btn_export_maker_prefix.setText("导出片商前缀到json文件")
         self.btn_export_maker_prefix.setToolTip("导出片商前缀到json文件")
-        self.btn_export_maker_prefix.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_export_maker_prefix.setIcon(get_builtin_icon(name="database"))
 
         self.btn_import_maker_prefix = Button()
         self.btn_import_maker_prefix.setText("从json文件导入片商前缀")
         self.btn_import_maker_prefix.setToolTip("从json文件导入片商前缀")
-        self.btn_import_maker_prefix.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_import_maker_prefix.setIcon(get_builtin_icon(name="database"))
 
         # 布局
         button_layout = QHBoxLayout()

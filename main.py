@@ -80,7 +80,7 @@ def _run_main_app():
 
     # 是否显示启动 splash，可通过命令行参数关闭
 
-    show_splash = False
+    show_splash = True
 
     # 初始化性能分析器（必须在log_config之前，因为log_config本身也需要时间）
     from utils.profiler import get_profiler
@@ -162,9 +162,7 @@ def _run_main_app():
     splash = None
     if show_splash:
         # 启动画面用 PNG 避免 SVG 解析耗时
-        splash_icon = ICONS_PATH / "logo.png"
-        if not splash_icon.exists():
-            splash_icon = ICONS_PATH / "logo.svg"
+        splash_icon = ICONS_PATH / "logo.svg"
         pixmap = QPixmap(str(splash_icon))
         profiler.checkpoint("加载图片")
 

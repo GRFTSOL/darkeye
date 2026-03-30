@@ -25,7 +25,7 @@ import logging
 from controller.message_service import MessageBoxService
 
 from darkeye_ui.components.token_tab_widget import TokenTabWidget
-
+from darkeye_ui.design.icon import get_builtin_icon
 
 class ManagementPage(QWidget):
     """管理面板，里面嵌套了其他很多的功能"""
@@ -92,93 +92,3 @@ class ManagementPage(QWidget):
         if hasattr(self.worktab, "viewmodel"):
             self.worktab.viewmodel.set_serial_number(serial_number)
             self.worktab.viewmodel._load_from_db()
-
-    # 工具栏
-    def create_toolbar(self):
-        # 工具栏
-        toolbar = QWidget()
-        toolbar.setFixedHeight(30)
-
-        layout = QHBoxLayout(toolbar)
-        layout.setContentsMargins(5, 0, 2, 0)
-        layout.setSpacing(3)
-
-        # 工具按钮
-        btn_addWork = QToolButton()
-        btn_addWork.setText("快速记录番号(W)")
-        btn_addWork.setToolTip("快速记录番号")
-        btn_addWork.setIcon(QIcon(str(ICONS_PATH / "film.png")))
-        btn_addWork.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-
-        btn_addAdress = QToolButton()
-        btn_addAdress.setText("添加新女优")
-        btn_addAdress.setToolTip(
-            "手动添加女优，至少需要输入一个准确的中文名与日文名，要求日文名在MinnanoAV能找到"
-        )
-        btn_addAdress.setIcon(QIcon(str(ICONS_PATH / "venus.png")))
-        btn_addAdress.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-
-        btn_reNewAdress = QToolButton()
-        btn_reNewAdress.setText("更新女优数据")
-        btn_reNewAdress.setToolTip(
-            "根据标记自动更新女优的数据，包括身高，三维，罩杯，出生年月，出道日期，照片"
-        )
-        btn_reNewAdress.setIcon(QIcon(str(ICONS_PATH / "refresh-cw.svg")))
-        btn_reNewAdress.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-
-        btn_addMasturbate = QToolButton()
-        btn_addMasturbate.setText("添加自慰记录(M)")
-        btn_addMasturbate.setToolTip("添加自慰记录，包括时间，满意度，以及感受")
-        btn_addMasturbate.setIcon(QIcon(str(ICONS_PATH / "masturbate.png")))
-        btn_addMasturbate.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-
-        btn_addSex = QToolButton()
-        btn_addSex.setText("添加做爱记录(L)")
-        btn_addSex.setToolTip("添加做爱记录，包括时间，满意度，以及感受")
-        btn_addSex.setIcon(QIcon(str(ICONS_PATH / "sex.png")))
-        btn_addSex.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-
-        btn_addGenitalAarousal = QToolButton()
-        btn_addGenitalAarousal.setText("添加性器官唤起记录(A)")
-        btn_addGenitalAarousal.setToolTip(
-            "添加睡眠相关的性器官唤起记录，包括男性的晨勃起，或者女性的阴蒂充血勃起"
-        )
-        btn_addGenitalAarousal.setIcon(QIcon(str(ICONS_PATH / "erection.png")))
-        btn_addGenitalAarousal.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-
-        btn_addActor = QToolButton()
-        btn_addActor.setText("添加新男优")
-        btn_addActor.setToolTip("手动添加男优，至少需要输入一个准确的中文名与日文名")
-        btn_addActor.setIcon(QIcon(str(ICONS_PATH / "mars.png")))
-        btn_addActor.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-
-        # 右侧空白拉伸
-        spacer = QWidget()
-        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-
-        layout.addWidget(btn_addWork)
-        layout.addWidget(btn_addAdress)
-        layout.addWidget(btn_reNewAdress)
-        layout.addWidget(btn_addActor)
-        layout.addWidget(btn_addMasturbate)
-        layout.addWidget(btn_addSex)
-        layout.addWidget(btn_addGenitalAarousal)
-
-        layout.addWidget(spacer)
-
-        toolbar.setObjectName("managementPageToolbar")
-        toolbar.setStyleSheet(
-            """
-            #managementPageToolbar QToolButton {
-                padding: 0px 0px;
-                background: #F0F0F0;
-                border: 1px solid #ccc;
-                border-radius: 0px;
-            }
-            #managementPageToolbar QToolButton:hover {
-                background: #D8EAF9;
-            }
-        """
-        )
-
-        return toolbar

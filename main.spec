@@ -237,7 +237,7 @@ exe = EXE(
     upx=False,
     upx_exclude=['Qt6Core.dll', 'Qt6Gui.dll','Qt6Widgets.dll','Qt6Qml.dll','Qt6Quick.dll','Qt6Pdf.dll'],
     console=False,  # 改为 True 可显示终端日志窗口
-    icon='resources/icons/logo.ico'
+    icon='resources/logo.ico'
 )
 
 coll = COLLECT(

@@ -10,13 +10,13 @@ from darkeye_ui.components.label import Label
 from darkeye_ui.components.input import TextEdit
 from darkeye_ui.components.token_date_time_edit import TokenDateTimeEdit
 from darkeye_ui.components.button import Button
-
+from darkeye_ui.design.icon import get_builtin_icon
 
 class AddSexualArousalDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("添加无意识性器官唤醒记录")
-        self.setWindowIcon(QIcon(str(ICONS_PATH / "erection.png")))
+        self.setWindowIcon(get_builtin_icon(name="note_pen"))
         self.resize(300, 300)
         self.msg = MessageBoxService(self)
 

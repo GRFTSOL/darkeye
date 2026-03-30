@@ -20,7 +20,7 @@ from config import (
 )
 from darkeye_ui.components import Label, Button
 from controller.message_service import MessageBoxService
-
+from darkeye_ui.design.icon import get_builtin_icon
 
 def _get_detected_db_version(db_path) -> str:
     """查询指定数据库文件当前记录的版本，失败返回「未检测到」。"""
@@ -67,33 +67,33 @@ class DBSettingPage(QWidget):
         self.btn_backupDB = Button()
         self.btn_backupDB.setText("备份公共数据库")
         self.btn_backupDB.setToolTip("将现有的数据库打上时间戳备份")
-        self.btn_backupDB.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_backupDB.setIcon(get_builtin_icon(name="database"))
 
         self.btn_restoreDB = Button()
         self.btn_restoreDB.setText("还原公共数据库")
         self.btn_restoreDB.setToolTip(
             "在备份的数据库里选择一个数据还原，覆盖现有的数据库"
         )
-        self.btn_restoreDB.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_restoreDB.setIcon(get_builtin_icon(name="database"))
 
         self.btn_backupDB2 = Button()
         self.btn_backupDB2.setText("备份私有数据库")
         self.btn_backupDB2.setToolTip("将现有的数据库打上时间戳备份")
-        self.btn_backupDB2.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_backupDB2.setIcon(get_builtin_icon(name="database"))
 
         self.btn_restoreDB2 = Button()
         self.btn_restoreDB2.setText("还原私有数据库")
         self.btn_restoreDB2.setToolTip(
             "在备份的数据库里选择一个数据还原，覆盖现有的数据库"
         )
-        self.btn_restoreDB2.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_restoreDB2.setIcon(get_builtin_icon(name="database"))
 
         self.btn_rebuildprivatelink = Button()
         self.btn_rebuildprivatelink.setText("重建私有库与公有库的链接")
         self.btn_rebuildprivatelink.setToolTip(
             "选择私有库，重建私有库的链接，这是当公共库换了的时候用的"
         )
-        self.btn_rebuildprivatelink.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_rebuildprivatelink.setIcon(get_builtin_icon(name="database"))
 
         self.btn_import_nfo = Button("从 NFO 导入作品")
         self.btn_import_nfo.setToolTip(

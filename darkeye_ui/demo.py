@@ -748,7 +748,7 @@ def _build_page_more(theme_mgr: ThemeManager) -> QWidget:
     left.addLayout(loading_row)
     right.addWidget(Label("OctImage（正八边形图片展示）"))
     _root = Path(__file__).resolve().parent.parent
-    logo_path = _root / "resources" / "icons" / "logo.png"
+    logo_path = _root / "resources" / "icons" / "logo.svg"
     oct_img = OctImage(
         image_path=str(logo_path) if logo_path.exists() else None,
         diameter=120,

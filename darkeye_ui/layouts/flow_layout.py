@@ -38,7 +38,7 @@ class FlowLayout(QLayout):
 
     def setGeometry(self, rect):
         super().setGeometry(rect)
-        self.doLayout(rect, False)
+        self.do_layout(rect, False)
 
     def sizeHint(self):
         return self.minimumSize()

@@ -23,7 +23,9 @@ from PySide6.QtGui import QIcon
 from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfig
 from ui.myads.layout_tree import LayoutTree
 from ui.myads.pane_widget import PaneWidget
-from config import ICONS_PATH
+
+# Demo 专用图标目录，与仓库根 resources 分离，便于测试脚本自包含
+DEMO_ICONS_PATH = Path(__file__).resolve().parent / "icons"
 
 """工作区 Demo 主入口：WorkspaceDemoWidget，组合 Pane、LayoutTree、拖拽与预览。"""
 
@@ -59,7 +61,7 @@ class WorkspaceDemoWidget(QWidget):
             d = self._manager.create_content_config()
             w = _make_placeholder_content(title, icon_name)
             d.set_window_title(title).set_icon(
-                QIcon(str(ICONS_PATH / icon_name))
+                QIcon(str(DEMO_ICONS_PATH / icon_name))
             ).set_widget(w).set_closeable(closeable)
             return d
 
@@ -246,7 +248,7 @@ def main():
         cfg = workspace._manager.create_content_config(content_id=content_id)
         w = _make_placeholder_content(placeholder_text, icon_name)
         cfg.set_window_title(title).set_icon(
-            QIcon(str(ICONS_PATH / icon_name))
+            QIcon(str(DEMO_ICONS_PATH / icon_name))
         ).set_widget(w).set_closeable(closeable)
         return cfg
 
