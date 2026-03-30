@@ -87,7 +87,7 @@ def sqlite_vaccum():
         conn2 = get_connection(PRIVATE_DATABASE)
         conn2.execute("VACUUM;")
         conn2.close()
-        logging.warning(f"清理碎片成功")
+        logging.info(f"清理碎片成功")
     except Exception as e:
         logging.warning(f"清理碎片错误:{e}")
         # 从备份恢复

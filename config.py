@@ -94,35 +94,33 @@ PRIVATE_DATABASE = get_path(
 PRIVATE_DATABASE_BACKUP_PATH = get_path(
     "Paths/PrivateDatabaseBackups", "data/private/private_backup/"
 )  # 私有数据库库备份地址
-USER_SHORTCUT_PATH = get_path(
-    "Paths/ShortcutMap", "data/shortcuts.json"
-)  # 用户快捷键列表文件地址
-CRAWLER_NAV_BUTTONS_PATH = get_path(
-    "Paths/CrawlerNavButtons", "data/crawler_nav_buttons.json"
+
+USER_SHORTCUT_PATH = resource_path("data/shortcuts.json")  # 用户快捷键列表文件地址
+CRAWLER_NAV_BUTTONS_PATH = resource_path(
+    "data/crawler_nav_buttons.json"
 )  # 手动导航按钮配置
+
 TEMP_PATH = get_path("Paths/Temp", "data/temp/")  # 存一些临时文件，包括图片等等
 
 # 上面是用户保留，系统升级不修改的
 # -------------------------------------------------#
 # 下面是系统，会随着系统升级修改的
-SENSITIVE_WORDS_PATH = get_path(
-    "Paths/SensitiveWords", "resources/config/sensitive_words.txt"
+# 固定相对路径（resource_path），不写入 settings.ini
+
+SENSITIVE_WORDS_PATH = resource_path(
+    "resources/config/sensitive_words.txt"
 )  # 敏感词文件地址
-TAG_MAP_PATH = get_path(
-    "Paths/TagMap", "resources/config/tag_map.json"
-)  # 敏感词文件地址
-
-
-SQLPATH = get_path("Paths/Sql", "resources/sql/")
-ICONS_PATH = get_path("Paths/Icons", "resources/icons/")  # 软件图标的地址
-
-LOG_FILE = get_path("Paths/LogFile", "log/app.log")  # log文件的位置
-QSS_PATH = get_path("Paths/QSS", "styles/")  # qss文件的位置
-MESHES_PATH = get_path("Paths/Meshes", "resources/meshes/")  # DVD 模型 mesh 文件目录
-MAPS_PATH = get_path("Paths/Maps", "resources/maps/")  # DVD 贴图目录
-HDR_PATH = get_path("Paths/Hdr", "resources/hdr/")  # HDR 环境图目录
-AVWIKI_PATH = get_path("Paths/AvWiki", "resources/avwiki/")  # AV 知识库 md 根目录
-HELP_MD_PATH = get_path("Paths/HelpMd", "resources/help/help.md")  # 帮助页 md 文件地址
+TAG_MAP_PATH = resource_path("resources/config/tag_map.json")  # 标签映射文件地址
+SQLPATH = resource_path("resources/sql/")
+ICONS_PATH = resource_path("resources/icons/")  # 软件图标的地址
+LOG_FILE = resource_path("log/app.log")  # log文件的位置
+MESHES_PATH = resource_path("resources/meshes/")  # DVD 模型 mesh 文件目录
+MAPS_PATH = resource_path("resources/maps/")  # DVD 贴图目录
+HDR_PATH = resource_path("resources/hdr/")  # HDR 环境图目录
+AVWIKI_PATH = resource_path("resources/avwiki/")  # AV 知识库 md 根目录
+QSS_PATH = resource_path(
+    "resources/styles/"
+)  # QSS 固定为项目下 styles/，不写入 settings.ini
 
 
 def get_video_path() -> list[Path]:
