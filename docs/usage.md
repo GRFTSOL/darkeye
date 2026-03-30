@@ -260,3 +260,32 @@ Firefox 插件已加载（上一节的步骤）
 ## 男优是灰的？
 这个没有办法，只能手动收集信息。
 
+
+
+## 自定义外部链接
+现在的外部链接是json驱动的
+
+![](assets/自定义编辑外链1.JPG)
+
+
+要自定义，就打开`data/crawler_nav_buttons.json`这个json文件
+![](assets/自定义编辑外链2.JPG)
+
+单个的例子，包括名字，要跳转的url与description,包括{serial}特殊记号，有了这个记号，就会从当前页面中取出这个番号输入
+```
+  {
+    "name": "javtxt",
+    "url": "https://javtxt.com/search?type=id&q={serial}",
+    "description": "获得故事与标题，但是没有封面"
+  },
+```
+
+下一个例子,有的网站只接受fanza的那个id比如ipx00247查询的，就多加一行`"serial_transform": "fanza",`
+```
+  {
+    "name": "fanza",
+    "url": "https://www.dmm.co.jp/search/=/searchstr={serial}/limit=30/sort=rankprofile",
+    "serial_transform": "fanza",
+    "description": "fanza售卖网站，非日本本土，需日本vpn且特殊插件才能访问"
+  },
+```

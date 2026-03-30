@@ -29,7 +29,7 @@ def generate_random_graph(node_number=200, mean=1) -> nx.Graph:
 
 
 def generate_graph() -> nx.Graph:
-    """产生无向图"""
+    """产生无向图，基本图的制作，包含作品和女优的节点，以及作品和女优的边"""
 
     from core.database.connection import get_connection
     from config import DATABASE

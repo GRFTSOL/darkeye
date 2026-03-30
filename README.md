@@ -58,14 +58,16 @@
 - [x] 分析图表,数据展示,还有部分未完成
 - [x] 拟物化dvd展示
 - [x] 筛选作品页面
-- [x] firefox/chrome/edge爬虫插件，沉浸式摘取信息，支持javtxt,javlib,javdb交互式采集信息，
-- [x] 多链路爬虫，主要使用javlib,avdanyuwiki,javtxt,javdb,对于正规片的爬取很有效，且易过盾。
+- [x] chrome/edge/firefox爬虫插件，沉浸式摘取信息，支持javtxt,javlib,javdb交互式采集信息，
+- [x] 多链路爬虫，主要使用javlib,avdanyuwiki,javtxt,javdb,minnano-av,对于正规片的爬取很有效，且易过盾。
 - [x] 力导向图，查看关联，承受1w节点60帧率
 - [x] 搜索本地视频，进入爬虫列表
 - [x] 备份系统，按私库重建喜欢的番号
 - [x] json驱动外链跳转
 - [x] 主题更改，剩下3D场景没有更改明亮黑暗
 - [x] 部分截图功能，女优界面C键截图
+- [x] NFO数据导入(测试中)
+- [x] 自动检测下载更新
 
 
 拟物化的dvd

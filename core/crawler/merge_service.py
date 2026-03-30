@@ -58,11 +58,18 @@ def merge_crawl_results(
     )
     # 这里最好加一个屏蔽词
 
+
+    # 封面的列表
+    # 2023年以后大图会多。
+    # 可能的fanza大图封面https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/nsfs00401/nsfs00401pl.jpg
+    # 可能的fanza小图封面https://pics.dmm.co.jp/mono/movie/adult/ipx836/ipx836pl.jpg
+    # 这个除开蚊香社的，sod的，sod的大图的封面只有半页，这是个问题。
+
     def _urls(x):
         if x is None:
             return []
         return [x] if isinstance(x, str) else (x if isinstance(x, list) else [])
-
+    
     cover_list = [
         u for u in _urls(javlib_result.get("image")) if u and isinstance(u, str)
     ]

@@ -22,6 +22,9 @@ def convert_fanza(serial_number: str) -> str:
 
     lower_code = serial_number.lower()
     converted_code = lower_code.replace("-", "00")
+    
+    if any(converted_code.startswith(p) for p in ("start", "stars", "star","sdde")):
+        converted_code = "1" + converted_code
     return converted_code
 
 
