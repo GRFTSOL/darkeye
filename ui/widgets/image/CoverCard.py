@@ -34,7 +34,6 @@ class CoverCard(QWidget):
         self._green_mode = green_mode
 
         if image_path is None:
-            # self._path=Path(ICONS_PATH/"none.png")
             self._path = None
         else:
             self._path = Path(WORKCOVER_PATH / image_path)

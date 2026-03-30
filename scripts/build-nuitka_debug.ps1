@@ -27,7 +27,7 @@ $nuitkaArgs = @(
     "--jobs=10",#开10个线程，不让电脑卡死
     # 发布版 --windows-console-mode=disable
     "--windows-console-mode=force",
-    "--windows-icon-from-ico=resources/icons/logo.ico",
+    "--windows-icon-from-ico=resources/logo.ico",
     #"--enable-plugin=anti-bloat",#这个是默认开启的
     "--report=report.xml",
 

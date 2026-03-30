@@ -8,7 +8,7 @@ from controller.message_service import MessageBoxService
 from darkeye_ui.components.label import Label
 from darkeye_ui.components.input import LineEdit
 from darkeye_ui.components.button import Button
-
+from darkeye_ui.design.icon import get_builtin_icon
 
 class AddActorDialog(QDialog):
     # 添加新男优的输入对画框
@@ -17,7 +17,7 @@ class AddActorDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("添加新男优")
-        self.setWindowIcon(QIcon(str(ICONS_PATH / "mars.png")))
+        self.setWindowIcon(get_builtin_icon(name="mars",color="#4DD8F4"))
         self.resize(300, 150)
         self.msg = MessageBoxService(self)
 

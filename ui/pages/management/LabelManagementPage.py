@@ -28,6 +28,7 @@ from darkeye_ui.components.token_table_view import TokenTableView
 from darkeye_ui.components.button import Button
 from darkeye_ui.components.input import LineEdit
 from ui.widgets.selectors.label_selector import LabelSelector
+from darkeye_ui.design.icon import get_builtin_icon
 
 
 class LabelRedirectDialog(QDialog):
@@ -136,12 +137,12 @@ class LabelManagementPage(LazyWidget):
         self.btn_export_label = Button()
         self.btn_export_label.setText("导出厂牌到json文件")
         self.btn_export_label.setToolTip("导出厂牌到json文件")
-        self.btn_export_label.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_export_label.setIcon(get_builtin_icon(name="database"))
 
         self.btn_import_label = Button()
         self.btn_import_label.setText("从json文件导入厂牌")
         self.btn_import_label.setToolTip("从json文件导入厂牌")
-        self.btn_import_label.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_import_label.setIcon(get_builtin_icon(name="database"))
 
         self.btn_redirect_label = Button("重定向厂牌")
 

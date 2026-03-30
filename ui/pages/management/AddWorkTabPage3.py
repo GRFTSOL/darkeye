@@ -410,7 +410,7 @@ class ViewModel(QObject):
     def set_state(self, key: str, value: bool):
         if key not in self._changed_flags:
             raise KeyError(f"Unknown state key: {key}")
-        # numpy.bool_ / 0/1 等在 Qt 信号里可能导致签名不匹配，统一转换为真正的 bool
+
         v = bool(value)
         if self._changed_flags[key] != v:
             self._changed_flags[key] = v

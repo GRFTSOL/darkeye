@@ -8,11 +8,10 @@ from PySide6.QtWidgets import (
     QInputDialog,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
-from config import ICONS_PATH
 import logging, re
 from controller.message_service import MessageBoxService
 
+from darkeye_ui.design.icon import get_builtin_icon
 from darkeye_ui.components.button import Button
 from darkeye_ui.components.token_table_widget import TokenTableWidget
 
@@ -23,7 +22,7 @@ class AddQuickWork(QDialog):
         super().__init__()
         logging.info("----------快速记录作品番号窗口----------")
         self.setWindowTitle("快速记录作品番号(W)")
-        self.setWindowIcon(QIcon(str(ICONS_PATH / "film.png")))
+        self.setWindowIcon(get_builtin_icon("film"))
         self.setFixedSize(400, 500)
         self.msg = MessageBoxService(self)
         self._sort_ascending = True

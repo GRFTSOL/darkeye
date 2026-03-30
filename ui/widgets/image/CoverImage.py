@@ -285,22 +285,6 @@ class CoverImageFixed(QLabel):
             Qt.TransformationMode.SmoothTransformation,
         )
         del cropped_pixmap  # 释放对象
-        """
-        final_pixmap = QPixmap(scaled_pixmap.size())
-        final_pixmap.fill(Qt.GlobalColor.transparent)  # 透明背景
-        painter = QPainter(final_pixmap)
-        painter.drawPixmap(0, 0, scaled_pixmap)
 
-        borderpath=Path(ICONS_PATH/"frame.png")
-        border = QPixmap(borderpath)  # 你的边框文件路径
-        # 边框缩放到和目标图像一致
-        border = border.scaled(
-            scaled_pixmap.size(),
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation
-        )
-        painter.drawPixmap(0, 0, border)
-        painter.end()
-        """
         # 4. 将最终的 QPixmap 设置到 QLabel 上
         self.setPixmap(scaled_pixmap)

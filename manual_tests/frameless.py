@@ -186,7 +186,7 @@ class Window(FramelessWindow):
 
         tab_bar.tabChanged.connect(self._stack.setCurrentIndex)
 
-        self.setWindowIcon(QIcon("screenshot/logo.png"))
+        #self.setWindowIcon(QIcon("screenshot/logo.png"))
         self.setWindowTitle("PySide6-Frameless-Window")
         self.setStyleSheet("background:white")
 

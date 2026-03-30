@@ -19,19 +19,15 @@ from PySide6.QtCore import (
     QPointF,
 )
 from PySide6.QtGui import (
-    QPixmap,
-    QCursor,
     QPainter,
     QPainterPath,
     QColor,
     QFontMetrics,
     QFont,
 )
-from pathlib import Path
 import logging
 from typing import TYPE_CHECKING, Optional
 
-from config import ICONS_PATH
 from core.database.query import get_tags, get_tagid_by_keyword
 
 from controller.message_service import MessageBoxService
@@ -107,7 +103,6 @@ class TagGraphicsItem(QGraphicsObject):
         self._calculate_geometry()
 
         self.setAcceptHoverEvents(True)
-        self.setCursor(Qt.PointingHandCursor)
 
     def _calculate_geometry(self):
         """预计算尺寸和绘制路径，避免在 paint 中重复计算"""
@@ -552,9 +547,6 @@ class TagSelector5(QWidget):
 
     def __init__(self, enbale_mutex_check=True):
         super().__init__()
-        self.setCursor(
-            QCursor(QPixmap(Path(ICONS_PATH / "mouse_off.png")), hotX=32, hotY=32)
-        )
         self.setStyleSheet(
             """
             QTabWidget::pane, QScrollArea, QFrame {
@@ -625,7 +617,6 @@ class TagSelector5(QWidget):
         self.title_item = TagGraphicsItem(-1, "作品标签", "TITLE", title_bg, "", "")
         self.title_item.border_color = QColor(title_border)
         self.title_item.setAcceptHoverEvents(False)  # 标题不响应悬停
-        self.title_item.setCursor(Qt.ArrowCursor)
 
         self.left_scene.add_tag_item(self.title_item)
         self.left_view.custom_items.append(self.title_item)

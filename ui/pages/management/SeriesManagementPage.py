@@ -28,6 +28,7 @@ from darkeye_ui.components.token_table_view import TokenTableView
 from darkeye_ui.components.button import Button
 from darkeye_ui.components.input import LineEdit
 from ui.widgets.selectors.series_selector import SeriesSelector
+from darkeye_ui.design.icon import get_builtin_icon
 
 
 class SeriesRedirectDialog(QDialog):
@@ -143,12 +144,12 @@ class SeriesManagementPage(LazyWidget):
         self.btn_export_series = Button()
         self.btn_export_series.setText("导出系列到json文件")
         self.btn_export_series.setToolTip("导出系列到json文件")
-        self.btn_export_series.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_export_series.setIcon(get_builtin_icon(name="database"))
 
         self.btn_import_series = Button()
         self.btn_import_series.setText("从json文件导入系列")
         self.btn_import_series.setToolTip("从json文件导入系列")
-        self.btn_import_series.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_import_series.setIcon(get_builtin_icon(name="database"))
 
         self.btn_redirect_series = Button("重定向系列")
 
