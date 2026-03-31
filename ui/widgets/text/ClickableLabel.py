@@ -47,12 +47,12 @@ class ClickableLabel(Label):
     def search_actress_info(self, id):
         # 开始后台线程
         from core.crawler.minnanoav import SearchSingleActressInfo
-        from core.crawler.worker import Worker
+        from core.crawler.worker import Worker, wire_worker_finished
 
         worker = Worker(
             lambda id=id: SearchSingleActressInfo(id, self.text())
         )  # 传一个函数名进去
-        worker.signals.finished.connect(self.on_result)
+        wire_worker_finished(worker, self.on_result)
         QThreadPool.globalInstance().start(worker)
 
     @Slot(object)

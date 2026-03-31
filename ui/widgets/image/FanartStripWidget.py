@@ -550,6 +550,7 @@ class FanartEditDialog(QDialog):
             self._img.setText("加载中…")
             worker = Worker(_load_fanart_dialog_preview_task, str(path))
             bridge = _FanartPreviewLoadBridge(self, gen, slot_index, has_url)
+            worker.signals.setParent(bridge)
             worker.signals.finished.connect(
                 bridge.on_preview_finished,
                 Qt.ConnectionType.QueuedConnection,
@@ -1111,6 +1112,7 @@ class FanartStripWidget(QWidget):
     ) -> None:
         bridge = _FanartDownloadBridge(self, slot_index, dialog)
         worker = Worker(lambda u=url: _fanart_download_task(u))
+        worker.signals.setParent(bridge)
         worker.signals.finished.connect(
             bridge.on_fanart_download_finished,
             Qt.ConnectionType.QueuedConnection,

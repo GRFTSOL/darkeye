@@ -58,7 +58,7 @@ from utils.utils import delete_image, mse, translate_text_sync
 from darkeye_ui import LazyWidget
 from controller.message_service import MessageBoxService, IMessageService
 
-from core.crawler.worker import Worker
+from core.crawler.worker import Worker, wire_worker_finished
 
 from ui.navigation.router import Router
 from ui.widgets.text.WikiTextEdit import WikiTextEdit
@@ -73,6 +73,7 @@ from ui.widgets.selectors.maker_selector import MakerSelector
 from ui.widgets.selectors.label_selector import LabelSelector
 from ui.widgets.selectors.series_selector import SeriesSelector
 from core.database.db_queue import submit_db_raw
+
 
 class ButtonState(Enum):
     NORMAL = 1
@@ -920,7 +921,7 @@ class ViewModel(QObject):
         worker = Worker(
             lambda: translate_text_sync(self.get_jp_title(), fallback="empty")
         )
-        worker.signals.finished.connect(self._on_trans_title)
+        wire_worker_finished(worker, self._on_trans_title)
         QThreadPool.globalInstance().start(worker)
 
     @Slot()
@@ -929,7 +930,7 @@ class ViewModel(QObject):
         worker = Worker(
             lambda: translate_text_sync(self.get_jp_story(), fallback="empty")
         )  # 传一个函数名进去
-        worker.signals.finished.connect(self._on_trans_story)
+        wire_worker_finished(worker, self._on_trans_story)
         QThreadPool.globalInstance().start(worker)
 
     @Slot(str)

@@ -318,6 +318,7 @@ class CrawlerManager2(QObject):
             worker = Worker(lambda: jump_to_javlib(serial))
             relay = ResultRelay(self, "javlib", serial)
             self._source_relays[("javlib", serial)] = relay
+            worker.signals.setParent(relay)
             worker.signals.finished.connect(
                 relay.handle, Qt.ConnectionType.QueuedConnection
             )
@@ -330,6 +331,7 @@ class CrawlerManager2(QObject):
             worker = Worker(lambda: jump_to_javdb(serial))
             relay = ResultRelay(self, "javdb", serial)
             self._source_relays[("javdb", serial)] = relay
+            worker.signals.setParent(relay)
             worker.signals.finished.connect(
                 relay.handle, Qt.ConnectionType.QueuedConnection
             )
@@ -341,6 +343,7 @@ class CrawlerManager2(QObject):
             worker = Worker(lambda: fetch_javtxt_movie_info(serial))
             relay = ResultRelay(self, "javtxt", serial)
             self._source_relays[("javtxt", serial)] = relay
+            worker.signals.setParent(relay)
             worker.signals.finished.connect(
                 relay.handle, Qt.ConnectionType.QueuedConnection
             )
@@ -351,6 +354,7 @@ class CrawlerManager2(QObject):
             worker = Worker(lambda: SearchInfoDanyukiwi(serial))
             relay = ResultRelay(self, "avdanyuwiki", serial)
             self._source_relays[("avdanyuwiki", serial)] = relay
+            worker.signals.setParent(relay)
             worker.signals.finished.connect(
                 relay.handle, Qt.ConnectionType.QueuedConnection
             )
@@ -359,9 +363,12 @@ class CrawlerManager2(QObject):
     @timeit
     @Slot(str, str, dict)
     def on_result_received(self, source, serial, data):
+        key = (source, serial)
         task = self.tasks.get(serial)
         if not task:
             logging.error("未找到任务 %s", serial)
+            if key in self._source_relays:
+                del self._source_relays[key]
             return
 
         task.results[source] = data if isinstance(data, dict) else {}
@@ -371,7 +378,6 @@ class CrawlerManager2(QObject):
             source,
             task.pending_sources,
         )
-        key = (source, serial)
         if key in self._source_relays:
             del self._source_relays[key]
 
@@ -382,6 +388,7 @@ class CrawlerManager2(QObject):
                     del self.tasks[serial]
                 return
             worker = Worker(lambda: (serial, self._do_merge_only(serial)))
+            worker.signals.setParent(self)
             worker.signals.finished.connect(
                 self._on_merge_worker_finished,
                 Qt.ConnectionType.QueuedConnection,
@@ -396,31 +403,38 @@ class CrawlerManager2(QObject):
 
     @Slot(object)
     def _on_merge_worker_finished(self, result):
-        if result is None:
-            return
-        if isinstance(result, tuple) and len(result) == 2:
-            serial, final_data = result
-        else:
-            final_data = result
-            serial = getattr(final_data, "serial_number", None) if final_data else None
-        if not serial:
-            return
-        if not final_data:
-            if serial in self.tasks:
-                del self.tasks[serial]
-            return
-        task = self.tasks.get(serial)
-        if not task or task.cancel_requested:
-            if serial in self.tasks:
-                del self.tasks[serial]
-            return
-        task.workflow_state = CrawlWorkflowState.PERSISTING
-        DataUpdate(
-            final_data,
-            self,
-            withGUI=task.withGUI,
-            selected_fields=task.selected_fields,
-        )
+        try:
+            if result is None:
+                return
+            if isinstance(result, tuple) and len(result) == 2:
+                serial, final_data = result
+            else:
+                final_data = result
+                serial = (
+                    getattr(final_data, "serial_number", None) if final_data else None
+                )
+            if not serial:
+                return
+            if not final_data:
+                if serial in self.tasks:
+                    del self.tasks[serial]
+                return
+            task = self.tasks.get(serial)
+            if not task or task.cancel_requested:
+                if serial in self.tasks:
+                    del self.tasks[serial]
+                return
+            task.workflow_state = CrawlWorkflowState.PERSISTING
+            DataUpdate(
+                final_data,
+                self,
+                withGUI=task.withGUI,
+                selected_fields=task.selected_fields,
+            )
+        finally:
+            snd = self.sender()
+            if snd is not None:
+                snd.deleteLater()
 
 
 _crawler_manager2: Optional["CrawlerManager2"] = None

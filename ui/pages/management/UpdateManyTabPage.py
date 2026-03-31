@@ -77,14 +77,14 @@ class UpdateManyTabPage(LazyWidget):
 
     @Slot()
     def task_update_maker_by_prefix(self):
-        from core.crawler.worker import Worker
+        from core.crawler.worker import Worker, wire_worker_finished
         from core.database.update import update_work_maker_from_prefix_relation
 
         def _run():
             return update_work_maker_from_prefix_relation()
 
         worker = Worker(_run)
-        worker.signals.finished.connect(self._on_maker_prefix_update_finished)
+        wire_worker_finished(worker, self._on_maker_prefix_update_finished)
         QThreadPool.globalInstance().start(worker)
         self.msg.show_info("开始", "正在按 prefix_maker_relation 回写片商…")
 
@@ -100,11 +100,11 @@ class UpdateManyTabPage(LazyWidget):
 
     @Slot()
     def task_batch_translate_cn(self):
-        from core.crawler.worker import Worker
+        from core.crawler.worker import Worker, wire_worker_finished
         from core.database.update import batch_translate_missing_cn_fields
 
         worker = Worker(batch_translate_missing_cn_fields)
-        worker.signals.finished.connect(self._on_batch_translate_finished)
+        wire_worker_finished(worker, self._on_batch_translate_finished)
         QThreadPool.globalInstance().start(worker)
         self.msg.show_info("开始", "正在后台翻译并写库，请稍候…")
 
@@ -120,11 +120,11 @@ class UpdateManyTabPage(LazyWidget):
 
     @Slot()
     def task_normalize_cover_filenames(self):
-        from core.crawler.worker import Worker
+        from core.crawler.worker import Worker, wire_worker_finished
         from core.database.update import normalize_work_cover_filenames_to_serial
 
         worker = Worker(normalize_work_cover_filenames_to_serial)
-        worker.signals.finished.connect(self._on_normalize_cover_names_finished)
+        wire_worker_finished(worker, self._on_normalize_cover_names_finished)
         QThreadPool.globalInstance().start(worker)
         self.msg.show_info("开始", "正在统一封面文件名与 image_url…")
 
@@ -142,11 +142,11 @@ class UpdateManyTabPage(LazyWidget):
     def search_actress_info(self):
         # 开始后台线程
         from core.crawler.minnanoav import actress_need_update, SearchActressInfo
-        from core.crawler.worker import Worker
+        from core.crawler.worker import Worker, wire_worker_finished
 
         if actress_need_update():
             worker = Worker(SearchActressInfo)  # 传一个函数名进去
-            worker.signals.finished.connect(self.on_result)
+            wire_worker_finished(worker, self.on_result)
             QThreadPool.globalInstance().start(worker)
             self.msg.show_info("开始更新", "开始更新，可能需要一段时间")
         else:

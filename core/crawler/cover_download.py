@@ -106,6 +106,7 @@ class SequentialDownloader(QObject):
 
         worker = Worker(lambda: download_image(url, self.save_path))
         relay = DownloadRelay(self)
+        worker.signals.setParent(relay)
         relay.moveToThread(self.manager.thread())
 
         self.current_worker_id = id(worker)

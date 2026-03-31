@@ -118,16 +118,17 @@ class DataUpdate:
                         # 自动调用爬虫去更新女优
                         from PySide6.QtCore import QThreadPool
 
-                        from core.crawler.worker import Worker
+                        from core.crawler.worker import Worker, wire_worker_finished
                         from core.crawler.minnanoav import SearchSingleActressInfo
 
                         worker = Worker(
                             lambda aid=id, nm=actress: SearchSingleActressInfo(aid, nm)
                         )
-                        worker.signals.finished.connect(
+                        wire_worker_finished(
+                            worker,
                             lambda ok: (
                                 global_signals.actressDataChanged.emit() if ok else None
-                            )
+                            ),
                         )
                         QThreadPool.globalInstance().start(worker)
                 else:
@@ -216,8 +217,9 @@ class DataUpdate:
     def _schedule_cover_download(self):
         from config import TEMP_PATH
 
-
-        image_filename = (self.work.serial_number.strip().upper() + ".jpg")#这个图片就番号.jpg就行了
+        image_filename = (
+            self.work.serial_number.strip().upper() + ".jpg"
+        )  # 这个图片就番号.jpg就行了
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         dst_name = f"image_{timestamp}.jpg"

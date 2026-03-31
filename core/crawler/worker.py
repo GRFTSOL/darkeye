@@ -1,7 +1,17 @@
-import traceback
-from PySide6.QtCore import QRunnable, Signal, QObject, QThread
 import logging
 import threading
+import traceback
+from collections.abc import Callable
+
+from PySide6.QtCore import (
+    QCoreApplication,
+    QObject,
+    QRunnable,
+    QThread,
+    Qt,
+    Signal,
+    Slot,
+)
 
 
 # 定义信号类（用于线程间通信）
@@ -21,6 +31,8 @@ class Worker(QRunnable):
 
     def __init__(self, func, *args, **kwargs):
         super().__init__()
+        # 线程池在 run 结束后回收 QRunnable；否则 Worker/闭包/result 会永久堆积（典型内存泄漏）
+        self.setAutoDelete(True)
         self.signals = WorkerSignals()
         self.func = func
         self.args = args
@@ -41,3 +53,27 @@ class Worker(QRunnable):
         except Exception as e:
             logging.error(f"Worker 异常: {e}\n{traceback.format_exc()}")
             self.signals.finished.emit(None)
+        finally:
+            # 尽快断开对大对象（爬取结果等）的引用；signals 由父对象或 wire 槽内 deleteLater 回收
+            self.func = None
+            self.args = ()
+            self.kwargs = {}
+            self.result = None
+
+
+def wire_worker_finished(worker: "Worker", slot: Callable[[object], None]) -> None:
+    """连接 finished 到 slot，并在投递完成后释放 WorkerSignals（需伴 setAutoDelete(True) 的 Worker）。"""
+    app = QCoreApplication.instance()
+    if app is not None:
+        worker.signals.setParent(app)
+
+    @Slot(object)
+    def _wrapped(result: object) -> None:
+        try:
+            slot(result)
+        finally:
+            snd = QObject.sender()
+            if snd is not None:
+                snd.deleteLater()
+
+    worker.signals.finished.connect(_wrapped, Qt.ConnectionType.QueuedConnection)

@@ -321,7 +321,7 @@ class ViewModel(QObject):
     def clawer_update(self):
         """爬虫更新单个女优的数据，是直接更新，而不是写界面后提交"""
         from core.crawler.minnanoav import SearchSingleActressInfo
-        from core.crawler.worker import Worker
+        from core.crawler.worker import Worker, wire_worker_finished
 
         # taskmanager=TaskManager.instance()
         # task=taskmanager.add_task("爬虫更新单个女优数据")
@@ -330,9 +330,8 @@ class ViewModel(QObject):
         worker = Worker(
             lambda: SearchSingleActressInfo(self.actress_id, self.actress_name[0]["jp"])
         )  # 传一个函数名进去，注意这里
-        worker.signals.finished.connect(
-            lambda result: self.on_result(result, self.actress_name[0]["jp"])
-        )
+        nm = self.actress_name[0]["jp"]
+        wire_worker_finished(worker, lambda r, n=nm: self.on_result(r, n))
         QThreadPool.globalInstance().start(worker)
 
     def update_minnano_id(self, value):
