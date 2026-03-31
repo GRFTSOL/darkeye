@@ -652,6 +652,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        自定义外部链接
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1023,6 +1034,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        自定义外部链接
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1256,6 +1278,26 @@ Firefox 插件已加载（上一节的步骤）
 <img alt="" src="assets/手动选择女优4.jpg" /></p>
 <h2 id="_11">男优是灰的？<a class="headerlink" href="#_11" title="Permanent link">&para;</a></h2>
 <p>这个没有办法，只能手动收集信息。</p>
+<h2 id="_12">自定义外部链接<a class="headerlink" href="#_12" title="Permanent link">&para;</a></h2>
+<p>现在的外部链接是json驱动的</p>
+<p><img alt="" src="../assets/%E8%87%AA%E5%AE%9A%E4%B9%89%E7%BC%96%E8%BE%91%E5%A4%96%E9%93%BE1.JPG" /></p>
+<p>要自定义，就打开<code>data/crawler_nav_buttons.json</code>这个json文件
+<img alt="" src="../assets/%E8%87%AA%E5%AE%9A%E4%B9%89%E7%BC%96%E8%BE%91%E5%A4%96%E9%93%BE2.JPG" /></p>
+<p>单个的例子，包括名字，要跳转的url与description,包括{serial}特殊记号，有了这个记号，就会从当前页面中取出这个番号输入</p>
+<pre><code>  {
+    &quot;name&quot;: &quot;javtxt&quot;,
+    &quot;url&quot;: &quot;https://javtxt.com/search?type=id&amp;q={serial}&quot;,
+    &quot;description&quot;: &quot;获得故事与标题，但是没有封面&quot;
+  },
+</code></pre>
+<p>下一个例子,有的网站只接受fanza的那个id比如ipx00247查询的，就多加一行<code>"serial_transform": "fanza",</code></p>
+<pre><code>  {
+    &quot;name&quot;: &quot;fanza&quot;,
+    &quot;url&quot;: &quot;https://www.dmm.co.jp/search/=/searchstr={serial}/limit=30/sort=rankprofile&quot;,
+    &quot;serial_transform&quot;: &quot;fanza&quot;,
+    &quot;description&quot;: &quot;fanza售卖网站，非日本本土，需日本vpn且特殊插件才能访问&quot;
+  },
+</code></pre>
 
 
 
