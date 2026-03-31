@@ -12,7 +12,11 @@ import logging
 import random
 import sqlite3
 
-from config import DATABASE
+from config import (
+    DATABASE,
+    get_shelf_tag_selector_visible,
+    set_shelf_tag_selector_visible,
+)
 from core.database.db_queue import submit_db_raw
 from core.database.db_utils import attach_private_db, detach_private_db
 from core.database.query import (
@@ -30,6 +34,7 @@ from ui.widgets import CompleterLineEdit
 from core.dvd.dvd_shelf_view import DvdShelfView
 from ui.widgets.selectors.TagSelector5 import TagSelector5
 from darkeye_ui.components.label import Label
+from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.rotate_button import RotateButton
 from darkeye_ui.components.shake_button import ShakeButton
 from darkeye_ui.components.input import LineEdit
@@ -53,6 +58,7 @@ class ShelfPage(QWidget):
         self.label_id = None
         self.series_id = None
         self._green_mode = False
+        self._tag_selector_visible = get_shelf_tag_selector_visible()
         self.order = "添加逆序"
         self.scope = "公共库范围"
         self.random_seed = random.randint(1, 1_000_000)
@@ -156,6 +162,7 @@ class ShelfPage(QWidget):
         self.order_combo = ComboBox()
         self.order_combo.addItems(
             [
+                "随机顺序",
                 "添加逆序",
                 "添加顺序",
                 "番号顺序",
@@ -167,8 +174,7 @@ class ShelfPage(QWidget):
                 "发布时间逆序",
                 "发布时间顺序",
                 "拍摄年龄顺序",
-                "拍摄年龄逆序",
-                "随机顺序",
+                "拍摄年龄逆序"
             ]
         )
         self.order_combo.setCurrentText(self.order)
@@ -182,7 +188,12 @@ class ShelfPage(QWidget):
         self.filter_layout = QHBoxLayout(self.filter_widget)
         self.filter_layout.setContentsMargins(10, 0, 10, 0)
 
-        self.filter_layout.addWidget(scroll)
+        self.btn_toggle_tag_selector = IconPushButton(
+            icon_name="layout_panel_left", icon_size=22, out_size=28
+        )
+        self._sync_tag_selector_button()
+        self.filter_layout.addWidget(self.btn_toggle_tag_selector)
+        self.filter_layout.addWidget(scroll, 1)
         self.filter_layout.addWidget(self.btn_reload)
         self.filter_layout.addWidget(self.btn_eraser)
         self.filter_layout.addWidget(self.info)
@@ -199,6 +210,7 @@ class ShelfPage(QWidget):
         self.hlayout = QHBoxLayout()
         self.hlayout.addWidget(self.tagselector, 0)
         self.hlayout.addWidget(self.shelf_view, 1)
+        self.tagselector.setVisible(self._tag_selector_visible)
 
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
@@ -228,6 +240,22 @@ class ShelfPage(QWidget):
         global_signals.actorDataChanged.connect(self.actor_input.reload_items)
 
         self.btn_eraser.clicked.connect(self._clear_all_search)
+        self.btn_toggle_tag_selector.clicked.connect(self._toggle_tag_selector)
+
+    def _sync_tag_selector_button(self) -> None:
+        if self._tag_selector_visible:
+            self.btn_toggle_tag_selector.setToolTip("当前：显示标签边栏，点击隐藏")
+            self.btn_toggle_tag_selector.set_icon_name("panel_left_close")
+        else:
+            self.btn_toggle_tag_selector.setToolTip("当前：隐藏标签边栏，点击显示")
+            self.btn_toggle_tag_selector.set_icon_name("panel_left_open")
+
+    @Slot()
+    def _toggle_tag_selector(self) -> None:
+        self._tag_selector_visible = not self._tag_selector_visible
+        self.tagselector.setVisible(self._tag_selector_visible)
+        self._sync_tag_selector_button()
+        set_shelf_tag_selector_visible(self._tag_selector_visible)
 
     def _clear_filters_for_jump(self) -> None:
         """Clear current shelf filters synchronously before programmatic jump."""

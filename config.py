@@ -220,6 +220,28 @@ def set_work_large_cover_view(enabled: bool) -> None:
     settings.sync()
 
 
+def get_work_tag_selector_visible() -> bool:
+    """作品页标签边栏是否可见，默认显示。"""
+    return settings.value("WorkPage/TagSelectorVisible", True, type=bool)
+
+
+def set_work_tag_selector_visible(visible: bool) -> None:
+    """持久化作品页标签边栏显示状态。"""
+    settings.setValue("WorkPage/TagSelectorVisible", visible)
+    settings.sync()
+
+
+def get_shelf_tag_selector_visible() -> bool:
+    """书架页标签边栏是否可见，默认显示。"""
+    return settings.value("ShelfPage/TagSelectorVisible", True, type=bool)
+
+
+def set_shelf_tag_selector_visible(visible: bool) -> None:
+    """持久化书架页标签边栏显示状态。"""
+    settings.setValue("ShelfPage/TagSelectorVisible", visible)
+    settings.sync()
+
+
 def get_custom_primary() -> str | None:
     """从 .ini 读取自定义主色（仅亮色/暗色主题生效），不存在或为空则返回 None"""
     val = settings.value("App/CustomPrimary", "", type=str)
