@@ -21,7 +21,8 @@ from PySide6.QtCore import (
 )
 
 from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfig
-from ui.widgets.CrawlerToolBox import CrawlerAutoPage, CrawlerManualNavPage
+from ui.widgets.CrawlerToolBox import CrawlerAutoPage
+from ui.widgets.crawler_nav_page import CrawlerManualNavPage
 import copy
 import json
 import logging
@@ -543,7 +544,9 @@ class ViewModel(QObject):
         fan_items: list[dict] = data.pop("fanart", [])
         data["fanart"] = self._finalize_fanart_json(fan_items)
 
-        image_url = (self.get_serial_number().upper() + ".jpg")#这个图片就番号.jpg就行了
+        image_url = (
+            self.get_serial_number().upper() + ".jpg"
+        )  # 这个图片就番号.jpg就行了
 
         if self.get_cover() is None or self.get_cover() == "":
             data["image_url"] = None
@@ -1055,6 +1058,13 @@ class AddWorkTabPage3(LazyWidget):
 
         # 爬虫区
         self.crawler_auto_page = CrawlerAutoPage()
+        self.crawler_auto_page.btn_get_crawler = IconPushButton(
+            icon_name="arrow_down_to_line", icon_size=24, out_size=32
+        )
+        self.crawler_auto_page.append_row_widget(
+            self.crawler_auto_page.btn_get_crawler, column=1
+        )
+
         crawler_container = QWidget()
         crawler_layout = QVBoxLayout(crawler_container)
         crawler_layout.setContentsMargins(0, 0, 0, 0)

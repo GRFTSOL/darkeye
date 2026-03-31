@@ -93,6 +93,8 @@ SVG_LAYOUT_WATERFALL = '<svg xmlns="http://www.w3.org/2000/svg" width="24" heigh
 
 SVG_NOTE_PEN='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></svg>'
 
+SVG_FUNNEL='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/></svg>'
+
 BUILTIN_ICONS = {
     "x": SVG_X,
     "check": SVG_CHECK,
@@ -147,6 +149,7 @@ BUILTIN_ICONS = {
     "layout_grid": SVG_LAYOUT_GRID,
     "layout_waterfall": SVG_LAYOUT_WATERFALL,
     "note_pen": SVG_NOTE_PEN,
+    "funnel": SVG_FUNNEL,
 }
 
 

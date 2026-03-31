@@ -26,35 +26,10 @@
     "description": "作品男优信息"
   },
   {
-    "name": "avmoo",
-    "url": "https://avmoo.website/cn/search/{serial}",
-    "description": "获得封面"
-  },
-  {
-    "name": "missav",
-    "url": "https://missav.ai/cn/search/{serial}",
-    "description": "在线观看网站"
-  },
-  {
-    "name": "netflav",
-    "url": "https://netflav.com/",
-    "description": "在线观看网站"
-  },
-  {
     "name": "fanza",
     "url": "https://www.dmm.co.jp/search/=/searchstr={serial}/limit=30/sort=rankprofile",
     "serial_transform": "fanza",
     "description": "fanza售卖网站，非日本本土，需日本vpn且特殊插件才能访问"
-  },
-  {
-    "name": "123av",
-    "url": "https://123av.gg/zh/search?keyword={serial}",
-    "description": "在线观看网站"
-  },
-  {
-    "name": "jable",
-    "url": "https://jable.tv/search/{serial}/",
-    "description": "在线观看网站"
   },
   {
     "name": "prestige",
@@ -65,12 +40,6 @@
     "name": "MGS",
     "url": "https://www.mgstage.com",
     "description": "mgs素人网站，非日本本土，需日本vpn且特殊插件才能访问"
-  },
-  {
-    "name": "supjav",
-    "url": "https://supjav.com/?s={serial}",
-    "serial_transform": "supjav",
-    "description": "专门看FC2"
   },
   {
     "name": "金鸡儿奖",
@@ -93,16 +62,6 @@
     "description": "AV女優大辞典wiki"
   },
   {
-    "name": "avbase",
-    "url": "https://www.avbase.net/",
-    "description": "avbase"
-  },
-  {
-    "name": "javbus",
-    "url": "https://www.javbus.com/",
-    "description": "javbus"
-  },
-  {
     "name": "avwiki",
     "url": "https://av-wiki.net/?s={serial}",
     "description": "avwiki，这个查作品是跳到fanza"
@@ -116,15 +75,5 @@
     "name": "avwikidb",
     "url": "https://avwikidb.com/",
     "description": "素人女优数据库"
-  },
-  {
-    "name": "未知网站",
-    "url": "https://www.xb1.com/forums-75-1.html",
-    "description": "未知网站"
-  },
-  {
-    "name": "香港javrate",
-    "url": "https://hongkong.javrate.com/",
-    "description": "香港javrate"
   }
 ]
