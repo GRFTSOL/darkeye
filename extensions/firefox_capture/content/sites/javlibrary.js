@@ -4,6 +4,7 @@
 
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.command === "javlibrary-dvdid"){
+        console.log("DarkEye: JavLibrary 开始爬虫任务...");
         sessionStorage.setItem('darkeye_auto_parse', 'true')
         sessionStorage.setItem('id', message.serial)
         if (!search_javlibrary()){

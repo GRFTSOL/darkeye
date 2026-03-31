@@ -1,3 +1,4 @@
+import json
 import logging
 import random
 from collections import deque
@@ -371,12 +372,15 @@ class CrawlerManager2(QObject):
                 del self._source_relays[key]
             return
 
-        task.results[source] = data if isinstance(data, dict) else {}
+        result_dict = data if isinstance(data, dict) else {}
+        task.results[source] = result_dict
         task.pending_sources.discard(source)
         logging.info(
-            "已接收 %s 的结果:\n 剩余待处理: %s",
+            "已接收 %s 的结果 (serial=%s), 剩余待处理: %s\n%s",
             source,
+            serial,
             task.pending_sources,
+            json.dumps(result_dict, ensure_ascii=False, indent=2, default=str),
         )
         if key in self._source_relays:
             del self._source_relays[key]
