@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from config import TEMP_PATH
+from config import TEMP_PATH, resource_path
 from controller.global_signal_bus import global_signals
 from core.crawler.download import download_image_with_retry
 from core.database.insert import (
@@ -199,49 +199,73 @@ def _work_cover_filename(serial_number: str) -> str:
     return serial_number.strip().upper() + ".jpg"
 
 
+_nfo_exported_male_actor_names_cache: frozenset[str] | None = None
+
+
+def _nfo_exported_male_actor_names() -> frozenset[str]:
+    """NFO 导入：在 resources/config/actors_cn_jp_export.json 中列出的男优名（含别名，带缓存）。"""
+    global _nfo_exported_male_actor_names_cache
+    if _nfo_exported_male_actor_names_cache is not None:
+        return _nfo_exported_male_actor_names_cache
+    path = resource_path("resources/config/actors_cn_jp_export.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            names = [str(x).strip() for x in data if x is not None and str(x).strip()]
+        else:
+            names = []
+        _nfo_exported_male_actor_names_cache = frozenset(names)
+    except Exception as e:
+        logging.warning(
+            "读取 actors_cn_jp_export.json 失败，库外演员将按女优新建：%s", e
+        )
+        _nfo_exported_male_actor_names_cache = frozenset()
+    return _nfo_exported_male_actor_names_cache
+
+
 def _resolve_cast_from_nfo(
     cast: list[NfoCastEntry],
 ) -> tuple[list[int], list[int], bool, bool]:
-    """按 JAV NFO 常见顺序：首个库外人员建为女优，之后库外人员建为男优。"""
+    """先匹配已有女优/男优；库外名字在 actors_cn_jp_export.json 中则新建男优，否则新建女优。"""
     actress_ids: list[int] = []
     actor_ids: list[int] = []
     seen_a: set[int] = set()
     seen_o: set[int] = set()
     actress_added = False
     actor_added = False
-    first_unknown_as_actress = True
+    male_names = _nfo_exported_male_actor_names()
 
     for entry in cast:
         name = (entry.name or "").strip()
         if not name:
             continue
-        aid = exist_actress(name)
+        aid = exist_actress(name)#先匹配女优，
         if aid is not None:
             if aid not in seen_a:
                 seen_a.add(aid)
                 actress_ids.append(aid)
             continue
-        oid = exist_actor(name)
+        oid = exist_actor(name)#再匹配男优
         if oid is not None:
             if oid not in seen_o:
                 seen_o.add(oid)
                 actor_ids.append(oid)
             continue
-        if first_unknown_as_actress:
-            if InsertNewActress(name, name):
-                actress_added = True
-            aid = exist_actress(name)
-            first_unknown_as_actress = False
-            if aid is not None and aid not in seen_a:
-                seen_a.add(aid)
-                actress_ids.append(aid)
-        else:
+        if name in male_names: #男优在actors_cn_jp_export.json中，则新建男优
             if InsertNewActor(name, name):
                 actor_added = True
             oid = exist_actor(name)
             if oid is not None and oid not in seen_o:
                 seen_o.add(oid)
                 actor_ids.append(oid)
+        else:
+            if InsertNewActress(name, name):#其他的全是女优
+                actress_added = True
+            aid = exist_actress(name)
+            if aid is not None and aid not in seen_a:
+                seen_a.add(aid)
+                actress_ids.append(aid)
     return actress_ids, actor_ids, actress_added, actor_added
 
 
