@@ -9,10 +9,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from config import DATABASE, TEMP_PATH
+from config import TEMP_PATH
 from controller.global_signal_bus import global_signals
 from core.crawler.download import download_image_with_retry
-from core.database.connection import get_connection
 from core.database.insert import (
     InsertNewActor,
     InsertNewActress,
@@ -34,7 +33,6 @@ from core.database.query.work import (
     get_maker_id_by_name,
     get_series_id_by_name,
 )
-from core.database.update import update_actress_image
 
 
 @dataclass
@@ -245,53 +243,6 @@ def _resolve_cast_from_nfo(
                 seen_o.add(oid)
                 actor_ids.append(oid)
     return actress_ids, actor_ids, actress_added, actor_added
-
-
-def _update_actor_image_only(actor_id: int, image_filename: str) -> None:
-    conn = get_connection(DATABASE, False)
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            "UPDATE actor SET image_url=? WHERE actor_id=?", (image_filename, actor_id)
-        )
-        conn.commit()
-    finally:
-        cursor.close()
-        conn.close()
-
-
-def _apply_cast_portraits(cast: list[NfoCastEntry]) -> tuple[bool, bool]:
-    """将各 <actor><thumb> 写入头像并移动到 actressimages/actorimages。"""
-    actress_image_touched = False
-    actor_image_touched = False
-    for entry in cast:
-        thumb = (entry.thumb or "").strip()
-        if not thumb:
-            continue
-        name = (entry.name or "").strip()
-        if not name:
-            continue
-        local = _prepare_local_image_path(thumb)
-        if not local:
-            if _is_blocked_nfo_remote_image_url(thumb):
-                logging.debug("NFO 头像跳过已屏蔽域名：%s", thumb[:80])
-            else:
-                logging.warning("NFO 头像无法解析或下载：%s", thumb[:80])
-            continue
-        aid = exist_actress(name)
-        if aid is not None:
-            dest_file = f"{aid}-{name}.jpg"
-            rename_save_image(local, dest_file, "actress")
-            update_actress_image(aid, dest_file)
-            actress_image_touched = True
-            continue
-        oid = exist_actor(name)
-        if oid is not None:
-            dest_file = f"{oid}-{name}.jpg"
-            rename_save_image(local, dest_file, "actor")
-            _update_actor_image_only(oid, dest_file)
-            actor_image_touched = True
-    return actress_image_touched, actor_image_touched
 
 
 def _collect_fanart_urls(movie: ET.Element) -> str | None:
@@ -533,12 +484,5 @@ def import_work_from_movie_nfo(
 
     if emit_ui_signals:
         global_signals.workDataChanged.emit()
-
-    img_act, img_actor = _apply_cast_portraits(parsed.cast)
-    if emit_ui_signals:
-        if img_act:
-            global_signals.actressDataChanged.emit()
-        if img_actor:
-            global_signals.actorDataChanged.emit()
 
     return True, f"已从 NFO 导入作品：{parsed.serial_number}"
