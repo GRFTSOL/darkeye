@@ -38,9 +38,9 @@
 
 ## Jvedio迁移数据
 下载下面的脚本，然后按照提示运行
-[`scripts/xxx.py`（raw）](https://raw.githubusercontent.com/de4321/darkeye/main/scripts/jvedio2nfo.py)
+[`scripts/jvedio2nfo.py`](https://raw.githubusercontent.com/de4321/darkeye/main/scripts/jvedio2nfo.py)
 
-要求电脑上有python,然后最主要的是改地址
+要求电脑上有python,然后最主要的是改地址。运行后会得到一个里面都是nfo文件的文件夹。使用软件中导入nfo就行了。
 
 # Community
 
