@@ -6,6 +6,7 @@ from .crawler import ClawerSettingPage
 from .database import DBSettingPage
 from .about import LastPage
 from .video import VideoSettingPage
+from .nfo import NfoSettingPage
 
 __all__ = [
     "CommonPage",
@@ -13,5 +14,6 @@ __all__ = [
     "ClawerSettingPage",
     "DBSettingPage",
     "LastPage",
+    "NfoSettingPage",
     "VideoSettingPage",
 ]

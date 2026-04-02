@@ -11,6 +11,7 @@ from .settings import (
     ClawerSettingPage,
     DBSettingPage,
     LastPage,
+    NfoSettingPage,
     VideoSettingPage,
 )
 
@@ -21,6 +22,7 @@ class SettingPage(LazyWidget):
 
     def _lazy_load(self):
         page_video = VideoSettingPage()
+        page_nfo = NfoSettingPage()
         page_clawer = ClawerSettingPage()
         page_db = DBSettingPage()
         page_first = LastPage()
@@ -30,6 +32,7 @@ class SettingPage(LazyWidget):
         my_content = {
             "常规": page_common,
             "视频": page_video,
+            "NFO": page_nfo,
             "爬虫": page_clawer,
             "数据库": page_db,
             "快捷键": page_short_cut,

@@ -4,14 +4,12 @@ import logging
 from pathlib import Path
 
 from PySide6.QtWidgets import QVBoxLayout, QGridLayout, QFileDialog, QWidget
-from PySide6.QtGui import QIcon
 from PySide6.QtCore import Slot
 
 from config import (
     BASE_DIR,
     DATABASE,
     INI_FILE,
-    ICONS_PATH,
     PRIVATE_DATABASE,
     DATABASE_BACKUP_PATH,
     PRIVATE_DATABASE_BACKUP_PATH,
@@ -21,6 +19,7 @@ from config import (
 from darkeye_ui.components import Label, Button
 from controller.message_service import MessageBoxService
 from darkeye_ui.design.icon import get_builtin_icon
+
 
 def _get_detected_db_version(db_path) -> str:
     """查询指定数据库文件当前记录的版本，失败返回「未检测到」。"""
@@ -95,11 +94,6 @@ class DBSettingPage(QWidget):
         )
         self.btn_rebuildprivatelink.setIcon(get_builtin_icon(name="database"))
 
-        self.btn_import_nfo = Button("从 NFO 导入作品")
-        self.btn_import_nfo.setToolTip(
-            "选择 Kodi 风格的 .nfo 文件导入一条作品（番号已存在则跳过）"
-        )
-
         layout1 = QGridLayout()
         layout1.addWidget(self.btn_vacuum, 0, 0)
         layout1.addWidget(self.btn_cover_check, 0, 1)
@@ -107,8 +101,7 @@ class DBSettingPage(QWidget):
         layout1.addWidget(self.btn_restoreDB, 1, 1)
         layout1.addWidget(self.btn_backupDB2, 2, 0)
         layout1.addWidget(self.btn_restoreDB2, 2, 1)
-        layout1.addWidget(self.btn_rebuildprivatelink, 3, 0)
-        layout1.addWidget(self.btn_import_nfo, 3, 1)
+        layout1.addWidget(self.btn_rebuildprivatelink, 3, 0, 1, 2)
 
         layout = QVBoxLayout(self)
         layout.addLayout(layout1)
@@ -133,7 +126,6 @@ class DBSettingPage(QWidget):
         self.btn_backupDB2.clicked.connect(self.backup_db_private)
         self.btn_restoreDB2.clicked.connect(lambda: self.restore_db("private"))
         self.btn_rebuildprivatelink.clicked.connect(self.rebuildprivatelink)
-        self.btn_import_nfo.clicked.connect(self.import_work_from_nfo_file)
 
     @Slot()
     def rebuildprivatelink(self):
@@ -261,27 +253,6 @@ class DBSettingPage(QWidget):
             self.msg.show_info("备份成功", f"备份数据库到{path}")
         except Exception as e:
             self.msg.show_critical("备份失败", f"{str(e)}")
-
-    @Slot()
-    def import_work_from_nfo_file(self):
-        from core.importers import import_work_from_movie_nfo
-
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "选择 NFO 文件",
-            str(BASE_DIR),
-            "NFO 文件 (*.nfo);;所有文件 (*.*)",
-        )
-        if not file_path:
-            return
-
-        ok, message = import_work_from_movie_nfo(Path(file_path))
-        if ok:
-            self.msg.show_info("导入成功", message)
-        elif "已在库中" in message:
-            self.msg.show_info("未导入", message)
-        else:
-            self.msg.show_warning("导入失败", message)
 
     @Slot()
     def backup_db(self, access_level: str):
