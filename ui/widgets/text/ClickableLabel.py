@@ -1,12 +1,13 @@
 from PySide6.QtWidgets import QApplication, QSizePolicy
-from PySide6.QtCore import Qt, Signal, QTimer, QPoint, QSize, Slot, QThreadPool
+from PySide6.QtCore import Qt, Signal, QSize, Slot, QThreadPool
 from PySide6.QtGui import QMouseEvent
-from controller.global_signal_bus import global_signals
+
 from darkeye_ui.components.label import Label
+from darkeye_ui.components.toast_notification import Toast
 
 
 class ClickableLabel(Label):
-    """可点击并复制内容到剪贴板，并且有提示的 label 控件，
+    """可点击并复制内容到剪贴板，并以 Toast 提示的 label 控件，
     专门给那些名字使用，提供复制功能，还有右键跳转功能。
     样式由主题 QLabel#DesignLabel 驱动，会随主题变色；若在外部对本品 setStyleSheet，避免写死 color，否则会覆盖主题颜色。"""
 
@@ -28,7 +29,6 @@ class ClickableLabel(Label):
         if event.button() == Qt.LeftButton:
             clipboard = QApplication.clipboard()
             clipboard.setText(self.text())
-            # global_signals.statusMsgChanged.emit("复制文本到剪贴板")
             self.show_copy_tip()
         if self.actress_jump:
             if event.button() == Qt.RightButton:
@@ -66,37 +66,5 @@ class ClickableLabel(Label):
         text_height = fm.height()
         return QSize(text_width, text_height)
 
-    def show_copy_tip(self):
-        # 获取主窗口
-        main_window = self.window()
-
-        # 创建提示标签（设为 main_window 的子控件）
-        self._copy_tip = Label("复制成功", main_window)
-        self._copy_tip.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
-        self._copy_tip.setAttribute(Qt.WA_TranslucentBackground)
-        self._copy_tip.setStyleSheet(
-            """
-            QLabel {
-                font-weight: bold;
-                font-size: 20px;
-                padding: 10px 20px;
-                border-radius: 12px;
-            }
-        """
-        )
-
-        self._copy_tip.adjustSize()
-
-        # 计算位置：在整个窗口底部中央
-        parent_rect = main_window.rect()
-        center_x = parent_rect.width() // 2 - self._copy_tip.width() // 2
-        bottom_y = parent_rect.height() - self._copy_tip.height() - 30  # 离底部 30px
-
-        # 转为全局坐标
-        global_pos = main_window.mapToGlobal(QPoint(center_x, bottom_y))
-        self._copy_tip.move(global_pos)
-        self._copy_tip.show()
-
-        # 3秒后关闭并清除
-        QTimer.singleShot(3000, self._copy_tip.close)
-        QTimer.singleShot(3100, lambda: setattr(self, "_copy_tip", None))
+    def show_copy_tip(self) -> None:
+        Toast.show_success(self.window(), "复制成功", duration_ms=2000)

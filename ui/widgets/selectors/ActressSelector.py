@@ -103,9 +103,7 @@ class ActressSelector(QWidget):
         # 数据库有没有被正确的读取是一个问题，数据库的版本与软件的版本要对上
         try:
             t0 = time.perf_counter()
-            rows = submit_db_raw(
-                lambda: self._fetch_actress_rows_from_db()
-            ).result()
+            rows = submit_db_raw(lambda: self._fetch_actress_rows_from_db()).result()
             items = []
             rows = rows[::-1]
             for 女优ID, 中文名, 日文名 in rows:
@@ -292,11 +290,34 @@ class ActressSelector(QWidget):
         # logging.info("ActressSelector开始移到上面共:%s",str(len(self.receive_actress_items)))
         self.move_all_to_left()
 
+        # 爬虫在 DB 线程插入新女优后会 emit actressDataChanged（ queued 到主线程），
+        # 而 guiUpdate 在 submit_db_raw().result() 返回后主线程立即 set_actress，
+        # 常见顺序是 load_with_ids 先于 refresh_right_list 执行，待选池仍是旧数据，
+        # find_item_by_id 得到 None，进而 remove 报错。此处与 DB 同步待选列表。
+        self.choose_actress_all_items = self.load_actress_from_db()
+        self.filter_choose_actress_items(self.search_box.text())
+
         # logging.info("ActressSelector下面还剩下:%s",str(len(self.receive_actress_items)))
         # logging.info("ActressSelector开始移到下面共:%s",str(len(ids)))
 
+        # 去重并保持顺序，避免同一 ID 第二次找不到条目
+        ids = list(dict.fromkeys(ids))
+
         for id in ids:  # 移动到下面
             item = self.find_item_by_id(id)
+            if item is None:
+                logging.warning(
+                    "load_with_ids: 女优 ID %s 不在待选列表（库无记录或视图 v_actress_all_info "
+                    "中缺中日文名）",
+                    id,
+                )
+                continue
+            if item not in self.choose_actress_items:
+                logging.warning(
+                    "load_with_ids: 女优 ID %s 的条目与当前待选列表不同步，已跳过",
+                    id,
+                )
+                continue
             # logging.info(item.text())
             self.choose_actress_items.remove(item)
             self.choose_actress_all_items.remove(item)

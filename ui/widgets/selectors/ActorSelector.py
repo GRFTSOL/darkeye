@@ -114,9 +114,7 @@ JOIN actor_name ON actor_name.actor_id=a.actor_id
 """
         try:
             t0 = time.perf_counter()
-            rows = submit_db_raw(
-                lambda: self._fetch_actor_rows_from_db(query)
-            ).result()
+            rows = submit_db_raw(lambda: self._fetch_actor_rows_from_db(query)).result()
             items = []
             rows = rows[::-1]
             for actor_id, cn_name, jp_name in rows:
@@ -295,9 +293,30 @@ JOIN actor_name ON actor_name.actor_id=a.actor_id
         self.search_box.setText(None)
         self.move_all_to_left()
 
+        # 爬虫在 DB 线程插入新男优后会 emit actorDataChanged（queued 到主线程），
+        # 而 guiUpdate 在 submit_db_raw().result() 返回后主线程立即 set_actor，
+        # 常见顺序是 load_with_ids 先于 refresh_right_list 执行，待选池仍是旧数据，
+        # find_item_by_id 得到 None，进而 remove 报错。此处与 DB 同步待选列表。
+        self.choose_actor_all_items = self.load_actor_from_db()
+        self.filter_choose_actor_items(self.search_box.text())
+
+        # 去重并保持顺序，避免同一 ID 第二次找不到条目
+        ids = list(dict.fromkeys(ids))
+
         for id in ids:
             item = self.find_item_by_id(id)
             if item is None:
+                logging.warning(
+                    "load_with_ids: 男优 ID %s 不在待选列表（库无记录或 actor / actor_name "
+                    "缺少可用的中日文名）",
+                    id,
+                )
+                continue
+            if item not in self.choose_actor_items:
+                logging.warning(
+                    "load_with_ids: 男优 ID %s 的条目与当前待选列表不同步，已跳过",
+                    id,
+                )
                 continue
             self.choose_actor_items.remove(item)
             self.choose_actor_all_items.remove(item)
