@@ -74,10 +74,39 @@ def format_to_yyyy_mm_dd(date_str):
     return date_str
 
 
+def _xml_10_legal_char(ch: str) -> bool:
+    """XML 1.0 允许的 Char（与 Expat / minidom 一致）。"""
+    o = ord(ch)
+    return (
+        o in (0x9, 0xA, 0xD)
+        or 0x20 <= o <= 0xD7FF
+        or 0xE000 <= o <= 0xFFFD
+        or 0x10000 <= o <= 0x10FFFF
+    )
+
+
+def sanitize_for_xml_text(value: str) -> str:
+    """去掉/过滤无法在 XML 1.0 中表达的字符，避免 minidom.parseString 报 invalid token。"""
+    if not value:
+        return value
+    return "".join(ch for ch in value if _xml_10_legal_char(ch))
+
+
 def pretty_xml(elem):
-    """格式化XML，强制标准头部声明，并将空标签展开换行"""
+    """格式化XML，强制标准头部声明，并将空标签展开换行
+
+    注意：若元素文本中含 NUL 等非法字符，ET.tostring 仍会输出，Expat 解析会失败，
+    故写入前应经 sanitize_for_xml_text（见 safe_text）。
+    """
     rough = ET.tostring(elem, encoding="utf-8")
-    reparsed = minidom.parseString(rough)
+    try:
+        reparsed = minidom.parseString(rough)
+    except Exception as exc:
+        sample = rough.decode("utf-8", errors="replace")[:800]
+        raise RuntimeError(
+            "NFO 格式化失败：XML 可能含非法字符或未转义内容。"
+            f" 片段（前 800 字符）：{sample!r}"
+        ) from exc
     xml_str = reparsed.toprettyxml(indent="  ", encoding="utf-8").decode("utf-8")
 
     # 1. 替换自带的 XML 声明为标准格式
@@ -101,7 +130,7 @@ def pretty_xml(elem):
 def safe_text(value):
     if value is None:
         return ""
-    return str(value)
+    return sanitize_for_xml_text(str(value))
 
 
 def add_text(parent, tag, text, force=False, default=""):
