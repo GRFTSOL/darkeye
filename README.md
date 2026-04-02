@@ -15,7 +15,7 @@
 
 [📖 在线文档](https://de4321.github.io/darkeye/)
 
-
+[视频介绍](https://www.bilibili.com/video/BV162AuzXEQe/?share_source=copy_web&vd_source=e470911706e2af5719ccc7bb4efe5ff1)
 # 💡 快速开始
 ## 下载
 [![下载 Windows 版本](https://img.shields.io/badge/%20下载-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.2.1/DarkEye-v1.2.1.zip)
