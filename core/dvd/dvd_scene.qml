@@ -463,6 +463,9 @@ View3D {
         property real _lastMouseX: 0
         property real _lastMouseY: 0
         property bool _rightDragging: false
+        property bool _hoverPickCd: false
+        cursorShape: _rightDragging ? Qt.ArrowCursor
+            : (_hoverPickCd ? Qt.PointingHandCursor : Qt.ArrowCursor)
         // 右键旋转灵敏度。
         property real _rotSensitivity: 0.15
 
@@ -511,8 +514,10 @@ View3D {
             if (result && result.objectHit) {
                 var hoveredIdx = view3d.findDelegateIndex(result.objectHit)
                 view3d.hoveredDelegateIndex = (hoveredIdx === view3d.selectedDelegateIndex) ? -1 : hoveredIdx
+                _hoverPickCd = result.objectHit.objectName === "cD"
             } else {
                 view3d.hoveredDelegateIndex = -1
+                _hoverPickCd = false
             }
             mouse.accepted = false
         }
@@ -577,6 +582,7 @@ View3D {
         onExited: {
             view3d.hoveredDelegateIndex = -1
             _rightDragging = false
+            _hoverPickCd = false
         }
     }
 

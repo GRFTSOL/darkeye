@@ -31,6 +31,7 @@ from config import (
     WORKCOVER_PATH,
 )
 from controller.message_service import MessageBoxService
+from darkeye_ui.components import Toast
 from core.database.query import (
     get_workinfo_by_workid,
     get_works_for_dvd,
@@ -420,8 +421,10 @@ class DvdBridge(QObject):
     @Slot(str)
     def copy_to_clipboard(self, text: str) -> None:
         """将文本复制到系统剪贴板。"""
-        if text:
-            QApplication.clipboard().setText(text)
+        if not text:
+            return
+        QApplication.clipboard().setText(text)
+        Toast.show_success(self._view, "番号已复制", duration_ms=2000)
 
     @Slot(int)
     def on_cd_clicked(self, virtual_index: int) -> None:
