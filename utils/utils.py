@@ -590,7 +590,6 @@ def get_video_names_from_paths(
                         and file_path.suffix.lower() in video_extensions
                     ):
                         name = file_path.stem  # 去除后缀
-                        name = re.sub(r"\[.*?\]", "", name)  # 去除 [] 及其中的内容
                         serial = extract_serial_from_string(name)
                         if serial:
                             result.add(serial)

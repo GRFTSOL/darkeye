@@ -95,7 +95,36 @@ def test_convert_special_serialnumber(input_code, expected):
         ("先出现 ABC-1 后出现 DEF-9", "ABC-1"),
         ("FG-123 trailing", "FG-123"),
         ("只有横线后数字 123-456", None),
+        ("FC2-123456 foo", "FC2-123456"),
+        ("file_HEYZO-789_title", "HEYZO-789"),
+        ("prefix HEYZO123 suffix", "HEYZO123"),
+        ("foo N1234 bar", "N1234"),
+        ("H_123ABC45", "ABC-45"),
+        ("DIR IPX00247 x", "IPX-247"),
+        ("ssni-392-C", "SSNI-392"),
+        ("IPX-247-c", "IPX-247"),
+        ("IPX-247-C", "IPX-247"),
+        ("SSNI-392-ch", "SSNI-392"),
+        ("abc-001.CH", "ABC-001"),
+        ("stars-879ch", "STARS-879"),
+        ("345simm-336-C", "SIMM-336"),
+        ("IPX-580C", "IPX-580"),
+        ("[s64ss.com]IPX-580C", "IPX-580"),
     ],
 )
 def test_extract_serial_from_string(text, expected):
     assert extract_serial_from_string(text) == expected
+
+
+def test_extract_serial_from_string_escape_strings():
+    raw = "PREFIX IPX-247 SUFFIX"
+    assert (
+        extract_serial_from_string(raw, escape_strings=("PREFIX", "SUFFIX"))
+        == "IPX-247"
+    )
+
+
+def test_normalize_raw_name_public():
+    from utils.serial_number import normalize_raw_name
+
+    assert "IPX-247" in normalize_raw_name("IPX-247 1080P U")

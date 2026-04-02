@@ -49,6 +49,13 @@
 - 参与方向讨论
 “想影响 roadmap，可以来参与讨论”
 
+# 参考项目
+
+- [mdcz](https://github.com/ShotHeadman/mdcz) 参考其中从本地视频名字中提取番号的代码，并且尝试去适配其nfo
+- [Jvedio](https://github.com/hitchao/Jvedio) 接入其数据库，将数据导出
+- [JavSP](https://github.com/Yuukiy/JavSP) 看看某些网站的爬虫逻辑
+
+
 # 🚀 开发方向
 - 1.0 基础工具的完善，包括力导向图探索影片之间的关系，收藏体验的增强
 - 2.0 UGC，分布式同步数据
