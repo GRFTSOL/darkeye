@@ -53,8 +53,9 @@ $nuitkaArgs = @(
     "--include-data-file=core/dvd/dvd_scene.qml=core/dvd/dvd_scene.qml",
     "--include-data-file=core/dvd/Dvd.qml=core/dvd/Dvd.qml",
     # C++ 绑定：.pyd 由 Nuitka 作为扩展模块自动包含，再当 data 会冲突；只手动包含 .dll 依赖，这个.pyd好像对自动收集
-    "--include-data-files=cpp_bindings/forced_direct_view/*.dll=cpp_bindings/forced_direct_view/",
-    "--include-data-files=cpp_bindings/color_wheel/*.dll=cpp_bindings/color_wheel/",
+    #这个好像不需要收集，因为nuitka会自动收集.pyd到目标位置
+    #"--include-data-files=cpp_bindings/forced_direct_view/*.dll=cpp_bindings/forced_direct_view/",
+    #"--include-data-files=cpp_bindings/color_wheel/*.dll=cpp_bindings/color_wheel/",
 
     # 插件与压缩
     "--enable-plugin=pyside6",
@@ -81,6 +82,7 @@ $nuitkaArgs = @(
     "--include-module=PySide6.QtQuickWidgets",
     "--include-module=PySide6.QtOpenGL",
     "--include-module=PySide6.QtOpenGLWidgets",
+    "--include-package-data=wordcloud",
     # 这两个模块在当前环境中不可作为 Python 模块导入，先不强制包含
     # "--include-module=PyForceView",
     # "--include-module=PyColorWheel",
@@ -112,6 +114,9 @@ $nuitkaArgs = @(
     "--nofollow-import-to=PySide6.QtPdf",
     "--nofollow-import-to=PySide6.QtPdfWidgets",
     "--nofollow-import-to=PySide6.QtQuickControls2",
+    "--nofollow-import-to=PySide6.QtSql",
+    "--nofollow-import-to=PySide6.QtQuickTest",
+
     "--nofollow-import-to=matplotlib.tests",
     "--nofollow-import-to=matplotlib.examples",
     "--nofollow-import-to=matplotlib.backends.backend_gtk3agg",
@@ -125,6 +130,9 @@ $nuitkaArgs = @(
     "--nofollow-import-to=matplotlib.backends.backend_ps",
     "--nofollow-import-to=matplotlib.backends.backend_svg",
     "--nofollow-import-to=matplotlib.backends.backend_cairo",
+    #下面是画等高线的
+    "--nofollow-import-to=contourpy",
+
     "--nofollow-import-to=numpy.testing",
     "--nofollow-import-to=numpy.f2py",
     "--nofollow-import-to=numpy.distutils",
@@ -203,7 +211,7 @@ $nuitkaArgs = @(
     "--nofollow-import-to=chunk",
     "--nofollow-import-to=imghdr",
     "--nofollow-import-to=ossaudiodev",
-
+    "--nofollow-import-to=yaml",
 
     #不要移动的dll
     "--noinclude-dlls=qt6web*.dll",
@@ -225,8 +233,33 @@ $nuitkaArgs = @(
     "--noinclude-dlls=qt6statemachine*.dll",
     "--noinclude-dlls=qt6texttospeech.dll",
     "--noinclude-dlls=qt6test.dll",
+    "--noinclude-dlls=qt6quicktest.dll",
     "--noinclude-dlls=qt6quicktemplates2.dll",
+    "--noinclude-dlls=qt6quick3dspatialaudio.dll",
+    "--noinclude-dlls=qt6scxml*.dll",
+    "--noinclude-dlls=qt6quickparticles.dll",
+    "--noinclude-dlls=qt6quickshapes.dll",
+    "--noinclude-dlls=qt6quickeffects.dll",
+    "--noinclude-dlls=qt6quicklayouts.dll",
+    "--noinclude-dlls=qt6quicktimelineblendtrees.dll",
+    "--noinclude-dlls=qt6quickvectorimagegenerator.dll",
+    "--noinclude-dlls=qt6quickvectorimage.dll",
+    "--noinclude-dlls=qt6sql.dll",
 
+    #测试不需要的dll,显卡驱动正常是不需要opengl32sw.dll的,这个是用于无显卡驱动的机器的。
+    "--noinclude-dlls=opengl32sw.dll",
+    "--noinclude-dlls=qt6qmllocalstorage.dll",
+    "--noinclude-dlls=qt6qmlnetwork.dll",
+    "--noinclude-dlls=qt6qmlxmllistmodel.dll",
+    "--noinclude-dlls=qt6quick3deffects.dll",
+    "--noinclude-dlls=qt6quick3dhelpersimpl.dll",
+    "--noinclude-dlls=qt6quick3dparticles.dll",
+    "--noinclude-dlls=qt6quick3dparticleeffects.dll",
+    "--noinclude-dlls=qt6quick3dxr.dll",
+    
+
+
+    #下面是测试看看能不能排除
 
     #后面是输出的地址和文件名
     "--output-dir=dist",
@@ -269,10 +302,27 @@ Remove-Item ".\dist\main.dist\PySide6\plugins\networkinformation" -Recurse -Forc
 # platforminputcontexts 与输入法相关，若需中文输入等请勿删
 Remove-Item ".\dist\main.dist\PySide6\plugins\platforminputcontexts" -Recurse -Force -ErrorAction SilentlyContinue
 
-#额外删除,这个似乎没有什么用，这些模块好像是有用的
-#Remove-Item ".\dist\main.dist\libcrypto-3-x64.dll" -Force -ErrorAction SilentlyContinue
-#Remove-Item ".\dist\main.dist\libssl-3-x64.dll" -Force -ErrorAction SilentlyContinue
-#Remove-Item ".\dist\main.dist\libzstd.dll" -Force -ErrorAction SilentlyContinue
+# 删除一些不需要的dll,这些是msvc的dll，不需要的用了shiboken6的
+Remove-Item -Path ".\dist\main.dist\msvcp140.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\msvcp140_1.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\msvcp140_2.dll" -Force 
+
+
+#单独排除部分
+Remove-Item -Path ".\dist\main.dist\PIL\_imagingcms.pyd" -Force 
+Remove-Item -Path ".\dist\main.dist\PIL\_imagingmath.pyd" -Force 
+Remove-Item -Path ".\dist\main.dist\numpy\_core\_multiarray_tests.pyd" -Force 
+Remove-Item -Path ".\dist\main.dist\matplotlib\_qhull.pyd" -Force 
+Remove-Item -Path ".\dist\main.dist\matplotlib\_tri.pyd" -Force 
+
+Remove-Item -Path ".\dist\main.dist\PySide6\plugins\platforms\qdirect2d.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\PySide6\plugins\platforms\qminimal.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\PySide6\plugins\platforms\qoffscreen.dll" -Force 
+
+Remove-Item -Path ".\dist\main.dist\PySide6\plugins\tls\qcertonlybackend.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\PySide6\plugins\tls\qopensslbackend.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\PySide6\plugins\tls\qschannelbackend.dll" -Force 
+
 
 # 打包 tar.zst、更新 update/latest.json（与手动执行 scripts/pack..py 相同）
 Write-Host "Running pack (tar.zst + latest.json)..."

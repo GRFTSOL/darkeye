@@ -22,15 +22,6 @@ from .serial_number import (
 )
 
 
-# 图片相关
-def alternative_qpixmap(image_path):
-    # 临时的代替方法，什么时候QImage能直接加载jpg图片这个就不用了
-    # mide537这个图片有问题，需要测试
-    image = Image.open(image_path).convert("RGB")
-    data = image.tobytes("raw", "RGB")
-    qimage = QImage(data, image.width, image.height, QImage.Format_RGB888)
-    return QPixmap.fromImage(qimage)
-
 
 def mse(image1_path, image2_path):
     """比较两张图片是否相似，输出0表示完全相同"""

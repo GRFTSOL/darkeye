@@ -483,7 +483,6 @@ class CoverBrowser(QWidget):
 
     def load_current_image(self, animate=True):
         """加载当前的图片"""
-        from utils.utils import alternative_qpixmap  # 这个目前还是有点问题
 
         work = self.works[self.current_index]
         path = str(WORKCOVER_PATH / work["image_url"])

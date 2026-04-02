@@ -4,7 +4,7 @@
   "releaseNotes": "NFO导入加入进度条,封面图片存储的时候后缀取消,添加随机顺序,标签选择器隐藏+持久化",
   "package": {
     "url": "http://yinruizhe.asia/DarkEye-v1.2.1.tar.zst",
-    "sha256": "e358efe9a17cc0a24bae2f5a2cad4b966c4e32912c4eb9db7451bf4ef1061234",
-    "size": 83874103
+    "sha256": "55b09e12c2dd562b6016e4de59400963c000bad03d1ece3db2c79498755847c4",
+    "size": 83904462
   }
 }
