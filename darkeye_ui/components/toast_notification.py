@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, Optional
 
-from PySide6.QtCore import QTimer, Qt
-from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QWidget
+from PySide6.QtCore import QRectF, QTimer, Qt
+from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
+from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QWidget
 
 from ..design.theme_context import resolve_theme_manager
 from ..design.tokens import LIGHT_TOKENS, ThemeTokens
@@ -12,8 +13,24 @@ if TYPE_CHECKING:
     from ..design.theme_manager import ThemeManager
 
 
-class Toast(QFrame):
-    """Token-driven toast message widget."""
+def _parse_radius(radius_str: str) -> int:
+    s = str(radius_str).strip().rstrip("px")
+    try:
+        return int(float(s))
+    except (ValueError, TypeError):
+        return 8
+
+
+def _parse_border_width_px(border_width: str) -> float:
+    s = str(border_width).strip().rstrip("px")
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return 1.0
+
+
+class Toast(QWidget):
+    """由设计令牌驱动；顶层浮层在 Windows 上使用自绘背景（与 CalloutTooltip 同思路）。"""
 
     _active_toasts: ClassVar[dict[int, list["Toast"]]] = {}
 
@@ -36,6 +53,8 @@ class Toast(QFrame):
         )
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAutoFillBackground(False)
 
         self._theme_manager = resolve_theme_manager(theme_manager, "Toast")
         if self._theme_manager is not None:
@@ -55,6 +74,28 @@ class Toast(QFrame):
         self._close_timer.timeout.connect(self.close)
 
         self._apply_token_style()
+
+    def paintEvent(self, _event) -> None:
+        t = self._tokens()
+        radius = _parse_radius(t.radius_md)
+        edge = QColor(t.color_primary)
+        bg = QColor(t.color_bg)
+        pen_w = _parse_border_width_px(t.border_width)
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        w, h = self.width(), self.height()
+        rect = QRectF(0.5, 0.5, w - 1.0, h - 1.0)
+        path = QPainterPath()
+        path.addRoundedRect(rect, float(radius), float(radius))
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(bg))
+        painter.drawPath(path)
+
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(QPen(edge, pen_w))
+        painter.drawPath(path)
 
     @classmethod
     def show_message(
@@ -139,32 +180,19 @@ class Toast(QFrame):
             return self._theme_manager.tokens()
         return LIGHT_TOKENS
 
-    def _accent_color(self, t: ThemeTokens) -> str:
-        if self._level == "success":
-            return t.color_success
-        if self._level == "warning":
-            return t.color_warning
-        if self._level == "error":
-            return t.color_error
-        return t.color_info
-
     def _apply_token_style(self, *_args) -> None:
         t = self._tokens()
-        accent = self._accent_color(t)
-        self.setStyleSheet(
+        self._label.setStyleSheet(
             f"""
-QFrame#DesignToast {{
-    background-color: {t.color_bg};
-    border: {t.border_width} solid {accent};
-    border-radius: {t.radius_md};
-}}
 QLabel#DesignToastLabel {{
     color: {t.color_text};
+    background-color: transparent;
     font-family: {t.font_family_base};
     font-size: {t.font_size_base};
 }}
 """
         )
+        self.update()
 
     @classmethod
     def _group_key(cls, parent: Optional[QWidget]) -> int:
