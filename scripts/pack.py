@@ -7,6 +7,7 @@ import io
 import json
 import sys
 import tarfile
+import zipfile
 from pathlib import Path
 
 import zstandard as zstd
@@ -38,7 +39,9 @@ def get_version() -> str:
 PACKAGE_URL_TEMPLATE = "http://yinruizhe.asia/DarkEye-v{version}.tar.zst"
 
 # 每次发版在此填写更新说明（会写入 latest.json 的 releaseNotes）
-RELEASE_NOTES = "新增更新器，下载提示器，修改UI"
+RELEASE_NOTES = (
+    "NFO导入加入进度条,封面图片存储的时候后缀取消,添加随机顺序,标签选择器隐藏+持久化"
+)
 
 
 def main():
@@ -68,7 +71,7 @@ def main():
         )
         sys.stderr.flush()
 
-    cctx = zstd.ZstdCompressor(level=19)
+    cctx = zstd.ZstdCompressor(level=22)
     chunk_size = 1024 * 1024  # 1MB
     written = 0
     with open(pkg_path, "wb") as f:
@@ -110,7 +113,20 @@ def main():
     )
     print(f"已生成 {LATEST_JSON}")
 
-    print(f"\n完成: {pkg_path}")
+    # 4. 额外生成 zip：归档内根目录名为 {APP_NAME}-v{version}（非 main.dist）
+    zip_name = f"{APP_NAME}-v{version}.zip"
+    zip_path = DIST_DIR / zip_name
+    arc_root = f"{APP_NAME}-v{version}"
+    print(f"正在打包 zip {DIST_SRC} -> {zip_path} ...")
+    with zipfile.ZipFile(
+        zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6
+    ) as zf:
+        for path in DIST_SRC.rglob("*"):
+            if path.is_file():
+                rel = path.relative_to(DIST_SRC)
+                zf.write(path, arcname=f"{arc_root}/{rel.as_posix()}")
+
+    print(f"\n完成: {pkg_path}\n      {zip_path}")
 
 
 if __name__ == "__main__":

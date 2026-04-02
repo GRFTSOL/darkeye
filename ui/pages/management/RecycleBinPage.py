@@ -44,14 +44,18 @@ class RecycleBinPage(LazyWidget):
         self.view = TokenTableView()
         # 按钮
         self.btn_refresh = Button("刷新数据")
-        self.btn_delete = Button("彻底删除")
-        self.btn_restore = Button("恢复数据")
+        self.btn_delete = Button("彻底删除单项")
+        self.btn_delete_all = Button("删除全部")
+        self.btn_restore = Button("恢复单项数据")
+        self.btn_restore_all = Button("恢复全部")
 
         # 布局
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.btn_refresh)
         button_layout.addWidget(self.btn_delete)
         button_layout.addWidget(self.btn_restore)
+        button_layout.addWidget(self.btn_delete_all)
+        button_layout.addWidget(self.btn_restore_all)
 
         self.serial_number = LineEdit()
         self.studio = ComboBox()
@@ -67,7 +71,9 @@ class RecycleBinPage(LazyWidget):
         # 信号连接
         self.btn_refresh.clicked.connect(self.refresh_data)
         self.btn_delete.clicked.connect(self.delete)
+        self.btn_delete_all.clicked.connect(self.delete_all)
         self.btn_restore.clicked.connect(self.recover)
+        self.btn_restore_all.clicked.connect(self.recover_all)
 
     @Slot()
     def refresh_data(self):
@@ -101,7 +107,46 @@ class RecycleBinPage(LazyWidget):
                 self.msg.show_critical("错误", f"删除失败:")
                 return
         self.refresh_data()
+
+        from controller.global_signal_bus import global_signals
+        global_signals.workDataChanged.emit()
+
         self.msg.show_info("成功", f"已删除 {len(selected_indexes)} 行数据")
+
+    @Slot()
+    def delete_all(self):
+        """彻底删除回收站内的全部作品"""
+        total = self.model.rowCount()
+        if total == 0:
+            self.msg.show_warning("警告", "回收站暂无数据")
+            return
+
+        if not self.msg.ask_yes_no(
+            "确认删除全部",
+            f"确定要彻底删除回收站内全部 {total} 条记录吗？此操作不可撤销。",
+        ):
+            return
+
+        from core.database.delete import delete_work_many
+
+        work_ids: list[int] = []
+        for row in range(total):
+            raw = self.model.data(self.model.index(row, 0), Qt.ItemDataRole.DisplayRole)
+            if raw is None or raw == "":
+                continue
+            work_ids.append(int(raw))
+
+        if not delete_work_many(work_ids):
+            self.msg.show_critical("错误", "批量删除失败，请查看日志。")
+            self.refresh_data()
+            return
+
+        self.refresh_data()
+
+        from controller.global_signal_bus import global_signals
+        global_signals.workDataChanged.emit()
+
+        self.msg.show_info("成功", f"已删除 {len(work_ids)} 条数据")
 
     @Slot()
     def recover(self):
@@ -125,4 +170,43 @@ class RecycleBinPage(LazyWidget):
                 return
         # 更新模型，刷新界面
         self.refresh_data()
+
+        from controller.global_signal_bus import global_signals
+        global_signals.workDataChanged.emit()
+
         self.msg.show_info("成功", f"已恢复 {len(selected_indexes)} 行数据")
+
+    @Slot()
+    def recover_all(self):
+        """恢复回收站内的全部作品"""
+        total = self.model.rowCount()
+        if total == 0:
+            self.msg.show_warning("警告", "回收站暂无数据")
+            return
+
+        if not self.msg.ask_yes_no(
+            "确认恢复全部",
+            f"确定要恢复回收站内全部 {total} 条记录吗？",
+        ):
+            return
+
+        from core.database.update import mark_undelete_many
+
+        work_ids: list[int] = []
+        for row in range(total):
+            raw = self.model.data(self.model.index(row, 0), Qt.ItemDataRole.DisplayRole)
+            if raw is None or raw == "":
+                continue
+            work_ids.append(int(raw))
+
+        if not mark_undelete_many(work_ids):
+            self.msg.show_critical("错误", "批量恢复失败，请查看日志。")
+            self.refresh_data()
+            return
+
+        self.refresh_data()
+
+        from controller.global_signal_bus import global_signals
+        global_signals.workDataChanged.emit()
+
+        self.msg.show_info("成功", f"已恢复 {len(work_ids)} 条数据")

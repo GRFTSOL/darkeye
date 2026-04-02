@@ -9,6 +9,7 @@
 import logging
 import random
 import time
+from collections.abc import Iterable
 
 from utils.utils import translate_text_sync
 
@@ -387,8 +388,22 @@ def update_db_actress(id: int, data: dict):
                 id,
             ),
         )
-        # 更新英文名,假名
+        
 
+        # 更新英文名,假名；主日文名与站点不一致时同步为 data["日文名"]
+        cursor.execute(
+            "SELECT jp FROM actress_name WHERE actress_id=? AND name_type=1",
+            (id,),
+        )
+        row_jp = cursor.fetchone()
+        incoming_jp = data["日文名"]
+        if row_jp is not None and row_jp[0] != incoming_jp:
+            cursor.execute(
+                "UPDATE actress_name SET cn=?,jp=? WHERE actress_id=? AND name_type=1",
+                (incoming_jp, incoming_jp, id),
+            )
+        
+        # 更新英文名,假名
         cursor.execute(
             "UPDATE actress_name SET en=?,kana=? WHERE actress_id=?",
             (data["英文名"], data["假名"], id),
@@ -662,6 +677,65 @@ def mark_delete(work_id) -> bool:
     except Exception as e:
         conn.rollback()
         logging.info(f"标记作品为删除状态失败{e}")
+        return False
+    finally:
+        cursor.close()
+        conn.close()
+
+
+_SQLITE_IN_MAX = 500
+
+
+def mark_delete_many(work_ids: Iterable[int]) -> bool:
+    """批量将作品标记为已删除（单次连接）。调用后需 emit: global_signals.workDataChanged"""
+    ids = list({int(w) for w in work_ids})
+    if not ids:
+        return True
+    conn = get_connection(DATABASE, False)
+    logging.info("数据库打开成功")
+    cursor = conn.cursor()
+    try:
+        for i in range(0, len(ids), _SQLITE_IN_MAX):
+            chunk = ids[i : i + _SQLITE_IN_MAX]
+            ph = ",".join("?" * len(chunk))
+            cursor.execute(
+                f"UPDATE work SET is_deleted=1 WHERE work_id IN ({ph})",
+                chunk,
+            )
+        conn.commit()
+        logging.info("批量标记作品为删除状态，共 %s 条", len(ids))
+        return True
+    except Exception as e:
+        conn.rollback()
+        logging.info("批量标记作品为删除状态失败%s", e)
+        return False
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def mark_undelete_many(work_ids: Iterable[int]) -> bool:
+    """批量将作品标记为未删除（单次连接）。调用后需 emit: global_signals.workDataChanged"""
+    ids = list({int(w) for w in work_ids})
+    if not ids:
+        return True
+    conn = get_connection(DATABASE, False)
+    logging.info("数据库打开成功")
+    cursor = conn.cursor()
+    try:
+        for i in range(0, len(ids), _SQLITE_IN_MAX):
+            chunk = ids[i : i + _SQLITE_IN_MAX]
+            ph = ",".join("?" * len(chunk))
+            cursor.execute(
+                f"UPDATE work SET is_deleted=0 WHERE work_id IN ({ph})",
+                chunk,
+            )
+        conn.commit()
+        logging.info("批量标记作品为未删除状态，共 %s 条", len(ids))
+        return True
+    except Exception as e:
+        conn.rollback()
+        logging.info("批量标记作品为未删除状态失败%s", e)
         return False
     finally:
         cursor.close()

@@ -118,3 +118,5 @@ compile_commands.json
 report.xml
 
 temp/
+*/.zip
+*/.tar.zst

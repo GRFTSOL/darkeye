@@ -22,16 +22,6 @@ from .serial_number import (
 )
 
 
-# 图片相关
-def alternative_qpixmap(image_path):
-    # 临时的代替方法，什么时候QImage能直接加载jpg图片这个就不用了
-    # mide537这个图片有问题，需要测试
-    image = Image.open(image_path).convert("RGB")
-    data = image.tobytes("raw", "RGB")
-    qimage = QImage(data, image.width, image.height, QImage.Format_RGB888)
-    return QPixmap.fromImage(qimage)
-
-
 def mse(image1_path, image2_path):
     """比较两张图片是否相似，输出0表示完全相同"""
     # 正确转换为numpy数组的方式
@@ -686,9 +676,42 @@ def play_video_with_default_player(self):
         os.startfile(video_path)
 
 
-def play_video(video_path: Path):
-    """用系统默认播放器打开视频"""
-    os.startfile(video_path)
+def play_video(video_path: Path | str) -> None:
+    """打开视频：若已配置本地播放器 exe 则用之，否则使用系统默认关联程序。"""
+    import subprocess
+
+    from config import get_local_video_player_exe
+
+    path = Path(video_path).expanduser()
+    try:
+        path = path.resolve(strict=False)
+    except OSError:
+        pass
+    if not path.is_file():
+        logging.warning("play_video: 文件不存在或不可访问: %s", path)
+        return
+
+    exe = get_local_video_player_exe()
+    if exe:
+        exe_p = Path(exe).expanduser()
+        if exe_p.is_file():
+            try:
+                subprocess.Popen(
+                    [str(exe_p), str(path)],
+                    cwd=str(path.parent),
+                )
+                return
+            except OSError:
+                logging.exception(
+                    "play_video: 无法启动已配置的播放器，将改用系统默认打开"
+                )
+        else:
+            logging.warning(
+                "play_video: 配置的播放器路径无效: %s，改用关联程序",
+                exe_p,
+            )
+
+    os.startfile(path)
 
 
 def load_tag_map_from_json() -> dict:

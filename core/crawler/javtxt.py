@@ -50,22 +50,70 @@ def search_work(serial_number) -> str | None:
         return None
 
 
+def _dt_link_or_text(dt) -> str:
+    """属性区 dt：优先取首个链接文本，否则取 dt 全部文本。"""
+    if dt is None:
+        return "----"
+    a = dt.find("a")
+    if a:
+        return a.get_text(strip=True)
+    return dt.get_text(strip=True)
+
+
+def _parse_javtxt_attributes(soup: BeautifulSoup) -> dict:
+    """解析详情页 ``div.attributes`` 下 ``dl`` 的 dd/dt 键值对。"""
+    out: dict = {
+        "release_date": "",
+        "series": "",
+        "maker": "",
+        "director": "",
+        "label": "",
+        "genre": [],
+    }
+    dl = soup.select_one("div.attributes dl")
+    if not dl:
+        return out
+
+    for dd in dl.find_all("dd"):
+        dt = dd.find_next_sibling("dt")
+        if not dt:
+            continue
+        key = dd.get_text(" ", strip=True)
+        if "发行时间" in key:
+            raw = dt.get_text(strip=True)
+            m = re.search(r"\d{4}-\d{2}-\d{2}", raw)
+            out["release_date"] = m.group(0) if m else raw
+        elif "系列" in key:
+            out["series"] = _dt_link_or_text(dt)
+        elif "片商" in key:
+            out["maker"] = _dt_link_or_text(dt)
+        elif "导演" in key:
+            out["director"] = _dt_link_or_text(dt)
+        elif "厂牌" in key:
+            out["label"] = _dt_link_or_text(dt)
+        elif "类别" in key:
+            out["genre"] = [
+                a.get_text(strip=True)
+                for a in dt.select("a.tag")
+                if a.get_text(strip=True)
+            ]
+
+    return out
+
+
 def scrape_javtxt_movie_details(url: str) -> dict:
     """
-    从 JAVTXT 网站抓取电影详细信息（中日文标题和剧情简介）。
+    从 JAVTXT 网站抓取电影详细信息。
 
     Args:
         url (str): 要抓取的 JAVTXT 电影详情页 URL
 
     Returns:
-        dict | None: 包含电影信息的字典，结构为:
-            {
-                "cn_title": str,    # 中文标题
-                "jp_title": str,    # 日文标题
-                "cn_story": str,    # 中文剧情简介
-                "jp_story": str      # 日文剧情简介
-            }
-            如果请求失败则返回 None
+        dict: 包含电影信息的字典，字段包括
+            cn_title, jp_title, cn_story, jp_story；
+            以及属性区解析得到的 release_date, series, maker,
+            director, label, genre（列表）。
+            请求失败时返回空字典。
     """
 
     # 设置请求头
@@ -106,11 +154,19 @@ def scrape_javtxt_movie_details(url: str) -> dict:
             if cn_p:
                 cn_story = cn_p.text
                 # logging.debug(cn_story)
+
+        attrs = _parse_javtxt_attributes(soup)
         data = {
             "cn_title": cn_title,
             "jp_title": jp_title,
             "cn_story": cn_story,
             "jp_story": jp_story,
+            "release_date": attrs["release_date"],
+            "series": attrs["series"],
+            "maker": attrs["maker"],
+            "director": attrs["director"],
+            "label": attrs["label"],
+            "genre": attrs["genre"],
         }
 
         return data

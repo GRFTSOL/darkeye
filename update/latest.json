@@ -1,10 +1,10 @@
 {
   "app": "DarkEye",
-  "latestVersion": "1.1.2",
-  "releaseNotes": "新增更新器，下载提示器，修改UI",
+  "latestVersion": "1.2.1",
+  "releaseNotes": "NFO导入加入进度条,封面图片存储的时候后缀取消,添加随机顺序,标签选择器隐藏+持久化",
   "package": {
-    "url": "http://yinruizhe.asia/DarkEye-v1.1.2.tar.zst",
-    "sha256": "be4d64c15598cdfd16711cdfc6da583adfc3ac2decea42ee360df247670f16fb",
-    "size": 86395431
+    "url": "http://yinruizhe.asia/DarkEye-v1.2.1.tar.zst",
+    "sha256": "55b09e12c2dd562b6016e4de59400963c000bad03d1ece3db2c79498755847c4",
+    "size": 83904462
   }
 }

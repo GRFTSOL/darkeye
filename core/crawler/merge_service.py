@@ -38,13 +38,19 @@ def merge_crawl_results(
     avdanyuwiki_result = results.get("avdanyuwiki") or {}
     javdb_result = results.get("javdb") or {}
 
-    release_date = javlib_result.get(
-        "release_date",
-        avdanyuwiki_result.get("release_date", javdb_result.get("release_date", "")),
+    release_date = (
+        javlib_result.get("release_date")
+        or avdanyuwiki_result.get("release_date")
+        or javdb_result.get("release_date")
+        or javtxt_result.get("release_date")
+        or ""
     )
-    director = avdanyuwiki_result.get(
-        "director",
-        javlib_result.get("director", javdb_result.get("director", "")),
+    director = (
+        avdanyuwiki_result.get("director")
+        or javlib_result.get("director")
+        or javdb_result.get("director")
+        or javtxt_result.get("director")
+        or ""
     )
     runtime = avdanyuwiki_result.get(
         "runtime",
@@ -58,7 +64,6 @@ def merge_crawl_results(
     )
     # 这里最好加一个屏蔽词
 
-
     # 封面的列表
     # 2023年以后大图会多。
     # 可能的fanza大图封面https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/nsfs00401/nsfs00401pl.jpg
@@ -69,7 +74,7 @@ def merge_crawl_results(
         if x is None:
             return []
         return [x] if isinstance(x, str) else (x if isinstance(x, list) else [])
-    
+
     cover_list = [
         u for u in _urls(javlib_result.get("image")) if u and isinstance(u, str)
     ]
@@ -83,23 +88,33 @@ def merge_crawl_results(
         avdanyuwiki_result.get("maker")
         or javlib_result.get("maker")
         or javdb_result.get("maker")
+        or javtxt_result.get("maker")
         or ""
     )
-    series = avdanyuwiki_result.get("series") or javdb_result.get("series") or ""
+    series = (
+        avdanyuwiki_result.get("series")
+        or javdb_result.get("series")
+        or javtxt_result.get("series")
+        or ""
+    )
+
     label = (
         avdanyuwiki_result.get("label")
         or javlib_result.get("label")
         or javdb_result.get("label")
+        or javtxt_result.get("label")
         or ""
     )
 
     tag_list = avdanyuwiki_result.get("tag_list") or []
     genre_jav = javlib_result.get("genre") or []
     genre_javdb = javdb_result.get("genre") or []
+    genre_javtxt = javtxt_result.get("genre") or []
     genre_raw = (
         (tag_list if isinstance(tag_list, list) else [])
         + (genre_jav if isinstance(genre_jav, list) else [])
         + (genre_javdb if isinstance(genre_javdb, list) else [])
+        + (genre_javtxt if isinstance(genre_javtxt, list) else [])
     )
     excluded_genres = exclude_genre_set()
     genre_list = [

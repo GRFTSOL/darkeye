@@ -9,7 +9,7 @@ import logging
 
 
 # ==========================================================
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.1"
 REQUIRED_PUBLIC_DB_VERSION = "2"  # 软件所需要的公共数据库版本
 REQUIRED_PRIVATE_DB_VERSION = "1.1"  # 软件所需要的私有数据库版本
 # ==========================================================
@@ -146,6 +146,18 @@ def update_video_path(new_paths: list[Path]):
         value = new_paths_strs[0]
     logging.info(f"地址配置,更新视频地址")
     settings.setValue(key, value)
+    settings.sync()
+
+
+def get_local_video_player_exe() -> str:
+    """本地视频播放器可执行文件路径；空表示使用系统默认关联程序。"""
+    val = settings.value("Video/LocalPlayerExe", "", type=str)
+    return (val or "").strip()
+
+
+def set_local_video_player_exe(path: str | None) -> None:
+    """持久化本地播放器路径；传入空或 None 表示使用系统默认。"""
+    settings.setValue("Video/LocalPlayerExe", (path or "").strip())
     settings.sync()
 
 

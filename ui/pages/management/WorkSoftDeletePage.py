@@ -7,7 +7,14 @@ from pathlib import Path
 from typing import Union
 
 from PySide6.QtCore import QModelIndex, Qt, QTimer, Slot
-from PySide6.QtGui import QBrush, QColor, QMouseEvent, QPalette, QPainter
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QKeyEvent,
+    QMouseEvent,
+    QPalette,
+    QPainter,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
@@ -20,7 +27,7 @@ from PySide6.QtWidgets import (
 from config import DATABASE
 from controller.global_signal_bus import global_signals
 from controller.message_service import MessageBoxService
-from core.database.update import mark_delete
+from core.database.update import mark_delete_many
 from darkeye_ui import LazyWidget
 from darkeye_ui.components.button import Button
 from darkeye_ui.components.token_table_view import TokenTableView
@@ -257,6 +264,54 @@ class WorkSoftDeleteTableView(TokenTableView):
                         self._multi_check_anchor = r
         super().mousePressEvent(event)
 
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_Space:
+            sm = self.selectionModel()
+            model = self.model()
+            if sm is not None and model is not None:
+                cur = sm.currentIndex()
+                if not cur.isValid():
+                    sel_rows = sm.selectedRows()
+                    if sel_rows:
+                        cur = sel_rows[0]
+                if cur.isValid():
+                    row = cur.row()
+                    idx0 = model.index(row, 0)
+                    if idx0.isValid():
+                        state = model.data(idx0, Qt.ItemDataRole.CheckStateRole)
+                        if state is not None:
+                            checked = _is_check_state_checked(state)
+                            new_state = (
+                                Qt.CheckState.Unchecked
+                                if checked
+                                else Qt.CheckState.Checked
+                            )
+                            sel = [x.row() for x in sm.selectedRows()]
+                            if len(sel) > 1 and row in sel:
+                                model.setData(
+                                    idx0,
+                                    new_state,
+                                    Qt.ItemDataRole.CheckStateRole,
+                                )
+                                for r in sel:
+                                    if r == row:
+                                        continue
+                                    j = model.index(r, 0)
+                                    model.setData(
+                                        j,
+                                        new_state,
+                                        Qt.ItemDataRole.CheckStateRole,
+                                    )
+                            else:
+                                model.setData(
+                                    idx0,
+                                    new_state,
+                                    Qt.ItemDataRole.CheckStateRole,
+                                )
+                            event.accept()
+                            return
+        super().keyPressEvent(event)
+
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         rows = self._multi_check_rows
         anchor = self._multi_check_anchor
@@ -374,10 +429,9 @@ class WorkSoftDeletePage(LazyWidget):
         ):
             return
 
-        for work_id in ids:
-            if not mark_delete(work_id):
-                self.msg.show_critical("错误", f"软删除失败，work_id={work_id}")
-                return
+        if not mark_delete_many(ids):
+            self.msg.show_critical("错误", "批量软删除失败，请查看日志。")
+            return
 
         global_signals.workDataChanged.emit()
         self.refresh_data()

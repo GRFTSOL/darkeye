@@ -72,8 +72,9 @@ def wire_worker_finished(worker: "Worker", slot: Callable[[object], None]) -> No
         try:
             slot(result)
         finally:
-            snd = QObject.sender()
-            if snd is not None:
-                snd.deleteLater()
+            signals = worker.signals
+            if signals is not None:
+                worker.signals = None
+                signals.deleteLater()
 
     worker.signals.finished.connect(_wrapped, Qt.ConnectionType.QueuedConnection)

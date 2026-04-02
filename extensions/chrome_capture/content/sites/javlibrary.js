@@ -66,7 +66,7 @@
         const data = {};
         const dvdidElement = document.querySelector("#video_id .text");
         data.id = dvdidElement ? dvdidElement.textContent.trim() : "";
-        data.id = data.id.endsWith('v') ? data.id.slice(0, -1) : data.id;
+        data.id = /[vz]$/.test(data.id) ? data.id.slice(0, -1) : data.id;
         console.log("番号: " + data.id);
 
         const titleElement = document.querySelector(".post-title.text a");

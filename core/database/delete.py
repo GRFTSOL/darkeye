@@ -7,9 +7,12 @@
 """
 
 import sqlite3
+from collections.abc import Iterable
 from config import DATABASE, PRIVATE_DATABASE
 import logging
 from .connection import get_connection
+
+_SQLITE_IN_MAX = 500
 
 
 def delete_favorite_actress(actress_id) -> bool:
@@ -85,6 +88,66 @@ def delete_work(work_id: int) -> bool:
     except Exception as e:
         conn.rollback()
         logging.info(f"删除失败{e}")
+        return False
+    finally:
+        cursor.close()
+
+
+def delete_work_many(work_ids: Iterable[int]) -> bool:
+    """彻底删除多个作品（单次连接、单事务）。调用后需 emit: global_signals.workDataChanged"""
+    from pathlib import Path
+
+    from config import WORKCOVER_PATH
+    from utils.utils import delete_image
+
+    ids = list({int(w) for w in work_ids})
+    if not ids:
+        return True
+
+    try:
+        conn = get_connection(DATABASE)
+        cursor = conn.cursor()
+        image_paths: list[str] = []
+
+        for i in range(0, len(ids), _SQLITE_IN_MAX):
+            chunk = ids[i : i + _SQLITE_IN_MAX]
+            ph = ",".join("?" * len(chunk))
+
+            cursor.execute(
+                f"DELETE FROM work_actress_relation WHERE work_id IN ({ph})",
+                chunk,
+            )
+            cursor.execute(
+                f"DELETE FROM work_actor_relation WHERE work_id IN ({ph})",
+                chunk,
+            )
+            cursor.execute(
+                f"DELETE FROM work_tag_relation WHERE work_id IN ({ph})",
+                chunk,
+            )
+            cursor.execute(
+                f"SELECT image_url FROM work WHERE work_id IN ({ph})",
+                chunk,
+            )
+            for row in cursor.fetchall():
+                if row and row[0]:
+                    image_paths.append(row[0])
+
+            cursor.execute(
+                f"DELETE FROM work WHERE work_id IN ({ph})",
+                chunk,
+            )
+
+        conn.commit()
+        logging.info("批量删除作品成功，共 %s 条", len(ids))
+
+        for rel in image_paths:
+            delete_image(Path(WORKCOVER_PATH / rel))
+
+        return True
+    except Exception as e:
+        conn.rollback()
+        logging.info("批量删除作品失败%s", e)
         return False
     finally:
         cursor.close()

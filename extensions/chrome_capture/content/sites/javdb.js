@@ -18,6 +18,10 @@
   
     function search_javdb(){//先解析多个结果，然后根据番号选择，找到目标页面，然后跳转后详细解析
         console.log("开始搜索javdb");
+        const normalizeId = (value) => (value || "")
+            .trim()
+            .replace(/-?[vz]$/i, "")
+            .toUpperCase();
         const videos = document.querySelectorAll('div.item');
         if (videos.length === 0) {
             if (document.title.includes("Just a moment") || document.title.includes("Attention Required") || document.querySelector('#challenge-running')) {
@@ -58,11 +62,11 @@
                 url: href ? `https://javdb.com${href}` : ""
             };
         });
-        const searchId = (sessionStorage.getItem('id') || "").trim().toUpperCase();
+        const searchId = normalizeId(sessionStorage.getItem('id'));
         let targetUrl = null;
 
         if (searchId) {
-            const matched = results.find(item => (item.id || "").trim().toUpperCase() === searchId);
+            const matched = results.find(item => normalizeId(item.id) === searchId);
             if (matched) {
                 targetUrl = matched.url;
             }
@@ -91,7 +95,7 @@
           if (idStrong) {
               let idText = idStrong.textContent.trim();
               idText = idText.replace(/\s+$/,""); // 去掉末尾空格
-              idText = idText.endsWith('v') ? idText.slice(0, -1) : idText;
+              idText = idText.replace(/-?[vz]$/i, "");
               data.id = idText;
           } else {
               data.id = "";

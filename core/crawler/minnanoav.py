@@ -460,7 +460,7 @@ def SearchSingleActressInfo(actress_id, name: str) -> bool:
         else:  # 遇到直接搜索的界面，还有种情况，遇到搜索不出来的界面
             logging.info("遇到直接是女优界面")
             new_data = analyse(response)
-            # 更新写入数据库
+            # 更新写入数据库，也就是说这个是不能爬第二次的，否则就会有问题。
             update_db_actress(actress_id, new_data)
             InsertAliasName(actress_id, new_data["alias_chain"])
             download_update_profile(actress_id, new_data)
