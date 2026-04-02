@@ -2,22 +2,19 @@
 # sqlite_to_nfo_with_actors.py
 # 说明：基于 metadata + metadata_video + metadata_to_actor + actor_info 生成 .nfo（Kodi/Jellyfin/Emby 标准格式）
 
-import json
-import logging
-import os
-import re
 import sqlite3
+import json
+import os
+from pathlib import Path
 import xml.etree.ElementTree as ET
 import hashlib
-from pathlib import Path
-from xml.dom import minidom
+import re
+import requests
 
 # ----------------- 配置区（请修改） -----------------
 DB_PATH = r"XXXXX\app_datas.sqlite"  # <-- 将XXXXX改成你Jvedio的数据库 sqlite 路径，文件名为“app_datas.sqlite”
 OUTPUT_DIR = r""  # <-- NFO文件输出目录
-WRITE_NFO_TO_VIDEO_DIR = (
-    False  # True: 若影片的视频路径存在，尝试写入影片的NFO中，可按需开启
-)
+WRITE_NFO_TO_VIDEO_DIR = False  # True: 若影片的视频路径存在，尝试写入影片的NFO中，可按需开启
 DOWNLOAD_IMAGES = False  # True: 会下载演员与海报图片（需 requests），可按需开启
 IMAGE_SAVE_DIR = r""  # 若下载图片，保存位置
 SAMPLE_LIMIT = None  # 测试时仅处理前 N 条，设为 None 处理全部
@@ -31,20 +28,11 @@ SMALLPIC_DIR = "SmallPic"
 FALLBACK_TO_ONLINE_IMAGE_URL = True
 # -----------------------------------------------------
 
-
-def _ensure_requests():
-    try:
-        import requests  # noqa: F401
-    except Exception as exc:
-        raise RuntimeError(
-            "DOWNLOAD_IMAGES=True 但未安装 requests。请在解释器里 pip install "
-            "requests 并重启脚本。"
-        ) from exc
-    return requests
-
-
 if DOWNLOAD_IMAGES:
-    _ensure_requests()
+    try:
+        import requests
+    except Exception:
+        raise RuntimeError("DOWNLOAD_IMAGES=True 但未安装 requests。请先 pip install requests 并重启脚本。")
 
 
 def format_to_yyyy_mm_dd(date_str):
@@ -53,19 +41,16 @@ def format_to_yyyy_mm_dd(date_str):
         return ""
     date_str = str(date_str).strip()
 
-    # 尝试匹配 包含年月日的格式
     match = re.search(r"(\d{4})[^\d]*(\d{1,2})[^\d]*(\d{1,2})", date_str)
     if match:
         y, m, d = match.groups()
         return f"{int(y):04d}-{int(m):02d}-{int(d):02d}"
 
-    # 尝试匹配 仅包含年月 -> 补全为 01日
     match_ym = re.search(r"(\d{4})[^\d]*(\d{1,2})", date_str)
     if match_ym:
         y, m = match_ym.groups()
         return f"{int(y):04d}-{int(m):02d}-01"
 
-    # 尝试匹配 仅包含年份 -> 补全为 01-01
     match_y = re.search(r"(\d{4})", date_str)
     if match_y:
         y = match_y.group(1)
@@ -74,63 +59,71 @@ def format_to_yyyy_mm_dd(date_str):
     return date_str
 
 
-def _xml_10_legal_char(ch: str) -> bool:
-    """XML 1.0 允许的 Char（与 Expat / minidom 一致）。"""
-    o = ord(ch)
-    return (
-        o in (0x9, 0xA, 0xD)
-        or 0x20 <= o <= 0xD7FF
-        or 0xE000 <= o <= 0xFFFD
-        or 0x10000 <= o <= 0x10FFFF
-    )
-
-
-def sanitize_for_xml_text(value: str) -> str:
-    """去掉/过滤无法在 XML 1.0 中表达的字符，避免 minidom.parseString 报 invalid token。"""
-    if not value:
-        return value
-    return "".join(ch for ch in value if _xml_10_legal_char(ch))
-
-
-def pretty_xml(elem):
-    """格式化XML，强制标准头部声明，并将空标签展开换行
-
-    注意：若元素文本中含 NUL 等非法字符，ET.tostring 仍会输出，Expat 解析会失败，
-    故写入前应经 sanitize_for_xml_text（见 safe_text）。
+def sanitize_xml_text(value):
     """
-    rough = ET.tostring(elem, encoding="utf-8")
-    try:
-        reparsed = minidom.parseString(rough)
-    except Exception as exc:
-        sample = rough.decode("utf-8", errors="replace")[:800]
-        raise RuntimeError(
-            "NFO 格式化失败：XML 可能含非法字符或未转义内容。"
-            f" 片段（前 800 字符）：{sample!r}"
-        ) from exc
-    xml_str = reparsed.toprettyxml(indent="  ", encoding="utf-8").decode("utf-8")
-
-    # 1. 替换自带的 XML 声明为标准格式
-    xml_str = re.sub(
-        r"^<\?xml.*?\?>",
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-        xml_str,
+    清洗 XML 非法字符：
+    保留 \t \n \r，以及 XML 1.0 允许的 Unicode 区间。
+    这样可避免 minidom / ElementTree 在解析时因脏数据报错。
+    """
+    if value is None:
+        return ""
+    s = str(value)
+    return "".join(
+        ch for ch in s
+        if ch == "\t" or ch == "\n" or ch == "\r"
+        or 0x20 <= ord(ch) <= 0xD7FF
+        or 0xE000 <= ord(ch) <= 0xFFFD
+        or 0x10000 <= ord(ch) <= 0x10FFFF
     )
-
-    # 2. 清理 minidom 产生的多余空行
-    lines = [line for line in xml_str.splitlines() if line.strip()]
-    xml_str = "\n".join(lines)
-
-    # 3. 将自闭合标签 (如 <plot/>) 强制转换为展开并换行的格式
-    # 匹配前面的缩进和标签名，替换为 <tag>\n[缩进]</tag>
-    xml_str = re.sub(r"(\n\s*)<([a-zA-Z0-9_]+)/>", r"\1<\2>\1</\2>", xml_str)
-
-    return xml_str.encode("utf-8")
 
 
 def safe_text(value):
-    if value is None:
-        return ""
-    return sanitize_for_xml_text(str(value))
+    return sanitize_xml_text(value)
+
+
+def indent_xml(elem, level=0):
+    """兼容低版本 Python 的 XML 缩进。"""
+    i = "\n" + level * "  "
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + "  "
+        for child in elem:
+            indent_xml(child, level + 1)
+        if not child.tail or not child.tail.strip():
+            child.tail = i
+    if level and (not elem.tail or not elem.tail.strip()):
+        elem.tail = i
+
+
+def pretty_xml(elem):
+    """
+    格式化 XML，使用 ElementTree 输出，避免 minidom.parseString 对脏字符更敏感的问题。
+    """
+    try:
+        ET.indent(elem, space="  ")
+    except Exception:
+        indent_xml(elem)
+
+    xml_str = ET.tostring(
+        elem,
+        encoding="utf-8",
+        xml_declaration=True,
+        short_empty_elements=False
+    ).decode("utf-8")
+
+    xml_str = xml_str.replace(
+        '<?xml version=\'1.0\' encoding=\'utf-8\'?>',
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        1
+    ).replace(
+        '<?xml version="1.0" encoding="utf-8"?>',
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        1
+    )
+
+    lines = [line for line in xml_str.splitlines() if line.strip()]
+    xml_str = "\n".join(lines)
+    return xml_str.encode("utf-8")
 
 
 def add_text(parent, tag, text, force=False, default=""):
@@ -173,9 +166,8 @@ def safe_filename(s):
 
 
 def download_image(url, save_dir):
-    req = _ensure_requests()
     try:
-        r = req.get(url, timeout=15, stream=True)
+        r = requests.get(url, timeout=15, stream=True)
         if r.status_code == 200:
             h = hashlib.sha1(url.encode("utf-8")).hexdigest()
             ext = os.path.splitext(url.split("?")[0])[1]
@@ -200,21 +192,15 @@ def norm_key(s: str) -> str:
     return re.sub(r"[^A-Z0-9]+", "", str(s).upper())
 
 
-def build_local_pic_index(
-    pic_root: str | Path,
-    bigpic_dir: str | None = None,
-    smallpic_dir: str | None = None,
-) -> dict[str, dict[str, str]]:
-    bd = bigpic_dir if bigpic_dir is not None else BIGPIC_DIR
-    sd = smallpic_dir if smallpic_dir is not None else SMALLPIC_DIR
-    index: dict[str, dict[str, str]] = {
-        bd: {},
-        sd: {},
+def build_local_pic_index(pic_root):
+    index = {
+        BIGPIC_DIR: {},
+        SMALLPIC_DIR: {},
     }
     root = Path(pic_root)
     valid_exts = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
-    for folder in [bd, sd]:
+    for folder in [BIGPIC_DIR, SMALLPIC_DIR]:
         folder_path = root / folder
         if not folder_path.exists():
             continue
@@ -227,13 +213,14 @@ def build_local_pic_index(
     return index
 
 
-def resolve_local_pic(
-    pic_index: dict[str, dict[str, str]], nfo_id: str, folder_name: str
-):
+LOCAL_PIC_INDEX = build_local_pic_index(PIC_ROOT)
+
+
+def resolve_local_pic(nfo_id, folder_name):
     if not nfo_id:
         return None
     key = norm_key(nfo_id)
-    return pic_index.get(folder_name, {}).get(key)
+    return LOCAL_PIC_INDEX.get(folder_name, {}).get(key)
 
 
 def load_actor_maps(conn):
@@ -246,9 +233,7 @@ def load_actor_maps(conn):
         for r in cur.fetchall():
             actorid = r["ActorID"] if "ActorID" in r.keys() else r[0]
             k = str(actorid)
-            actor_map[k] = {
-                col: r[col] if col in r.keys() else None for col in r.keys()
-            }
+            actor_map[k] = {col: r[col] if col in r.keys() else None for col in r.keys()}
     except Exception:
         pass
 
@@ -281,69 +266,33 @@ def load_actor_maps(conn):
     return actor_map, data_to_actorids
 
 
-def export_jvedio_database_to_nfo(
-    db_path: str | Path,
-    output_dir: str | Path,
-    *,
-    write_nfo_to_video_dir: bool = False,
-    download_images: bool = False,
-    image_save_dir: str | Path = "",
-    sample_limit: int | None = None,
-    pic_root: str | Path = "",
-    bigpic_dir: str = BIGPIC_DIR,
-    smallpic_dir: str = SMALLPIC_DIR,
-    fallback_to_online_image_url: bool = True,
-) -> tuple[bool, str]:
-    """从 Jvedio 的 app_datas.sqlite 导出 Kodi 风格 .nfo。
+def main():
+    db = Path(DB_PATH)
+    if not db.exists():
+        print(f"错误：找不到数据库文件：{DB_PATH}")
+        return
 
-    Returns:
-        (是否成功, 给用户看的说明文本)
-    """
-    if download_images:
-        _ensure_requests()
-
-    db = Path(db_path)
-    if not db.is_file():
-        return False, f"错误：找不到数据库文件：{db}"
-
-    out_dir = ensure_dir(output_dir)
-    effective_image_dir = Path(image_save_dir)
-    if download_images:
-        if not str(image_save_dir).strip():
-            effective_image_dir = Path(output_dir)
-        ensure_dir(effective_image_dir)
-
-    pic_index = build_local_pic_index(pic_root, bigpic_dir, smallpic_dir)
+    out_dir = ensure_dir(OUTPUT_DIR)
+    if DOWNLOAD_IMAGES:
+        ensure_dir(IMAGE_SAVE_DIR)
 
     conn = sqlite3.connect(str(db))
     conn.row_factory = sqlite3.Row
 
     actor_map, data_to_actorids = load_actor_maps(conn)
-    logging.info(
-        "Jvedio→NFO：演员 %s 条；data→actor %s 个 dataid",
-        len(actor_map),
-        len(data_to_actorids),
-    )
-    logging.info(
-        "Jvedio→NFO：本地图片索引 BigPic %s 条；SmallPic %s 条",
-        len(pic_index.get(bigpic_dir, {})),
-        len(pic_index.get(smallpic_dir, {})),
-    )
+    print(f"加载演员信息：{len(actor_map)} 条；加载 data->actor 映射：{len(data_to_actorids)} 个 dataid")
+    print(f"本地图片索引：BigPic {len(LOCAL_PIC_INDEX[BIGPIC_DIR])} 条；SmallPic {len(LOCAL_PIC_INDEX[SMALLPIC_DIR])} 条")
 
     cur = conn.cursor()
-    sql = (
-        "SELECT m.*, mv.* FROM metadata m "
-        "LEFT JOIN metadata_video mv ON mv.DataID = m.DataID"
-    )
-    if sample_limit is not None and isinstance(sample_limit, int):
-        sql = sql + f" LIMIT {sample_limit}"
+    sql = "SELECT m.*, mv.* FROM metadata m LEFT JOIN metadata_video mv ON mv.DataID = m.DataID"
+    if SAMPLE_LIMIT and isinstance(SAMPLE_LIMIT, int):
+        sql = sql + f" LIMIT {SAMPLE_LIMIT}"
     cur.execute(sql)
     rows = cur.fetchall()
     total = len(rows)
-    logging.info("Jvedio→NFO：读取 %s 条记录", total)
+    print(f"读取到 {total} 条记录 (metadata JOIN metadata_video)")
 
     for idx, row in enumerate(rows, start=1):
-
         def g(k):
             return row[k] if k in row.keys() else None
 
@@ -379,6 +328,7 @@ def export_jvedio_database_to_nfo(
         parsed_actress_imgs = []
         thumbs_from_imageurls = []
         fanarts = []
+
         try:
             if imageurls_raw:
                 jo = json.loads(imageurls_raw)
@@ -403,7 +353,7 @@ def export_jvedio_database_to_nfo(
 
         target_dir = out_dir
         wrote_to_video_dir = False
-        if write_nfo_to_video_dir and path:
+        if WRITE_NFO_TO_VIDEO_DIR and path:
             try:
                 p = Path(path)
                 path_exists_flag = False
@@ -430,11 +380,10 @@ def export_jvedio_database_to_nfo(
         # ---------------- 构建 XML ----------------
         movie = ET.Element("movie")
 
-        # 按照标准结构依次添加属性 (force=True 保证标签存在)
         add_text(movie, "source", weburl, force=True)
         add_text(movie, "plot", plot, force=True)
         add_text(movie, "title", title)
-        add_text(movie, "director", director, force=True)  # 修改：强制输出 director
+        add_text(movie, "director", director, force=True)
         add_text(movie, "rating", rating, force=True, default="0")
         add_text(movie, "criticrating", "", force=True)
 
@@ -465,19 +414,19 @@ def export_jvedio_database_to_nfo(
         if series:
             add_text(movie, "tag", series)
 
-        local_big = resolve_local_pic(pic_index, nfo_id, bigpic_dir)
-        local_small = resolve_local_pic(pic_index, nfo_id, smallpic_dir)
+        local_big = resolve_local_pic(nfo_id, BIGPIC_DIR)
+        local_small = resolve_local_pic(nfo_id, SMALLPIC_DIR)
         thumb_candidates = []
 
         if local_big:
             thumb_candidates.append(local_big)
-        elif fallback_to_online_image_url and thumbs_from_imageurls:
+        elif FALLBACK_TO_ONLINE_IMAGE_URL and thumbs_from_imageurls:
             thumb_candidates.append(thumbs_from_imageurls[0])
 
         if local_small:
             if local_small != local_big:
                 thumb_candidates.append(local_small)
-        elif fallback_to_online_image_url and len(thumbs_from_imageurls) > 1:
+        elif FALLBACK_TO_ONLINE_IMAGE_URL and len(thumbs_from_imageurls) > 1:
             online_small = thumbs_from_imageurls[1]
             if online_small not in thumb_candidates:
                 thumb_candidates.append(online_small)
@@ -492,8 +441,8 @@ def export_jvedio_database_to_nfo(
             fanart_el = ET.SubElement(movie, "fanart")
             for f in fanarts:
                 t_el = ET.SubElement(fanart_el, "thumb")
-                t_el.set("preview", f)
-                t_el.text = f
+                t_el.set("preview", safe_text(f))
+                t_el.text = safe_text(f)
 
         actors_to_write = []
         if dataid_key and dataid_key in data_to_actorids:
@@ -508,11 +457,7 @@ def export_jvedio_database_to_nfo(
 
         if not actors_to_write and parsed_actor_names:
             for idx_a, name in enumerate(parsed_actor_names):
-                thumb = (
-                    parsed_actress_imgs[idx_a]
-                    if idx_a < len(parsed_actress_imgs)
-                    else None
-                )
+                thumb = parsed_actress_imgs[idx_a] if idx_a < len(parsed_actress_imgs) else None
                 actors_to_write.append((name, thumb))
 
         seen = set()
@@ -527,13 +472,23 @@ def export_jvedio_database_to_nfo(
             actors_filtered.append((n, t))
         actors_to_write = actors_filtered
 
-        for name, thumb in actors_to_write:
+        for (name, thumb) in actors_to_write:
             final_thumb = thumb
-            if download_images and thumb:
-                final_thumb = download_image(thumb, effective_image_dir)
+            if DOWNLOAD_IMAGES and thumb:
+                final_thumb = download_image(thumb, IMAGE_SAVE_DIR)
             build_actor_node(movie, name, thumb=final_thumb)
 
-        xml_bytes = pretty_xml(movie)
+        # 出错时输出当前数据，方便定位脏字段
+        try:
+            xml_bytes = pretty_xml(movie)
+        except Exception as e:
+            print(f"\n[XML生成失败] idx={idx}, DataID={DataID}, VID={VID}")
+            print("title =", repr(title))
+            print("plot  =", repr(plot[:300]))
+            print("director =", repr(director))
+            print("weburl =", repr(weburl))
+            raise
+
         out_path = Path(target_dir) / (f"{base_name}.nfo")
         try:
             with open(out_path, "wb") as fh:
@@ -546,37 +501,12 @@ def export_jvedio_database_to_nfo(
 
         if idx % 50 == 0 or idx == total:
             where = "视频目录" if wrote_to_video_dir else "输出目录"
-            logging.info(
-                "Jvedio→NFO：[%s/%s] 写入 %s（%s）", idx, total, out_path, where
-            )
+            print(f"[{idx}/{total}] 写入：{out_path} ({where})")
 
     conn.close()
-    lines = [
-        f"全部完成。共处理 {total} 条。",
-        f"输出目录：{out_dir.resolve()}",
-    ]
-    if download_images:
-        lines.append(f"图片保存目录：{effective_image_dir.resolve()}")
-    return True, "\n".join(lines)
-
-
-def main():
-    """命令行入口：使用模块顶部全局配置。"""
-    ok, msg = export_jvedio_database_to_nfo(
-        DB_PATH,
-        OUTPUT_DIR,
-        write_nfo_to_video_dir=WRITE_NFO_TO_VIDEO_DIR,
-        download_images=DOWNLOAD_IMAGES,
-        image_save_dir=IMAGE_SAVE_DIR,
-        sample_limit=SAMPLE_LIMIT,
-        pic_root=PIC_ROOT,
-        bigpic_dir=BIGPIC_DIR,
-        smallpic_dir=SMALLPIC_DIR,
-        fallback_to_online_image_url=FALLBACK_TO_ONLINE_IMAGE_URL,
-    )
-    print(msg)
-    if not ok:
-        raise SystemExit(1)
+    print("\n全部完成！输出目录：", out_dir.resolve())
+    if DOWNLOAD_IMAGES:
+        print("图片保存目录：", Path(IMAGE_SAVE_DIR).resolve())
 
 
 if __name__ == "__main__":

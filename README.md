@@ -36,6 +36,12 @@
 
 版本迁移时注意更新浏览器插件，由于爬虫的特殊性，这个爬虫很可能老失效。需要反馈然后人工修改。
 
+## Jvedio迁移数据
+下载下面的脚本，然后按照提示运行
+[`scripts/xxx.py`（raw）](https://raw.githubusercontent.com/de4321/darkeye/main/scripts/jvedio2nfo.py)
+
+要求电脑上有python,然后最主要的是改地址
+
 # Community
 
 问题，想法？加入discord社区，现在社区没什么建设 https://discord.gg/3thnEguWUk

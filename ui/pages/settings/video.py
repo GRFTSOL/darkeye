@@ -5,7 +5,6 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QThread, Signal, Slot, Qt
 from PySide6.QtWidgets import (
-    QDialog,
     QFileDialog,
     QHBoxLayout,
     QLineEdit,
@@ -74,27 +73,6 @@ class _NfoBatchImportWorker(QObject):
         self._cancel = True
 
 
-class _JvedioNfoExportWorker(QObject):
-    """在后台线程中执行 Jvedio sqlite → NFO 导出。"""
-
-    finished = Signal(bool, str)
-
-    def __init__(self, export_kwargs: dict):
-        super().__init__()
-        self._export_kwargs = export_kwargs
-
-    @Slot()
-    def run(self):
-        from core.importers.Jvedio2NFO import export_jvedio_database_to_nfo
-
-        try:
-            ok, msg = export_jvedio_database_to_nfo(**self._export_kwargs)
-        except Exception:
-            logging.exception("Jvedio 导出 NFO 失败")
-            ok, msg = False, "导出过程出现异常，请查看日志。"
-        self.finished.emit(ok, msg)
-
-
 class VideoSettingPage(QWidget):
     """视频相关设置页面"""
 
@@ -104,9 +82,6 @@ class VideoSettingPage(QWidget):
         self._nfo_import_thread: QThread | None = None
         self._nfo_import_worker: _NfoBatchImportWorker | None = None
         self._nfo_progress_dialog: QProgressDialog | None = None
-        self._jvedio_export_thread: QThread | None = None
-        self._jvedio_export_worker: _JvedioNfoExportWorker | None = None
-        self._jvedio_export_progress: QProgressDialog | None = None
 
         self.init_ui()
         self.pathManagement.load_paths(get_video_path())
@@ -148,14 +123,6 @@ class VideoSettingPage(QWidget):
         )
         self.btn_import_nfo.clicked.connect(self.task_import_nfo_from_video_paths)
         layout.addWidget(self.btn_import_nfo)
-
-        self.btn_export_jvedio_nfo = Button("从 Jvedio 数据库导出 NFO")
-        self.btn_export_jvedio_nfo.setToolTip(
-            "读取 Jvedio 的 app_datas.sqlite，生成 Kodi/Jellyfin 风格的 .nfo；"
-            "需在弹出窗口中配置数据库路径与输出目录等。"
-        )
-        self.btn_export_jvedio_nfo.clicked.connect(self.task_export_jvedio_to_nfo)
-        layout.addWidget(self.btn_export_jvedio_nfo)
 
     def _install_auto_save(self):
         self.pathManagement.table.itemChanged.connect(self._auto_save_paths)
@@ -234,68 +201,6 @@ class VideoSettingPage(QWidget):
     def _nfo_import_busy(self) -> bool:
         t = self._nfo_import_thread
         return t is not None and t.isRunning()
-
-    def _jvedio_export_busy(self) -> bool:
-        t = self._jvedio_export_thread
-        return t is not None and t.isRunning()
-
-    @Slot()
-    def task_export_jvedio_to_nfo(self):
-        """弹出配置对话框并在后台线程运行 Jvedio→NFO 导出。"""
-        if self._jvedio_export_busy():
-            self.msg.show_info("提示", "Jvedio NFO 导出正在进行中，请稍候。")
-            return
-
-        from ui.dialogs.JvedioToNfoExportDialog import JvedioToNfoExportDialog
-
-        dlg = JvedioToNfoExportDialog(self)
-        if dlg.exec() != QDialog.DialogCode.Accepted:
-            return
-
-        opts = dlg.export_kwargs()
-        worker = _JvedioNfoExportWorker(opts)
-        thread = QThread(self)
-        worker.moveToThread(thread)
-
-        progress = QProgressDialog(self)
-        progress.setWindowTitle("从 Jvedio 导出 NFO")
-        progress.setLabelText("正在导出，请稍候…")
-        progress.setRange(0, 0)
-        progress.setMinimumDuration(0)
-        progress.setWindowModality(Qt.WindowModal)
-        progress.setCancelButton(None)
-
-        worker.finished.connect(self._on_jvedio_export_finished)
-        worker.finished.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(self._on_jvedio_export_thread_cleared)
-        thread.started.connect(worker.run)
-
-        self._jvedio_export_progress = progress
-        self._jvedio_export_worker = worker
-        self._jvedio_export_thread = thread
-
-        self.btn_export_jvedio_nfo.setEnabled(False)
-        progress.show()
-        thread.start()
-
-    @Slot(bool, str)
-    def _on_jvedio_export_finished(self, ok: bool, message: str):
-        self.btn_export_jvedio_nfo.setEnabled(True)
-        p = self._jvedio_export_progress
-        if p is not None:
-            p.close()
-            self._jvedio_export_progress = None
-        if ok:
-            self.msg.show_info("Jvedio NFO 导出完成", message)
-        else:
-            self.msg.show_warning("Jvedio NFO 导出", message)
-
-    @Slot()
-    def _on_jvedio_export_thread_cleared(self):
-        self._jvedio_export_thread = None
-        self._jvedio_export_worker = None
 
     @Slot()
     def task_import_nfo_from_video_paths(self):
