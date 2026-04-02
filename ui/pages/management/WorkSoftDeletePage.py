@@ -7,7 +7,14 @@ from pathlib import Path
 from typing import Union
 
 from PySide6.QtCore import QModelIndex, Qt, QTimer, Slot
-from PySide6.QtGui import QBrush, QColor, QMouseEvent, QPalette, QPainter
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QKeyEvent,
+    QMouseEvent,
+    QPalette,
+    QPainter,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
@@ -256,6 +263,54 @@ class WorkSoftDeleteTableView(TokenTableView):
                         self._multi_check_rows = sel
                         self._multi_check_anchor = r
         super().mousePressEvent(event)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_Space:
+            sm = self.selectionModel()
+            model = self.model()
+            if sm is not None and model is not None:
+                cur = sm.currentIndex()
+                if not cur.isValid():
+                    sel_rows = sm.selectedRows()
+                    if sel_rows:
+                        cur = sel_rows[0]
+                if cur.isValid():
+                    row = cur.row()
+                    idx0 = model.index(row, 0)
+                    if idx0.isValid():
+                        state = model.data(idx0, Qt.ItemDataRole.CheckStateRole)
+                        if state is not None:
+                            checked = _is_check_state_checked(state)
+                            new_state = (
+                                Qt.CheckState.Unchecked
+                                if checked
+                                else Qt.CheckState.Checked
+                            )
+                            sel = [x.row() for x in sm.selectedRows()]
+                            if len(sel) > 1 and row in sel:
+                                model.setData(
+                                    idx0,
+                                    new_state,
+                                    Qt.ItemDataRole.CheckStateRole,
+                                )
+                                for r in sel:
+                                    if r == row:
+                                        continue
+                                    j = model.index(r, 0)
+                                    model.setData(
+                                        j,
+                                        new_state,
+                                        Qt.ItemDataRole.CheckStateRole,
+                                    )
+                            else:
+                                model.setData(
+                                    idx0,
+                                    new_state,
+                                    Qt.ItemDataRole.CheckStateRole,
+                                )
+                            event.accept()
+                            return
+        super().keyPressEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         rows = self._multi_check_rows
