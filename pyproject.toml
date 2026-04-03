@@ -23,11 +23,11 @@ dependencies = [
     "psutil",
     "matplotlib",
     "networkx",
-    "opencv-python-headless",
     "bs4",
     "requests",
     "googletrans",
     "wordcloud",
+    "zstandard",
 ]
 
 [project.optional-dependencies]
@@ -39,4 +39,22 @@ docs = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["core*", "ui*", "controller*", "darkeye_ui*", "utils*"]
+include = ["core*", "ui*", "controller*", "darkeye_ui*", "utils*", "server*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+extend-exclude = """
+/(
+  \\.git
+  | \\.venv
+  | venv
+  | \\.pytest_cache
+  | \\.pytest_tmp
+  | \\.mypy_cache
+  | build
+  | dist
+  | cpp_bindings
+  | extensions
+)/
+"""

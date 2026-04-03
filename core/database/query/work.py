@@ -1,4 +1,5 @@
-'''作品域查询'''
+"""作品域查询"""
+
 import sqlite3
 import logging
 from datetime import datetime
@@ -8,13 +9,13 @@ from ..connection import get_connection
 
 
 def get_all_work_id() -> list[int]:
-    '''获得所有的work_id'''
-    query = '''
+    """获得所有的work_id"""
+    query = """
     SELECT
     work_id
     FROM
     work
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
@@ -23,8 +24,8 @@ def get_all_work_id() -> list[int]:
 
 
 def get_work_ids_with_cover(limit: int = 30) -> list[int]:
-    '''获得有封面的work_id列表，按更新时间逆序取前limit条'''
-    query = '''
+    """获得有封面的work_id列表，按更新时间逆序取前limit条"""
+    query = """
     SELECT
         work_id
     FROM
@@ -34,7 +35,7 @@ def get_work_ids_with_cover(limit: int = 30) -> list[int]:
     ORDER BY
         update_time DESC
     LIMIT ?
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (limit,))
@@ -43,13 +44,13 @@ def get_work_ids_with_cover(limit: int = 30) -> list[int]:
 
 
 def get_all_work_addtime() -> list[datetime]:
-    '''获得所有的work添加的时间,返回时间的list'''
-    query = '''
+    """获得所有的work添加的时间,返回时间的list"""
+    query = """
     SELECT
     create_time
     FROM
     work
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
@@ -58,8 +59,8 @@ def get_all_work_addtime() -> list[datetime]:
 
 
 def query_studio(work_id: int) -> str | None:
-    '''根据work_id返回发行商，如果为非标准发行商，就是私拍，或者没有封面的，就返回None'''
-    query = '''
+    """根据work_id返回发行商，如果为非标准发行商，就是私拍，或者没有封面的，就返回None"""
+    query = """
     SELECT
         (SELECT cn_name FROM maker WHERE maker_id =p.maker_id) AS studio_name
     FROM
@@ -68,7 +69,7 @@ def query_studio(work_id: int) -> str | None:
         prefix_maker_relation p ON p.prefix = SUBSTR(w.serial_number, 1, INSTR(w.serial_number, '-') - 1)
     WHERE
     work_id=?
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (work_id,))
@@ -80,24 +81,29 @@ def query_studio(work_id: int) -> str | None:
 
 
 def get_workinfo_by_workid(work_id: int) -> dict:
-    '''根据work_id获得单部作品的基本数据'''
-    query = '''
+    """根据work_id获得单部作品的基本数据"""
+    query = """
     SELECT
     serial_number,
     director,
-    story,
+    notes,
+    runtime,
     release_date,
     image_url,
     cn_title,
     cn_story,
     jp_title,
     jp_story,
-    (SELECT cn_name FROM maker WHERE maker_id =p.maker_id) AS studio_name
+    work.maker_id AS maker_id,
+    work.label_id AS label_id,
+    work.series_id AS series_id,
+    work.fanart AS fanart,
+    (SELECT cn_name FROM maker WHERE maker_id = work.maker_id) AS studio_name,
+    (SELECT cn_name FROM label WHERE label_id = work.label_id) AS label_name,
+    (SELECT cn_name FROM series WHERE series_id = work.series_id) AS series_name
     FROM work
-    LEFT JOIN
-        prefix_maker_relation p ON p.prefix = SUBSTR(work.serial_number, 1, INSTR(work.serial_number, '-') - 1)
     WHERE work_id = ?
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (work_id,))
@@ -107,8 +113,8 @@ def get_workinfo_by_workid(work_id: int) -> dict:
 
 
 def get_workcardinfo_by_workid(work_id: int) -> dict:
-    '''根据work_id获得单部作品的卡片数据'''
-    query = '''
+    """根据work_id获得单部作品的卡片数据（standard 与 WorkPage.load_data 同规则）。"""
+    query = """
 SELECT
     work.serial_number,
     cn_title,
@@ -116,16 +122,14 @@ SELECT
     wtr.tag_id,
     work.work_id,
     CASE
-        WHEN (SELECT cn_name FROM maker WHERE maker_id =p.maker_id) IS NULL
+        WHEN (SELECT cn_name FROM maker WHERE maker_id = work.maker_id) IS NULL
         THEN 0
         ELSE 1
     END AS standard
 FROM work
 LEFT JOIN work_tag_relation wtr ON work.work_id = wtr.work_id AND wtr.tag_id IN (1, 2, 3)
-LEFT JOIN
-    prefix_maker_relation p ON p.prefix = SUBSTR(work.serial_number, 1, INSTR(work.serial_number, '-') - 1)
 WHERE work.work_id= ?
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (work_id,))
@@ -135,7 +139,7 @@ WHERE work.work_id= ?
 
 
 def get_actressid_by_workid(work_id: int) -> list:
-    '''根据work_id获得对应女优的id列表'''
+    """根据work_id获得对应女优的id列表"""
     query = "SELECT actress_id FROM work_actress_relation WHERE work_id = ?"
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
@@ -144,24 +148,27 @@ def get_actressid_by_workid(work_id: int) -> list:
 
 
 def get_works_for_dvd(work_ids: list[int]) -> list[dict]:
-    '''批量查询 work_id、serial_number、image_url，供 DVD 场景使用，保持输入顺序'''
+    """批量查询 work_id、serial_number、image_url，供 DVD 场景使用，保持输入顺序"""
     if not work_ids:
         return []
     placeholders = ",".join("?" for _ in work_ids)
-    query = f'''
+    query = f"""
     SELECT
         work_id,
         serial_number,
         image_url
     FROM work
     WHERE work_id IN ({placeholders})
-    '''
+    """
     try:
         with get_connection(DATABASE, True) as conn:
             cursor = conn.cursor()
             cursor.execute(query, work_ids)
             rows = cursor.fetchall()
-            by_id = {r[0]: {"work_id": r[0], "serial_number": r[1], "image_url": r[2]} for r in rows}
+            by_id = {
+                r[0]: {"work_id": r[0], "serial_number": r[1], "image_url": r[2]}
+                for r in rows
+            }
             return [by_id[w] for w in work_ids if w in by_id]
     except sqlite3.Error as e:
         logging.info(f"get_works_for_dvd 查询时数据库错误: {e}")
@@ -169,14 +176,14 @@ def get_works_for_dvd(work_ids: list[int]) -> list[dict]:
 
 
 def get_cover_image_url(work_id: int) -> str | None:
-    '''根据work_id查找对应的封面图片的地址'''
-    query = '''
+    """根据work_id查找对应的封面图片的地址"""
+    query = """
     SELECT
         image_url
     FROM work
     WHERE work_id = ?
     LIMIT 1
-    '''
+    """
     try:
         with get_connection(DATABASE, True) as conn:
             cursor = conn.cursor()
@@ -192,14 +199,14 @@ def get_cover_image_url(work_id: int) -> str | None:
 
 
 def get_cover_image_url_by_serial(serial_number: str) -> str | None:
-    '''根据serial_number查找对应的封面图片的地址'''
-    query = '''
+    """根据serial_number查找对应的封面图片的地址"""
+    query = """
     SELECT
         image_url
     FROM work
     WHERE serial_number = ?
     LIMIT 1
-    '''
+    """
     try:
         with get_connection(DATABASE, True) as conn:
             cursor = conn.cursor()
@@ -215,7 +222,7 @@ def get_cover_image_url_by_serial(serial_number: str) -> str | None:
 
 
 def get_actorid_by_workid(work_id: int) -> list:
-    '''根据work_id获得对应男优的id列表'''
+    """根据work_id获得对应男优的id列表"""
     query = "SELECT actor_id FROM work_actor_relation WHERE work_id = ?"
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
@@ -224,8 +231,8 @@ def get_actorid_by_workid(work_id: int) -> list:
 
 
 def get_worktaginfo_by_workid(work_id: int) -> list[dict]:
-    '''根据work_id获得单部作品的标签数据'''
-    query = '''
+    """根据work_id获得单部作品的标签数据"""
+    query = """
     SELECT
         t.tag_id,
         t.tag_name,
@@ -238,7 +245,7 @@ def get_worktaginfo_by_workid(work_id: int) -> list[dict]:
     JOIN tag_type tt ON tt.tag_type_id=t.tag_type_id
     WHERE wtr.work_id = ?
     ORDER BY tt.tag_order,color
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (work_id,))
@@ -257,7 +264,7 @@ def get_work_tags(work_id: int) -> list:
 
 
 def get_actress_from_work_id(work_id: int) -> list[dict]:
-    '''
+    """
     根据输入的work_id在数据库中找到对应的女优的id和女优名字
 
     Args:
@@ -265,7 +272,7 @@ def get_actress_from_work_id(work_id: int) -> list[dict]:
 
     Returns:
         返回字典列表，形式为[{actress_id:xxx,actress_name:xxx},{actress_id:xxx,actress_name:xxx}]
-    '''
+    """
     query = """
     SELECT
         a.actress_id,
@@ -292,7 +299,7 @@ def get_actress_from_work_id(work_id: int) -> list[dict]:
 
 
 def get_actor_from_work_id(work_id: int) -> list[dict]:
-    '''
+    """
     根据输入的work_id在数据库中找到对应的男优的id和男优名字
 
     Args:
@@ -300,7 +307,7 @@ def get_actor_from_work_id(work_id: int) -> list[dict]:
 
     Returns:
         返回字典列表，形式为[{actor_id:xxx,actor_name:xxx},{actor_id:xxx,actor_name:xxx}]返回的男优的名字只有一个
-    '''
+    """
     query = """
     SELECT
         a.actor_id,
@@ -324,11 +331,12 @@ def get_actor_from_work_id(work_id: int) -> list[dict]:
     return result
 
 
-def get_work_story_rows() -> list[tuple]:
+def get_work_notes_rows() -> list[tuple]:
     query = """
-    SELECT work_id, serial_number, story
+    SELECT work_id, serial_number, notes
     FROM work
-    WHERE story IS NOT NULL AND story != ''
+    WHERE notes IS NOT NULL AND notes != ''
+    AND IFNULL(is_deleted, 0) = 0
     """
     try:
         with get_connection(DATABASE, True) as conn:
@@ -340,10 +348,11 @@ def get_work_story_rows() -> list[tuple]:
         return []
 
 
-def get_recent_work_story_rows(limit: int) -> list[tuple]:
+def get_recent_work_notes_rows(limit: int) -> list[tuple]:
     query = """
-    SELECT work_id, serial_number, story
+    SELECT work_id, serial_number, notes
     FROM work
+    WHERE IFNULL(is_deleted, 0) = 0
     ORDER BY update_time DESC
     LIMIT ?
     """
@@ -358,7 +367,10 @@ def get_recent_work_story_rows(limit: int) -> list[tuple]:
 
 
 def get_serial_number_map() -> dict:
-    query = "SELECT serial_number, work_id FROM work"
+    query = """
+    SELECT serial_number, work_id FROM work
+    WHERE IFNULL(is_deleted, 0) = 0
+    """
     try:
         with get_connection(DATABASE, True) as conn:
             cursor = conn.cursor()
@@ -370,13 +382,84 @@ def get_serial_number_map() -> dict:
         return {}
 
 
+def get_works_for_bulk_crawl_fields() -> list[dict]:
+    """批量爬虫筛选所需字段快照（含关联计数）。"""
+    query = """
+    SELECT
+        w.work_id,
+        w.serial_number,
+        w.release_date,
+        w.director,
+        w.runtime,
+        w.cn_title,
+        w.jp_title,
+        w.cn_story,
+        w.jp_story,
+        w.image_url,
+        w.maker_id,
+        w.label_id,
+        w.series_id,
+        w.fanart,
+        (SELECT COUNT(1) FROM work_actress_relation war WHERE war.work_id = w.work_id) AS actress_count,
+        (SELECT COUNT(1) FROM work_actor_relation wor WHERE wor.work_id = w.work_id) AS actor_count,
+        (SELECT COUNT(1) FROM work_tag_relation wtr WHERE wtr.work_id = w.work_id) AS tag_count
+    FROM work w
+    WHERE w.is_deleted = 0
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            column_names = [description[0] for description in cursor.description]
+            return [dict(zip(column_names, row)) for row in rows]
+    except sqlite3.Error as e:
+        logging.error(f"get_works_for_bulk_crawl_fields 查询时数据库错误: {e}")
+        return []
+
+
+def get_works_for_auto_cn_translation() -> list[dict]:
+    """需要机器翻译补全中文标题/简介的作品（日文非空且对应中文字段为空）。"""
+    query = """
+    SELECT
+        w.work_id,
+        w.serial_number,
+        w.jp_title,
+        w.cn_title,
+        w.jp_story,
+        w.cn_story
+    FROM work w
+    WHERE IFNULL(w.is_deleted, 0) = 0
+    AND (
+        (
+            w.jp_title IS NOT NULL AND TRIM(w.jp_title) != ''
+            AND (w.cn_title IS NULL OR TRIM(w.cn_title) = '')
+        )
+        OR (
+            w.jp_story IS NOT NULL AND TRIM(w.jp_story) != ''
+            AND (w.cn_story IS NULL OR TRIM(w.cn_story) = '')
+        )
+    )
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            column_names = [description[0] for description in cursor.description]
+            return [dict(zip(column_names, row)) for row in rows]
+    except sqlite3.Error as e:
+        logging.error("get_works_for_auto_cn_translation 查询失败: %s", e)
+        return []
+
+
 def get_workid_by_serialnumber(serial_number) -> int | None:
-    '''通过番号返回work_id'''
-    query = '''
+    """通过番号返回work_id"""
+    query = """
         SELECT work_id
         FROM work
         WHERE serial_number=?
-        '''
+        """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (serial_number,))
@@ -387,13 +470,30 @@ def get_workid_by_serialnumber(serial_number) -> int | None:
             return id[0]
 
 
+def get_active_workid_by_serialnumber(serial_number) -> int | None:
+    """番号解析为 work_id，排除软删除作品（关系图、笔记引用等只看有效片）。"""
+    query = """
+        SELECT work_id
+        FROM work
+        WHERE serial_number = ?
+        AND IFNULL(is_deleted, 0) = 0
+        """
+    with get_connection(DATABASE, True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query, (serial_number,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return row[0]
+
+
 def get_javtxt_id_by_serialnumber(serial_number) -> int | None:
-    '''通过番号获取javtxt的缓存'''
-    query = '''
+    """通过番号获取javtxt的缓存"""
+    query = """
         SELECT javtxt_id
         FROM work
         WHERE serial_number=?
-        '''
+        """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query, (serial_number,))
@@ -405,13 +505,13 @@ def get_javtxt_id_by_serialnumber(serial_number) -> int | None:
 
 
 def get_serial_number() -> list:
-    '''返回所有的番号'''
-    query = '''
+    """返回所有的番号"""
+    query = """
     SELECT
     serial_number
     FROM
     work
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
@@ -420,15 +520,15 @@ def get_serial_number() -> list:
 
 
 def get_unique_director() -> list:
-    '''读取独一无二的导演信息'''
-    query = '''
+    """读取独一无二的导演信息"""
+    query = """
     SELECT
         director ,
         count (*)AS num
     FROM work
     GROUP BY director
     ORDER BY num DESC
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
@@ -437,15 +537,15 @@ def get_unique_director() -> list:
 
 
 def get_unique_short_story() -> list:
-    '''获得库中所有的简短的剧情'''
-    query = '''
+    """获得库中所有的简短的剧情"""
+    query = """
     SELECT
-    story,
+    notes,
     COUNT(*) AS num
     FROM work
-    GROUP BY story
+    GROUP BY notes
     ORDER BY num DESC
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
@@ -453,13 +553,164 @@ def get_unique_short_story() -> list:
         return [row[0] for row in rows]
 
 
-def get_maker_name() -> list:
-    """获取所有的片商"""
-    query = "SELECT cn_name FROM maker"
+def get_maker_name() -> list[dict]:
+    """获取所有片商信息（含 maker_id/cn_name/jp_name/aliases）"""
+    query = """
+    SELECT maker_id, cn_name, jp_name, aliases
+    FROM maker
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)
-        return [row[0] for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+        return [
+            {
+                "maker_id": row[0],
+                "cn_name": row[1],
+                "jp_name": row[2],
+                "aliases": row[3],
+            }
+            for row in rows
+        ]
+
+
+def get_label_name() -> list[dict]:
+    """获取所有厂牌信息（含 label_id/cn_name/jp_name/aliases）"""
+    query = """
+    SELECT label_id, cn_name, jp_name, aliases
+    FROM label
+    """
+    with get_connection(DATABASE, True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        return [
+            {
+                "label_id": row[0],
+                "cn_name": row[1],
+                "jp_name": row[2],
+                "aliases": row[3],
+            }
+            for row in rows
+        ]
+
+
+def get_series_name() -> list[dict]:
+    """获取所有系列信息（含 series_id/cn_name/jp_name/aliases）"""
+    query = """
+    SELECT series_id, cn_name, jp_name, aliases
+    FROM series
+    """
+    with get_connection(DATABASE, True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        return [
+            {
+                "series_id": row[0],
+                "cn_name": row[1],
+                "jp_name": row[2],
+                "aliases": row[3],
+            }
+            for row in rows
+        ]
+
+
+def get_maker_id_by_name(name: str) -> int | None:
+    """通过片商名字返回片商id,要求name为片商的cn_name或jp_name或aliases中的一个，绝对匹配,不区分大小写，
+    但是aliases是逗号分割的，所以需要分割后进行匹配"""
+    target = (name or "").strip().lower()
+    if not target:
+        return None
+
+    query = """
+    SELECT maker_id, cn_name, jp_name, aliases
+    FROM maker
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            for maker_id, cn_name, jp_name, aliases in rows:
+                if str(cn_name or "").strip().lower() == target:
+                    return maker_id
+                if str(jp_name or "").strip().lower() == target:
+                    return maker_id
+                alias_parts = [
+                    a.strip().lower()
+                    for a in str(aliases or "").split(",")
+                    if a and a.strip()
+                ]
+                if target in alias_parts:
+                    return maker_id
+    except sqlite3.Error as e:
+        logging.info(f"get_maker_id_by_name 查询时数据库错误: {e}")
+    return None
+
+
+def get_label_id_by_name(name: str) -> int | None:
+    """通过厂牌名字返回厂牌 id，支持 cn/jp/aliases 绝对匹配（忽略大小写）"""
+    target = (name or "").strip().lower()
+    if not target:
+        return None
+
+    query = """
+    SELECT label_id, cn_name, jp_name, aliases
+    FROM label
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            for label_id, cn_name, jp_name, aliases in rows:
+                if str(cn_name or "").strip().lower() == target:
+                    return label_id
+                if str(jp_name or "").strip().lower() == target:
+                    return label_id
+                alias_parts = [
+                    a.strip().lower()
+                    for a in str(aliases or "").split(",")
+                    if a and a.strip()
+                ]
+                if target in alias_parts:
+                    return label_id
+    except sqlite3.Error as e:
+        logging.info(f"get_label_id_by_name 查询时数据库错误: {e}")
+    return None
+
+
+def get_series_id_by_name(name: str) -> int | None:
+    """通过系列名字返回系列 id，支持 cn/jp/aliases 绝对匹配（忽略大小写）"""
+    target = (name or "").strip().lower()
+    if not target:
+        return None
+
+    query = """
+    SELECT series_id, cn_name, jp_name, aliases
+    FROM series
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            for series_id, cn_name, jp_name, aliases in rows:
+                if str(cn_name or "").strip().lower() == target:
+                    return series_id
+                if str(jp_name or "").strip().lower() == target:
+                    return series_id
+                alias_parts = [
+                    a.strip().lower()
+                    for a in str(aliases or "").split(",")
+                    if a and a.strip()
+                ]
+                if target in alias_parts:
+                    return series_id
+    except sqlite3.Error as e:
+        logging.info(f"get_series_id_by_name 查询时数据库错误: {e}")
+    return None
 
 
 # Deprecated aliases (use new names above)

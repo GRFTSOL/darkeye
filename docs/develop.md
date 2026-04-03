@@ -60,7 +60,7 @@
 - `core/`: 核心业务逻辑
   - `crawler/`: 爬虫管理（CrawlerManager）、多源抓取与清洗。
   - `database/`: 连接管理（sqlite3 `get_connection`）、init/migrations、query/insert/update/delete、model。无 ORM，无 Repository 中间层。
-  - `graph/`: 关系图：`graph_manager.py`（单例，维护总图、增量信号）、`graph_session.py`（会话与过滤）、`ForceDirectedViewWidget.py`（与 C++ OpenGL 视图协作）、`graph_filter.py`、`graph.py`（图生成）、`async_image_loader.py`、`ForceViewSettingsPanel.py`。
+  - `graph/`: 关系图：`graph_manager.py`（单例，维护总图、增量信号）、`graph_session.py`（会话与过滤）、`force_directed_view_widget.py`（与 C++ OpenGL 视图协作）、`graph_filter.py`、`graph.py`（图生成）、`async_image_loader.py`、`force_view_settings_panel.py`。
   - `recommendation/`: 推荐逻辑（如随机推荐）。
   - `schema/`, `cv/`, `utils/`: 数据模型、图像、日志/性能等工具。
 - `controller/`: 全局信号（`GlobalSignalBus`）、快捷键（`ShortcutRegistry` / `ShortcutBindings`）、状态栏（`StatusManager`）、任务与通知（`TaskManager` / `TaskListWindow`）。

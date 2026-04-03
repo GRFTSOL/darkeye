@@ -86,7 +86,7 @@ function handleCommand(data) {
       addPendingInNewWindow(url, "javlib");
     }
     if (web === "javdb") {
-      const url = "https://www.javdb.com/search?q=" + String(serial_number);
+      const url = "https://javdb.com/search?q=" + String(serial_number);
       addPendingInNewWindow(url, "javdb");
     }
     if (web === "fanza") {

@@ -18,7 +18,9 @@ class SplitPreviewOverlay(QWidget):
         self._zone: DropZone | None = None
         self._target_pane: PaneWidget | None = None
 
-    def show_preview(self, zone: DropZone | None, target_pane: PaneWidget | None) -> None:
+    def show_preview(
+        self, zone: DropZone | None, target_pane: PaneWidget | None
+    ) -> None:
         """显示预览。zone 为 None 时隐藏。"""
         self._zone = zone
         self._target_pane = target_pane
@@ -38,7 +40,9 @@ class SplitPreviewOverlay(QWidget):
             top_left = self.mapFromGlobal(global_pos)
             self._rubber_band = QRubberBand(QRubberBand.Rectangle, self)
             self._rubber_band.setGeometry(QRect(top_left, rect.size()))
-            self._rubber_band.setStyleSheet("background-color: rgba(0, 170, 255, 80); border: 2px solid #00aaff;")
+            self._rubber_band.setStyleSheet(
+                "background-color: rgba(0, 170, 255, 80); border: 2px solid #00aaff;"
+            )
             self._rubber_band.show()
         self.update()
 

@@ -4,6 +4,7 @@
 
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.command === "javlibrary-dvdid"){
+        console.log("DarkEye: JavLibrary 开始爬虫任务...");
         sessionStorage.setItem('darkeye_auto_parse', 'true')
         sessionStorage.setItem('id', message.serial)
         if (!search_javlibrary()){
@@ -64,7 +65,7 @@
         const data = {};
         const dvdidElement = document.querySelector("#video_id .text");
         data.id = dvdidElement ? dvdidElement.textContent.trim() : "";
-        data.id = data.id.endsWith('v') ? data.id.slice(0, -1) : data.id;
+        data.id = /[vz]$/.test(data.id) ? data.id.slice(0, -1) : data.id;
         console.log("番号: " + data.id);
 
         const titleElement = document.querySelector(".post-title.text a");
@@ -76,18 +77,42 @@
 
         const dateElement = document.querySelector("#video_date .text");
         data.release_date = dateElement ? dateElement.textContent.trim() : "";
+
         const lengthElement = document.querySelector("#video_length .text");
         data.length = lengthElement ? lengthElement.textContent.trim() : "";
+
         const directorElement = document.querySelector("#video_director .text");
         data.director = directorElement ? directorElement.textContent.trim() : "";
+
+        const makerElement = document.querySelector("#video_maker .text");
+        data.maker = makerElement ? makerElement.textContent.trim() : "";
+
+        const labelElement = document.querySelector("#video_label .text");
+        data.label = labelElement ? labelElement.textContent.trim() : "";
+
         const genreElements = document.querySelectorAll("#video_genres .genre a");
         data.genre = Array.from(genreElements).map(el => el.textContent.trim());
+
         const castElements = document.querySelectorAll("#video_cast .star a");
         data.actress = Array.from(castElements).map(el => el.textContent.trim());
+
         const imgElement = document.querySelector("#video_jacket_img");
         data.image = imgElement ? imgElement.src : "";
 
+        const previewThumbs = document.querySelector("div.previewthumbs");
+        data.fanart = [];
+        if (previewThumbs) {
+          const anchors = previewThumbs.querySelectorAll("a[href]");
+          data.fanart = Array.from(anchors).map((a) => {
+            const href = (a.getAttribute("href") || "").trim();
+            if (href) return href;
+            const img = a.querySelector("img[src]");
+            return img ? (img.getAttribute("src") || "").trim() : "";
+          }).filter(Boolean);
+        }
+
         sessionStorage.setItem('darkeye_auto_parse', 'false');
+        console.log(data);
         if (data) {
             console.debug("发送数据");
             browser.runtime.sendMessage({

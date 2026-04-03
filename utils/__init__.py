@@ -1,1 +1,1 @@
-from .utils import is_valid_serialnumber
+from .serial_number import is_valid_serialnumber

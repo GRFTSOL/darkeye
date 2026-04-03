@@ -15,6 +15,7 @@ def get_connection(database, readonly=False) -> Connection:
 
     # 开启 WAL 模式
     # cursor.execute("PRAGMA journal_mode=WAL;")#这个只需要设置一次就可以了，这个数文件属性
+    # conn.execute("PRAGMA synchronous=NORMAL")  # 性能更好，我不需要那么高的性能
     # 开启外键约束
     cursor.execute("PRAGMA foreign_keys=ON;")
     # 设置繁忙超时

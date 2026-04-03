@@ -1,5 +1,6 @@
 # darkeye_ui/components/sidebar2.py - 侧边栏导航组件
 """侧边栏：八边形按钮列，hover 呼出 tooltip，点击选中，令牌驱动。"""
+
 from pathlib import Path
 from typing import Optional, Sequence, Union, TYPE_CHECKING
 
@@ -39,6 +40,7 @@ def _resolve_icon(
     # 回退：尝试从应用 config 获取（兼容旧用法）
     try:
         from config import ICONS_PATH  # type: ignore[import-untyped]
+
         return None, Path(ICONS_PATH) / icon_name
     except ImportError as exc:
         warn_once(
@@ -57,11 +59,11 @@ class Sidebar2(QWidget):
     - menu_defs: [(menu_id, text, icon_name), ...]，icon_name 为 builtin 键或文件名
     - icons_base_path: 外部图标根路径，None 时优先用 config.ICONS_PATH（应用内）
     - hover 显示 callout tooltip
-    - 支持 itemClicked / selectedChanged / select / get_selected_id / clear_selection
+    - 支持 itemClicked / selectionChanged / select / get_selected_id / clear_selection
     """
 
     itemClicked = Signal(str)
-    selectedChanged = Signal(str)
+    selectionChanged = Signal(str)
 
     def __init__(
         self,
@@ -112,7 +114,9 @@ class Sidebar2(QWidget):
             btn.installEventFilter(self)
             layout.addWidget(btn, alignment=Qt.AlignmentFlag.AlignHCenter)
             self._buttons[mid] = btn
-        self._btn_to_text = {self._buttons[mid]: text for mid, text, _ in self.menu_defs}
+        self._btn_to_text = {
+            self._buttons[mid]: text for mid, text, _ in self.menu_defs
+        }
         layout.addStretch(1)
 
         if self.menu_defs:
@@ -187,7 +191,7 @@ class Sidebar2(QWidget):
             if btn:
                 btn.set_selected(False)
             self._current_id = None
-            self.selectedChanged.emit("")
+            self.selectionChanged.emit("")
         else:
             prev_btn = self._buttons.get(self._current_id or "")
             if prev_btn:
@@ -197,7 +201,7 @@ class Sidebar2(QWidget):
             if new_btn:
                 new_btn.set_selected(True)
             self._current_id = menu_id
-            self.selectedChanged.emit(menu_id)
+            self.selectionChanged.emit(menu_id)
 
         self.itemClicked.emit(menu_id)
 
@@ -211,7 +215,7 @@ class Sidebar2(QWidget):
         if btn:
             btn.set_selected(False)
         self._current_id = None
-        self.selectedChanged.emit("")
+        self.selectionChanged.emit("")
 
     def select(self, menu_id: str) -> None:
         if self._current_id == menu_id:
@@ -225,7 +229,7 @@ class Sidebar2(QWidget):
         if new_btn:
             new_btn.set_selected(True)
             self._current_id = menu_id
-            self.selectedChanged.emit(menu_id)
+            self.selectionChanged.emit(menu_id)
 
     def toggle_menu(self) -> None:
         """兼容旧 Sidebar 接口，无实现。"""

@@ -43,7 +43,12 @@ class CustomTabBar(QWidget):
     def _button_rect(self, index: int) -> QRect:
         """窗口按钮区域 (0=min, 1=max, 2=close)"""
         x = self.width() - (3 - index) * self.BUTTON_SIZE
-        return QRect(x, (self.TAB_HEIGHT - self.BUTTON_HEIGHT) // 2, self.BUTTON_SIZE, self.BUTTON_HEIGHT)
+        return QRect(
+            x,
+            (self.TAB_HEIGHT - self.BUTTON_HEIGHT) // 2,
+            self.BUTTON_SIZE,
+            self.BUTTON_HEIGHT,
+        )
 
     def _hit_test(self, pos) -> tuple[str, int]:
         """返回 ('tab', index) 或 ('blank', -1) 或 ('btn', 0=min/1=max/2=close)"""
@@ -181,7 +186,7 @@ class Window(FramelessWindow):
 
         tab_bar.tabChanged.connect(self._stack.setCurrentIndex)
 
-        self.setWindowIcon(QIcon("screenshot/logo.png"))
+        #self.setWindowIcon(QIcon("screenshot/logo.png"))
         self.setWindowTitle("PySide6-Frameless-Window")
         self.setStyleSheet("background:white")
 

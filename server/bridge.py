@@ -1,20 +1,22 @@
 from PySide6.QtCore import QObject, Signal
 
-#这个一行要运行在主线程
+
+# 这个一行要运行在主线程
 class ServerBridge(QObject):
     """
     用于连接 FastAPI 线程和 PyQt 主线程的桥梁。
     单例模式，确保全局只有一个实例。
     """
+
     # 定义信号，传递字典类型的数据
-    capture_received = Signal(dict)
-    actressid_received = Signal(int)
-    minnano_actress_capture_received = Signal(dict)
-    captureone_received = Signal(str)
-    javlib_finished = Signal(dict)
-    fanza_finished=Signal(dict)
-    javdb_finished=Signal(dict)
-    
+    captureReceived = Signal(dict)
+    actressIdReceived = Signal(int)
+    minnanoActressCaptureReceived = Signal(dict)
+    captureOneReceived = Signal(str)
+    javlibFinished = Signal(dict)
+    fanzaFinished = Signal(dict)
+    javdbFinished = Signal(dict)
+
     _instance = None
 
     def __new__(cls):
@@ -24,7 +26,7 @@ class ServerBridge(QObject):
 
     def __init__(self):
         # 确保只初始化一次
-        if not hasattr(self, '_initialized'):
+        if not hasattr(self, "_initialized"):
             super().__init__()
             self._initialized = True
 

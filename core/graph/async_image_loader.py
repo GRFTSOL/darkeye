@@ -15,12 +15,14 @@ except ImportError:
     ACTRESSIMAGES_PATH = Path("data/images/actress")
     WORKCOVER_PATH = Path("data/images/work")
 
+
 # 从 database 导入连接（需要根据实际项目结构调整）
 def get_actress_image(actress_id: int) -> QImage:
     """根据女优ID获取女优照片"""
     try:
         from core.database.connection import get_connection
         from config import DATABASE
+
         with get_connection(DATABASE, True) as conn:
             cursor = conn.cursor()
             q = """
@@ -42,6 +44,7 @@ def get_work_image(work_id: int) -> QImage:
     try:
         from core.database.connection import get_connection
         from config import DATABASE
+
         with get_connection(DATABASE, True) as conn:
             cursor = conn.cursor()
             q = """
@@ -63,7 +66,7 @@ def get_work_image(work_id: int) -> QImage:
                 img = img.scaled(
                     QSize(140, 200),
                     Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
+                    Qt.TransformationMode.SmoothTransformation,
                 )
                 return img
     except Exception as e:
@@ -73,7 +76,8 @@ def get_work_image(work_id: int) -> QImage:
 
 class AsyncImageLoader(QObject):
     """异步图片加载器，使用后台线程加载图片避免阻塞UI"""
-    image_loaded = Signal()
+
+    imageLoaded = Signal()
 
     def __init__(self):
         super().__init__()
@@ -88,7 +92,9 @@ class AsyncImageLoader(QObject):
 
         if key not in self.loading:
             self.loading.add(key)
-            threading.Thread(target=self._load_actress, args=(actress_id,), daemon=True).start()
+            threading.Thread(
+                target=self._load_actress, args=(actress_id,), daemon=True
+            ).start()
 
         return None
 
@@ -100,7 +106,9 @@ class AsyncImageLoader(QObject):
 
         if key not in self.loading:
             self.loading.add(key)
-            threading.Thread(target=self._load_work, args=(work_id,), daemon=True).start()
+            threading.Thread(
+                target=self._load_work, args=(work_id,), daemon=True
+            ).start()
 
         return None
 
@@ -109,7 +117,7 @@ class AsyncImageLoader(QObject):
         try:
             img = get_actress_image(actress_id)
             self.cache[f"a{actress_id}"] = img
-            self.image_loaded.emit()
+            self.imageLoaded.emit()
         except Exception as e:
             logging.warning(f"Async load actress error: {e}")
         finally:
@@ -120,7 +128,7 @@ class AsyncImageLoader(QObject):
         try:
             img = get_work_image(work_id)
             self.cache[f"w{work_id}"] = img
-            self.image_loaded.emit()
+            self.imageLoaded.emit()
         except Exception as e:
             logging.warning(f"Async load work error: {e}")
         finally:

@@ -9,7 +9,6 @@ from PySide6.QtSvg import QSvgRenderer
 
 from .._logging import get_logger, warn_once
 
-
 logger = get_logger(__name__)
 
 
@@ -17,6 +16,7 @@ def _device_pixel_ratio() -> float:
     """获取主屏设备像素比，高 DPI 下用于渲染更清晰的图标。"""
     try:
         from PySide6.QtWidgets import QApplication
+
         app = QApplication.instance()
         if app and app.primaryScreen() is not None:
             return app.primaryScreen().devicePixelRatio()
@@ -74,19 +74,31 @@ SVG_CHEVRON_DOWN = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="2
 SVG_REFRESH_CW = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>'
 SVG_SEARCH = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>'
 SVG_HOUSE = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
-SVG_PLUS='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>'
+SVG_PLUS = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>'
 SVG_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 SVG_MINUS = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>'
 
-SVG_ARROW_UP='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>'
-SVG_ARROW_DOWN='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>'
-SVG_ARROW_LEFT='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>'
-SVG_ARROW_RIGHT='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>'
+SVG_ARROW_UP = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>'
+SVG_ARROW_DOWN = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>'
+SVG_ARROW_LEFT = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>'
+SVG_ARROW_RIGHT = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>'
 
 # love-off / love-on：固定配色，保留原样（非 currentColor）
 SVG_LOVE_OFF = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="m9.268 2.994a8.476 8.476 0 0 0-5.256 2.451 8.476 8.476 0 0 0 0 11.99l11.99 11.99 11.99-11.99a8.476 8.476 0 0 0 0-11.99 8.476 8.476 0 0 0-11.99 0.001953 8.476 8.476 0 0 0-6.734-2.453zm0.8496 1.99c0.3742 0.004111 0.7479 0.03777 1.115 0.1172 1.95 0.2866 3.333 1.769 4.77 2.975 0.579-0.4938 1.158-0.9882 1.736-1.482 2.325-2.155 6.262-2.135 8.566 0.04297 2.612 2.16 2.886 6.457 0.6406 8.979-3.607 3.699-7.302 7.315-10.94 10.98l-9.947-9.947c-1.617-1.419-2.715-3.536-2.48-5.723 0.1633-2.909 2.554-5.447 5.422-5.879 0.3716-0.04244 0.7469-0.06856 1.121-0.06445z" fill="#ccc"/></svg>'
 SVG_LOVE_ON = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="m4.012 5.446a8.476 8.476 0 0 0 2.6e-6 11.99l11.99 11.99 11.99-11.99a8.476 8.476 0 0 0 0-11.99 8.476 8.476 0 0 0-11.99 0.0021 8.476 8.476 0 0 0-11.99-0.0021z" fill="#ff2a2a" stroke-width="0"/></svg>'
 
+
+SVG_LAYOUT_GRID = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>'
+SVG_LAYOUT_WATERFALL = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>'
+
+SVG_NOTE_PEN='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></svg>'
+
+SVG_FUNNEL='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/></svg>'
+
+SVG_PANEL_LEFT_OPEN='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg>'
+SVG_PANEL_LEFT_CLOSE='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>'
+SVG_PANEL_RIGHT_OPEN='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>'
+SVG_PANEL_RIGHT_CLOSE='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m8 9 3 3-3 3"/></svg>'
 
 
 BUILTIN_ICONS = {
@@ -131,9 +143,7 @@ BUILTIN_ICONS = {
     "venus": SVG_VENUS,
     "film": SVG_FILM,
     "chart_line": SVG_CHART_LINE,
-
     "sprout": SVG_SPROUT,
-
     "tv": SVG_TV,
     "layout_panel_left": SVG_LAYOUT_PANEL_LEFT,
     "copy": SVG_COPY,
@@ -142,7 +152,15 @@ BUILTIN_ICONS = {
     "house": SVG_HOUSE,
     "love_off": SVG_LOVE_OFF,
     "love_on": SVG_LOVE_ON,
-}
+    "layout_grid": SVG_LAYOUT_GRID,
+    "layout_waterfall": SVG_LAYOUT_WATERFALL,
+    "note_pen": SVG_NOTE_PEN,
+    "funnel": SVG_FUNNEL,
+    "panel_left_open": SVG_PANEL_LEFT_OPEN,
+    "panel_left_close": SVG_PANEL_LEFT_CLOSE,
+    "panel_right_open": SVG_PANEL_RIGHT_OPEN,
+    "panel_right_close": SVG_PANEL_RIGHT_CLOSE,
+}   
 
 
 def _normalize_size(size: Union[int, tuple]) -> tuple:

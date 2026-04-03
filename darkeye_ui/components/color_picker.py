@@ -1,4 +1,6 @@
 # darkeye_ui/components/color_picker.py - 设计系统颜色选择器，点击弹出色轮
+import logging
+
 from PySide6.QtCore import Qt, Signal, QPoint, QEvent, QRectF
 from PySide6.QtGui import QColor, QPainter, QBrush, QRegion
 from PySide6.QtWidgets import QLabel, QGraphicsDropShadowEffect
@@ -19,7 +21,14 @@ class ColorPicker(QLabel):
     colorChanged = Signal(str)
     colorConfirmed = Signal(str)
 
-    def __init__(self, color: QColor = None, parent=None, *, show_text: bool = True, shape: str = ShapeRectangle):
+    def __init__(
+        self,
+        color: QColor = None,
+        parent=None,
+        *,
+        show_text: bool = True,
+        shape: str = ShapeRectangle,
+    ):
         super().__init__(parent)
         if color is None:
             color = QColor("#cccccc")
@@ -32,7 +41,7 @@ class ColorPicker(QLabel):
         self._update_color(self._color)
         self.mousePressEvent = self._handle_click
         self._color_wheel = None
-        #self._set_shadow()
+        # self._set_shadow()
 
     def _set_shadow(self):
         shadow = QGraphicsDropShadowEffect(self)
@@ -164,8 +173,12 @@ class ColorPicker(QLabel):
         # 先断开再连接，避免重复连接；确保拖动时实时更新
         try:
             self._color_wheel.colorChanged.disconnect()
-        except RuntimeError:
-            pass
+        except RuntimeError as e:
+            logging.debug(
+                "ColorPicker: colorChanged 断开失败（可能未连接）: %s",
+                e,
+                exc_info=True,
+            )
         self._color_wheel.colorChanged.connect(
             lambda: self._update_color(QColor(self._color_wheel.getHexColor()))
         )

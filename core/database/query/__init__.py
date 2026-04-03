@@ -1,4 +1,4 @@
-'''
+"""
 查询与数据库交互的函数，按业务域拆分为多个子模块。
 此处聚合导出，保持与原有 from core.database.query import xxx 的兼容。
 
@@ -10,7 +10,8 @@
 - dashboard: 仪表盘统计
 - statistics: 统计图表（年龄、身材分布、年份、导演/片商排行等）
 - private: 私有库（自慰/做爱/晨勃记录、按年/按天统计等）
-'''
+"""
+
 from .work import (
     get_all_work_id,
     get_work_ids_with_cover,
@@ -27,15 +28,22 @@ from .work import (
     get_work_tags,
     get_actress_from_work_id,
     get_actor_from_work_id,
-    get_work_story_rows,
-    get_recent_work_story_rows,
+    get_work_notes_rows,
+    get_recent_work_notes_rows,
     get_serial_number_map,
+    get_works_for_bulk_crawl_fields,
     get_workid_by_serialnumber,
+    get_active_workid_by_serialnumber,
     get_javtxt_id_by_serialnumber,
     get_serial_number,
     get_unique_director,
     get_unique_short_story,
     get_maker_name,
+    get_label_name,
+    get_series_name,
+    get_maker_id_by_name,
+    get_label_id_by_name,
+    get_series_id_by_name,
 )
 from .actress import (
     get_actress_info,
@@ -109,15 +117,22 @@ __all__ = [
     "get_work_tags",
     "get_actress_from_work_id",
     "get_actor_from_work_id",
-    "get_work_story_rows",
-    "get_recent_work_story_rows",
+    "get_work_notes_rows",
+    "get_recent_work_notes_rows",
     "get_serial_number_map",
+    "get_works_for_bulk_crawl_fields",
     "get_workid_by_serialnumber",
+    "get_active_workid_by_serialnumber",
     "get_javtxt_id_by_serialnumber",
     "get_serial_number",
     "get_unique_director",
     "get_unique_short_story",
     "get_maker_name",
+    "get_label_name",
+    "get_series_name",
+    "get_maker_id_by_name",
+    "get_label_id_by_name",
+    "get_series_id_by_name",
     # actress
     "get_actress_info",
     "get_all_actress_data",

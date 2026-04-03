@@ -45,7 +45,7 @@
 
 1. 组件构造参数统一提供 `theme_manager: Optional[ThemeManager] = None`。
 2. 优先显式注入；未注入时统一通过 `resolve_theme_manager(theme_manager, "组件名")` 兜底获取。
-3. 不允许每个组件手写 try-import `app_context`；必须复用统一 helper。
+3. 不允许每个组件手写 try-import `controller.app_context`；必须复用统一 helper。
 4. 主题变更后统一刷新入口：
    - QSS 型组件：`style().unpolish/polish + update()`
    - 自绘型组件：`update()` 或重建绘制缓存
@@ -168,8 +168,8 @@
 
 以下类存在于组件目录，但不在公共导出清单中：
 
-1. `AlphaSliderCustom`（`components/ColorSlider.py`）
-2. `TestWindow`（`components/ColorSlider.py`）
+1. `AlphaSliderCustom`（`components/color_slider.py`）
+2. `TestWindow`（`components/color_slider.py`）
 3. `CompleterLoaderRunnable`（`components/completer_line_edit.py`）
 4. `ImageLoaderRunnable`（`components/oct_image.py`）
 

@@ -1,14 +1,15 @@
 # darkeye_ui.demo - 展示设计系统组件与主题切换（从项目根目录运行：python -m darkeye_ui.demo）
 """Sidebar2 + QStackedWidget 多页演示：按钮、文本、开关、数值、容器、颜色图标、主题。"""
+
 import sys
 from pathlib import Path
 
-# 保证从项目根解析 config、ui、app_context
+# 保证从项目根解析 config、ui、controller
 _root = Path(__file__).resolve().parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from app_context import set_theme_manager
+from controller.app_context import set_theme_manager
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -22,7 +23,16 @@ from PySide6.QtWidgets import (
     QStackedWidget,
     QTableWidgetItem,
 )
-from PySide6.QtCore import Qt, QStringListModel, QDateTime, QTime, QEvent, QObject, QTimer, QModelIndex
+from PySide6.QtCore import (
+    Qt,
+    QStringListModel,
+    QDateTime,
+    QTime,
+    QEvent,
+    QObject,
+    QTimer,
+    QModelIndex,
+)
 from PySide6.QtGui import QColor, QStandardItem, QStandardItemModel
 
 from darkeye_ui.design import ThemeManager, ThemeId, get_builtin_icon
@@ -82,6 +92,7 @@ from darkeye_ui.layouts import FlowLayout
 
 # 所有内置图标名（来自 resources/icons 内联）
 BUILTIN_ICON_NAMES = tuple(BUILTIN_ICONS.keys())
+
 
 # CalloutTooltip 演示：悬停按钮显示尖角提示
 class _CalloutDemoBox(QWidget):
@@ -164,14 +175,26 @@ def _build_page_buttons(theme_mgr: ThemeManager) -> QWidget:
     chamfer_row = QHBoxLayout()
     chamfer_row.addWidget(ChamferButton(icon_name="settings", theme_manager=theme_mgr))
     chamfer_row.addWidget(ChamferButton(icon_name="search", theme_manager=theme_mgr))
-    chamfer_row.addWidget(ChamferButton(icon_name="refresh_cw", theme_manager=theme_mgr))
+    chamfer_row.addWidget(
+        ChamferButton(icon_name="refresh_cw", theme_manager=theme_mgr)
+    )
     chamfer_row.addWidget(ChamferButton(icon_name="copy", theme_manager=theme_mgr))
     left.addLayout(chamfer_row)
     left.addWidget(Label("状态切换按钮（令牌驱动，随主题变色）"))
     toggle_row = QHBoxLayout()
     toggle_row.addWidget(StateToggleButton(theme_manager=theme_mgr))
-    toggle_row.addWidget(StateToggleButton(state1_icon="eye", state2_icon="eye_off", theme_manager=theme_mgr))
-    toggle_row.addWidget(StateToggleButton(state1_icon="chevron_down", state2_icon="chevron_up", theme_manager=theme_mgr))
+    toggle_row.addWidget(
+        StateToggleButton(
+            state1_icon="eye", state2_icon="eye_off", theme_manager=theme_mgr
+        )
+    )
+    toggle_row.addWidget(
+        StateToggleButton(
+            state1_icon="chevron_down",
+            state2_icon="chevron_up",
+            theme_manager=theme_mgr,
+        )
+    )
     left.addLayout(toggle_row)
     right.addWidget(Label("图标按钮（令牌驱动，随主题变色）"))
     icon_btn_row = QHBoxLayout()
@@ -215,7 +238,15 @@ def _build_page_text(theme_mgr: ThemeManager) -> QWidget:
     left.addWidget(plain_edit)
     left.addWidget(Label("带补全 CompleterLineEdit（输入字母过滤）"))
     completer = CompleterLineEdit(
-        loader_func=lambda: ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape"],
+        loader_func=lambda: [
+            "Apple",
+            "Banana",
+            "Cherry",
+            "Date",
+            "Elderberry",
+            "Fig",
+            "Grape",
+        ],
         theme_manager=theme_mgr,
     )
     completer.setPlaceholderText("输入 a/b/c 等触发补全")
@@ -237,7 +268,9 @@ def _build_page_text(theme_mgr: ThemeManager) -> QWidget:
     right.addWidget(Label("TokenListView（随主题变色）"))
     list_view = TokenListView()
     list_view.setMinimumHeight(120)
-    list_view.setModel(QStringListModel(["选项 A", "选项 B", "选项 C", "选项 D", "选项 E"]))
+    list_view.setModel(
+        QStringListModel(["选项 A", "选项 B", "选项 C", "选项 D", "选项 E"])
+    )
     right.addWidget(list_view)
     left.addStretch()
     right.addStretch()
@@ -295,7 +328,10 @@ def _build_page_inputs(theme_mgr: ThemeManager) -> QWidget:
     left.addWidget(Label("令牌驱动 SpinBox（随主题变色）"))
     spin_section = QWidget()
     spin_layout = QFormLayout(spin_section)
-    for label_text, min_val, max_val, default in [("数量", 0, 999, 10), ("透明度", 0, 100, 80)]:
+    for label_text, min_val, max_val, default in [
+        ("数量", 0, 999, 10),
+        ("透明度", 0, 100, 80),
+    ]:
         sb = TokenSpinBox(parent)
         sb.setMinimum(min_val)
         sb.setMaximum(max_val)
@@ -401,7 +437,8 @@ def _build_page_containers(theme_mgr: ThemeManager) -> QWidget:
 
 
 def _build_page_color_icons(
-    theme_mgr: ThemeManager, refresh_callbacks: list,
+    theme_mgr: ThemeManager,
+    refresh_callbacks: list,
 ) -> QWidget:
     """颜色与图标页：ColorPicker、内置图标网格。"""
     page, left, right = _make_scrollable_page()
@@ -427,7 +464,9 @@ def _build_page_color_icons(
     icon_buttons: list[tuple[str, Button]] = []
     for name in BUILTIN_ICON_NAMES:
         btn = Button(
-            icon=get_builtin_icon(name, size=icon_size, color=theme_mgr.tokens().color_icon),
+            icon=get_builtin_icon(
+                name, size=icon_size, color=theme_mgr.tokens().color_icon
+            ),
             icon_size=icon_size,
         )
         btn.setToolTip(name)
@@ -474,7 +513,9 @@ def _build_page_data_nav(theme_mgr: ThemeManager) -> QWidget:
     left.addWidget(crumb_info)
 
     left.addWidget(Label("SearchBar"))
-    search = SearchBar(parent=parent, placeholder="Search tree items...", theme_manager=theme_mgr)
+    search = SearchBar(
+        parent=parent, placeholder="Search tree items...", theme_manager=theme_mgr
+    )
     search_info = Label("Search text: ")
     left.addWidget(search)
     left.addWidget(search_info)
@@ -545,7 +586,9 @@ def _build_page_data_nav(theme_mgr: ThemeManager) -> QWidget:
                 tree.setRowHidden(row, QModelIndex(), False)
                 continue
             match_name = name_item is not None and item_matches(name_item, search_text)
-            match_value = value_item is not None and search_text in value_item.text().lower()
+            match_value = (
+                value_item is not None and search_text in value_item.text().lower()
+            )
             tree.setRowHidden(row, QModelIndex(), not (match_name or match_value))
 
     search.searchChanged.connect(apply_tree_filter)
@@ -691,12 +734,12 @@ def _build_page_more(theme_mgr: ThemeManager) -> QWidget:
     hl1.clicked.connect(lambda on: print("HeartLabel:", on))
     heart_row.addWidget(hl1)
     hl2 = HeartLabel(parent)
-    hl2.set_statue(True)
+    hl2.set_state(True)
     heart_row.addWidget(hl2)
     left.addLayout(heart_row)
     left.addWidget(Label("HeartRatingWidget（1-5 颗心打分）"))
     hr = HeartRatingWidget(parent)
-    hr.rating_changed.connect(lambda v: print("评分:", v))
+    hr.ratingChanged.connect(lambda v: print("评分:", v))
     left.addWidget(hr)
     left.addWidget(Label("圆形加载指示器 CircularLoading（令牌驱动，随主题变色）"))
     loading_row = QHBoxLayout()
@@ -705,7 +748,7 @@ def _build_page_more(theme_mgr: ThemeManager) -> QWidget:
     left.addLayout(loading_row)
     right.addWidget(Label("OctImage（正八边形图片展示）"))
     _root = Path(__file__).resolve().parent.parent
-    logo_path = _root / "resources" / "icons" / "logo.png"
+    logo_path = _root / "resources" / "icons" / "logo.svg"
     oct_img = OctImage(
         image_path=str(logo_path) if logo_path.exists() else None,
         diameter=120,
@@ -820,7 +863,8 @@ def _build_page_more(theme_mgr: ThemeManager) -> QWidget:
 
 
 def _build_page_theme(
-    theme_mgr: ThemeManager, refresh_callbacks: list,
+    theme_mgr: ThemeManager,
+    refresh_callbacks: list,
 ) -> QWidget:
     """主题切换页。"""
     page, left, right = _make_scrollable_page()
@@ -828,7 +872,9 @@ def _build_page_theme(
     theme_combo = ComboBox()
     for _tid, label in THEME_OPTIONS:
         theme_combo.addItem(label)
-    idx = next(i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid == theme_mgr.current())
+    idx = next(
+        i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid == theme_mgr.current()
+    )
     theme_combo.setCurrentIndex(idx)
 
     # 主色选择器（仅亮色/暗色主题可调，不持久化）
@@ -848,7 +894,9 @@ def _build_page_theme(
             theme_mgr.set_custom_primary(None)
         else:
             color_picker.blockSignals(True)
-            color_picker.set_color(theme_mgr.custom_primary() or theme_mgr.tokens().color_primary)
+            color_picker.set_color(
+                theme_mgr.custom_primary() or theme_mgr.tokens().color_primary
+            )
             color_picker.blockSignals(False)
 
     def on_theme_changed(index: int):
@@ -886,7 +934,9 @@ def main():
     app = QApplication(sys.argv)
     theme_mgr = ThemeManager()
     theme_mgr.set_theme(app, ThemeId.LIGHT)
-    set_theme_manager(theme_mgr)  # 供 Sidebar2 / ChamferButton 通过 app_context 获取，以随主题切换更新
+    set_theme_manager(
+        theme_mgr
+    )  # 供 Sidebar2 / ChamferButton 通过 controller.app_context 获取，以随主题切换更新
 
     win = QWidget()
     win.setWindowTitle("设计系统组件 Demo")

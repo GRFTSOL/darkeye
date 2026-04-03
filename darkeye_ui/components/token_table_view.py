@@ -71,4 +71,3 @@ class TokenTableView(QTableView):
         style = self.style()
         style.unpolish(self)
         style.polish(self)
-

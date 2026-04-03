@@ -1,13 +1,15 @@
 """常规设置页面：主题、主色、绿色模式等。"""
 
+import logging
+
 from PySide6.QtWidgets import QHBoxLayout, QFormLayout, QWidget
 from PySide6.QtGui import QColor
 from darkeye_ui.components import Label, Button, ComboBox, ColorPicker, ToggleSwitch
 from darkeye_ui.design import ThemeId
 from config import get_theme_id, set_theme_id, get_custom_primary, set_custom_primary
-from app_context import get_theme_manager
+from controller.app_context import get_theme_manager
 from main import apply_theme
-from controller.GlobalSignalBus import global_signals
+from controller.global_signal_bus import global_signals
 
 # 主题下拉选项与 ThemeId 顺序一致
 THEME_OPTIONS = [
@@ -30,16 +32,24 @@ class CommonPage(QWidget):
             self.theme_choose.addItem(label)
         saved_theme = get_theme_id()
         try:
-            idx = next(i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid.name == saved_theme)
+            idx = next(
+                i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid.name == saved_theme
+            )
             self.theme_choose.setCurrentIndex(idx)
         except StopIteration:
             theme_mgr = get_theme_manager()
             if theme_mgr is not None:
                 try:
-                    idx = next(i for i, (tid, _) in enumerate(THEME_OPTIONS) if tid == theme_mgr.current())
+                    idx = next(
+                        i
+                        for i, (tid, _) in enumerate(THEME_OPTIONS)
+                        if tid == theme_mgr.current()
+                    )
                     self.theme_choose.setCurrentIndex(idx)
                 except StopIteration:
-                    pass
+                    logging.debug(
+                        "常规设置: theme_mgr.current() 未匹配 THEME_OPTIONS，保持下拉默认选中项"
+                    )
         self.theme_choose.currentIndexChanged.connect(self._on_theme_changed)
 
         # 主色选择器（置于主题行上方，仅亮色/暗色主题可调）
@@ -52,7 +62,9 @@ class CommonPage(QWidget):
             or (theme_mgr.custom_primary() if theme_mgr else None)
             or (theme_mgr.tokens().color_primary if theme_mgr else "#2563eb")
         )
-        self.color_picker = ColorPicker(QColor(initial_primary), shape=ColorPicker.ShapeCircle)
+        self.color_picker = ColorPicker(
+            QColor(initial_primary), shape=ColorPicker.ShapeCircle
+        )
         primary_color_layout.addWidget(self.color_picker)
 
         self.color_picker.colorConfirmed.connect(self._on_primary_color_changed)
@@ -62,7 +74,7 @@ class CommonPage(QWidget):
         main_layout.addRow(Label("主色"), self.primary_color_row)
         main_layout.addRow(Label("主题"), self.theme_choose)
         main_layout.addRow(Label("绿色模式"), self.greenmode)
-        self.greenmode.toggled.connect(global_signals.green_mode_changed.emit)
+        self.greenmode.toggled.connect(global_signals.greenModeChanged.emit)
 
     def _update_primary_picker_state(self):
         theme_mgr = get_theme_manager()

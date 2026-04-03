@@ -101,8 +101,14 @@ class SqliteEditableTableModel(QAbstractTableModel):
                 k = int(val.strip())
                 if k in cache:
                     return cache[k]
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            logger.debug(
+                "_relation_display: 外键显示值规范化失败 col=%s val=%r: %s",
+                col,
+                val,
+                e,
+                exc_info=True,
+            )
         return str(val)
 
     def data(self, index: QModelIndex, role: int):
@@ -138,7 +144,9 @@ class SqliteEditableTableModel(QAbstractTableModel):
             return base
         return base | Qt.ItemFlag.ItemIsEditable
 
-    def setData(self, index: QModelIndex, value, role: int = Qt.ItemDataRole.EditRole) -> bool:
+    def setData(
+        self, index: QModelIndex, value, role: int = Qt.ItemDataRole.EditRole
+    ) -> bool:
         if role != Qt.ItemDataRole.EditRole:
             return False
         row, col = index.row(), index.column()
@@ -174,7 +182,9 @@ class SqliteEditableTableModel(QAbstractTableModel):
         del self._data[row]
         self.endRemoveRows()
         # 删除后，后续行的索引变化，需更新追踪集合
-        self._pending_insert_indices = {i if i < row else i - 1 for i in self._pending_insert_indices}
+        self._pending_insert_indices = {
+            i if i < row else i - 1 for i in self._pending_insert_indices
+        }
         self._dirty_rows = {i if i < row else i - 1 for i in self._dirty_rows}
         return True
 
@@ -202,7 +212,11 @@ class SqliteEditableTableModel(QAbstractTableModel):
 
     def submitAll(self) -> bool:
         """将待提交的增删改写入数据库，在单一事务中执行。"""
-        if not self._pending_deletes and not self._dirty_rows and not self._pending_insert_indices:
+        if (
+            not self._pending_deletes
+            and not self._dirty_rows
+            and not self._pending_insert_indices
+        ):
             return True
         try:
             with get_connection(self._database, readonly=False) as conn:
@@ -235,14 +249,20 @@ class SqliteEditableTableModel(QAbstractTableModel):
                     )
 
                 # 3. INSERT（排除主键列，由 DB 生成）
-                non_pk_cols = [c for i, c in enumerate(self._headers) if i != self._pk_col_index]
+                non_pk_cols = [
+                    c for i, c in enumerate(self._headers) if i != self._pk_col_index
+                ]
                 placeholders = ", ".join("?" * len(non_pk_cols))
                 cols_str = ", ".join(non_pk_cols)
                 for row_idx in sorted(self._pending_insert_indices):
                     if row_idx >= len(self._data):
                         continue
                     row = self._data[row_idx]
-                    vals = [row[i] for i in range(len(self._headers)) if i != self._pk_col_index]
+                    vals = [
+                        row[i]
+                        for i in range(len(self._headers))
+                        if i != self._pk_col_index
+                    ]
                     cur.execute(
                         f"INSERT INTO {self._table} ({cols_str}) VALUES ({placeholders})",
                         vals,
@@ -262,6 +282,7 @@ class SqliteEditableTableModel(QAbstractTableModel):
 
     def lastError(self):
         """兼容 QSqlTableModel 的 lastError 接口，返回带 text() 方法的对象。"""
+
         class Err:
             def __init__(self, msg):
                 self._msg = msg

@@ -7,13 +7,14 @@
 
 """
 
-from PySide6.QtGui import QColor,QPixmap,QCursor
-from PySide6.QtCore import Signal,Qt
+from PySide6.QtGui import QColor, QPixmap, QCursor
+from PySide6.QtCore import Signal, Qt
 import logging
 from config import ICONS_PATH
 from pathlib import Path
-from utils.utils import get_text_color_from_background,get_hover_color_from_background
+from utils.utils import get_text_color_from_background, get_hover_color_from_background
 from darkeye_ui.components import TokenVLabel
+
 
 class VerticalTagLabel2(TokenVLabel):
     """垂直标签组件，支持点击事件和悬停效果
@@ -23,7 +24,7 @@ class VerticalTagLabel2(TokenVLabel):
     - 悬停状态颜色变化
     - 自定义鼠标指针
     - 点击信号发射
-    
+
     Args:
         tag_id: 标签的唯一标识符
         text: 显示的文本内容
@@ -33,21 +34,35 @@ class VerticalTagLabel2(TokenVLabel):
         tag_mutex: 标签互斥锁
         parent: 父组件
     """
-    clicked = Signal()  # 自定义clicked信号
-    def __init__(self,tag_id:int,text="",tag_type="",background_color="#cccccc",detail="",tag_mutex=None,parent=None):
-        text_color = get_text_color_from_background(QColor(background_color))
-        hover_color=get_hover_color_from_background(QColor(background_color))
-        super().__init__(text,background_color,text_color,hover_color=hover_color)
-        self.setCursor(QCursor(QPixmap(Path(ICONS_PATH/"mouse_on.png")),hotX=32,hotY=32))  # 手型指针
-        self.setMouseTracking(True) # 允许追踪鼠标移动，不然只有按键才触发鼠标事件
 
-        #业务数据
-        self.tag_id:int= tag_id
-        self.tag_mutex:int=tag_mutex
-        self.tag_type:str=tag_type
+    clicked = Signal()  # 自定义clicked信号
+
+    def __init__(
+        self,
+        tag_id: int,
+        text="",
+        tag_type="",
+        background_color="#cccccc",
+        detail="",
+        tag_mutex=None,
+        parent=None,
+    ):
+        text_color = get_text_color_from_background(QColor(background_color))
+        hover_color = get_hover_color_from_background(QColor(background_color))
+        super().__init__(text, background_color, text_color, hover_color=hover_color)
+        self.setCursor(
+            QCursor(QPixmap(Path(ICONS_PATH / "mouse_on.png")), hotX=32, hotY=32)
+        )  # 手型指针
+        self.setMouseTracking(True)  # 允许追踪鼠标移动，不然只有按键才触发鼠标事件
+
+        # 业务数据
+        self.tag_id: int = tag_id
+        self.tag_mutex: int = tag_mutex
+        self.tag_type: str = tag_type
         self.setToolTip(detail)
 
-        #模拟hover
+        # 模拟hover
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.clicked.emit()  # 发射clicked信号
@@ -62,28 +77,34 @@ class VerticalTagLabel2(TokenVLabel):
         self._hovered = False
         self.update()
         super().leaveEvent(event)
-    
 
 
 class VerticalTagLabel(TokenVLabel):
-    '''仅展示功能不需要多的业务数据,但是这个还是带跳转的功能'''
-    def __init__(self,tag_id,text="",background_color="#cccccc",detail="",parent=None):
-        text_color = get_text_color_from_background(QColor(background_color))
-        hover_color=get_hover_color_from_background(QColor(background_color))
-        super().__init__(text,background_color,text_color,hover_color=hover_color)
-        self.setCursor(QCursor(QPixmap(Path(ICONS_PATH/"mouse_on.png")),hotX=32,hotY=32))  # 手型指针
-        self.setMouseTracking(True) # 允许追踪鼠标移动，不然只有按键才触发鼠标事件
+    """仅展示功能不需要多的业务数据,但是这个还是带跳转的功能"""
 
-        #业务数据
+    def __init__(
+        self, tag_id, text="", background_color="#cccccc", detail="", parent=None
+    ):
+        text_color = get_text_color_from_background(QColor(background_color))
+        hover_color = get_hover_color_from_background(QColor(background_color))
+        super().__init__(text, background_color, text_color, hover_color=hover_color)
+        self.setCursor(
+            QCursor(QPixmap(Path(ICONS_PATH / "mouse_on.png")), hotX=32, hotY=32)
+        )  # 手型指针
+        self.setMouseTracking(True)  # 允许追踪鼠标移动，不然只有按键才触发鼠标事件
+
+        # 业务数据
         self.tag_id = tag_id
         self.setToolTip(detail)
 
-        #模拟hover
+        # 模拟hover
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            #from controller.GlobalSignalBus import global_signals
-            #global_signals.tag_clicked.emit(self.tag_id)#跳转信号
+            # from controller.global_signal_bus import global_signals
+            # global_signals.tag_clicked.emit(self.tag_id)#跳转信号
             from ui.navigation.router import Router
+
             Router.instance().push("mutiwork", tag_id=self.tag_id)
 
         super().mousePressEvent(event)  # 保留默认行为
@@ -98,53 +119,62 @@ class VerticalTagLabel(TokenVLabel):
         self.update()
         super().leaveEvent(event)
 
-    def set_color(self,background_color):
-        '''动态设置颜色'''
+    def set_color(self, background_color):
+        """动态设置颜色"""
         text_color = get_text_color_from_background(QColor(background_color))
-        hover_color=get_hover_color_from_background(QColor(background_color))
-        self.setColors(background_color,text_color,hover_color)
+        hover_color = get_hover_color_from_background(QColor(background_color))
+        self.set_colors(background_color, text_color, hover_color)
 
 
 class VShowTagLabel(TokenVLabel):
-    '''仅展示功能不需要多的业务数据'''
-    def __init__(self,tag_id,text="",background_color="#cccccc",detail="",parent=None):
-        text_color = get_text_color_from_background(QColor(background_color))
-        hover_color=get_hover_color_from_background(QColor(background_color))
-        super().__init__(text,background_color,text_color,hover_color=hover_color)
-        self.setCursor(QCursor(QPixmap(Path(ICONS_PATH/"mouse_on.png")),hotX=32,hotY=32))  # 手型指针
-        self.setMouseTracking(True) # 允许追踪鼠标移动，不然只有按键才触发鼠标事件
+    """仅展示功能不需要多的业务数据"""
 
-        #业务数据
+    def __init__(
+        self, tag_id, text="", background_color="#cccccc", detail="", parent=None
+    ):
+        text_color = get_text_color_from_background(QColor(background_color))
+        hover_color = get_hover_color_from_background(QColor(background_color))
+        super().__init__(text, background_color, text_color, hover_color=hover_color)
+        self.setCursor(
+            QCursor(QPixmap(Path(ICONS_PATH / "mouse_on.png")), hotX=32, hotY=32)
+        )  # 手型指针
+        self.setMouseTracking(True)  # 允许追踪鼠标移动，不然只有按键才触发鼠标事件
+
+        # 业务数据
         self.tag_id = tag_id
         self.setToolTip(detail)
 
-    def set_color(self,background_color):
-        '''动态设置颜色'''
+    def set_color(self, background_color):
+        """动态设置颜色"""
         text_color = get_text_color_from_background(QColor(background_color))
-        hover_color=get_hover_color_from_background(QColor(background_color))
-        self.setColors(background_color,text_color,hover_color)
+        hover_color = get_hover_color_from_background(QColor(background_color))
+        self.set_colors(background_color, text_color, hover_color)
 
 
 class VerticalActressLabel(TokenVLabel):
-    '''女演员的标签，跳转到女演员详细页'''
+    """女演员的标签，跳转到女演员详细页"""
 
-    def __init__(self,actress_id,name,background_color,parent=None):
+    def __init__(self, actress_id, name, background_color, parent=None):
         text_color = get_text_color_from_background(QColor(background_color))
-        hover_color=get_hover_color_from_background(QColor(background_color))
-        super().__init__(name,background_color,text_color,hover_color=hover_color)
-        self.setCursor(QCursor(QPixmap(Path(ICONS_PATH/"mouse_on.png")),hotX=32,hotY=32))  # 手型指针
-        self.setMouseTracking(True) # 允许追踪鼠标移动，不然只有按键才触发鼠标事件
+        hover_color = get_hover_color_from_background(QColor(background_color))
+        super().__init__(name, background_color, text_color, hover_color=hover_color)
+        self.setCursor(
+            QCursor(QPixmap(Path(ICONS_PATH / "mouse_on.png")), hotX=32, hotY=32)
+        )  # 手型指针
+        self.setMouseTracking(True)  # 允许追踪鼠标移动，不然只有按键才触发鼠标事件
 
-        #业务数据
-        self._actress_id=actress_id
+        # 业务数据
+        self._actress_id = actress_id
 
-        #模拟hover
+        # 模拟hover
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            #from controller.GlobalSignalBus import global_signals
-            #global_signals.actress_clicked.emit(self._actress_id)
+            # from controller.global_signal_bus import global_signals
+            # global_signals.actress_clicked.emit(self._actress_id)
             # 使用路由替代信号跳转
             from ui.navigation.router import Router
+
             Router.instance().push("single_actress", actress_id=self._actress_id)
         super().mousePressEvent(event)  # 保留默认行为
 
@@ -158,26 +188,32 @@ class VerticalActressLabel(TokenVLabel):
         self.update()
         super().leaveEvent(event)
 
+
 class VerticalActorLabel(TokenVLabel):
-    '''男演员的标签，跳转到男演员的页面'''
+    """男演员的标签，跳转到男演员的页面"""
 
-    def __init__(self,actor_id,name,background_color,parent=None):
+    def __init__(self, actor_id, name, background_color, parent=None):
         text_color = get_text_color_from_background(QColor(background_color))
-        hover_color=get_hover_color_from_background(QColor(background_color))
-        super().__init__(name,background_color,text_color,hover_color=hover_color)
-        self.setCursor(QCursor(QPixmap(Path(ICONS_PATH/"mouse_on.png")),hotX=32,hotY=32))  # 手型指针
-        self.setMouseTracking(True) # 允许追踪鼠标移动，不然只有按键才触发鼠标事件
+        hover_color = get_hover_color_from_background(QColor(background_color))
+        super().__init__(name, background_color, text_color, hover_color=hover_color)
+        self.setCursor(
+            QCursor(QPixmap(Path(ICONS_PATH / "mouse_on.png")), hotX=32, hotY=32)
+        )  # 手型指针
+        self.setMouseTracking(True)  # 允许追踪鼠标移动，不然只有按键才触发鼠标事件
 
-        #业务数据
-        self._actor_id=actor_id
+        # 业务数据
+        self._actor_id = actor_id
 
-        #模拟hover
+        # 模拟hover
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            from controller.GlobalSignalBus import global_signals
-            #global_signals.actor_clicked.emit(self._actor_id)
+            from controller.global_signal_bus import global_signals
+
+            # global_signals.actor_clicked.emit(self._actor_id)
             # 使用路由替代信号跳转
             from ui.navigation.router import Router
+
             Router.instance().push("mutiwork", actor_id=self._actor_id)
         super().mousePressEvent(event)  # 保留默认行为
 

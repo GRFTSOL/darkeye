@@ -113,9 +113,7 @@ class ToggleSwitch(QWidget):
         # 拇指：直径 = height - 4，上下各留 2px
         circle_diameter = rect.height() - 4
         painter.setBrush(QBrush(self._circle_color))
-        painter.drawEllipse(
-            int(self._offset), 2, circle_diameter, circle_diameter
-        )
+        painter.drawEllipse(int(self._offset), 2, circle_diameter, circle_diameter)
         painter.end()
 
     def mousePressEvent(self, event) -> None:

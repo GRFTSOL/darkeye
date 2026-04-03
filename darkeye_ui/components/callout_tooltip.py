@@ -1,5 +1,6 @@
 # darkeye_ui/components/callout_tooltip.py - 自绘尖角提示框
 """呼出式提示框：圆角矩形 + 左侧指向目标控件的三角形尖角，由设计令牌驱动。"""
+
 from typing import Optional, TYPE_CHECKING
 
 from PySide6.QtCore import Qt
@@ -30,7 +31,7 @@ class CalloutTooltip(QWidget):
     - show_for(widget, text) 根据 widget 全局几何定位
     """
 
-    PADDING_LEFT = 12   # 尖角已占 6px，6+6=12 与右侧对齐
+    PADDING_LEFT = 12  # 尖角已占 6px，6+6=12 与右侧对齐
     PADDING_RIGHT = 18
     PADDING_V = 6
     GAP = 0

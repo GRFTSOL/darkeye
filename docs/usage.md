@@ -14,7 +14,7 @@
 3. 在文件选择对话框中，定位到仓库目录下：`extensions/firefox_capture/manifest.json`，选中并打开。
 4. 右上角会出现 `DarkEye Capture` 图标：
    - 看到图标说明加载成功。
-   - 关闭浏览器或重启后需要**重新临时加载**（若要持久安装，可以打成 xpi 再导入，这里先不展开）。
+   - 关闭浏览器或重启后需要**重新临时加载**
 
 ![](assets/firefox.JPG)
 ![](assets/choosefile_firefox.JPG)
@@ -90,11 +90,11 @@ Firefox 插件已加载（上一节的步骤）
 
 扫描你设置的文件夹
 
-从文件名中尝试提取番号
-
-把识别到的结果放入爬虫队列，慢慢去网上补全信息（约 20 秒一次请求）
+从文件名中尝试提取番号,把识别到的结果放入爬虫队列，慢慢去网上补全信息（约 20 秒一次请求）
 
 重要提示：
+
+测试下来大概连续100次爬虫会触发javdb的反爬，然后就不行了。如果有上千部片子，挂半小时休息半小时，然后慢慢爬。
 
 这一步的识别准确度目前不高，只是帮你省一点力气。
 
@@ -109,6 +109,80 @@ Firefox 插件已加载（上一节的步骤）
 会弹出「快速添加作品」窗口
 ![](assets/add_work.JPG)
 输入标准的番号一定要大写，然后点击添加，爬虫会自动的去整理
+
+
+### 方式四：导入NFO文件（开发中）
+
+标准NFO文件的格式参考 https://kodi.wiki/view/NFO_files/Templates 其中的movie
+
+举例单个的nfo的格式要是这个样子
+```
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<movie>
+  <source>https://javdb.com/v/zkAxQ</source>
+  <plot>
+  </plot>
+  <title>神回！神回！！神回！！！…ハリウッドか！って位の世界観！！！雨のネオン街を颯爽と歩く謎のフルフェイス全身ラバー美女！！！…ブレードランナーか！！！これが激レアなんです！！！そしてこんな格好で外歩く様な女はアッチ(セックス)の方もスゲーに決まってるんです！！！年初めにこんな〝どエロい〟女見たらもぉ普通のAV見れなくなっちゃうから気をつけて！！！マジ半端ないエロさです！！！：夜の巷を徘徊する〝激レア素人〟！！ 11</title>
+  <director>
+  </director>
+  <rating>0</rating>
+  <criticrating>
+  </criticrating>
+  <year>2019</year>
+  <mpaa>
+  </mpaa>
+  <customrating>
+  </customrating>
+  <countrycode>
+  </countrycode>
+  <premiered>2019-01-03</premiered>
+  <release>2019-01-03</release>
+  <runtime>94</runtime>
+  <country>
+  </country>
+  <studio>プレステージプレミアム(PRESTIGE PREMIUM)</studio>
+  <id>MIUM-359</id>
+  <num>MIUM-359</num>
+  <genre>HDTV</genre>
+  <genre>苗條</genre>
+  <genre>蕩婦</genre>
+  <genre>巨乳</genre>
+  <genre>美臀</genre>
+  <genre>女優按摩棒</genre>
+  <tag>夜の巷を徘徊する激レア素人</tag>
+  <thumb>C:\Users\yin\Desktop\BigPic\MIUM-359.jpg</thumb>
+  <thumb>E:\Jvedio-5.3.1\data\Daxoel\pic\SmallPic\MIUM-359.jpg</thumb>
+  <fanart>
+    <thumb preview="https://c0.jdbstatic.com/samples/zk/zkAxQ_l_0.jpg">https://c0.jdbstatic.com/samples/zk/zkAxQ_l_0.jpg</thumb>
+    <thumb preview="https://c0.jdbstatic.com/samples/zk/zkAxQ_l_1.jpg">https://c0.jdbstatic.com/samples/zk/zkAxQ_l_1.jpg</thumb>
+    <thumb preview="https://c0.jdbstatic.com/samples/zk/zkAxQ_l_2.jpg">https://c0.jdbstatic.com/samples/zk/zkAxQ_l_2.jpg</thumb>
+    <thumb preview="https://c0.jdbstatic.com/samples/zk/zkAxQ_l_3.jpg">https://c0.jdbstatic.com/samples/zk/zkAxQ_l_3.jpg</thumb>
+  </fanart>
+  <actor>
+    <name>二宮和香</name>
+    <thumb>https://www.javsee.in/pics/actress/p37_a.jpg</thumb>
+  </actor>
+  <actor>
+    <name>森林原人</name>
+    <thumb>https://c0.jdbstatic.com/avatars/pp/PpQ0.jpg</thumb>
+  </actor>
+</movie>
+```
+
+这样子就可以导入进来。
+
+在设置->导入单个NFO数据
+
+
+
+
+
+## 作品信息不完整？
+比如没有封面的，没有标题的，还有fc2那种啥都没有的，因为爬虫的网站没有对应的信息。此时可以右键点击进入编辑区
+![](assets/作品信息不完整.JPG)
+
+点击下面的四个链接看看有没有信息，如果没有就代表爬虫无这部作品的信息源，如果有代表爬虫有问题或者是网络问题，此时可以在左边的爬虫区补数据。
+![](assets/外部链接区.JPG)
 
 
 ## 如何修改作品信息？
@@ -143,15 +217,75 @@ Firefox 插件已加载（上一节的步骤）
 
 11. 编辑区，可写感受，影评，然后可通过`[[ ]]` 链接到其他的作品，并在力导向图区中显示。
 
+修改可以自由的编辑，主要是这个爬虫区
+
+![](assets/爬虫区.JPG)
+这个爬虫区可以补充信息，如果这个信息是网上有的只是因为网络问题没下来，选合适的，然后点击下载。更新后会有橙色的提示。然后可以提交并修改。
 
 
-## 版本迁移
-所有的数据库文件均在`resources/public`和`resources/private`这两个文件夹的下面。
+## 如何修改女优信息？
+当你看见大量的灰色按钮时？不要慌，点击`管理->批量操作->更新标记需要更新的女优`。爬虫会自动处理，但是爬虫不是万能的会有问题，比如遇到下面的奇怪的情况。左键进入
+![](assets/女优区.jpg)
 
-在没有数据库迁移工具时只能手动复制主要的文件夹，`resources/public`和`resources/private`，把对应的文件夹移动到新版本的对应的位置就行了。
+右键进入作品编辑区
+![](assets/更新女优2.jpg)
 
-有迁移工具后，点击备份私库与公库，然后选择电脑上的一个位置，用新的版本点击还原后选择对应的meta.json和.db文件然后重启软件。现在暂时做不到无缝，总有问题。
+在下面的女优选择区把奇怪的东西全移出，然后保存。
+![](assets/更新女优3.jpg)
 
-还有就是settings.ini这个配置文件里面存了包括界面颜色，视频文件夹地址等信息，也一并移动过去。
+然后回到这个奇怪的女优区，右键进入编辑
+![](assets/更新女优4.jpg)
 
-现在绿色版只能是这样来版本迁移，后面如果有安装版应该是自动版本迁移。
+点击删除按钮，把女优删除
+![](assets/更新女优5.jpg)
+
+## 女优爬虫后还是灰色的？
+说明要么是错误爬虫，要么是遇到搜索结果很多的情况了，右键点击编辑
+![](assets/爬虫后灰色女优.jpg)
+
+点击跳转
+![](assets/手动选择女优1.jpg)
+
+选择正确的女优，点击
+![](assets/手动选择女优2.jpg)
+
+如果装了插件，右下角会有一个采集按钮，点击
+![](assets/手动选择女优3.jpg)
+
+采集后信息会更新到面板上，然后点击提交就行，右边的中文需要自己慢慢编辑，最顶上的就是有优先显示的。现在默认显示的名字是cn最上面一栏，现在就是白石もも
+![](assets/手动选择女优4.jpg)
+
+
+
+## 男优是灰的？
+这个没有办法，只能手动收集信息。
+
+
+
+## 自定义外部链接
+现在的外部链接是json驱动的
+
+![](assets/自定义编辑外链1.JPG)
+
+
+要自定义，就打开`data/crawler_nav_buttons.json`这个json文件
+![](assets/自定义编辑外链2.JPG)
+
+单个的例子，包括名字，要跳转的url与description,包括{serial}特殊记号，有了这个记号，就会从当前页面中取出这个番号输入
+```
+  {
+    "name": "javtxt",
+    "url": "https://javtxt.com/search?type=id&q={serial}",
+    "description": "获得故事与标题，但是没有封面"
+  },
+```
+
+下一个例子,有的网站只接受fanza的那个id比如ipx00247查询的，就多加一行`"serial_transform": "fanza",`
+```
+  {
+    "name": "fanza",
+    "url": "https://www.dmm.co.jp/search/=/searchstr={serial}/limit=30/sort=rankprofile",
+    "serial_transform": "fanza",
+    "description": "fanza售卖网站，非日本本土，需日本vpn且特殊插件才能访问"
+  },
+```

@@ -1,4 +1,5 @@
-'''仪表盘域查询'''
+"""仪表盘域查询"""
+
 import logging
 
 from config import DATABASE
@@ -7,10 +8,10 @@ from ..db_utils import attach_private_db, detach_private_db
 
 
 def get_dashboard_stats() -> dict:
-    '''
+    """
     Dashboard 数据库概览统计，返回 7 项计数字典。
     键与 DashboardPage 统计卡片一一对应。
-    '''
+    """
     result = {
         "work_count": 0,
         "actress_count": 0,
@@ -37,9 +38,7 @@ def get_dashboard_stats() -> dict:
             result["actor_count"] = cursor.fetchone()[0]
 
             # Tag 总数（排除重定向）
-            cursor.execute(
-                "SELECT COUNT(*) FROM tag WHERE redirect_tag_id IS NULL"
-            )
+            cursor.execute("SELECT COUNT(*) FROM tag WHERE redirect_tag_id IS NULL")
             result["tag_count"] = cursor.fetchone()[0]
 
             # 近 30 天新增作品

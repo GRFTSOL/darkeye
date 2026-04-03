@@ -9,10 +9,10 @@ This document reviews the current architecture under `core/graph` and proposes a
   - `core/graph/graph_manager.py`
   - `core/graph/graph_session.py`
   - `core/graph/graph_filter.py`
-  - `core/graph/ForceDirectedViewWidget.py`
-  - `core/graph/ForceViewSettingsPanel.py`
+  - `core/graph/force_directed_view_widget.py`
+  - `core/graph/force_view_settings_panel.py`
   - `core/graph/async_image_loader.py`
-  - `core/graph/ImageOverlayWidget.py`
+  - `core/graph/image_overlay_widget.py`
   - `core/graph/text_parser.py`
 - Related tests:
   - `tests/test_text_parser.py`

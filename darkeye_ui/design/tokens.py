@@ -8,6 +8,7 @@ from PySide6.QtGui import QColor
 @dataclass
 class ThemeTokens:
     """一套主题对应的所有设计令牌。"""
+
     color_primary: str
     color_primary_hover: str
     color_bg: str

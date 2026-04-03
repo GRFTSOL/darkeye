@@ -28,14 +28,16 @@ View3D {
         ? mapFrom3DScene(_forceViewAnchor.scenePosition)
         : Qt.point(-10000, -10000)
     on_ForceViewScreenPointChanged: {
-        if (_forceViewScreenPoint.x > -9999 && typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.setForceViewAnchor === "function")
-            dvdBridge.setForceViewAnchor(_forceViewScreenPoint.x, _forceViewScreenPoint.y)
+        if (_forceViewScreenPoint.x > -9999 && typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.set_force_view_anchor === "function")
+            dvdBridge.set_force_view_anchor(_forceViewScreenPoint.x, _forceViewScreenPoint.y)
     }
 
     // 展开态操作按钮（爱心/编辑/删除）的 3D 锚点映射，key=delegate index。
     property var actionAnchorByIndex: ({})
     // 展开态 title/story 的 front 面锚点映射，key=delegate index。
     property var frontInfoAnchorByIndex: ({})
+    // 完全展开后，光碟下方剧照 Python 叠层的 3D 锚点映射，key=delegate index。
+    property var fanartAnchorByIndex: ({})
     property int _pendingCollapseSelectedIndex: -1
     property real _pendingCollapseCloseSpeedMultiplier: 1.0
     property real wheelCloseAnimationSpeedMultiplier: 3.0
@@ -73,16 +75,27 @@ View3D {
         }
     }
 
+    property var _fanartStripAnchor: (fullyExpandedDelegateIndex >= 0)
+        ? fanartAnchorByIndex[fullyExpandedDelegateIndex]
+        : null
+    property point _fanartStripScreenPoint: _fanartStripAnchor
+        ? mapFrom3DScene(_fanartStripAnchor.scenePosition)
+        : Qt.point(-10000, -10000)
+    on_FanartStripScreenPointChanged: {
+        if (_fanartStripScreenPoint.x > -9999 && typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.set_fanart_strip_anchor === "function")
+            dvdBridge.set_fanart_strip_anchor(_fanartStripScreenPoint.x, _fanartStripScreenPoint.y)
+    }
+
     // 选中/展开变化时通知 Bridge，用于在左侧显示或隐藏力导向图。
     Connections {
         target: view3d
         function onSelectedDelegateIndexChanged() {
-            if (typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.selectionChanged === "function")
-                dvdBridge.selectionChanged(view3d.selectedDelegateIndex, view3d.expandedDelegateIndex)
+            if (typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.selection_changed === "function")
+                dvdBridge.selection_changed(view3d.selectedDelegateIndex, view3d.expandedDelegateIndex)
         }
         function onExpandedDelegateIndexChanged() {
-            if (typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.selectionChanged === "function")
-                dvdBridge.selectionChanged(view3d.selectedDelegateIndex, view3d.expandedDelegateIndex)
+            if (typeof dvdBridge !== "undefined" && dvdBridge && typeof dvdBridge.selection_changed === "function")
+                dvdBridge.selection_changed(view3d.selectedDelegateIndex, view3d.expandedDelegateIndex)
         }
     }
 
@@ -243,6 +256,25 @@ View3D {
                 property bool _freezeReleasePending: false
                 property int _frozenVirtualIndex: targetVirtualIndex
                 property string _frozenTex: targetTex
+                // 新一次选中时立即冻结当前 target 并推到 Loader：避免 signal 顺序下
+                // onSelectionProgressChanged 先于 onSelectedChanged、且 _freezeCaptured 仍为
+                // true 时跳过 _frozenTex 更新（首次跳转最容易撞上，第二次状态已稳）。
+                onSelectedChanged: {
+                    if (selected) {
+                        /*
+                         * 不在这里改 view3d._frozenSelectedDelegateIndex：全局冻结槽位
+                         * 仍由 selectionProgress>0 时设置，避免拉片动画开头几帧打乱邻格贴图映射。
+                         */
+                        _freezeReleasePending = false
+                        freezeReleaseTimer.stop()
+                        _frozenVirtualIndex = targetVirtualIndex
+                        _frozenTex = targetTex
+                        _freezeCaptured = true
+                        _contentFrozen = true
+                        if (dvdLoader.item && typeof dvdLoader.item.textureSource !== "undefined")
+                            dvdLoader.item.textureSource = _frozenTex
+                    }
+                }
                 // Freeze content identity while selected/closing/returning so scroll doesn't swap the art mid-animation.
                 property int virtualIndex: _contentFrozen ? _frozenVirtualIndex : targetVirtualIndex
                 property string tex: _contentFrozen ? _frozenTex : targetTex
@@ -295,7 +327,9 @@ View3D {
                         view3d._frozenSelectedDelegateIndex = index
                         view3d._frozenSelectedVirtualIndex = _frozenVirtualIndex
                     } else {
-                        if (_contentFrozen && !_freezeReleasePending) {
+                        // 选中刚开始时 progress 可能仍为 0，但 _contentFrozen 已被置为 true：
+                        // 不能在未选中前启动解冻定时器，否则会误清本次选中的冻结贴图。
+                        if (!selected && _contentFrozen && !_freezeReleasePending) {
                             _freezeReleasePending = true
                             freezeReleaseTimer.restart()
                         } else if (!_contentFrozen) {
@@ -336,6 +370,7 @@ View3D {
                         onItemChanged: {
                             view3d.actionAnchorByIndex[index] = null
                             view3d.frontInfoAnchorByIndex[index] = null
+                            view3d.fanartAnchorByIndex[index] = null
                             if (item) {
                                 if (typeof item.textureSource !== "undefined") item.textureSource = tex
                                 if (typeof item.delegateIndex !== "undefined") item.delegateIndex = index
@@ -343,11 +378,13 @@ View3D {
                                     view3d.actionAnchorByIndex[index] = item.actionAnchorNode
                                 if (typeof item.frontInfoAnchorNode !== "undefined")
                                     view3d.frontInfoAnchorByIndex[index] = item.frontInfoAnchorNode
+                                if (typeof item.fanartStripAnchorNode !== "undefined")
+                                    view3d.fanartAnchorByIndex[index] = item.fanartStripAnchorNode
                                 if (typeof item.cdClicked !== "undefined") {
                                     item.cdClicked.connect(function() {
                                         var vIdx = virtualIndex
                                         if (typeof dvdBridge !== "undefined" && dvdBridge)
-                                            dvdBridge.onCdClicked(vIdx)
+                                            dvdBridge.on_cd_clicked(vIdx)
                                     })
                                 }
                                 if (typeof item.closeAnimationFinished !== "undefined") {
@@ -385,6 +422,8 @@ View3D {
                         view3d.actionAnchorByIndex[index] = null
                     if (view3d.frontInfoAnchorByIndex[index])
                         view3d.frontInfoAnchorByIndex[index] = null
+                    if (view3d.fanartAnchorByIndex[index])
+                        view3d.fanartAnchorByIndex[index] = null
                 }
             }
         }
@@ -424,6 +463,9 @@ View3D {
         property real _lastMouseX: 0
         property real _lastMouseY: 0
         property bool _rightDragging: false
+        property bool _hoverPickCd: false
+        cursorShape: _rightDragging ? Qt.ArrowCursor
+            : (_hoverPickCd ? Qt.PointingHandCursor : Qt.ArrowCursor)
         // 右键旋转灵敏度。
         property real _rotSensitivity: 0.15
 
@@ -442,14 +484,14 @@ View3D {
                 scrollUnits = wheel.angleDelta.y / 120
             var delta = -scrollUnits * step
             if (typeof dvdBridge !== "undefined" && dvdBridge) {
-                if (typeof dvdBridge.scrollCameraBy !== "undefined")
-                    dvdBridge.scrollCameraBy(delta, shelfLen)
+                if (typeof dvdBridge.scroll_camera_by !== "undefined")
+                    dvdBridge.scroll_camera_by(delta, shelfLen)
                 else {
                     var baseCameraX = (typeof dvdBridge.cameraTargetX !== "undefined")
                         ? dvdBridge.cameraTargetX
                         : dvdBridge.cameraX
                     var newVal = Math.max(0, Math.min(shelfLen, baseCameraX + delta))
-                    dvdBridge.setCameraX(newVal)
+                    dvdBridge.set_camera_x(newVal)
                 }
             } else {
                 view3d.cameraX = Math.max(0, Math.min(shelfLen, view3d.cameraX + delta))
@@ -472,8 +514,10 @@ View3D {
             if (result && result.objectHit) {
                 var hoveredIdx = view3d.findDelegateIndex(result.objectHit)
                 view3d.hoveredDelegateIndex = (hoveredIdx === view3d.selectedDelegateIndex) ? -1 : hoveredIdx
+                _hoverPickCd = result.objectHit.objectName === "cD"
             } else {
                 view3d.hoveredDelegateIndex = -1
+                _hoverPickCd = false
             }
             mouse.accepted = false
         }
@@ -538,6 +582,7 @@ View3D {
         onExited: {
             view3d.hoveredDelegateIndex = -1
             _rightDragging = false
+            _hoverPickCd = false
         }
     }
 
@@ -579,12 +624,12 @@ View3D {
             target: view3d
             function onExpandedDelegateIndexChanged() {
                 if (typeof dvdBridge !== "undefined" && dvdBridge)
-                    dvdBridge.refreshExpandedWorkMeta(view3d.expandedDelegateIndex >= 0
+                    dvdBridge.refresh_expanded_work_meta(view3d.expandedDelegateIndex >= 0
                         ? view3d.expandedVirtualIndexFor(view3d.expandedDelegateIndex) : -1)
             }
             function onFullyExpandedDelegateIndexChanged() {
                 if (typeof dvdBridge !== "undefined" && dvdBridge && view3d.fullyExpandedDelegateIndex >= 0)
-                    dvdBridge.refreshExpandedWorkMeta(view3d.expandedVirtualIndexFor(view3d.fullyExpandedDelegateIndex))
+                    dvdBridge.refresh_expanded_work_meta(view3d.expandedVirtualIndexFor(view3d.fullyExpandedDelegateIndex))
             }
         }
 
@@ -641,7 +686,7 @@ View3D {
                     hoverEnabled: true
                     onClicked: {
                         if (typeof dvdBridge !== "undefined" && dvdBridge && dvdBridge.expandedWorkCode)
-                            dvdBridge.copyToClipboard(dvdBridge.expandedWorkCode)
+                            dvdBridge.copy_to_clipboard(dvdBridge.expandedWorkCode)
                     }
                     Text {
                         id: codeText
@@ -699,7 +744,7 @@ View3D {
                                 hoverEnabled: true
                                 onClicked: {
                                     if (typeof dvdBridge !== "undefined" && dvdBridge && modelData)
-                                        dvdBridge.onTagClicked(modelData.tag_id)
+                                        dvdBridge.on_tag_clicked(modelData.tag_id)
                                 }
                             }
                         }
@@ -740,7 +785,7 @@ View3D {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     if (typeof dvdBridge !== "undefined" && dvdBridge && modelData)
-                                        dvdBridge.onActressClicked(modelData.actress_id)
+                                        dvdBridge.on_actress_clicked(modelData.actress_id)
                                 }
                             }
                         }
@@ -781,7 +826,7 @@ View3D {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     if (typeof dvdBridge !== "undefined" && dvdBridge && modelData)
-                                        dvdBridge.onActorClicked(modelData.actor_id)
+                                        dvdBridge.on_actor_clicked(modelData.actor_id)
                                 }
                             }
                         }
@@ -817,20 +862,20 @@ View3D {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (typeof dvdBridge !== "undefined" && dvdBridge)
-                                dvdBridge.onDirectorClicked()
+                                dvdBridge.on_director_clicked()
                         }
                     }
                 }
             }
 
-            // 厂商
+            // 片商
             Row {
                 width: parent.width
                 spacing: 4
                 visible: typeof dvdBridge !== "undefined" && dvdBridge && dvdBridge.expandedWorkStudio
                     && dvdBridge.expandedWorkStudio.length > 0
                 Text {
-                    text: "厂商: "
+                    text: "片商: "
                     color: "#a0a8b8"
                     font.pixelSize: 12
                 }
@@ -842,16 +887,97 @@ View3D {
                         text: (typeof dvdBridge !== "undefined" && dvdBridge) ? dvdBridge.expandedWorkStudio : ""
                         color: "#e8ecf5"
                         font.pixelSize: 12
-                        font.underline: studioMouseArea.containsMouse
+                        font.underline: studioMouseArea.containsMouse && studioMouseArea.enabled
                     }
                     MouseArea {
                         id: studioMouseArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
+                        enabled: typeof dvdBridge !== "undefined" && dvdBridge && dvdBridge.expandedWorkMakerId > 0
+                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                         onClicked: {
                             if (typeof dvdBridge !== "undefined" && dvdBridge)
-                                dvdBridge.onStudioClicked()
+                                dvdBridge.on_studio_clicked()
+                        }
+                    }
+                }
+            }
+
+            // 厂牌（label）
+            Row {
+                width: parent.width
+                spacing: 4
+                visible: typeof dvdBridge !== "undefined" && dvdBridge && dvdBridge.expandedWorkLabel
+                    && dvdBridge.expandedWorkLabel.length > 0
+                Text {
+                    id: labelPrefix
+                    text: "厂牌: "
+                    color: "#a0a8b8"
+                    font.pixelSize: 12
+                }
+                Item {
+                    width: parent.width - labelPrefix.width - parent.spacing
+                    height: labelText.implicitHeight
+                    Text {
+                        id: labelText
+                        width: parent.width
+                        color: "#e8ecf5"
+                        font.pixelSize: 12
+                        wrapMode: Text.WordWrap
+                        elide: Text.ElideRight
+                        maximumLineCount: 2
+                        font.underline: labelMouseArea.containsMouse && labelMouseArea.enabled
+                        text: (typeof dvdBridge !== "undefined" && dvdBridge) ? dvdBridge.expandedWorkLabel : ""
+                    }
+                    MouseArea {
+                        id: labelMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: typeof dvdBridge !== "undefined" && dvdBridge && dvdBridge.expandedWorkLabelId > 0
+                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: {
+                            if (typeof dvdBridge !== "undefined" && dvdBridge)
+                                dvdBridge.on_label_clicked()
+                        }
+                    }
+                }
+            }
+
+            // 系列（series）
+            Row {
+                width: parent.width
+                spacing: 4
+                visible: typeof dvdBridge !== "undefined" && dvdBridge && dvdBridge.expandedWorkSeries
+                    && dvdBridge.expandedWorkSeries.length > 0
+                Text {
+                    id: seriesPrefix
+                    text: "系列: "
+                    color: "#a0a8b8"
+                    font.pixelSize: 12
+                }
+                Item {
+                    width: parent.width - seriesPrefix.width - parent.spacing
+                    height: seriesText.implicitHeight
+                    Text {
+                        id: seriesText
+                        width: parent.width
+                        color: "#e8ecf5"
+                        font.pixelSize: 12
+                        wrapMode: Text.WordWrap
+                        elide: Text.ElideRight
+                        maximumLineCount: 2
+                        font.underline: seriesMouseArea.containsMouse && seriesMouseArea.enabled
+                        text: (typeof dvdBridge !== "undefined" && dvdBridge) ? dvdBridge.expandedWorkSeries : ""
+                    }
+                    MouseArea {
+                        id: seriesMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: typeof dvdBridge !== "undefined" && dvdBridge && dvdBridge.expandedWorkSeriesId > 0
+                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: {
+                            if (typeof dvdBridge !== "undefined" && dvdBridge)
+                                dvdBridge.on_series_clicked()
                         }
                     }
                 }
@@ -895,11 +1021,11 @@ View3D {
             target: view3d
             function onExpandedDelegateIndexChanged() {
                 if (view3d.expandedDelegateIndex >= 0 && typeof dvdBridge !== "undefined" && dvdBridge)
-                    dvdBridge.refreshExpandedFavoriteState(view3d.expandedVirtualIndexFor(view3d.expandedDelegateIndex))
+                    dvdBridge.refresh_expanded_favorite_state(view3d.expandedVirtualIndexFor(view3d.expandedDelegateIndex))
             }
             function onFullyExpandedDelegateIndexChanged() {
                 if (view3d.fullyExpandedDelegateIndex >= 0 && typeof dvdBridge !== "undefined" && dvdBridge)
-                    dvdBridge.refreshExpandedFavoriteState(view3d.expandedVirtualIndexFor(view3d.fullyExpandedDelegateIndex))
+                    dvdBridge.refresh_expanded_favorite_state(view3d.expandedVirtualIndexFor(view3d.fullyExpandedDelegateIndex))
             }
         }
 
@@ -928,7 +1054,7 @@ View3D {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (typeof dvdBridge !== "undefined" && dvdBridge)
-                            dvdBridge.onHeartClicked(actionOverlay.expandedVirtualIndex)
+                            dvdBridge.on_heart_clicked(actionOverlay.expandedVirtualIndex)
                     }
                 }
             }
@@ -950,7 +1076,7 @@ View3D {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (typeof dvdBridge !== "undefined" && dvdBridge)
-                            dvdBridge.onEditClicked(actionOverlay.expandedVirtualIndex)
+                            dvdBridge.on_edit_clicked(actionOverlay.expandedVirtualIndex)
                     }
                 }
             }
@@ -972,7 +1098,7 @@ View3D {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (typeof dvdBridge !== "undefined" && dvdBridge)
-                            dvdBridge.onDeleteClicked(actionOverlay.expandedVirtualIndex)
+                            dvdBridge.on_delete_clicked(actionOverlay.expandedVirtualIndex)
                     }
                 }
             }

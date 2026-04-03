@@ -4,7 +4,15 @@
 // JavLibrary 站点：dvdid 搜索、解析、自动续跑
 (function() {
     if (!window.location.href.includes("javdb.com")) return;
-  
+
+    /** 首尾空白、去掉末尾 -v/-z/v/z（不区分大小写），并统一大写以便与检索一致。 */
+    function normalizeCatalogId(value) {
+        return (value || "")
+            .trim()
+            .replace(/-?[vz]$/i, "")
+            .toUpperCase();
+    }
+
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.command === "javdb-dvdid"){
           sessionStorage.setItem('darkeye_auto_parse', 'true')
@@ -57,11 +65,13 @@
                 url: href ? `https://javdb.com${href}` : ""
             };
         });
-        const searchId = (sessionStorage.getItem('id') || "").trim().toUpperCase();
+        const searchId = normalizeCatalogId(sessionStorage.getItem('id'));
         let targetUrl = null;
 
         if (searchId) {
-            const matched = results.find(item => (item.id || "").trim().toUpperCase() === searchId);
+            const matched = results.find(
+                (item) => normalizeCatalogId(item.id) === searchId
+            );
             if (matched) {
                 targetUrl = matched.url;
             }
@@ -85,16 +95,23 @@
 
           const data = {};
 
-          // 番号：h2.title 里第一个 strong
-          const idStrong = videoDetail.querySelector("h2.title strong");
-          if (idStrong) {
-              let idText = idStrong.textContent.trim();
-              idText = idText.replace(/\s+$/,""); // 去掉末尾空格
-              idText = idText.endsWith('v') ? idText.slice(0, -1) : idText;
-              data.id = idText;
-          } else {
-              data.id = "";
-          }
+          const panelBlocks = videoDetail.querySelectorAll(
+              ".movie-panel-info .panel-block"
+          );
+          const getPanelValue = (labelText) => {
+              for (const block of panelBlocks) {
+                  const strongEl = block.querySelector("strong");
+                  if (!strongEl) continue;
+                  if (strongEl.textContent.trim().startsWith(labelText)) {
+                      const val = block.querySelector(".value");
+                      return val ? val.textContent.trim() : "";
+                  }
+              }
+              return "";
+          };
+
+          // 番号：详情页「番號」面板（规范化同 search_javdb）
+          data.id = normalizeCatalogId(getPanelValue("番號:"));
           console.log("番号: " + data.id);
 
           // 标题：优先当前显示标题（中文），否则用原始标题（日文）
@@ -109,23 +126,14 @@
           }
           console.log("标题: " + data.title);
 
-          // 面板块集合
-          const panelBlocks = videoDetail.querySelectorAll(".movie-panel-info .panel-block");
-          const getPanelValue = (labelText) => {
-              for (const block of panelBlocks) {
-                  const strongEl = block.querySelector("strong");
-                  if (!strongEl) continue;
-                  if (strongEl.textContent.trim().startsWith(labelText)) {
-                      const val = block.querySelector(".value");
-                      return val ? val.textContent.trim() : "";
-                  }
-              }
-              return "";
-          };
-
           data.release_date = getPanelValue("日期:");
-          data.length = getPanelValue("時長:");
-          data.director = getPanelValue("導演:");
+          const lengthRaw = getPanelValue("時長:");
+          const lengthMatch = lengthRaw.match(/\d+/);
+          data.length = lengthMatch ? lengthMatch[0] : "0";
+          data.director = getPanelValue("導演:")|| "----";
+          data.maker = getPanelValue("片商:")|| "----";
+          data.label = getPanelValue("發行:")|| "----";
+          data.series= getPanelValue("系列:") || "----";
 
           // 类别
           const genreBlock = Array.from(panelBlocks).find(block => {
@@ -167,9 +175,18 @@
               }
           }
 
-          // 封面
-          //const imgElement = videoDetail.querySelector(".video-cover");
-          //data.image = imgElement ? imgElement.src : "";
+          const previewTileRoot =
+              videoDetail.querySelector("div.tile-images.preview-images") ||
+              document.querySelector("div.tile-images.preview-images");
+          data.fanart = previewTileRoot
+              ? Array.from(previewTileRoot.querySelectorAll("a.tile-item[href]"))
+                    .map((a) => (a.getAttribute("href") || "").trim())
+                    .filter((h) => h && !h.startsWith("#"))
+              : [];
+
+          // 封面，这个不要封面，有水印，宁可空也不要水印
+          const imgElement = videoDetail.querySelector(".video-cover");
+          data.cover = imgElement ? imgElement.src : "";
 
           sessionStorage.setItem('darkeye_auto_parse', 'false');
           console.log(data);

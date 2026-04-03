@@ -1,23 +1,24 @@
-'''跳转打开网页，没有什么其他的功能'''
+"""跳转打开网页，没有什么其他的功能"""
 
 from webbrowser import open
 import logging
 
 
-
 def jump_minnanoav(actressname):
-    open("https://www.minnano-av.com/search_result.php?search_scope=actress&search_word="+actressname+"&search= Go")
+    open(
+        "https://www.minnano-av.com/search_result.php?search_scope=actress&search_word="
+        + actressname
+        + "&search= Go"
+    )
+
 
 def jump_avdanyuwiki(name):
-    open("https://avdanyuwiki.com/?s="+name)
-
-
-
-
+    open("https://avdanyuwiki.com/?s=" + name)
 
 
 def send_navigate_request(url: str, context: dict | None = None):
     import requests
+
     try:
         payload = {
             "url": url,
@@ -26,8 +27,10 @@ def send_navigate_request(url: str, context: dict | None = None):
         if context is not None:
             payload["context"] = context
         # 发送导航指令到本地服务器
-        response = requests.post("http://localhost:56789/api/v1/navigate", json=payload, timeout=2)
-        
+        response = requests.post(
+            "http://localhost:56789/api/v1/navigate", json=payload, timeout=2
+        )
+
         if response.status_code == 200:
             return True
         else:
@@ -36,17 +39,20 @@ def send_navigate_request(url: str, context: dict | None = None):
         logging.error(f"发送到本地浏览器跳转指令失败: {e}")
         return False
 
-def send_crawler_request(web:str,serial_number:str):
-    '''发送爬取指令到本地服务器，由，本地服务器去指挥浏览器插件
+
+def send_crawler_request(web: str, serial_number: str):
+    """发送爬取指令到本地服务器，由，本地服务器去指挥浏览器插件
     web:javlib,javdb
-    '''
+    """
     import requests
+
     try:
         # 发送导航指令到本地服务器
-        response = requests.post("http://localhost:56789/api/v1/startcrawler", json={
-            "web": web,
-            "serial_number": serial_number
-        }, timeout=2)
+        response = requests.post(
+            "http://localhost:56789/api/v1/startcrawler",
+            json={"web": web, "serial_number": serial_number},
+            timeout=2,
+        )
         if response.status_code == 200:
             return True
         else:

@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget
 from PySide6.QtGui import QKeySequence
 from darkeye_ui.components import Label, Button
 from darkeye_ui.components.token_key_sequence_edit import TokenKeySequenceEdit
-from controller.ShortcutRegistry import ShortcutRegistry
+from controller.shortcut_registry import ShortcutRegistry
 
 
 class ShortcutSettingRow(QWidget):
@@ -60,4 +60,6 @@ class ShortCutSettingPage(QWidget):
             main_layout.addWidget(row)
 
         main_layout.addStretch()
-        main_layout.addWidget(Label("<small>配置将自动保存到 shortcuts_config.json</small>"))
+        main_layout.addWidget(
+            Label("<small>配置将自动保存到 data/shortcuts_config.json</small>")
+        )

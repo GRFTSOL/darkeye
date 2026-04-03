@@ -1,6 +1,14 @@
-from PySide6.QtWidgets import (QApplication, QMainWindow, QTableView, QVBoxLayout, 
-                               QHBoxLayout, QWidget, QPushButton, QAbstractItemView)
-from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex,Signal,Slot
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QTableView,
+    QVBoxLayout,
+    QHBoxLayout,
+    QWidget,
+    QPushButton,
+    QAbstractItemView,
+)
+from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, Signal, Slot
 from core.database.query import get_actress_allname
 import logging
 
@@ -9,11 +17,12 @@ from darkeye_ui.components.token_table_view import TokenTableView
 
 
 class MovableTableModel(QAbstractTableModel):
-    data_updated=Signal(list)
+    dataUpdated = Signal(list)
+
     def __init__(self, data=None):
         super().__init__()
         self._headers = []
-        
+
         if data is None:
             self._data = []
             self._headers = []
@@ -51,12 +60,18 @@ class MovableTableModel(QAbstractTableModel):
 
     def flags(self, index):
         """设置单元格的标志，使其可编辑"""
-        return Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+        return (
+            Qt.ItemFlag.ItemIsEditable
+            | Qt.ItemFlag.ItemIsEnabled
+            | Qt.ItemFlag.ItemIsSelectable
+        )
 
     def setData(self, index, value, role):
         """处理数据修改"""
         if role == Qt.ItemDataRole.EditRole:
-            if 0 <= index.row() < len(self._data) and 0 <= index.column() < len(self._headers):
+            if 0 <= index.row() < len(self._data) and 0 <= index.column() < len(
+                self._headers
+            ):
                 # 获取对应的列键
                 column_key = self._headers[index.column()]
                 # 如果值为空或None，将其替换为空字符串
@@ -67,28 +82,28 @@ class MovableTableModel(QAbstractTableModel):
                 # 发出数据更改信号
                 self.dataChanged.emit(index, index)
                 logging.debug("发射修改model信号")
-                self.data_updated.emit(self._data)#发出信号
+                self.dataUpdated.emit(self._data)  # 发出信号
                 logging.debug(self._data)
                 return True
         return False
 
-    def moveRow(self, sourceRow, destinationRow):
+    def move_row(self, source_row, destination_row):
         """移动行数据"""
-        if sourceRow == destinationRow:
+        if source_row == destination_row:
             return False
-        
-        if 0 <= sourceRow < len(self._data) and 0 <= destinationRow < len(self._data):
+
+        if 0 <= source_row < len(self._data) and 0 <= destination_row < len(self._data):
             # 移动数据
-            row_data = self._data.pop(sourceRow)
-            self._data.insert(destinationRow, row_data)
-            
+            row_data = self._data.pop(source_row)
+            self._data.insert(destination_row, row_data)
+
             # 通知视图更新
             self.layoutChanged.emit()
-            self.data_updated.emit(self._data)#发出数据改变信号
+            self.dataUpdated.emit(self._data)  # 发出数据改变信号
             return True
         return False
 
-    def addRow(self):
+    def add_row(self):
         """添加新行"""
         # 创建一个空字典，包含所有列但值为空
         new_row = {key: "" for key in self._headers}
@@ -96,23 +111,23 @@ class MovableTableModel(QAbstractTableModel):
         self.beginInsertRows(QModelIndex(), len(self._data), len(self._data))
         self._data.append(new_row)
         self.endInsertRows()
-        self.data_updated.emit(self._data)#发出数据改变信号
+        self.dataUpdated.emit(self._data)  # 发出数据改变信号
         return True
 
-    def removeRow(self, row, parent=QModelIndex()):
+    def remove_row(self, row, parent=QModelIndex()):
         """删除指定行"""
         if 0 <= row < len(self._data):
             self.beginRemoveRows(parent, row, row)
             self._data.pop(row)
             self.endRemoveRows()
-            self.data_updated.emit(self._data)#发出信号
+            self.dataUpdated.emit(self._data)  # 发出信号
             return True
         return False
 
-    def setNewData(self, data):
+    def set_new_data(self, data):
         """更新整个数据集"""
         self.beginResetModel()
-        
+
         self._data = data
         logging.debug(data)
         if data:
@@ -131,72 +146,76 @@ class MovableTableModel(QAbstractTableModel):
 class EditableTableView(QWidget):
     def __init__(self):
         super().__init__()
-        self._actress_id=None
+        self._actress_id = None
 
         # 创建模型和视图
         self.model = MovableTableModel()
         self.tableView = TokenTableView()
         self.tableView.setModel(self.model)
-        self.tableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.tableView.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
         self.tableView.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         # 设置编辑触发方式
-        self.tableView.setEditTriggers(QAbstractItemView.EditTrigger.DoubleClicked |
-                                     QAbstractItemView.EditTrigger.EditKeyPressed |
-                                     QAbstractItemView.EditTrigger.AnyKeyPressed)
+        self.tableView.setEditTriggers(
+            QAbstractItemView.EditTrigger.DoubleClicked
+            | QAbstractItemView.EditTrigger.EditKeyPressed
+            | QAbstractItemView.EditTrigger.AnyKeyPressed
+        )
 
         # 创建按钮
         self.setup_buttons()
-        
+
         # 设置布局
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0,0,0,0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addLayout(self.button_layout)
         main_layout.addWidget(self.tableView)
-        
 
     def setup_buttons(self):
         """创建按钮"""
-        #self.btn_up = IconPushButton("triangle-up.svg")
-        #self.btn_down = IconPushButton("triangle-down.svg")
+        # self.btn_up = IconPushButton("triangle-up.svg")
+        # self.btn_down = IconPushButton("triangle-down.svg")
         self.btn_add = IconPushButton(icon_name="list_plus")
         self.btn_delete = IconPushButton(icon_name="list_x")
-        #self.btn_refresh = QPushButton("刷新")
-        #self.btn_save = QPushButton("保存")
-        #self.btn_print = QPushButton("打印数据")
-        
-        
-        #self.btn_up.clicked.connect(self.move_up)
-        #self.btn_down.clicked.connect(self.move_down)
+        # self.btn_refresh = QPushButton("刷新")
+        # self.btn_save = QPushButton("保存")
+        # self.btn_print = QPushButton("打印数据")
+
+        # self.btn_up.clicked.connect(self.move_up)
+        # self.btn_down.clicked.connect(self.move_down)
         self.btn_add.clicked.connect(self.add_row)
         self.btn_delete.clicked.connect(self.delete_row)
-        #self.btn_refresh.clicked.connect(self.refresh_data)
-        #self.btn_save.clicked.connect(self.save_data)
-        #self.btn_print.clicked.connect(self.print_data)
+        # self.btn_refresh.clicked.connect(self.refresh_data)
+        # self.btn_save.clicked.connect(self.save_data)
+        # self.btn_print.clicked.connect(self.print_data)
 
         # 初始状态
-#        self.btn_up.setEnabled(False)
-#        self.btn_down.setEnabled(False)
+        #        self.btn_up.setEnabled(False)
+        #        self.btn_down.setEnabled(False)
         self.btn_delete.setEnabled(False)  # 只有选中行时才能删除
 
         # 按钮布局
         self.button_layout = QHBoxLayout()
-#        self.button_layout.addWidget(self.btn_up)
-#        self.button_layout.addWidget(self.btn_down)
+        #        self.button_layout.addWidget(self.btn_up)
+        #        self.button_layout.addWidget(self.btn_down)
         self.button_layout.addWidget(self.btn_add)
         self.button_layout.addWidget(self.btn_delete)
-        #self.button_layout.addWidget(self.btn_refresh)
-        #self.button_layout.addWidget(self.btn_save)
-        #self.button_layout.addWidget(self.btn_print)
+        # self.button_layout.addWidget(self.btn_refresh)
+        # self.button_layout.addWidget(self.btn_save)
+        # self.button_layout.addWidget(self.btn_print)
         self.button_layout.addStretch()
 
-                # 连接信号
-        self.tableView.selectionModel().selectionChanged.connect(self.update_button_state)
+        # 连接信号
+        self.tableView.selectionModel().selectionChanged.connect(
+            self.update_button_state
+        )
         self.update_button_state()
 
     def add_row(self):
         """添加新行"""
-        self.model.addRow()
+        self.model.add_row()
         # 选中新添加的行
         last_row = self.model.rowCount() - 1
         self.tableView.selectRow(last_row)
@@ -208,7 +227,7 @@ class EditableTableView(QWidget):
         current_index = self.tableView.currentIndex()
         if current_index.isValid():
             row = current_index.row()
-            self.model.removeRow(row)
+            self.model.remove_row(row)
             # 更新按钮状态
             self.update_button_state()
 
@@ -220,7 +239,7 @@ class EditableTableView(QWidget):
         print(self.model._headers)
         for row in self.model._data:
             print(row)
-        
+
         print("-" * 50)
 
     def update_button_state(self):
@@ -228,32 +247,29 @@ class EditableTableView(QWidget):
         current_index = self.tableView.currentIndex()
         if current_index.isValid():
             current_row = current_index.row()
-            #self.btn_up.setEnabled(current_row > 0)
-            #self.btn_down.setEnabled(current_row < self.model.rowCount() - 1)
+            # self.btn_up.setEnabled(current_row > 0)
+            # self.btn_down.setEnabled(current_row < self.model.rowCount() - 1)
             self.btn_delete.setEnabled(True)  # 有选中行时可以删除
         else:
-            #self.btn_up.setEnabled(False)
-            #self.btn_down.setEnabled(False)
+            # self.btn_up.setEnabled(False)
+            # self.btn_down.setEnabled(False)
             self.btn_delete.setEnabled(False)
 
-
-    
-    def update(self,actress_id):
-        '''更新数据并刷新'''
-        self._actress_id=actress_id
+    def update(self, actress_id):
+        """更新数据并刷新"""
+        self._actress_id = actress_id
 
     @Slot(list)
-    def updatedata(self,alias_tag:list[dict]):
-        #logging.debug(actress_name)#这里字典的顺序会发生变化
+    def updatedata(self, alias_tag: list[dict]):
+        # logging.debug(actress_name)#这里字典的顺序会发生变化
         from utils.utils import sort_dict_list_by_keys
-        order=['tag_id','tag_name','redirect_tag_id']
-        alias_tag=sort_dict_list_by_keys(alias_tag,order)
-        
-        self.model.setNewData(alias_tag)
+
+        order = ["tag_id", "tag_name", "redirect_tag_id"]
+        alias_tag = sort_dict_list_by_keys(alias_tag, order)
+
+        self.model.set_new_data(alias_tag)
         self.tableView.setColumnHidden(0, True)
         self.tableView.setColumnHidden(2, True)
 
-        #for i in range(6):
+        # for i in range(6):
         #    self.tableView.setColumnWidth(i,125)
-
-

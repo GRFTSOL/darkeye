@@ -1,0 +1,10 @@
+{
+  "app": "DarkEye",
+  "latestVersion": "1.2.0",
+  "releaseNotes": "新增更新器，下载提示器，修改UI",
+  "package": {
+    "url": "http://127.0.0.1:8000/DarkEye-v1.2.0.tar.zst",
+    "sha256": "b6a1a0a12a5132401a9bc95a2d43cc27ec2f7ed0a5211d33a32ebf24a0852fc6",
+    "size": 86733629
+  }
+}

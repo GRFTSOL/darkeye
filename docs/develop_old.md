@@ -26,8 +26,8 @@ AVmanagement_project/
 
 ├── controller/          #控制
 │   ├── __init__.py
-│   ├── GlobalSignalBus.py       #全局信号
-│   └── MessageService.py        #信息框弹出
+│   ├── global_signal_bus.py      #全局信号
+│   └── message_service.py        #信息框弹出
 
 ├── scripts/                   #使用脚本
 │   ├── build-nuitka.ps1

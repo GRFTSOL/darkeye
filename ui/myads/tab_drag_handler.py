@@ -11,11 +11,12 @@ from ui.myads.pane_widget import PaneWidget, MIME_TYPE_TAB
 
 class DropZone(Enum):
     """拖放目标区域。与 _preview_rect 一致：边缘 50% 为拆分区，中心 50%×50% 为合并。"""
-    TOP = "top"       # 上半 → 上方拆分
-    BOTTOM = "bottom" # 下半 → 下方拆分
-    LEFT = "left"     # 左半 → 左侧拆分
-    RIGHT = "right"   # 右半 → 右侧拆分
-    CENTER = "center" # 中间 50%×50% → 合并到当前窗格
+
+    TOP = "top"  # 上半 → 上方拆分
+    BOTTOM = "bottom"  # 下半 → 下方拆分
+    LEFT = "left"  # 左半 → 左侧拆分
+    RIGHT = "right"  # 右半 → 右侧拆分
+    CENTER = "center"  # 中间 50%×50% → 合并到当前窗格
 
 
 def hit_test(pane_rect, pos: QPoint) -> DropZone:
@@ -80,7 +81,9 @@ def execute_drop_action(
         pane.add_content(content_id, title, widget, icon=icon)
     else:
         new_pane = new_pane_factory()
-        orientation = Qt.Horizontal if zone in (DropZone.LEFT, DropZone.RIGHT) else Qt.Vertical
+        orientation = (
+            Qt.Horizontal if zone in (DropZone.LEFT, DropZone.RIGHT) else Qt.Vertical
+        )
         insert_before = zone in (DropZone.TOP, DropZone.LEFT)
         layout_tree.split(pane, orientation, insert_before, new_pane, ratio=ratio)
         if on_new_pane:

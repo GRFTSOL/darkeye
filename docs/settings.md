@@ -257,13 +257,3 @@
 后续若增加新的快捷键，会在这里同步更新。
 
 ---
-
-## 七、更多文档
-
-- 若本帮助中没有覆盖到的内容，可以在程序目录下查看：
-  - `docs/architecture.md`：整体架构说明
-  - `docs/development.md`：开发环境与构建说明
-  - `docs/security.md`：安全与数据存储说明
-  - `docs/CHANGELOG.md`：版本更新记录
-
-如果你在使用中遇到问题或文档描述不清，可以考虑加入 README 中给出的 Discord 社区进行反馈与讨论。

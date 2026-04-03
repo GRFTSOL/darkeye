@@ -5,9 +5,10 @@ import sqlite3
 import logging
 
 from config import DATABASE
-from controller.GlobalSignalBus import global_signals
+from controller.global_signal_bus import global_signals
+from core.database.db_queue import submit_db_raw
 from core.database.db_utils import attach_private_db, detach_private_db
-from core.dvd.DvdShelfView import DvdShelfView
+from core.dvd.dvd_shelf_view import DvdShelfView
 
 
 class HomePage(QWidget):
@@ -30,8 +31,8 @@ class HomePage(QWidget):
             logging.info("HomePage: 收藏列表为空，DVD 书架不加载任何作品。")
 
         # 监听全局作品数据变更信号，自动刷新首页收藏书架
-        global_signals.work_data_changed.connect(self._refresh_favorites)
-        global_signals.like_work_changed.connect(self._refresh_favorites)
+        global_signals.workDataChanged.connect(self._refresh_favorites)
+        global_signals.likeWorkChanged.connect(self._refresh_favorites)
 
     def _load_favorite_work_ids(self) -> list[int]:
         """从公库 + 私库加载按片商前缀排序后的收藏作品 work_id 列表。"""
@@ -46,18 +47,20 @@ class HomePage(QWidget):
         WHERE work.is_deleted = 0
         ORDER BY p.maker_id IS NULL, p.maker_id, work.serial_number
         """
-        try:
+        def _run_read() -> list[int]:
             with sqlite3.connect(f"file:{DATABASE}?mode=ro", uri=True) as conn:
                 cursor = conn.cursor()
                 attach_private_db(cursor)
                 cursor.execute(sql)
                 rows = cursor.fetchall()
                 detach_private_db(cursor)
+            return [int(row[0]) for row in rows if row and row[0] is not None]
+
+        try:
+            return submit_db_raw(_run_read).result()
         except Exception as e:
             logging.error(f"HomePage: 加载收藏作品失败: {e}")
             return []
-
-        return [int(row[0]) for row in rows if row and row[0] is not None]
 
     @Slot()
     def _refresh_favorites(self) -> None:

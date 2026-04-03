@@ -1,6 +1,7 @@
-'''
+"""
 这些都是弹出的界面
-'''
+"""
+
 from .AddActressDialog import AddActressDialog
 from .AddMakeLoveDialog import AddMakeLoveDialog
 from .AddMasturbationDialog import AddMasturbationDialog

@@ -1,17 +1,23 @@
-
-from PySide6.QtWidgets import QHBoxLayout,QVBoxLayout,QFormLayout,QWidget
-from PySide6.QtCore import Qt,QObject,Signal,Property,Signal,Slot,QThreadPool
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QVBoxLayout,
+    QFormLayout,
+    QWidget,
+    QSizePolicy,
+)
+from PySide6.QtCore import Qt, QObject, Signal, Property, Slot, QThreadPool
 
 
 import logging
 
 
 from darkeye_ui import LazyWidget
-from controller.MessageService import MessageBoxService,IMessageService
+from controller.message_service import MessageBoxService, IMessageService
 
-from ui.basic import MovableTableView,IconPushButton
-from core.database.query import get_actress_allname
+from ui.basic import MovableTableView
+from core.database.query import get_actress_allname, get_serial_number
 from ui.widgets import ActressAvatarDropWidget
+from ui.widgets.text.WikiTextEdit import WikiTextEdit
 from server.bridge import ServerBridge
 
 from darkeye_ui.components.toggle_switch import ToggleSwitch
@@ -22,23 +28,26 @@ from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.input import LineEdit
 from darkeye_ui.components.token_spin_box import TokenSpinBox
 
-class Model():
-    '''纯放要显示数据的model'''
-    def __init__(self):
-        self._actress_id:int=None
 
-        self._height:int= None
-        self._cup:str= None
-        self._birthday:str= None
-        self._hip:int= None
-        self._waist:int= None
-        self._bust:int= None
-        self._debut_date:str= None
-        self._need_update:bool= False
+class Model:
+    """纯放要显示数据的model"""
+
+    def __init__(self):
+        self._actress_id: int = None
+
+        self._height: int = None
+        self._cup: str = None
+        self._birthday: str = None
+        self._hip: int = None
+        self._waist: int = None
+        self._bust: int = None
+        self._debut_date: str = None
+        self._need_update: bool = False
         # minnano-av 页面缓存的演员编号（可能来自 DB/插件的字符串）
-        self._minnano_id:str= None
-        self._image_urlA:str= None
-        self._actress_name:list[dict] = []
+        self._minnano_id: str = None
+        self._image_urlA: str = None
+        self._actress_name: list[dict] = []
+        self._notes: str = ""
 
     def to_dict(self):
         return {
@@ -53,132 +62,182 @@ class Model():
             "need_update": self._need_update,
             "minnano_url": self._minnano_id,
             "image_urlA": self._image_urlA,
-            "actress_name": self._actress_name
+            "actress_name": self._actress_name,
+            "notes": self._notes,
         }
 
-class ViewModel(QObject):
-    actress_id_Changed=Signal(int)
-    height_Changed = Signal(int)
-    cup_Changed = Signal(str)
-    birthday_Changed = Signal(str)
-    hip_Changed = Signal(int)
-    waist_Changed = Signal(int)
-    bust_Changed = Signal(int)
-    debut_date_Changed = Signal(str)
-    need_update_Changed = Signal(bool)
-    # 用 str 以避免 Qt 的 Signal(int) 在接收到空字符串/非数字时转换失败
-    minnano_id_Changed = Signal(str)
-    image_urlA_Changed = Signal(str)
-    actress_name_Changed = Signal(list)
 
-    def __init__(self, model:Model=None,message_service:IMessageService=None):
+class ViewModel(QObject):
+    actressIdChanged = Signal(int)
+    heightChanged = Signal(int)
+    cupChanged = Signal(str)
+    birthdayChanged = Signal(str)
+    hipChanged = Signal(int)
+    waistChanged = Signal(int)
+    bustChanged = Signal(int)
+    debutDateChanged = Signal(str)
+    needUpdateChanged = Signal(bool)
+    # 用 str 以避免 Qt 的 Signal(int) 在接收到空字符串/非数字时转换失败
+    minnanoIdChanged = Signal(str)
+    imageUrlAChanged = Signal(str)
+    actressNameChanged = Signal(list)
+    notesChanged = Signal(str)
+
+    def __init__(self, model: Model = None, message_service: IMessageService = None):
         super().__init__()
-        self.model:Model = model
-        self.msg:MessageBoxService=message_service
+        self.model: Model = model
+        self.msg: MessageBoxService = message_service
 
         bridge = ServerBridge()
 
-        bridge.actressid_received.connect(self.set_minnano_id)
-        bridge.minnano_actress_capture_received.connect(self.apply_minnano_capture)
-
+        bridge.actressIdReceived.connect(self.set_minnano_id)
+        bridge.minnanoActressCaptureReceived.connect(self.apply_minnano_capture)
 
     def get_actress_id(self):
         return self.model._actress_id
-    def set_actress_id(self,value:int):
+
+    def set_actress_id(self, value: int):
         if self.model._actress_id != value:
             self.model._actress_id = value
-            self.actress_id_Changed.emit(value)
-    actress_id=Property(int,get_actress_id,set_actress_id,notify=actress_id_Changed)
+            self.actressIdChanged.emit(value)
+
+    actress_id = Property(int, get_actress_id, set_actress_id, notify=actressIdChanged)
 
     def get_height(self):
         return self.model._height
-    def set_height(self, value:int):
+
+    def set_height(self, value: int):
         if self.model._height != value:
             self.model._height = value
-            self.height_Changed.emit(value)
-    height = Property(int, get_height, set_height, notify=height_Changed)
+            self.heightChanged.emit(value)
+
+    height = Property(int, get_height, set_height, notify=heightChanged)
 
     def get_cup(self):
         return self.model._cup
-    def set_cup(self, value:str):
+
+    def set_cup(self, value: str):
         if self.model._cup != value:
             self.model._cup = value
-            self.cup_Changed.emit(value)
-            #logging.debug(f"cup changed to {value}")
-    cup = Property(str, get_cup, set_cup, notify=cup_Changed)
+            self.cupChanged.emit(value)
+            # logging.debug(f"cup changed to {value}")
+
+    cup = Property(str, get_cup, set_cup, notify=cupChanged)
 
     def get_birthday(self):
         return self.model._birthday
-    def set_birthday(self, value:str):
+
+    def set_birthday(self, value: str):
         if self.model._birthday != value:
             self.model._birthday = value
-            self.birthday_Changed.emit(value)
-    birthday = Property(str, get_birthday, set_birthday, notify=birthday_Changed)
+            self.birthdayChanged.emit(value)
+
+    birthday = Property(str, get_birthday, set_birthday, notify=birthdayChanged)
 
     def get_hip(self):
         return self.model._hip
-    def set_hip(self, value:int):
+
+    def set_hip(self, value: int):
         if self.model._hip != value:
             self.model._hip = value
-            self.hip_Changed.emit(value)
-    hip = Property(int, get_hip, set_hip, notify=hip_Changed)
+            self.hipChanged.emit(value)
+
+    hip = Property(int, get_hip, set_hip, notify=hipChanged)
 
     def get_waist(self):
         return self.model._waist
-    def set_waist(self, value:int):
+
+    def set_waist(self, value: int):
         if self.model._waist != value:
             self.model._waist = value
-            self.waist_Changed.emit(value)
-    waist = Property(int, get_waist, set_waist, notify=waist_Changed)
+            self.waistChanged.emit(value)
+
+    waist = Property(int, get_waist, set_waist, notify=waistChanged)
 
     def get_bust(self):
         return self.model._bust
-    def set_bust(self, value:int):
+
+    def set_bust(self, value: int):
         if self.model._bust != value:
             self.model._bust = value
-            self.bust_Changed.emit(value)
-    bust = Property(int, get_bust, set_bust, notify=bust_Changed)
+            self.bustChanged.emit(value)
+
+    bust = Property(int, get_bust, set_bust, notify=bustChanged)
 
     def get_debut_date(self):
         return self.model._debut_date
-    def set_debut_date(self, value:str):
+
+    def set_debut_date(self, value: str):
         if self.model._debut_date != value:
             self.model._debut_date = value
-            self.debut_date_Changed.emit(value)
-    debut_date = Property(str, get_debut_date, set_debut_date, notify=debut_date_Changed)
+            self.debutDateChanged.emit(value)
+
+    debut_date = Property(str, get_debut_date, set_debut_date, notify=debutDateChanged)
 
     def get_need_update(self):
         return self.model._need_update
-    def set_need_update(self, value:bool):
+
+    def set_need_update(self, value: bool):
         if self.model._need_update != value:
             self.model._need_update = value
-            self.need_update_Changed.emit(value)
-    need_update = Property(bool, get_need_update, set_need_update, notify=need_update_Changed)
+            self.needUpdateChanged.emit(value)
+
+    need_update = Property(
+        bool, get_need_update, set_need_update, notify=needUpdateChanged
+    )
 
     def get_image_urlA(self):
         return self.model._image_urlA
-    def set_image_urlA(self, value:str):
+
+    def set_image_urlA(self, value: str):
         if self.model._image_urlA != value:
             self.model._image_urlA = value
-            self.image_urlA_Changed.emit(value)
-    image_urlA = Property(str, get_image_urlA, set_image_urlA, notify=image_urlA_Changed)
+            self.imageUrlAChanged.emit(value)
+
+    image_urlA = Property(str, get_image_urlA, set_image_urlA, notify=imageUrlAChanged)
 
     def get_actress_name(self):
-        #logging.debug("读取actress_name数据")
+        # logging.debug("读取actress_name数据")
         return self.model._actress_name
-    def set_actress_name(self, value:list[dict]):
+
+    def set_actress_name(self, value: list[dict]):
         logging.debug("设置viewmodel里的actress_name")
         from utils.utils import sort_dict_list_by_keys
-        order=['actress_name_id','cn','jp', 'kana','en','level','redirect_actress_name_id']
-        value=sort_dict_list_by_keys(value,order)
+
+        order = [
+            "actress_name_id",
+            "cn",
+            "jp",
+            "kana",
+            "en",
+            "level",
+            "redirect_actress_name_id",
+        ]
+        value = sort_dict_list_by_keys(value, order)
         if self.model._actress_name != value:
             self.model._actress_name = value
-            self.actress_name_Changed.emit(value)
+            self.actressNameChanged.emit(value)
 
-    actress_name = Property(list, get_actress_name, set_actress_name, notify=actress_name_Changed)
+    actress_name = Property(
+        list, get_actress_name, set_actress_name, notify=actressNameChanged
+    )
+
+    def get_notes(self):
+        return self.model._notes
+
+    def set_notes(self, value: str):
+        if not value:
+            value = ""
+        normalized = value.strip()
+        if self.model._notes != normalized:
+            self.model._notes = normalized
+            self.notesChanged.emit(normalized)
+
+    notes = Property(str, get_notes, set_notes, notify=notesChanged)
 
     def get_minnano_id(self):
         return self.model._minnano_id
+
     def set_minnano_id(self, value):
         """
         minnano-av id 有时来自 DB（可能是 None/空字符串），有时来自插件（int）。
@@ -193,16 +252,17 @@ class ViewModel(QObject):
 
         if self.model._minnano_id != normalized:
             self.model._minnano_id = normalized
-            self.minnano_id_Changed.emit(normalized)
-    minnano_id = Property(str, get_minnano_id, set_minnano_id, notify=minnano_id_Changed)
+            self.minnanoIdChanged.emit(normalized)
 
+    minnano_id = Property(str, get_minnano_id, set_minnano_id, notify=minnanoIdChanged)
 
-    def load(self,actress_id:int):
-        '''加载'''
+    def load(self, actress_id: int):
+        """加载"""
         from core.database.query import get_actress_info
-        actress=get_actress_info(actress_id)
+
+        actress = get_actress_info(actress_id)
         if not actress:
-            self.msg.show_warning("错误","未找到该女优信息")
+            self.msg.show_warning("错误", "未找到该女优信息")
             return
         logging.debug(f"设置actress_id:{actress_id}")
         self.set_actress_id(actress_id)
@@ -217,67 +277,73 @@ class ViewModel(QObject):
         self.set_debut_date(actress.get("debut_date") or "")
         self.set_image_urlA(actress.get("image_urlA") or "")
         self.set_actress_name(get_actress_allname(self.actress_id))
-        self.set_need_update(actress.get("need_update")or False)
-
+        self.set_need_update(actress.get("need_update") or False)
+        self.set_notes(actress.get("notes") or "")
 
     @Slot()
     def submit(self):
-        '''手动修改记录
-        '''
-        #获得基本数据
-        
-        logging.debug("添加记录")
-        data=self.model.to_dict()#从viewmodel里取
+        """手动修改记录"""
+        # 获得基本数据
 
-        image_url=str(self.actress_id) +'-'+self.actress_name[0]["jp"]+'.jpg'#图片名字的规则,要保证日文名字一定要有
-        if self.get_image_urlA() is None or self.get_image_urlA()=="":
-            data["image_urlA"]=None
+        logging.debug("添加记录")
+        data = self.model.to_dict()  # 从viewmodel里取
+
+        image_url = (
+            str(self.actress_id) + "-" + self.actress_name[0]["jp"] + ".jpg"
+        )  # 图片名字的规则,要保证日文名字一定要有
+        if self.get_image_urlA() is None or self.get_image_urlA() == "":
+            data["image_urlA"] = None
         else:
             from core.database.insert import rename_save_image
-            rename_save_image(data["image_urlA"],image_url,"actress")
-            data["image_urlA"]=image_url
+
+            rename_save_image(data["image_urlA"], image_url, "actress")
+            data["image_urlA"] = image_url
 
         self._update_actress_and_handle_result(**data)
 
-    def _update_actress_and_handle_result(self,**data):
+    def _update_actress_and_handle_result(self, **data):
         from core.database.update import update_actress_byhand
-        actress_name=data["actress_name"][0]["jp"]
+
+        actress_name = data["actress_name"][0]["jp"]
 
         if update_actress_byhand(**data):
-            self.msg.show_info("更新女优信息成功",f"女优名字: {actress_name}")
-            logging.info("更新女优成功，女优名字：%s",actress_name)
-            #刷新，重新加载
+            self.msg.show_info("更新女优信息成功", f"女优名字: {actress_name}")
+            logging.info("更新女优成功，女优名字：%s", actress_name)
+            # 刷新，重新加载
             self.load(data.get("actress_id"))
             return True
         else:
-            self.msg.show_warning("更新女优信息失败",f"未知原因")
-            logging.warning("更新%s女优信息失败",actress_name)
+            self.msg.show_warning("更新女优信息失败", f"未知原因")
+            logging.warning("更新%s女优信息失败", actress_name)
             return False
 
     @Slot()
     def clawer_update(self):
-        '''爬虫更新单个女优的数据，是直接更新，而不是写界面后提交'''
+        """爬虫更新单个女优的数据，是直接更新，而不是写界面后提交"""
         from core.crawler.minnanoav import SearchSingleActressInfo
-        from core.crawler.Worker import Worker
+        from core.crawler.worker import Worker, wire_worker_finished
 
-        #taskmanager=TaskManager.instance()
-        #task=taskmanager.add_task("爬虫更新单个女优数据")
+        # taskmanager=TaskManager.instance()
+        # task=taskmanager.add_task("爬虫更新单个女优数据")
         logging.info(self.actress_id)
         logging.info(self.actress_name[0]["jp"])
-        worker=Worker(lambda:SearchSingleActressInfo(self.actress_id,self.actress_name[0]["jp"]))#传一个函数名进去，注意这里
-        worker.signals.finished.connect(lambda result:self.on_result(result,self.actress_name[0]["jp"]))
+        worker = Worker(
+            lambda: SearchSingleActressInfo(self.actress_id, self.actress_name[0]["jp"])
+        )  # 传一个函数名进去，注意这里
+        nm = self.actress_name[0]["jp"]
+        wire_worker_finished(worker, lambda r, n=nm: self.on_result(r, n))
         QThreadPool.globalInstance().start(worker)
 
-
-    def update_minnano_id(self,value):
-        '''将女优的minnano_id直接写入数据库'''
+    def update_minnano_id(self, value):
+        """将女优的minnano_id直接写入数据库"""
         from core.database.update import update_actress_minnano_id
+
         logging.info(f"设置女优{self.actress_id}的minnano_id为{value}")
-        update_actress_minnano_id(self.actress_id,value)
+        update_actress_minnano_id(self.actress_id, value)
 
     @Slot(dict)
     def apply_minnano_capture(self, body: dict):
-        '''插件采集的女优详情 JSON 仅回填界面；不写库，用户确认后点「提交修改」再持久化（含 minnano id）。'''
+        """插件采集的女优详情 JSON 仅回填界面；不写库，用户确认后点「提交修改」再持久化（含 minnano id）。"""
         import copy
         from datetime import datetime
         from pathlib import Path
@@ -295,7 +361,9 @@ class ViewModel(QObject):
             except (TypeError, ValueError):
                 aid_int = None
             if aid_int is not None and self.actress_id != aid_int:
-                self.msg.show_warning("提示", "采集上下文与当前编辑女优不一致，已忽略。")
+                self.msg.show_warning(
+                    "提示", "采集上下文与当前编辑女优不一致，已忽略。"
+                )
                 return
 
         data = body.get("data") or {}
@@ -322,15 +390,17 @@ class ViewModel(QObject):
         aliases = data.get("alias_chain") or []
 
         if not names:
-            names = [{
-                "actress_name_id": None,
-                "cn": "",
-                "jp": jp,
-                "kana": kana,
-                "en": en,
-                "redirect_actress_name_id": None,
-                "level": 1,
-            }]
+            names = [
+                {
+                    "actress_name_id": None,
+                    "cn": "",
+                    "jp": jp,
+                    "kana": kana,
+                    "en": en,
+                    "redirect_actress_name_id": None,
+                    "level": 1,
+                }
+            ]
         else:
             names[0]["jp"] = jp or names[0].get("jp", "")
             names[0]["kana"] = kana or names[0].get("kana", "")
@@ -348,15 +418,17 @@ class ViewModel(QObject):
                 names[row_idx]["kana"] = kana_a or names[row_idx].get("kana", "")
                 names[row_idx]["en"] = en_a or names[row_idx].get("en", "")
             else:
-                names.append({
-                    "actress_name_id": None,
-                    "cn": "",
-                    "jp": jp_a,
-                    "kana": kana_a,
-                    "en": en_a,
-                    "redirect_actress_name_id": None,
-                    "level": row_idx + 1,
-                })
+                names.append(
+                    {
+                        "actress_name_id": None,
+                        "cn": "",
+                        "jp": jp_a,
+                        "kana": kana_a,
+                        "en": en_a,
+                        "redirect_actress_name_id": None,
+                        "level": row_idx + 1,
+                    }
+                )
         self.set_actress_name(names)
 
         url_img = data.get("头像地址")
@@ -373,15 +445,14 @@ class ViewModel(QObject):
 
         self.msg.show_info("采集完成", "已从 minnano 填入表单，请核对后点击提交。")
 
-
     @Slot(bool)
-    def on_result(self,result:bool,actressName:str):#Qsignal回传信息
+    def on_result(self, result: bool, actressName: str):  # Qsignal回传信息
         pass
-        #from controller.GlobalSignalBus import global_signals
-        #taskmanager=TaskManager.instance()
-        #if result:
+        # from controller.global_signal_bus import global_signals
+        # taskmanager=TaskManager.instance()
+        # if result:
         #    taskmanager.complete_task(task,"查询完成")
-        #else:
+        # else:
         #    taskmanager.error_task(task,"查询失败")
 
     @Slot()
@@ -390,30 +461,33 @@ class ViewModel(QObject):
 
     @Slot()
     def delete_actress(self):
-        '''直接删除一个女优，如果有在作品中的就不删除'''
-        from core.database.delete import  delete_actress
-        success,message=delete_actress(self.actress_id)
+        """直接删除一个女优，如果有在作品中的就不删除"""
+        from core.database.delete import delete_actress
+
+        success, message = delete_actress(self.actress_id)
         if success:
-            self.msg.show_info("提示",message)
-            from controller.GlobalSignalBus import global_signals
-            global_signals.actress_data_changed.emit()
+            self.msg.show_info("提示", message)
+            from controller.global_signal_bus import global_signals
+
+            global_signals.actressDataChanged.emit()
         else:
-            self.msg.show_warning("提示",message)
+            self.msg.show_warning("提示", message)
 
     @Slot()
     def show_actress(self):
-        '''跳转到展示单个女优界面'''
-        #from controller.GlobalSignalBus import global_signals
+        """跳转到展示单个女优界面"""
         logging.debug(f"准备跳转展示女优界面{self.get_actress_id()}")
-        #global_signals.actress_clicked.emit(self.get_actress_id())
-        # 使用路由替代信号跳转
+
         from ui.navigation.router import Router
-        Router.instance().push("actress", actress_id=self.get_actress_id())
+
+        Router.instance().push("single_actress", actress_id=self.get_actress_id())
+
 
 class ModifyActressPage(LazyWidget):
-    '''
+    """
     用于修改女优信息的页面
-    '''
+    """
+
     def __init__(self):
         super().__init__()
 
@@ -427,137 +501,180 @@ class ModifyActressPage(LazyWidget):
     def init_ui(self):
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
-        #mainlayout.addSpacing(70)
-        
-        hlayout=QHBoxLayout()
+
+        hlayout = QHBoxLayout()
         mainlayout.addLayout(hlayout)
-        self.moveable_name=MovableTableView()
-        self.avatar=ActressAvatarDropWidget("actress")
+        self.moveable_name = MovableTableView()
+        self.avatar = ActressAvatarDropWidget("actress")
+        # 列表页里 Label+大图默认 sizeHint 很大，且基类 setMaximumHeight(800) 会允许被行高一起拉高
+        self.avatar.setMaximumHeight(300)
+        self.avatar.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
 
-        self.basic=QWidget()
+        self.notes_panel = QWidget()
+        notes_vlayout = QVBoxLayout(self.notes_panel)
+        notes_vlayout.setContentsMargins(0, 0, 0, 0)
+        notes_vlayout.addWidget(Label("自由记录"))
+        self.input_notes = WikiTextEdit()
+        self.input_notes.set_completer_func(get_serial_number)
+        self.input_notes.setMinimumWidth(280)
+        self.input_notes.setMinimumHeight(120)
+        self.input_notes.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        notes_vlayout.addWidget(self.input_notes, 1)
+
+        self.moveable_name.tableView.setMinimumHeight(160)
+        self.moveable_name.tableView.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+
+        self.basic = QWidget()
         self.basic.setFixedWidth(300)
-        vlayout=QVBoxLayout(self.basic)
+        vlayout = QVBoxLayout(self.basic)
         vlayout.addWidget(self.avatar)
-        formlayout=QFormLayout()
+        formlayout = QFormLayout()
         vlayout.addLayout(formlayout)
-        self.input_height=TokenSpinBox()
-        self.input_height.setRange(0,190)
-        self.input_waist=TokenSpinBox()
-        self.input_waist.setRange(0,120)
-        self.input_hip=TokenSpinBox()
-        self.input_hip.setRange(0,120)
-        self.input_bust=TokenSpinBox()
-        self.input_bust.setRange(0,120)
-        self.input_cup=ComboBox()
-        self.input_cup.addItems(["A","B","C","D","E","F","G","H","I","J","K","L","M"])
-        
-        self.input_birthday=LineEdit()
-        self.input_debut_date=LineEdit()
-        self.need_update=ToggleSwitch(width=40,height=20)
-        self.btn_commit=Button("提交修改")
-        self.btn_claw_update=Button("爬虫直接更新")
-        #self.btn_printModel=QPushButton("打印数据")
-        self.btn_minnano=Button("跳转手动选择")
-        self.smallwidget=QWidget()#放一些小按钮
-        self.smalllayout=QHBoxLayout(self.smallwidget)
-        self.btn_delete=IconPushButton(icon_name="trash_2")
-        self.btn_show=IconPushButton(icon_name="eye")
+        self.input_height = TokenSpinBox()
+        self.input_height.setRange(0, 190)
+        self.input_waist = TokenSpinBox()
+        self.input_waist.setRange(0, 120)
+        self.input_hip = TokenSpinBox()
+        self.input_hip.setRange(0, 120)
+        self.input_bust = TokenSpinBox()
+        self.input_bust.setRange(0, 120)
+        self.input_cup = ComboBox()
+        self.input_cup.addItems(
+            ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
+        )
 
-        self.input_minnano_id=LineEdit()
+        self.input_birthday = LineEdit()
+        self.input_debut_date = LineEdit()
+        self.need_update = ToggleSwitch(width=40, height=20)
+        self.btn_commit = Button("提交修改")
+        self.btn_claw_update = Button("爬虫直接更新")
+        # self.btn_printModel=QPushButton("打印数据")
+        self.btn_minnano = Button("跳转手动选择")
+        self.smallwidget = QWidget()  # 放一些小按钮
+        self.smalllayout = QHBoxLayout(self.smallwidget)
+        self.btn_delete = IconPushButton(icon_name="trash_2")
+        self.btn_show = IconPushButton(icon_name="eye")
+
+        self.input_minnano_id = LineEdit()
 
         self.smalllayout.addWidget(self.btn_show)
         self.smalllayout.addWidget(self.btn_delete)
-        
-        formlayout.addRow(Label("身高(cm)"),self.input_height)
-        formlayout.addRow(Label("罩杯"),self.input_cup)
-        formlayout.addRow(Label("胸围(cm)"),self.input_bust)        
-        formlayout.addRow(Label("腰围(cm)"),self.input_waist)
-        formlayout.addRow(Label("臀围(cm)"),self.input_hip)
-        formlayout.addRow(Label("生日(yyyy-mm-dd)"),self.input_birthday)
-        formlayout.addRow(Label("出道日期(yyyy-mm-dd)"),self.input_debut_date)
-        formlayout.addRow(Label("需要更新"),self.need_update)
-        formlayout.addRow(Label("minnano-av id"),self.input_minnano_id)
 
-        formlayout.addRow("",self.btn_commit)
-        formlayout.addRow("",self.btn_claw_update)
-        #formlayout.addRow("",self.btn_printModel)
-        formlayout.addRow("",self.btn_minnano)
-        formlayout.addRow("",self.smallwidget)
+        formlayout.addRow(Label("身高(cm)"), self.input_height)
+        formlayout.addRow(Label("罩杯"), self.input_cup)
+        formlayout.addRow(Label("胸围(cm)"), self.input_bust)
+        formlayout.addRow(Label("腰围(cm)"), self.input_waist)
+        formlayout.addRow(Label("臀围(cm)"), self.input_hip)
+        formlayout.addRow(Label("生日(yyyy-mm-dd)"), self.input_birthday)
+        formlayout.addRow(Label("出道日期(yyyy-mm-dd)"), self.input_debut_date)
+        formlayout.addRow(Label("需要更新"), self.need_update)
+        formlayout.addRow(Label("minnano-av id"), self.input_minnano_id)
 
-        
+        formlayout.addRow("", self.btn_commit)
+        formlayout.addRow("", self.btn_claw_update)
+        # formlayout.addRow("",self.btn_printModel)
+        formlayout.addRow("", self.btn_minnano)
+        formlayout.addRow("", self.smallwidget)
+
         hlayout.addWidget(self.basic)
-        hlayout.addWidget(self.moveable_name)
-        hlayout.addStretch()
-
+        hlayout.addWidget(self.moveable_name, 2)
+        hlayout.addWidget(self.notes_panel, 1)
 
     def config(self):
-        '''配置model与view'''
+        """配置model与view"""
 
-        self.msg=MessageBoxService(self)#弹窗服务
-        self.model=Model()
-        self.vm = ViewModel(self.model,self.msg)#依赖注入
+        self.msg = MessageBoxService(self)  # 弹窗服务
+        self.model = Model()
+        self.vm = ViewModel(self.model, self.msg)  # 依赖注入
+        self._notes_binding_lock = False
 
-    
     def signal_connect(self):
         self.btn_claw_update.clicked.connect(self.vm.clawer_update)
-        #self.btn_printModel.clicked.connect(self.vm.print)
+        # self.btn_printModel.clicked.connect(self.vm.print)
         self.btn_commit.clicked.connect(self.vm.submit)
         self.btn_minnano.clicked.connect(self.jump_minnano)
         self.btn_delete.clicked.connect(self.vm.delete_actress)
         self.btn_show.clicked.connect(self.vm.show_actress)
 
-
     def bind_model(self):
-        '''双向绑定'''
-        #实际上下面都会有循环绑定的问题，后面需要改
+        """双向绑定"""
+        # 实际上下面都会有循环绑定的问题，后面需要改
         self.input_height.valueChanged.connect(self.vm.set_height)
-        self.vm.height_Changed.connect(self.input_height.setValue)
+        self.vm.heightChanged.connect(self.input_height.setValue)
 
         self.input_hip.valueChanged.connect(self.vm.set_hip)
-        self.vm.hip_Changed.connect(self.input_hip.setValue)
+        self.vm.hipChanged.connect(self.input_hip.setValue)
 
         self.input_waist.valueChanged.connect(self.vm.set_waist)
-        self.vm.waist_Changed.connect(self.input_waist.setValue)
+        self.vm.waistChanged.connect(self.input_waist.setValue)
 
         self.input_bust.valueChanged.connect(self.vm.set_bust)
-        self.vm.bust_Changed.connect(self.input_bust.setValue)
+        self.vm.bustChanged.connect(self.input_bust.setValue)
 
         self.input_cup.currentTextChanged.connect(self.vm.set_cup)
-        self.vm.cup_Changed.connect(self.input_cup.setCurrentText)#这里有问题
+        self.vm.cupChanged.connect(self.input_cup.setCurrentText)  # 这里有问题
 
         self.input_birthday.textChanged.connect(self.vm.set_birthday)
-        self.vm.birthday_Changed.connect(self.input_birthday.setText)
+        self.vm.birthdayChanged.connect(self.input_birthday.setText)
 
         self.input_debut_date.textChanged.connect(self.vm.set_debut_date)
-        self.vm.debut_date_Changed.connect(self.input_debut_date.setText)
+        self.vm.debutDateChanged.connect(self.input_debut_date.setText)
 
         self.need_update.toggled.connect(self.vm.set_need_update)
-        self.vm.need_update_Changed.connect(self.need_update.setChecked)
+        self.vm.needUpdateChanged.connect(self.need_update.setChecked)
 
-        #minnano_id的绑定
+        # minnano_id的绑定
         self.input_minnano_id.textChanged.connect(self.vm.set_minnano_id)
-        self.vm.minnano_id_Changed.connect(self.input_minnano_id.setText)
+        self.vm.minnanoIdChanged.connect(self.input_minnano_id.setText)
 
-        #tablemodel与viewmodel的绑定
+        # tablemodel与viewmodel的绑定
         # TODO 这里存在循环绑定的问题
-        self.moveable_name.model.data_updated.connect(self.vm.set_actress_name)
-        self.vm.actress_name_Changed.connect(self.moveable_name.updatedata)#这个实际上有点违反原则，pyside6信号传字典时顺序不可控
+        self.moveable_name.model.dataUpdated.connect(self.vm.set_actress_name)
+        self.vm.actressNameChanged.connect(
+            self.moveable_name.updatedata
+        )  # 这个实际上有点违反原则，pyside6信号传字典时顺序不可控
 
-        self.vm.image_urlA_Changed.connect(self.avatar.set_image)#这些绑定实际上都是有点问题的，不过先不管了
-        self.avatar.cover_changed.connect( # coverdroplabel 可以在图片改变后发信号更新模型
+        self.vm.imageUrlAChanged.connect(
+            self.avatar.set_image
+        )  # 这些绑定实际上都是有点问题的，不过先不管了
+        self.avatar.coverChanged.connect(  # coverdroplabel 可以在图片改变后发信号更新模型
             lambda: self.vm.set_image_urlA(self.avatar.get_image())
         )
 
+        self.input_notes.textChanged.connect(self._notes_ui_to_vm)
+        self.vm.notesChanged.connect(self._notes_vm_to_ui)
 
-    def update(self,actress_id:int):
-        '''加载'''
+    def _notes_ui_to_vm(self):
+        if self._notes_binding_lock:
+            return
+        self._notes_binding_lock = True
+        self.vm.set_notes(self.input_notes.toPlainText())
+        self._notes_binding_lock = False
+
+    def _notes_vm_to_ui(self, text: str):
+        if self._notes_binding_lock:
+            return
+        self._notes_binding_lock = True
+        self.input_notes.blockSignals(True)
+        self.input_notes.clear()
+        self.input_notes.setPlainText(text or "")
+        self.input_notes.blockSignals(False)
+        self._notes_binding_lock = False
+
+    def update(self, actress_id: int):
+        """加载"""
         self.vm.load(actress_id)
 
     @Slot()
     def jump_minnano(self):
         from core.crawler.jump import jump_minnanoav
-        
-        jp_name=self.vm.get_actress_name()
-        jp_name=jp_name[0]["jp"]
-        jump_minnanoav(jp_name)
 
+        jp_name = self.vm.get_actress_name()
+        jp_name = jp_name[0]["jp"]
+        jump_minnanoav(jp_name)

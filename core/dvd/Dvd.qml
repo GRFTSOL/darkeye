@@ -13,6 +13,8 @@ Node {
     property var actionAnchorNode: spineActionAnchor
     // Expose the front center anchor for scene-level title/story overlay projection.
     property var frontInfoAnchorNode: frontInfoAnchor
+    // 光碟（CD）下方一点，用于 3D→2D 投影后放置剧照横条。
+    property var fanartStripAnchorNode: fanartStripAnchor
     /** 点击 CD 盘面时发射 */
     signal cdClicked()
     signal closeAnimationFinished()
@@ -60,6 +62,7 @@ Node {
     }
     */
 
+    // 伪 Toon 风格：降低金属度、提高粗糙度，让高光更“块状”、整体更偏 2D 纸质感
     PrincipledMaterial {
         id: pic_material
         baseColorMap: Texture {
@@ -69,7 +72,8 @@ Node {
         }
         opacityChannel: Material.A
         metalness: 0
-        roughness: 0.08
+        // 原来 roughness≈0.08 偏写实高光，这里拉高到 0.9 做成近乎哑光
+        roughness: 0.9
         cullMode: Material.NoCulling
     }
 
@@ -89,11 +93,12 @@ Node {
         source: (typeof meshesPath !== "undefined" ? meshesPath : "meshes/") + "cD.mesh"
 
 
+        // CD 盘面也调成更哑光、少金属的 toon 风格
         PrincipledMaterial {
             id: transparent_material
             baseColor: "#ffffffcc"
             metalness: 0
-            roughness: 0.0727273
+            roughness: 0.9
             cullMode: Material.NoCulling
             alphaMode: PrincipledMaterial.Blend
         }
@@ -101,8 +106,8 @@ Node {
         PrincipledMaterial {
             id: rainbow_material
             baseColor: "#ffcccccc"
-            metalness: 0.9
-            roughness: 0.15
+            metalness: 0.15
+            roughness: 0.85
             cullMode: Material.NoCulling
         }
         materials: [
@@ -110,6 +115,13 @@ Node {
             transparent_material,
             rainbow_material
         ]
+    }
+
+    Node {
+        id: fanartStripAnchor
+        x: cD.x
+        y: cD.y - 0.06
+        z: cD.z
     }
 
     Model {
@@ -140,11 +152,12 @@ Node {
         z: -0.000478134
         source: (typeof meshesPath !== "undefined" ? meshesPath : "meshes/") + "back.mesh"
 
+        // 盒体外壳同样走哑光 toon 质感
         PrincipledMaterial {
             id: trans_material
             baseColor: "#ffffffff"
             metalness: 0
-            roughness: 0.3
+            roughness: 0.9
             cullMode: Material.NoCulling
         }
 

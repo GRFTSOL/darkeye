@@ -1,10 +1,12 @@
 """单元测试：tab_drag_handler 的 hit_test 与 execute_drop_action 正确性。"""
+
 import sys
 import os
 from unittest.mock import Mock, MagicMock
 
 import pytest
 from pathlib import Path
+
 root_dir = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root_dir))
 
@@ -85,7 +87,9 @@ class TestExecuteDropAction:
         event.acceptProposedAction = Mock()
         return event
 
-    def _make_mock_pane(self, get_content_widget_result=MagicMock(), get_icon_result=None):
+    def _make_mock_pane(
+        self, get_content_widget_result=MagicMock(), get_icon_result=None
+    ):
         pane = Mock()
         pane.get_content_widget = Mock(return_value=get_content_widget_result)
         pane.get_icon_for_content = Mock(return_value=get_icon_result)
@@ -104,9 +108,7 @@ class TestExecuteDropAction:
         """zone 为 None 时返回 False。"""
         pane = self._make_mock_pane()
         event = self._make_mock_event()
-        result = execute_drop_action(
-            Mock(), Mock(), Mock(), None, pane, None, event
-        )
+        result = execute_drop_action(Mock(), Mock(), Mock(), None, pane, None, event)
         assert result is False
 
     def test_no_mime_returns_false(self):
@@ -169,12 +171,19 @@ class TestExecuteDropAction:
         new_pane_factory = Mock()
         event = self._make_mock_event()
         result = execute_drop_action(
-            layout_tree, new_pane_factory, find_pane, None,
-            target_pane, DropZone.CENTER, event
+            layout_tree,
+            new_pane_factory,
+            find_pane,
+            None,
+            target_pane,
+            DropZone.CENTER,
+            event,
         )
         assert result is True
         source_pane.remove_content.assert_called_once_with("cid")
-        target_pane.add_content.assert_called_once_with("cid", "Title", widget, icon=None)
+        target_pane.add_content.assert_called_once_with(
+            "cid", "Title", widget, icon=None
+        )
         new_pane_factory.assert_not_called()
         layout_tree.split.assert_not_called()
 
@@ -189,8 +198,13 @@ class TestExecuteDropAction:
         layout_tree = Mock()
         event = self._make_mock_event()
         result = execute_drop_action(
-            layout_tree, new_pane_factory, find_pane, None,
-            target_pane, DropZone.TOP, event
+            layout_tree,
+            new_pane_factory,
+            find_pane,
+            None,
+            target_pane,
+            DropZone.TOP,
+            event,
         )
         assert result is True
         new_pane_factory.assert_called_once()
@@ -211,8 +225,13 @@ class TestExecuteDropAction:
         layout_tree = Mock()
         event = self._make_mock_event()
         result = execute_drop_action(
-            layout_tree, new_pane_factory, find_pane, None,
-            target_pane, DropZone.BOTTOM, event
+            layout_tree,
+            new_pane_factory,
+            find_pane,
+            None,
+            target_pane,
+            DropZone.BOTTOM,
+            event,
         )
         assert result is True
         layout_tree.split.assert_called_once_with(
@@ -230,8 +249,13 @@ class TestExecuteDropAction:
         layout_tree = Mock()
         event = self._make_mock_event()
         result = execute_drop_action(
-            layout_tree, new_pane_factory, find_pane, None,
-            target_pane, DropZone.LEFT, event
+            layout_tree,
+            new_pane_factory,
+            find_pane,
+            None,
+            target_pane,
+            DropZone.LEFT,
+            event,
         )
         assert result is True
         layout_tree.split.assert_called_once_with(
@@ -249,8 +273,13 @@ class TestExecuteDropAction:
         layout_tree = Mock()
         event = self._make_mock_event()
         result = execute_drop_action(
-            layout_tree, new_pane_factory, find_pane, None,
-            target_pane, DropZone.RIGHT, event
+            layout_tree,
+            new_pane_factory,
+            find_pane,
+            None,
+            target_pane,
+            DropZone.RIGHT,
+            event,
         )
         assert result is True
         layout_tree.split.assert_called_once_with(
@@ -269,8 +298,13 @@ class TestExecuteDropAction:
         on_new_pane = Mock()
         event = self._make_mock_event()
         execute_drop_action(
-            layout_tree, new_pane_factory, find_pane, on_new_pane,
-            target_pane, DropZone.TOP, event
+            layout_tree,
+            new_pane_factory,
+            find_pane,
+            on_new_pane,
+            target_pane,
+            DropZone.TOP,
+            event,
         )
         on_new_pane.assert_called_once_with(new_pane)
 

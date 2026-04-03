@@ -15,9 +15,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QThreadPool, QRunnable, QObject, Signal, Slot
 
 from darkeye_ui.components.label import Label
-from controller.GlobalSignalBus import global_signals
+from controller.global_signal_bus import global_signals
 from core.database.query import get_dashboard_stats
-
 
 # 统计卡片 label -> get_dashboard_stats 返回的键
 _STAT_CARD_KEYS = [
@@ -80,12 +79,12 @@ class StatsOverviewCards(QWidget):
         layout.addLayout(cards_row)
 
         # 连接全局信号，数据变更时刷新统计
-        global_signals.work_data_changed.connect(self._refresh_stats)
-        global_signals.actress_data_changed.connect(self._refresh_stats)
-        global_signals.actor_data_changed.connect(self._refresh_stats)
-        global_signals.tag_data_changed.connect(self._refresh_stats)
-        global_signals.like_work_changed.connect(self._refresh_stats)
-        global_signals.like_actress_changed.connect(self._refresh_stats)
+        global_signals.workDataChanged.connect(self._refresh_stats)
+        global_signals.actressDataChanged.connect(self._refresh_stats)
+        global_signals.actorDataChanged.connect(self._refresh_stats)
+        global_signals.tagDataChanged.connect(self._refresh_stats)
+        global_signals.likeWorkChanged.connect(self._refresh_stats)
+        global_signals.likeActressChanged.connect(self._refresh_stats)
 
         # 初始异步加载
         self._refresh_stats()

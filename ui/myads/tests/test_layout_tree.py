@@ -1,7 +1,9 @@
 """测试 layout_tree 中 LayoutTreeModel、LayoutRenderer 与 LayoutTree 门面的正确性。"""
+
 import sys
 import tempfile
 from pathlib import Path
+
 root_dir = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root_dir))
 
@@ -34,7 +36,9 @@ def test_model_add_pane_to_root():
     model = LayoutTreeModel(root)
     model.add_pane_to_root("p1")
     assert len(root.children) == 1
-    assert isinstance(root.children[0], PaneModelNode) and root.children[0].pane_id == "p1"
+    assert (
+        isinstance(root.children[0], PaneModelNode) and root.children[0].pane_id == "p1"
+    )
     assert model.find_parent_of_pane_id("p1") is root
     assert model.pane_ids() == ["p1"]
     assert model.get_default_target_pane_id() == "p1"
@@ -106,7 +110,9 @@ def test_model_normalize_flatten_same_direction():
     model._rebuild_pane_id_to_parent()
     model.normalize()
     assert len(root.children) == 3
-    assert [c.pane_id if isinstance(c, PaneModelNode) else None for c in root.children] == ["p1", "p2", "p3"]
+    assert [
+        c.pane_id if isinstance(c, PaneModelNode) else None for c in root.children
+    ] == ["p1", "p2", "p3"]
 
 
 def test_model_dump_tree():
@@ -132,6 +138,7 @@ def test_renderer_sync_builds_root():
     renderer = LayoutRenderer(model, get_widget=lambda pid: widgets.get(pid))
     renderer.sync()
     from PySide6.QtWidgets import QSplitter
+
     assert isinstance(renderer.root_widget(), QSplitter)
     assert renderer.root_widget().count() == 1
     assert renderer.get_parent_splitter("p1") is renderer.root_widget()
@@ -280,7 +287,10 @@ def test_layout_tree_remove_pane_promote_root():
 
     assert tree._model.root().orientation == Qt.Horizontal
     assert len(tree._model.root().children) == 2
-    assert tree._model.root().children[0].pane_id == "p2" and tree._model.root().children[1].pane_id == "p4"
+    assert (
+        tree._model.root().children[0].pane_id == "p2"
+        and tree._model.root().children[1].pane_id == "p4"
+    )
     assert tree.find_parent_of_pane(p2) is not None
     assert tree.find_parent_of_pane(p4) is not None
     assert tree.find_pane_by_id("p3") is None
@@ -330,7 +340,11 @@ def test_normalize_flatten_same_direction():
     model.normalize()
 
     assert len(root.children) == 3
-    assert [c.pane_id for c in root.children if isinstance(c, PaneModelNode)] == ["p1", "p2", "p3"]
+    assert [c.pane_id for c in root.children if isinstance(c, PaneModelNode)] == [
+        "p1",
+        "p2",
+        "p3",
+    ]
 
 
 # -------- PaneWidget 在树中的显示测试 --------
@@ -440,7 +454,10 @@ def test_model_to_dict_nested_split():
     d = model.to_dict()
     assert d["type"] == "split" and d["orientation"] == "horizontal"
     assert len(d["children"]) == 2
-    assert d["children"][0]["type"] == "split" and d["children"][0]["orientation"] == "vertical"
+    assert (
+        d["children"][0]["type"] == "split"
+        and d["children"][0]["orientation"] == "vertical"
+    )
     assert [c["pane_id"] for c in d["children"][0]["children"]] == ["p1", "p2"]
     assert d["children"][1]["type"] == "pane" and d["children"][1]["pane_id"] == "p3"
     root2 = LayoutTreeModel.from_dict(d)
@@ -467,7 +484,11 @@ def test_model_load_from_dict():
     assert set(model.pane_ids()) == {"x", "y"}
     r = model.root()
     assert r.orientation == Qt.Vertical
-    assert len(r.children) == 2 and r.children[0].pane_id == "x" and r.children[1].pane_id == "y"
+    assert (
+        len(r.children) == 2
+        and r.children[0].pane_id == "x"
+        and r.children[1].pane_id == "y"
+    )
 
 
 def test_model_pane_ids_from_dict():
@@ -562,6 +583,7 @@ def test_layout_tree_load_layout_with_factory():
             ],
         }
         import json
+
         with open(path, "w", encoding="utf-8") as out:
             json.dump(layout_dict, out, indent=2)
         created = []
@@ -586,7 +608,11 @@ def run_manual():
     """命令行运行：执行所有测试并打印结果。"""
     _ensure_app()
     mod = sys.modules[__name__]
-    tests = [getattr(mod, n) for n in dir(mod) if n.startswith("test_") and callable(getattr(mod, n))]
+    tests = [
+        getattr(mod, n)
+        for n in dir(mod)
+        if n.startswith("test_") and callable(getattr(mod, n))
+    ]
     failed = []
     for t in tests:
         try:

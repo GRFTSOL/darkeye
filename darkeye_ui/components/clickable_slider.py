@@ -65,7 +65,7 @@ class ClickableSlider(QSlider):
         else:
             self.setMinimumWidth(22)
 
-        self.setStyleFromTokens(LIGHT_TOKENS)
+        self.set_style_from_tokens(LIGHT_TOKENS)
         if theme_manager is not None:
             theme_manager.themeChanged.connect(self._on_theme_changed)
 
@@ -75,9 +75,9 @@ class ClickableSlider(QSlider):
         return LIGHT_TOKENS
 
     def _on_theme_changed(self) -> None:
-        self.setStyleFromTokens(self._tokens())
+        self.set_style_from_tokens(self._tokens())
 
-    def setStyleFromTokens(self, tokens: ThemeTokens) -> None:
+    def set_style_from_tokens(self, tokens: ThemeTokens) -> None:
         """根据主题令牌更新滑块样式。"""
         self.setStyleSheet(_slider_style_from_tokens(tokens))
 
@@ -89,7 +89,9 @@ class ClickableSlider(QSlider):
             else:
                 ratio = 1.0 - event.position().y() / max(1, self.height())
             ratio = float(max(0.0, min(1.0, ratio)))
-            value = self.minimum() + int(round(ratio * (self.maximum() - self.minimum())))
+            value = self.minimum() + int(
+                round(ratio * (self.maximum() - self.minimum()))
+            )
             self.setValue(value)
         super().mousePressEvent(event)
 

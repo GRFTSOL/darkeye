@@ -1,7 +1,9 @@
 """独立启动工作区 Demo 窗口，用于验证窗格、拆分、拖拽、预览功能。"""
+
 import sys
 from pathlib import Path
-root_dir = Path(__file__).resolve().parents[3]  
+
+root_dir = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root_dir))
 
 from PySide6.QtWidgets import (
@@ -21,8 +23,9 @@ from PySide6.QtGui import QIcon
 from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfig
 from ui.myads.layout_tree import LayoutTree
 from ui.myads.pane_widget import PaneWidget
-from config import ICONS_PATH
 
+# Demo 专用图标目录，与仓库根 resources 分离，便于测试脚本自包含
+DEMO_ICONS_PATH = Path(__file__).resolve().parent / "icons"
 
 """工作区 Demo 主入口：WorkspaceDemoWidget，组合 Pane、LayoutTree、拖拽与预览。"""
 
@@ -52,10 +55,14 @@ class WorkspaceDemoWidget(QWidget):
 
         root = self._manager.get_root_pane()
 
-        def make_config(title: str, icon_name: str, closeable: bool = True) -> ContentConfig:
+        def make_config(
+            title: str, icon_name: str, closeable: bool = True
+        ) -> ContentConfig:
             d = self._manager.create_content_config()
             w = _make_placeholder_content(title, icon_name)
-            d.set_window_title(title).set_icon(QIcon(str(ICONS_PATH / icon_name))).set_widget(w).set_closeable(closeable)
+            d.set_window_title(title).set_icon(
+                QIcon(str(DEMO_ICONS_PATH / icon_name))
+            ).set_widget(w).set_closeable(closeable)
             return d
 
         d_a = make_config("内容 A", "library-big.svg", False)
@@ -74,8 +81,7 @@ class WorkspaceDemoWidget(QWidget):
         pane4 = self._manager.split(root, Placement.Bottom, ratio=0.4)
         pane5 = self._manager.split(pane3, Placement.Right, ratio=0.3)
         pane6 = self._manager.split(pane5, Placement.Bottom, ratio=0.7)
-        pane7 = self._manager.split(pane3, Placement.Top, ratio=0.5)#可以不填东西
-
+        pane7 = self._manager.split(pane3, Placement.Top, ratio=0.5)  # 可以不填东西
 
         self._manager.fill_pane(root, d_a)
         self._manager.fill_pane(root, d_b)
@@ -89,8 +95,6 @@ class WorkspaceDemoWidget(QWidget):
 
     def layout_tree(self) -> LayoutTree:
         return self._manager.layout_tree()
-
-
 
 
 def _pane_under_cursor(tree: LayoutTree, global_pos):
@@ -145,7 +149,8 @@ def main():
     layout.setContentsMargins(0, 0, 0, 0)
 
     current_target_label = QLabel(
-        "当前拆分目标: " + (split_target_holder[0].pane_id if split_target_holder[0] else "无")
+        "当前拆分目标: "
+        + (split_target_holder[0].pane_id if split_target_holder[0] else "无")
     )
     layout.addWidget(current_target_label)
 
@@ -242,7 +247,9 @@ def main():
         placeholder_text = desc.get("placeholder_text", title)
         cfg = workspace._manager.create_content_config(content_id=content_id)
         w = _make_placeholder_content(placeholder_text, icon_name)
-        cfg.set_window_title(title).set_icon(QIcon(str(ICONS_PATH / icon_name))).set_widget(w).set_closeable(closeable)
+        cfg.set_window_title(title).set_icon(
+            QIcon(str(DEMO_ICONS_PATH / icon_name))
+        ).set_widget(w).set_closeable(closeable)
         return cfg
 
     def do_save_layout():

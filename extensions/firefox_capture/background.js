@@ -122,7 +122,7 @@ function handleCommand(data) {//处理服务器发送来的命令
       addPendingInNewWindow(url, "javlib");
     }
     if (web==="javdb"){//开始执行对javdb的爬虫,第一步就是跳转
-      const url = "https://www.javdb.com/search?q="+String(serial_number);
+      const url = "https://javdb.com/search?q="+String(serial_number);
       addPendingInNewWindow(url, "javdb");
     }
     if (web==="fanza"){//开始执行对fanza的爬虫,第一步就是跳转

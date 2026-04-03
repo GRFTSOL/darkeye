@@ -1,5 +1,6 @@
 # darkeye_ui/components/token_collapsible_section.py - 可折叠面板，由设计令牌驱动
 """可折叠面板（Accordion 风格），背景与图标由设计令牌驱动。"""
+
 from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtCore import Qt, Signal
@@ -64,12 +65,15 @@ class TokenCollapsibleSection(QWidget):
 
     def _update_icon(self, expanded: bool) -> None:
         t = self._tokens()
-        icon = get_builtin_icon("chevron_down" if expanded else "chevron_right", size=16, color=t.color_icon)
+        icon = get_builtin_icon(
+            "chevron_down" if expanded else "chevron_right", size=16, color=t.color_icon
+        )
         self.toggle_btn.setIcon(icon)
 
     def _apply_token_styles(self) -> None:
         t = self._tokens()
-        self.toggle_btn.setStyleSheet(f"""
+        self.toggle_btn.setStyleSheet(
+            f"""
             QToolButton {{
                 border: none;
                 background: {t.color_bg_page};
@@ -81,7 +85,8 @@ class TokenCollapsibleSection(QWidget):
             QToolButton:checked {{
                 background: {t.color_bg_input};
             }}
-        """)
+        """
+        )
         self._update_icon(self._is_expanded)
 
     def toggle_content(self, checked: bool) -> None:
@@ -96,10 +101,10 @@ class TokenCollapsibleSection(QWidget):
         self.updateGeometry()
         self.toggled.emit(checked)
 
-    def addWidget(self, widget) -> None:
+    def add_widget(self, widget) -> None:
         self.content_layout.addWidget(widget)
 
-    def addLayout(self, layout) -> None:
+    def add_layout(self, layout) -> None:
         self.content_layout.addLayout(layout)
 
     def expand(self) -> None:

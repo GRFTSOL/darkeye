@@ -1,10 +1,10 @@
 {
-    "app": "DarkEye",
-    "latestVersion": "1.1.2",
-    "releaseNotes": "修复若干问题...",
-    "package": {
-      "url": "https://github.com/de4321/darkeye/releases/download/v1.1.2/DarkEye-v1.1.2.zip",
-      "sha256": "PUT_SHA256_HERE",
-      "size": 123456789
-    }
+  "app": "DarkEye",
+  "latestVersion": "1.2.1",
+  "releaseNotes": "NFO导入加入进度条,封面图片存储的时候后缀取消,添加随机顺序,标签选择器隐藏+持久化",
+  "package": {
+    "url": "http://yinruizhe.asia/DarkEye-v1.2.1.tar.zst",
+    "sha256": "55b09e12c2dd562b6016e4de59400963c000bad03d1ece3db2c79498755847c4",
+    "size": 83904462
   }
+}

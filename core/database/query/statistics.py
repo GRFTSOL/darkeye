@@ -1,4 +1,5 @@
-'''混合库统计查询（scope 相关）'''
+"""混合库统计查询（scope 相关）"""
+
 import logging
 
 from config import DATABASE
@@ -24,41 +25,41 @@ def fetch_work_actress_avg_age(scope: int) -> list[tuple]:
     """
     match scope:
         case 0:
-            query = '''
+            query = """
             SELECT
             avg_age ,
             1 AS weight
-            FROM v_work_all_info
-            JOIN priv.favorite_work fav ON fav.work_id=v_work_all_info.work_id
+            FROM v_work_avg_age_info
+            JOIN priv.favorite_work fav ON fav.work_id=v_work_avg_age_info.work_id
             WHERE avg_age is not NULL
-            '''
+            """
         case 1:
-            query = f'''WITH {masturbationsql}
+            query = f"""WITH {masturbationsql}
 SELECT
     avg_age ,
      1 AS weight
-FROM v_work_all_info
-JOIN masturbation_count ON masturbation_count.work_id=v_work_all_info.work_id
+FROM v_work_avg_age_info
+JOIN masturbation_count ON masturbation_count.work_id=v_work_avg_age_info.work_id
 WHERE avg_age is not NULL
-            '''
+            """
         case 2:
-            query = f'''WITH {masturbationsql}
+            query = f"""WITH {masturbationsql}
 SELECT
     avg_age ,
     masturbation_count.masturbation_count AS weight
-FROM v_work_all_info
-JOIN masturbation_count ON masturbation_count.work_id=v_work_all_info.work_id
+FROM v_work_avg_age_info
+JOIN masturbation_count ON masturbation_count.work_id=v_work_avg_age_info.work_id
 WHERE avg_age is not NULL
-            '''
+            """
         case -1:
-            query = '''
+            query = """
             SELECT
                 avg_age,
                 1 AS weight
             FROM
-                v_work_all_info
+                v_work_avg_age_info
             WHERE avg_age is not NULL
-            '''
+            """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         if scope in (0, 1, 2):
@@ -86,7 +87,7 @@ def fetch_actress_cup_distribution(scope: int) -> list[tuple]:
     """
     match scope:
         case 0:
-            query = '''
+            query = """
             SELECT
                 cup ,
                 COUNT(*) AS num
@@ -95,9 +96,9 @@ def fetch_actress_cup_distribution(scope: int) -> list[tuple]:
             WHERE cup is not NULL AND cup != ''
             GROUP BY cup
             ORDER BY cup
-            '''
+            """
         case 1:
-            query = f'''WITH {masturbation_actress_sql}
+            query = f"""WITH {masturbation_actress_sql}
                 SELECT
                     cup,
                     COUNT(*) AS count
@@ -106,9 +107,9 @@ def fetch_actress_cup_distribution(scope: int) -> list[tuple]:
                 WHERE cup IS NOT NULL AND cup != '' AND ma.num !=0
                 GROUP BY cup
                 ORDER BY cup
-            '''
+            """
         case 2:
-            query = f'''WITH {masturbation_actress_sql}
+            query = f"""WITH {masturbation_actress_sql}
             SELECT
                 cup,
                 sum(ma.num) AS count
@@ -117,9 +118,9 @@ def fetch_actress_cup_distribution(scope: int) -> list[tuple]:
             WHERE cup IS NOT NULL AND cup != '' AND ma.num !=0
             GROUP BY cup
             ORDER BY cup
-            '''
+            """
         case -1:
-            query = '''
+            query = """
             SELECT
                 cup,
                 COUNT(*) AS num
@@ -127,7 +128,7 @@ def fetch_actress_cup_distribution(scope: int) -> list[tuple]:
             WHERE cup IS NOT NULL AND cup != ''
             GROUP BY cup
             ORDER BY cup
-            '''
+            """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         if scope in (0, 1, 2):
@@ -155,40 +156,40 @@ def fetch_actress_height_with_weights(scope: int) -> list[tuple]:
     """
     match scope:
         case 0:
-            query = '''
+            query = """
             SELECT
                 height,
                 1 AS weight
             FROM actress
             JOIN priv.favorite_actress fav ON fav.actress_id=actress.actress_id
             WHERE height IS NOT NULL AND height != '' AND height != 0
-            '''
+            """
         case 1:
-            query = f'''WITH {masturbation_actress_sql}
+            query = f"""WITH {masturbation_actress_sql}
             SELECT
                 a.height,
                 1 AS weight
             FROM actress a
             JOIN masturbation_actress ma ON ma.actress_id=a.actress_id
             WHERE height IS NOT NULL AND height != '' AND ma.num !=0  AND height != 0
-            '''
+            """
         case 2:
-            query = f'''WITH {masturbation_actress_sql}
+            query = f"""WITH {masturbation_actress_sql}
             SELECT
                 a.height,
                 ma.num AS weights
             FROM actress a
             JOIN masturbation_actress ma ON ma.actress_id=a.actress_id
             WHERE height IS NOT NULL AND height != '' AND ma.num !=0  AND height != 0
-            '''
+            """
         case -1:
-            query = '''
+            query = """
             SELECT
                 height,
                 1 AS weight
             FROM actress
             WHERE height IS NOT NULL AND height != '' AND height != 0
-            '''
+            """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         if scope in (0, 1, 2):
@@ -216,7 +217,7 @@ def fetch_actress_waist_hip_stats(scope: int) -> list[tuple]:
     """
     match scope:
         case 0:
-            query = '''
+            query = """
             SELECT
                 waist,
                 hip,
@@ -231,9 +232,9 @@ def fetch_actress_waist_hip_stats(scope: int) -> list[tuple]:
                 waist, hip
             ORDER BY
                 frequency DESC
-            '''
+            """
         case 1:
-            query = f'''WITH {masturbation_actress_sql}
+            query = f"""WITH {masturbation_actress_sql}
                 SELECT
                     waist,
                     hip,
@@ -251,9 +252,9 @@ def fetch_actress_waist_hip_stats(scope: int) -> list[tuple]:
                     waist, hip
                 ORDER BY
                     frequency DESC
-            '''
+            """
         case 2:
-            query = f'''WITH {masturbation_actress_sql}
+            query = f"""WITH {masturbation_actress_sql}
             SELECT
                 waist,
                 hip,
@@ -271,9 +272,9 @@ def fetch_actress_waist_hip_stats(scope: int) -> list[tuple]:
                 waist, hip
             ORDER BY
                 weight DESC
-            '''
+            """
         case -1:
-            query = '''
+            query = """
             SELECT
                 waist,
                 hip,
@@ -287,7 +288,7 @@ def fetch_actress_waist_hip_stats(scope: int) -> list[tuple]:
                 waist, hip
             ORDER BY
                 frequency DESC
-            '''
+            """
     logging.debug(f"Executing SQL:\n{query}")
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
@@ -316,7 +317,7 @@ def fetch_top_directors_by_scope(scope: int) -> list[tuple]:
     """
     match scope:
         case 0:
-            query = '''
+            query = """
             SELECT
                 director AS director,
                 COUNT(*) AS num
@@ -330,9 +331,9 @@ def fetch_top_directors_by_scope(scope: int) -> list[tuple]:
             ORDER BY
                 num DESC
             Limit 20
-            '''
+            """
         case 1:
-            query = f'''WITH {masturbationsql}
+            query = f"""WITH {masturbationsql}
             SELECT
                 director AS director,
                 COUNT(*) AS num
@@ -346,9 +347,9 @@ def fetch_top_directors_by_scope(scope: int) -> list[tuple]:
             ORDER BY
                 num DESC
             Limit 20
-            '''
+            """
         case 2:
-            query = f'''WITH {masturbationsql}
+            query = f"""WITH {masturbationsql}
             SELECT
                 director AS director,
                 sum(masturbation_count.masturbation_count) AS num
@@ -362,9 +363,9 @@ def fetch_top_directors_by_scope(scope: int) -> list[tuple]:
             ORDER BY
                 num DESC
             Limit 20
-            '''
+            """
         case -1:
-            query = '''
+            query = """
             SELECT
                 director AS director,
                 COUNT(*) AS num
@@ -377,7 +378,7 @@ def fetch_top_directors_by_scope(scope: int) -> list[tuple]:
             ORDER BY
                 num DESC
             Limit 20
-            '''
+            """
     logging.debug(f"Executing SQL:\n{query}")
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
@@ -406,70 +407,69 @@ def fetch_top_studios_by_scope(scope: int) -> list[tuple]:
     """
     match scope:
         case 0:
-            query = '''
+            query = """
             SELECT
-                studio ,
+                m.cn_name AS studio,
                 COUNT(*) AS num
-            FROM
-                v_work_all_info
-            JOIN priv.favorite_work fav ON fav.work_id=v_work_all_info.work_id
+            FROM work w
+            JOIN priv.favorite_work fav ON fav.work_id = w.work_id
+            JOIN maker m ON m.maker_id = w.maker_id
             WHERE
-                studio IS NOT NULL
+                m.cn_name IS NOT NULL
             GROUP BY
-                studio
+                m.cn_name
             ORDER BY
                 num DESC
             LIMIT 20
-            '''
+            """
         case 1:
-            query = f'''WITH {masturbationsql}
+            query = f"""WITH {masturbationsql}
             SELECT
-                studio ,
+                m.cn_name AS studio,
                 COUNT(*) AS num
-            FROM
-                v_work_all_info
-            JOIN masturbation_count ON masturbation_count.work_id=v_work_all_info.work_id
+            FROM work w
+            JOIN masturbation_count mc ON mc.work_id = w.work_id
+            JOIN maker m ON m.maker_id = w.maker_id
             WHERE
-                studio IS NOT NULL
+                m.cn_name IS NOT NULL
             GROUP BY
-                studio
+                m.cn_name
             ORDER BY
                 num DESC
             LIMIT 20
-            '''
+            """
         case 2:
-            query = f'''
-WITH {masturbationsql}
-SELECT
-    studio ,
-    sum(masturbation_count.masturbation_count) AS num
-FROM
-    v_work_all_info
-JOIN masturbation_count ON masturbation_count.work_id=v_work_all_info.work_id
-WHERE
-    studio IS NOT NULL
-
-GROUP BY
-    studio
-ORDER BY
-    num DESC
-LIMIT 20
-'''
+            query = f"""
+    WITH {masturbationsql}
+    SELECT
+        m.cn_name AS studio,
+        SUM(mc.masturbation_count) AS num
+    FROM work w
+    JOIN masturbation_count mc ON mc.work_id = w.work_id
+    JOIN maker m ON m.maker_id = w.maker_id
+    WHERE
+        m.cn_name IS NOT NULL
+    GROUP BY
+        m.cn_name
+    ORDER BY
+        num DESC
+    LIMIT 20
+    """
         case -1:
-            query = '''
+            query = """
             SELECT
-                studio ,
+                m.cn_name AS studio,
                 COUNT(*) AS num
-            FROM
-                v_work_all_info
+            FROM work w
+            JOIN maker m ON m.maker_id = w.maker_id
             WHERE
-                studio IS NOT NULL
+                m.cn_name IS NOT NULL
             GROUP BY
-                studio
+                m.cn_name
             ORDER BY
                 num DESC
             LIMIT 20
-            '''
+            """
     logging.debug(f"Executing SQL:\n{query}")
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
@@ -483,7 +483,7 @@ LIMIT 20
 
 
 def get_tag_frequence(scope: int) -> dict:
-    '''获得tag使用次数的sql语句
+    """获得tag使用次数的sql语句
     参数:
         scope (int): 查询范围
             0  - 收藏作品中出现的制作商及数量
@@ -497,10 +497,10 @@ def get_tag_frequence(scope: int) -> dict:
         '口交':50
     }
     然后可以直接传给wordcloud生成词云
-    '''
+    """
     match scope:
         case 0:
-            query = '''
+            query = """
         SELECT
         tag_name,
         count(tag_name) AS num
@@ -510,9 +510,9 @@ def get_tag_frequence(scope: int) -> dict:
         WHERE tag.tag_type_id !=1 AND tag.tag_type_id !=6
         GROUP BY tag_name
         ORDER BY num DESC
-            '''
+            """
         case 1:
-            query = f'''WITH {masturbationsql}
+            query = f"""WITH {masturbationsql}
             SELECT
             tag_name,
             count(tag_name) AS num
@@ -522,9 +522,9 @@ def get_tag_frequence(scope: int) -> dict:
             WHERE tag.tag_type_id !=1 AND tag.tag_type_id !=6
             GROUP BY tag_name
             ORDER BY num DESC
-            '''
+            """
         case 2:
-            query = f'''
+            query = f"""
 WITH {masturbationsql}
 SELECT
     tag_name,
@@ -536,9 +536,9 @@ WHERE tag.tag_type_id !=1 AND tag.tag_type_id !=6
 GROUP BY tag_name
 ORDER BY num DESC
 
-'''
+"""
         case -1:
-            query = '''
+            query = """
         SELECT
         tag_name,
         count(tag_name) AS num
@@ -547,7 +547,7 @@ ORDER BY num DESC
         WHERE tag.tag_type_id !=1 AND tag.tag_type_id !=6
         GROUP BY tag_name
         ORDER BY num DESC
-        '''
+        """
     logging.debug(f"Executing SQL:\n{query}")
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
@@ -561,15 +561,15 @@ ORDER BY num DESC
 
 
 def fetch_work_release_by_year_by_scope(scope: int) -> list[tuple]:
-    '''根据范围返回作品的发行年份统计
-        参数:
-        scope (int): 查询范围
-            0  - 收藏作品
-            1  - 作品中撸管作品统计
-            2  - 作品中撸管次数加权统计
-           -1  - 公共库
-    '''
-    year_range_sql = '''
+    """根据范围返回作品的发行年份统计
+    参数:
+    scope (int): 查询范围
+        0  - 收藏作品
+        1  - 作品中撸管作品统计
+        2  - 作品中撸管次数加权统计
+       -1  - 公共库
+    """
+    year_range_sql = """
 year_range AS (
     SELECT
         CAST(MIN(SUBSTR(release_date, 1, 4)) AS INTEGER) AS min_year,
@@ -577,20 +577,20 @@ year_range AS (
     FROM work
     WHERE release_date != '' AND release_date IS NOT NULL
 )
-'''
+"""
 
-    fillna_sql = '''
+    fillna_sql = """
 SELECT
     ay.year,
     COALESCE(ac.count, 0) AS count
 FROM all_years ay
 LEFT JOIN actual_counts ac ON ay.year = ac.year
 ORDER BY ay.year;
-'''
+"""
 
     match scope:
         case 0:
-            query = f'''
+            query = f"""
 WITH {year_range_sql},
 {all_years_sql},
 actual_counts AS (
@@ -603,9 +603,9 @@ actual_counts AS (
     GROUP BY year
 )
 {fillna_sql}
-'''
+"""
         case 1:
-            query = f'''
+            query = f"""
 WITH {masturbationsql},
 {year_range_sql},
 {all_years_sql},
@@ -619,9 +619,9 @@ actual_counts AS (
     GROUP BY year
 )
 {fillna_sql}
-'''
+"""
         case 2:
-            query = f'''
+            query = f"""
 WITH {masturbationsql},
 {year_range_sql},
 {all_years_sql},
@@ -635,9 +635,9 @@ actual_counts AS (
     GROUP BY year
 )
 {fillna_sql}
-'''
+"""
         case -1:
-            query = f'''
+            query = f"""
 WITH {year_range_sql},
 {all_years_sql},
 actual_counts AS (
@@ -649,7 +649,7 @@ actual_counts AS (
     GROUP BY year
 )
 {fillna_sql}
-'''
+"""
     logging.debug(f"Execute SQL\n{query}")
 
     with get_connection(DATABASE, True) as conn:
@@ -662,15 +662,15 @@ actual_counts AS (
 
 
 def fetch_actress_debut_by_year_by_scope(scope: int) -> list[tuple]:
-    '''根据范围返回女优的出道年份统计
-        参数:
-        scope (int): 查询范围
-            0  - 收藏作品
-            1  - 作品中撸管作品统计
-            2  - 作品中撸管次数加权统计
-           -1  - 公共库
-    '''
-    year_range_sql = '''
+    """根据范围返回女优的出道年份统计
+    参数:
+    scope (int): 查询范围
+        0  - 收藏作品
+        1  - 作品中撸管作品统计
+        2  - 作品中撸管次数加权统计
+       -1  - 公共库
+    """
+    year_range_sql = """
 year_range AS (
     SELECT
         CAST(MIN(SUBSTR(debut_date, 1, 4)) AS INTEGER) AS min_year,
@@ -678,20 +678,20 @@ year_range AS (
     FROM actress
     WHERE debut_date != '' AND debut_date IS NOT NULL
 )
-'''
+"""
 
-    fillna_sql = '''
+    fillna_sql = """
 SELECT
     ay.year,
     COALESCE(ac.count, 0) AS count
 FROM all_years ay
 LEFT JOIN actual_counts ac ON ay.year = ac.year
 ORDER BY ay.year;
-'''
+"""
 
     match scope:
         case 0:
-            query = f'''
+            query = f"""
 WITH {year_range_sql},
 {all_years_sql},
 actual_counts AS (
@@ -704,9 +704,9 @@ actual_counts AS (
     GROUP BY year
 )
 {fillna_sql}
-'''
+"""
         case 1:
-            query = f'''
+            query = f"""
 WITH {masturbation_actress_sql},
 {year_range_sql},
 {all_years_sql},
@@ -720,9 +720,9 @@ actual_counts AS (
     GROUP BY year
 )
 {fillna_sql}
-'''
+"""
         case 2:
-            query = f'''
+            query = f"""
 WITH {masturbation_actress_sql},
 {year_range_sql},
 {all_years_sql},
@@ -736,9 +736,9 @@ actual_counts AS (
     GROUP BY year
 )
 {fillna_sql}
-'''
+"""
         case -1:
-            query = f'''
+            query = f"""
 WITH {year_range_sql},
 {all_years_sql},
 actual_counts AS (
@@ -750,7 +750,7 @@ actual_counts AS (
     GROUP BY year
 )
 {fillna_sql}
-'''
+"""
     logging.debug(f"Execute SQL\n{query}")
 
     with get_connection(DATABASE, True) as conn:
@@ -763,15 +763,15 @@ actual_counts AS (
 
 
 def get_actress_by_plane() -> list[tuple]:
-    '''返回撸的最多的女优的次数,25个'''
-    query = f'''WITH {masturbation_actress_sql}
+    """返回撸的最多的女优的次数,25个"""
+    query = f"""WITH {masturbation_actress_sql}
     SELECT
         actress_name,
         num
     FROM masturbation_actress
     ORDER BY num DESC
     LIMIT 25
-    '''
+    """
     logging.debug(f"Execute SQL\n{query}")
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
@@ -798,7 +798,7 @@ def get_top_actress_by_masturbation_count(days_interval: int) -> dict | None:
     返回:
         dict: 包含女优姓名（中文）、头像链接、最近撸管时间及撸管次数的字典。
     """
-    query = '''
+    query = """
     SELECT
         a.actress_id,
         (SELECT cn FROM actress_name WHERE actress_id = a.actress_id AND name_type = 1) AS actress_name,
@@ -816,7 +816,7 @@ def get_top_actress_by_masturbation_count(days_interval: int) -> dict | None:
         masturbation_count DESC,
         latest_masturbate_time DESC
     LIMIT 1
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         attach_private_db(cursor)
@@ -837,14 +837,14 @@ def get_unmasturbated_work_count() -> int:
     返回：
         int: 收藏影片中未撸管的影片总数。
     """
-    query = f'''WITH {masturbationsql}
+    query = f"""WITH {masturbationsql}
 SELECT
     count(*) AS total_count
 FROM
     priv.favorite_work w
 LEFT JOIN masturbation_count ON masturbation_count.work_id=w.work_id
 WHERE masturbation_count is NULL
-'''
+"""
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         attach_private_db(cursor)
@@ -861,13 +861,13 @@ def fetch_actress_debut_age() -> list[tuple]:
     返回：
         list[tuple]: [(debut_age, weight), ...]
     """
-    query = '''
+    query = """
 SELECT
     round((julianday(a.debut_date) - julianday(a.birthday)) / 365.25,1)-0.5 AS debut_age,
     1 AS weight
 FROM actress a
 WHERE  a.birthday IS NOT NULL AND a.debut_date IS NOT NULL AND a.debut_date !='' AND a.birthday !=''
-    '''
+    """
     with get_connection(DATABASE, True) as conn:
         cursor = conn.cursor()
         cursor.execute(query)

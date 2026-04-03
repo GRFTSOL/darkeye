@@ -1,8 +1,10 @@
-from PySide6.QtWidgets import  QVBoxLayout, QHBoxLayout, QMessageBox, QFileDialog
-from PySide6.QtCore import Slot
+from pathlib import Path
+
+from PySide6.QtCore import Qt, Slot
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QMessageBox, QFileDialog
 import logging
 
-from config import DATABASE
+from config import DATABASE, SQLPATH
 from ui.basic import ModelSearch
 from ui.base.SqliteQueryTableModel import SqliteQueryTableModel
 from darkeye_ui import LazyWidget
@@ -26,7 +28,8 @@ class SearchTable(LazyWidget):
 
     def config(self):
         """配置 model 与 view"""
-        self.query_sql = "SELECT * FROM v_work_all_info"
+        sql_file = Path(SQLPATH / "work_all_info.sql")
+        self.query_sql = sql_file.read_text(encoding="utf-8")
         self.model = SqliteQueryTableModel(self.query_sql, DATABASE, self)
 
         if not self.model.refresh():
@@ -34,12 +37,15 @@ class SearchTable(LazyWidget):
             return
 
         self.view.setModel(self.model)
-        self.view.setColumnHidden(0, True)  # 隐藏 ID 列（主键）
+        #self.view.setColumnHidden(0, True)  # 隐藏 ID 列（主键）
 
         self.searchWidget.set_model_view(self.model, self.view)
 
     def init_ui(self):
         self.view = TokenTableView()
+        self.view.setSortingEnabled(True)
+        self.view.horizontalHeader().setSortIndicatorShown(True)
+        self.view.horizontalHeader().setSectionsClickable(True)
         self.btn_refresh = Button("刷新数据")
         export_csv_button = Button("导出为 CSV")
         export_csv_button.clicked.connect(self.export_to_csv)
@@ -67,6 +73,7 @@ class SearchTable(LazyWidget):
         if not self.model.refresh():
             QMessageBox.critical(self, "刷新错误", "刷新数据失败，请查看日志。")
             return
+        self.view.sortByColumn(1, Qt.SortOrder.AscendingOrder)
         logging.info("数据已刷新")
 
     @Slot()
@@ -74,14 +81,16 @@ class SearchTable(LazyWidget):
         """封装为：传入 SQL，用 sqlite 查询并写入 CSV。"""
         from utils.utils import export_sql_to_csv
 
-        file_path, _ = QFileDialog.getSaveFileName(self, "保存为 CSV 文件", "", "CSV Files (*.csv)")
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "保存为 CSV 文件", "", "CSV Files (*.csv)"
+        )
         if not file_path:
             return
 
         if not file_path.endswith(".csv"):
             file_path += ".csv"
 
-        base_sql = getattr(self, "query_sql", "SELECT * FROM v_work_all_info")
+        base_sql = self.query_sql
         ok = export_sql_to_csv(base_sql, file_path, DATABASE)
 
         if ok:

@@ -47,7 +47,8 @@ a = Analysis(
     datas=[
         # 静态资源（icons、封面、演员图、数据库）#这里就只把公共数据库复制过去了
         ('resources/icons', 'resources/icons'),
-        ('resources/develop_resources/public/', 'resources/public'),
+        ('resources/develop_resources/public/', 'data/public'),
+        ('resources/develop_resources/crawler_nav_buttons.json', 'data/'),
         ('resources/config', 'resources/config'),
         ('resources/sql/', 'resources/sql/'),
         ('resources/avwiki/', 'resources/avwiki/'),
@@ -57,10 +58,10 @@ a = Analysis(
         ('resources/maps/', 'resources/maps/'),
         ('resources/meshes/', 'resources/meshes/'),
         ('darkeye_ui/styles', 'darkeye_ui/styles'),
-        ('core/dvd/icons','core/dvd/icons'),        
+        ('core/dvd/icons','core/dvd/icons'),
         ('core/dvd/dvd_scene.qml','core/dvd/'),
         ('core/dvd/Dvd.qml','core/dvd/'),#这个qml要手动收集
-
+        ('DarkEyeUpdater.exe','.'),#这个qml要手动收集
     ],
     hiddenimports=[
         *collect_project_submodules('core'),
@@ -236,7 +237,7 @@ exe = EXE(
     upx=False,
     upx_exclude=['Qt6Core.dll', 'Qt6Gui.dll','Qt6Widgets.dll','Qt6Qml.dll','Qt6Quick.dll','Qt6Pdf.dll'],
     console=False,  # 改为 True 可显示终端日志窗口
-    icon='resources/icons/logo.ico'
+    icon='resources/logo.ico'
 )
 
 coll = COLLECT(

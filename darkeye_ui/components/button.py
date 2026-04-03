@@ -29,5 +29,9 @@ class Button(QPushButton):
                 self.setIcon(icon)
             else:
                 self.setIcon(svg_to_icon(icon, size=icon_size, color=icon_color))
-            w, h = (icon_size, icon_size) if isinstance(icon_size, int) else (icon_size[0], icon_size[1])
+            w, h = (
+                (icon_size, icon_size)
+                if isinstance(icon_size, int)
+                else (icon_size[0], icon_size[1])
+            )
             self.setIconSize(QSize(w, h))

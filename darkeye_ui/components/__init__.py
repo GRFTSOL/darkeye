@@ -25,7 +25,7 @@ from .radar_chart_widget import RadarChartWidget
 from .rotate_button import RotateButton
 from .search_bar import SearchBar
 from .shake_button import ShakeButton
-from .Sidebar import Sidebar
+from .sidebar import Sidebar
 from .skeleton import Skeleton
 from .state_toggle_button import StateToggleButton
 from .toast_notification import Notification, Toast
@@ -71,6 +71,7 @@ __all__ = [
     "Label",
     "LazyScrollArea",
     "LineEdit",
+    "MakerSelector",
     "ModalDialog",
     "ModernScrollMenu",
     "Notification",

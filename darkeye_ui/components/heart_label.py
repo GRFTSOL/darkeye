@@ -47,14 +47,14 @@ class HeartLabel(QLabel):
         self._scale = 1.0
         self._anim = QPropertyAnimation(self, b"scale", self)
 
-    def getScale(self):
+    def get_scale(self):
         return self._scale
 
-    def setScale(self, value: float):
+    def set_scale(self, value: float):
         self._scale = value
         self.update()
 
-    scale = Property(float, getScale, setScale)
+    scale = Property(float, get_scale, set_scale)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -86,12 +86,12 @@ class HeartLabel(QLabel):
         self._anim.setKeyValueAt(1, 1.0)
         self._anim.start()
 
-    def isChecked(self):
+    def is_checked(self):
         return self._checked
 
-    def get_statue(self):
+    def get_state(self):
         return self._checked
 
-    def set_statue(self, statue):
-        self._checked = statue
+    def set_state(self, state):
+        self._checked = state
         self.update()

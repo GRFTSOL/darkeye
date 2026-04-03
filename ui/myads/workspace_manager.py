@@ -1,6 +1,7 @@
 """工作区管理类：持布局树、窗格工厂、拖拽与预览，供 WorkspaceDemoWidget 等容器使用。"""
 
 import json
+import logging
 from pathlib import Path
 from typing import Callable
 
@@ -203,14 +204,16 @@ class WorkspaceManager:
 
     def _register_pane(self, pane: PaneWidget) -> None:
         """内部注册：连接信号、拖拽开始/结束时激活/恢复 overlay；closeable 由 manager 统一提供。"""
-        pane.pane_empty.connect(self._on_pane_empty)
+        pane.paneEmpty.connect(self._on_pane_empty)
         pane.set_drag_start_callback(self._drag_overlay.activate)
         pane.set_drag_end_callback(self._drag_overlay.deactivate)
-        pane.set_get_content_closeable(lambda cid: self._content_closeable.get(cid, True))
+        pane.set_get_content_closeable(
+            lambda cid: self._content_closeable.get(cid, True)
+        )
         # 不再对每个 pane 设置 drop_handler，由 DragDropOverlay 统一命中与执行
 
     def _on_pane_empty(self, pane: PaneWidget) -> None:
-        pane.pane_empty.disconnect(self._on_pane_empty)
+        pane.paneEmpty.disconnect(self._on_pane_empty)
         self._layout_tree.remove_pane(pane)
         if not self._layout_tree.panes():
             new_pane = self._new_pane()
@@ -272,8 +275,16 @@ class WorkspaceManager:
         if content_id in pane.content_ids():
             content_id = self.new_content_id()
         self._content_closeable[content_id] = content_config._closeable
-        title = content_config._title if content_config._title is not None else content_config.content_id
-        widget = content_config._widget if content_config._widget is not None else _make_placeholder_content(content_config.content_id)
+        title = (
+            content_config._title
+            if content_config._title is not None
+            else content_config.content_id
+        )
+        widget = (
+            content_config._widget
+            if content_config._widget is not None
+            else _make_placeholder_content(content_config.content_id)
+        )
         icon = content_config._icon
         pane.add_content(content_id, title, widget, icon=icon)
 
@@ -330,9 +341,13 @@ class WorkspaceManager:
 
         for pane in list(self._layout_tree.panes()):
             try:
-                pane.pane_empty.disconnect(self._on_pane_empty)
-            except (TypeError, RuntimeError):
-                pass
+                pane.paneEmpty.disconnect(self._on_pane_empty)
+            except (TypeError, RuntimeError) as e:
+                logging.debug(
+                    "load_layout: 断开 pane_empty 失败（可能未连接）: %s",
+                    e,
+                    exc_info=True,
+                )
             self._layout_tree.remove_pane(pane)
 
         def pane_factory(pid: str) -> PaneWidget:
@@ -360,4 +375,3 @@ class WorkspaceManager:
         if content_id is None:
             content_id = self.new_content_id()
         return ContentConfig(content_id)
-

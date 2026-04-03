@@ -4,14 +4,12 @@ import logging
 from pathlib import Path
 
 from PySide6.QtWidgets import QVBoxLayout, QGridLayout, QFileDialog, QWidget
-from PySide6.QtGui import QIcon
 from PySide6.QtCore import Slot
 
 from config import (
     BASE_DIR,
     DATABASE,
     INI_FILE,
-    ICONS_PATH,
     PRIVATE_DATABASE,
     DATABASE_BACKUP_PATH,
     PRIVATE_DATABASE_BACKUP_PATH,
@@ -19,7 +17,8 @@ from config import (
     REQUIRED_PRIVATE_DB_VERSION,
 )
 from darkeye_ui.components import Label, Button
-from controller.MessageService import MessageBoxService
+from controller.message_service import MessageBoxService
+from darkeye_ui.design.icon import get_builtin_icon
 
 
 def _get_detected_db_version(db_path) -> str:
@@ -67,39 +66,33 @@ class DBSettingPage(QWidget):
         self.btn_backupDB = Button()
         self.btn_backupDB.setText("备份公共数据库")
         self.btn_backupDB.setToolTip("将现有的数据库打上时间戳备份")
-        self.btn_backupDB.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_backupDB.setIcon(get_builtin_icon(name="database"))
 
         self.btn_restoreDB = Button()
         self.btn_restoreDB.setText("还原公共数据库")
-        self.btn_restoreDB.setToolTip("在备份的数据库里选择一个数据还原，覆盖现有的数据库")
-        self.btn_restoreDB.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_restoreDB.setToolTip(
+            "在备份的数据库里选择一个数据还原，覆盖现有的数据库"
+        )
+        self.btn_restoreDB.setIcon(get_builtin_icon(name="database"))
 
         self.btn_backupDB2 = Button()
         self.btn_backupDB2.setText("备份私有数据库")
         self.btn_backupDB2.setToolTip("将现有的数据库打上时间戳备份")
-        self.btn_backupDB2.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_backupDB2.setIcon(get_builtin_icon(name="database"))
 
         self.btn_restoreDB2 = Button()
         self.btn_restoreDB2.setText("还原私有数据库")
-        self.btn_restoreDB2.setToolTip("在备份的数据库里选择一个数据还原，覆盖现有的数据库")
-        self.btn_restoreDB2.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_restoreDB2.setToolTip(
+            "在备份的数据库里选择一个数据还原，覆盖现有的数据库"
+        )
+        self.btn_restoreDB2.setIcon(get_builtin_icon(name="database"))
 
         self.btn_rebuildprivatelink = Button()
         self.btn_rebuildprivatelink.setText("重建私有库与公有库的链接")
         self.btn_rebuildprivatelink.setToolTip(
             "选择私有库，重建私有库的链接，这是当公共库换了的时候用的"
         )
-        self.btn_rebuildprivatelink.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
-
-        self.btn_export_maker_prefix = Button()
-        self.btn_export_maker_prefix.setText("导出片商前缀到json文件")
-        self.btn_export_maker_prefix.setToolTip("导出片商前缀到json文件")
-        self.btn_export_maker_prefix.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
-
-        self.btn_import_maker_prefix = Button()
-        self.btn_import_maker_prefix.setText("从json文件导入片商前缀")
-        self.btn_import_maker_prefix.setToolTip("从json文件导入片商前缀")
-        self.btn_import_maker_prefix.setIcon(QIcon(str(ICONS_PATH / "database.svg")))
+        self.btn_rebuildprivatelink.setIcon(get_builtin_icon(name="database"))
 
         layout1 = QGridLayout()
         layout1.addWidget(self.btn_vacuum, 0, 0)
@@ -108,9 +101,7 @@ class DBSettingPage(QWidget):
         layout1.addWidget(self.btn_restoreDB, 1, 1)
         layout1.addWidget(self.btn_backupDB2, 2, 0)
         layout1.addWidget(self.btn_restoreDB2, 2, 1)
-        layout1.addWidget(self.btn_rebuildprivatelink, 3, 0)
-        layout1.addWidget(self.btn_export_maker_prefix, 4, 0)
-        layout1.addWidget(self.btn_import_maker_prefix, 4, 1)
+        layout1.addWidget(self.btn_rebuildprivatelink, 3, 0, 1, 2)
 
         layout = QVBoxLayout(self)
         layout.addLayout(layout1)
@@ -131,13 +122,10 @@ class DBSettingPage(QWidget):
         self.btn_commit.clicked.connect(self.submit)
 
         self.btn_backupDB.clicked.connect(self.backup_db_public)
-        self.btn_restoreDB.clicked.connect(lambda: self.restoreDBnew("public"))
+        self.btn_restoreDB.clicked.connect(lambda: self.restore_db_new("public"))
         self.btn_backupDB2.clicked.connect(self.backup_db_private)
-        self.btn_restoreDB2.clicked.connect(lambda: self.restoreDB("private"))
+        self.btn_restoreDB2.clicked.connect(lambda: self.restore_db("private"))
         self.btn_rebuildprivatelink.clicked.connect(self.rebuildprivatelink)
-
-        self.btn_export_maker_prefix.clicked.connect(self.export_maker_prefix)
-        self.btn_import_maker_prefix.clicked.connect(self.import_maker_prefix)
 
     @Slot()
     def rebuildprivatelink(self):
@@ -145,58 +133,6 @@ class DBSettingPage(QWidget):
 
         rebuild_privatelink()
         self.msg.show_info("重建成功", "私有库与公有库的链接重建完成。")
-
-    @Slot()
-    def export_maker_prefix(self):
-        from core.database.migrations import export_maker_prefix_json
-
-        default_dir = BASE_DIR / "resources" / "config"
-        default_dir.mkdir(parents=True, exist_ok=True)
-
-        file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "选择导出 JSON 文件",
-            str(default_dir / "maker_prefix.json"),
-            "JSON 文件 (*.json)",
-        )
-        if not file_path:
-            return
-
-        try:
-            export_maker_prefix_json(Path(file_path))
-            self.msg.show_info("导出成功", f"已导出片商前缀到：\n{file_path}")
-        except Exception as e:
-            logging.exception("导出片商前缀失败")
-            self.msg.show_critical("导出失败", f"导出片商前缀时发生错误：\n{e}")
-
-    @Slot()
-    def import_maker_prefix(self):
-        from core.database.migrations import import_maker_prefix_json
-
-        default_dir = BASE_DIR / "resources" / "config"
-        default_dir.mkdir(parents=True, exist_ok=True)
-
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "选择片商前缀 JSON 文件",
-            str(default_dir),
-            "JSON 文件 (*.json)",
-        )
-        if not file_path:
-            return
-
-        if not self.msg.ask_yes_no(
-            "确认导入",
-            "将使用该 JSON 覆盖当前的片商和前缀数据，操作不可撤销，是否继续？",
-        ):
-            return
-
-        try:
-            import_maker_prefix_json(Path(file_path))
-            self.msg.show_info("导入成功", "片商前缀数据已从 JSON 导入。")
-        except Exception as e:
-            logging.exception("导入片商前缀失败")
-            self.msg.show_critical("导入失败", f"导入片商前缀时发生错误：\n{e}")
 
     @Slot()
     def check_image_consistency(self):
@@ -212,7 +148,7 @@ class DBSettingPage(QWidget):
         logging.debug("保存设置")
 
     @Slot()
-    def restoreDB(self, access_level: str):
+    def restore_db(self, access_level: str):
         if access_level == "public":
             backup_path = DATABASE_BACKUP_PATH
             target_path = DATABASE
@@ -235,7 +171,9 @@ class DBSettingPage(QWidget):
         if not file_path:
             return
 
-        if not self.msg.ask_yes_no("确认恢复", "是否用该备份覆盖现有数据库？操作不可撤销！"):
+        if not self.msg.ask_yes_no(
+            "确认恢复", "是否用该备份覆盖现有数据库？操作不可撤销！"
+        ):
             return
 
         success = restore_backup_safely(Path(file_path), target_path)
@@ -245,7 +183,7 @@ class DBSettingPage(QWidget):
             self.msg.show_critical("恢复失败", "数据库恢复失败，请检查文件是否有效。")
 
     @Slot()
-    def restoreDBnew(self, access_level: str):
+    def restore_db_new(self, access_level: str):
         if access_level == "public":
             backup_path = DATABASE_BACKUP_PATH
             target_path = DATABASE
@@ -267,7 +205,9 @@ class DBSettingPage(QWidget):
         if not file_path:
             return
 
-        if not self.msg.ask_yes_no("确认恢复", "是否用该备份覆盖现有数据库？操作不可撤销！"):
+        if not self.msg.ask_yes_no(
+            "确认恢复", "是否用该备份覆盖现有数据库？操作不可撤销！"
+        ):
             return
 
         success = restore_snapshot(Path(file_path))

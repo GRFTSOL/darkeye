@@ -1,5 +1,13 @@
-from PySide6.QtWidgets import QApplication, QTextBrowser, QFileDialog, QVBoxLayout, QWidget, QPushButton
+from PySide6.QtWidgets import (
+    QApplication,
+    QTextBrowser,
+    QFileDialog,
+    QVBoxLayout,
+    QWidget,
+    QPushButton,
+)
 import sys
+
 
 class MarkdownViewer(QWidget):
     def __init__(self):
@@ -22,11 +30,14 @@ class MarkdownViewer(QWidget):
 
     def load_markdown_file(self):
         """选择并加载 markdown 文件"""
-        file_path, _ = QFileDialog.getOpenFileName(self, "选择 Markdown 文件", "", "Markdown Files (*.md);;All Files (*)")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "选择 Markdown 文件", "", "Markdown Files (*.md);;All Files (*)"
+        )
         if file_path:
             with open(file_path, "r", encoding="utf-8") as f:
                 markdown_text = f.read()
             self.viewer.setMarkdown(markdown_text)  # 直接渲染 markdown
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

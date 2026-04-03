@@ -72,7 +72,9 @@ class Breadcrumb(QWidget):
             else:
                 btn = Button(text)
                 btn.clicked.connect(
-                    lambda _=False, i=index, value=text: self._on_crumb_clicked(i, value)
+                    lambda _=False, i=index, value=text: self._on_crumb_clicked(
+                        i, value
+                    )
                 )
             self._layout.addWidget(btn)
             if index < len(self._items) - 1:

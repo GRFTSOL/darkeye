@@ -16,7 +16,7 @@
 
 ## 已经是 C++ 的部分（不建议重复转写）
 
-- 力导图 OpenGL/仿真：`core/graph/ForceDirectedViewWidget.py:20`（`PyForceView`）
+- 力导图 OpenGL/仿真：`core/graph/force_directed_view_widget.py:20`（`PyForceView`）
 - 颜色轮控件：`darkeye_ui/components/color_picker.py:7`（`PyColorWheel`）
 
 ---
@@ -39,7 +39,7 @@
 ### 2) `networkx -> C++` 扁平化与运行时 diff 序列化
 
 - 位置：
-`core/graph/ForceDirectedViewWidget.py:397`, `core/graph/ForceDirectedViewWidget.py:413`, `core/graph/ForceDirectedViewWidget.py:434`, `core/graph/ForceDirectedViewWidget.py:457`, `core/graph/ForceDirectedViewWidget.py:487`, `core/graph/ForceDirectedViewWidget.py:497`, `core/graph/ForceDirectedViewWidget.py:563`
+`core/graph/force_directed_view_widget.py:397`, `core/graph/force_directed_view_widget.py:413`, `core/graph/force_directed_view_widget.py:434`, `core/graph/force_directed_view_widget.py:457`, `core/graph/force_directed_view_widget.py:487`, `core/graph/force_directed_view_widget.py:497`, `core/graph/force_directed_view_widget.py:563`
 - 现状：
 每次装载图都在 Python 循环构造 `edges/ids/labels/radii/colors`，diff 也在 Python 逐条 dict 组装。
 - C++ 转写建议：
@@ -65,7 +65,7 @@
 - 位置：
 `core/graph/graph_manager.py:160`, `core/graph/graph_manager.py:171`, `core/graph/graph_manager.py:188`, `core/graph/graph_manager.py:194`, `core/graph/graph_manager.py:239`, `core/graph/graph_manager.py:281`, `core/graph/graph_manager.py:289`, `core/graph/graph_manager.py:292`
 - 现状：
-逐条解析 story + 逐条关系更新，混合 Python 循环与查询，数据量上来会放大延迟。
+逐条解析 notes + 逐条关系更新，混合 Python 循环与查询，数据量上来会放大延迟。
 - C++ 转写建议：
 把 wikilink 扫描与关系构建放到 C++ 批处理接口；Python 只负责调度和最终落库。
 - 预期收益：
@@ -87,7 +87,7 @@
 ### 6) 瀑布流布局计算
 
 - 位置：
-`darkeye_ui/layouts/WaterfallLayout.py:50`, `darkeye_ui/layouts/WaterfallLayout.py:63`, `darkeye_ui/layouts/WaterfallLayout.py:64`
+`darkeye_ui/layouts/waterfall_layout.py:50`, `darkeye_ui/layouts/waterfall_layout.py:63`, `darkeye_ui/layouts/waterfall_layout.py:64`
 - 现状：
 `setGeometry` 每次都遍历全部 item，卡片很多时会触发 UI 抖动。
 - C++ 转写建议：

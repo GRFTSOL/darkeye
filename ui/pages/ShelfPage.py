@@ -8,10 +8,16 @@ from PySide6.QtWidgets import (
     QComboBox,
 )
 
-import sqlite3
 import logging
+import random
+import sqlite3
 
-from config import DATABASE
+from config import (
+    DATABASE,
+    get_shelf_tag_selector_visible,
+    set_shelf_tag_selector_visible,
+)
+from core.database.db_queue import submit_db_raw
 from core.database.db_utils import attach_private_db, detach_private_db
 from core.database.query import (
     get_actressname,
@@ -19,17 +25,24 @@ from core.database.query import (
     get_actorname,
     get_serial_number,
     get_maker_name,
+    get_label_name,
+    get_series_name,
     get_workid_by_serialnumber,
 )
 from ui.basic import HorizontalScrollArea
 from ui.widgets import CompleterLineEdit
-from core.dvd.DvdShelfView import DvdShelfView
+from core.dvd.dvd_shelf_view import DvdShelfView
 from ui.widgets.selectors.TagSelector5 import TagSelector5
 from darkeye_ui.components.label import Label
+from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.rotate_button import RotateButton
 from darkeye_ui.components.shake_button import ShakeButton
 from darkeye_ui.components.input import LineEdit
 from darkeye_ui.components.combo_box import ComboBox
+from ui.widgets.selectors.maker_selector import MakerSelector
+from ui.widgets.selectors.label_selector import LabelSelector
+from ui.widgets.selectors.series_selector import SeriesSelector
+
 
 class ShelfPage(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -41,10 +54,15 @@ class ShelfPage(QWidget):
         self.actor = None
         self.title = None
         self.serial_number = None
-        self.studio = None
+        self.maker_id = None
+        self.label_id = None
+        self.series_id = None
         self._green_mode = False
+        self._tag_selector_visible = get_shelf_tag_selector_visible()
         self.order = "添加逆序"
         self.scope = "公共库范围"
+        self.random_seed = random.randint(1, 1_000_000)
+        self.random_seed2 = random.randint(1, 1_000_000)
 
         self._init_ui()
         self._signal_connect()
@@ -60,12 +78,12 @@ class ShelfPage(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setFixedHeight(26)
+        scroll.setFixedHeight(32)
         scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         filterwidget = QWidget()
         filterlayout = QHBoxLayout(filterwidget)
         filterlayout.setContentsMargins(0, 0, 0, 0)
-        filterwidget.setFixedHeight(26)
+        filterwidget.setFixedHeight(32)
         filterwidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         scroll.setWidget(filterwidget)
         scroll.setStyleSheet(
@@ -82,11 +100,21 @@ class ShelfPage(QWidget):
 
         self.story_input = LineEdit()
         self.title_input = LineEdit()
-        self.serial_number_input = CompleterLineEdit(get_serial_number)
-        self.actress_input = CompleterLineEdit(get_actressname)
-        self.director_input = CompleterLineEdit(get_unique_director)
-        self.actor_input = CompleterLineEdit(get_actorname)
-        self.maker_input = CompleterLineEdit(get_maker_name)
+        self.serial_number_input = CompleterLineEdit(
+            lambda: submit_db_raw(get_serial_number).result()
+        )
+        self.actress_input = CompleterLineEdit(
+            lambda: submit_db_raw(get_actressname).result()
+        )
+        self.director_input = CompleterLineEdit(
+            lambda: submit_db_raw(get_unique_director).result()
+        )
+        self.actor_input = CompleterLineEdit(
+            lambda: submit_db_raw(get_actorname).result()
+        )
+        self.maker_selector = MakerSelector(submit_db_raw(get_maker_name).result())
+        self.label_selector = LabelSelector(submit_db_raw(get_label_name).result())
+        self.series_selector = SeriesSelector(submit_db_raw(get_series_name).result())
 
         self.story_input.setFixedWidth(100)
         self.title_input.setFixedWidth(100)
@@ -94,7 +122,9 @@ class ShelfPage(QWidget):
         self.actress_input.setFixedWidth(120)
         self.director_input.setFixedWidth(150)
         self.actor_input.setFixedWidth(120)
-        self.maker_input.setFixedWidth(150)
+        self.maker_selector.setFixedWidth(160)
+        self.label_selector.setFixedWidth(160)
+        self.series_selector.setFixedWidth(160)
 
         filterlayout.addWidget(Label("番号："))
         filterlayout.addWidget(self.serial_number_input)
@@ -102,24 +132,37 @@ class ShelfPage(QWidget):
         filterlayout.addWidget(self.actress_input)
         filterlayout.addWidget(Label("标题包含："))
         filterlayout.addWidget(self.title_input)
-        filterlayout.addWidget(Label("简短故事包含："))
+        filterlayout.addWidget(Label("简单笔记包含："))
         filterlayout.addWidget(self.story_input)
         filterlayout.addWidget(Label("导演"))
         filterlayout.addWidget(self.director_input)
         filterlayout.addWidget(Label("男优"))
         filterlayout.addWidget(self.actor_input)
         filterlayout.addWidget(Label("片商"))
-        filterlayout.addWidget(self.maker_input)
+        filterlayout.addWidget(self.maker_selector)
+        filterlayout.addWidget(Label("厂牌"))
+        filterlayout.addWidget(self.label_selector)
+        filterlayout.addWidget(Label("系列"))
+        filterlayout.addWidget(self.series_selector)
+
+        for i in range(filterlayout.count()):
+            item = filterlayout.itemAt(i)
+            w = item.widget()
+            if w is not None:
+                filterlayout.setAlignment(w, Qt.AlignmentFlag.AlignVCenter)
 
         self.info = Label()
         self.info.setFixedWidth(100)
 
-        self.btn_reload = RotateButton(icon_name="refresh_cw",icon_size=24,out_size=24)
-        self.btn_eraser = ShakeButton(icon_name="eraser",icon_size=24,out_size=24)
+        self.btn_reload = RotateButton(
+            icon_name="refresh_cw", icon_size=24, out_size=24
+        )
+        self.btn_eraser = ShakeButton(icon_name="eraser", icon_size=24, out_size=24)
 
         self.order_combo = ComboBox()
         self.order_combo.addItems(
             [
+                "随机顺序",
                 "添加逆序",
                 "添加顺序",
                 "番号顺序",
@@ -131,7 +174,7 @@ class ShelfPage(QWidget):
                 "发布时间逆序",
                 "发布时间顺序",
                 "拍摄年龄顺序",
-                "拍摄年龄逆序",
+                "拍摄年龄逆序"
             ]
         )
         self.order_combo.setCurrentText(self.order)
@@ -145,7 +188,12 @@ class ShelfPage(QWidget):
         self.filter_layout = QHBoxLayout(self.filter_widget)
         self.filter_layout.setContentsMargins(10, 0, 10, 0)
 
-        self.filter_layout.addWidget(scroll)
+        self.btn_toggle_tag_selector = IconPushButton(
+            icon_name="layout_panel_left", icon_size=22, out_size=28
+        )
+        self._sync_tag_selector_button()
+        self.filter_layout.addWidget(self.btn_toggle_tag_selector)
+        self.filter_layout.addWidget(scroll, 1)
         self.filter_layout.addWidget(self.btn_reload)
         self.filter_layout.addWidget(self.btn_eraser)
         self.filter_layout.addWidget(self.info)
@@ -162,6 +210,7 @@ class ShelfPage(QWidget):
         self.hlayout = QHBoxLayout()
         self.hlayout.addWidget(self.tagselector, 0)
         self.hlayout.addWidget(self.shelf_view, 1)
+        self.tagselector.setVisible(self._tag_selector_visible)
 
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
@@ -176,19 +225,37 @@ class ShelfPage(QWidget):
         self.actress_input.textChanged.connect(self.apply_filter)
         self.actor_input.textChanged.connect(self.apply_filter)
         self.director_input.textChanged.connect(self.apply_filter)
-        self.maker_input.textChanged.connect(self.apply_filter)
+        self.maker_selector.currentTextChanged.connect(self.apply_filter)
+        self.label_selector.currentTextChanged.connect(self.apply_filter)
+        self.series_selector.currentTextChanged.connect(self.apply_filter)
         self.order_combo.currentTextChanged.connect(self.apply_filter)
         self.scope_combo.currentTextChanged.connect(self.apply_filter)
-        self.tagselector.selection_changed.connect(self.apply_filter)
+        self.tagselector.selectionChanged.connect(self.apply_filter)
 
-        from controller.GlobalSignalBus import global_signals
+        from controller.global_signal_bus import global_signals
 
-        global_signals.green_mode_changed.connect(self.update_green_mode)
-        global_signals.work_data_changed.connect(self.reload_input)
-        global_signals.actress_data_changed.connect(self.actress_input.reload_items)
-        global_signals.actor_data_changed.connect(self.actor_input.reload_items)
+        global_signals.greenModeChanged.connect(self.update_green_mode)
+        global_signals.workDataChanged.connect(self.reload_input)
+        global_signals.actressDataChanged.connect(self.actress_input.reload_items)
+        global_signals.actorDataChanged.connect(self.actor_input.reload_items)
 
         self.btn_eraser.clicked.connect(self._clear_all_search)
+        self.btn_toggle_tag_selector.clicked.connect(self._toggle_tag_selector)
+
+    def _sync_tag_selector_button(self) -> None:
+        if self._tag_selector_visible:
+            self.btn_toggle_tag_selector.setToolTip("当前：显示标签边栏，点击隐藏")
+            self.btn_toggle_tag_selector.set_icon_name("panel_left_close")
+        else:
+            self.btn_toggle_tag_selector.setToolTip("当前：隐藏标签边栏，点击显示")
+            self.btn_toggle_tag_selector.set_icon_name("panel_left_open")
+
+    @Slot()
+    def _toggle_tag_selector(self) -> None:
+        self._tag_selector_visible = not self._tag_selector_visible
+        self.tagselector.setVisible(self._tag_selector_visible)
+        self._sync_tag_selector_button()
+        set_shelf_tag_selector_visible(self._tag_selector_visible)
 
     def _clear_filters_for_jump(self) -> None:
         """Clear current shelf filters synchronously before programmatic jump."""
@@ -199,36 +266,80 @@ class ShelfPage(QWidget):
         self.title_input.setText("")
         self.story_input.setText("")
         self.serial_number_input.setText("")
-        self.maker_input.setText("")
+        self.maker_selector.set_maker(None)
+        self.label_selector.set_label(None)
+        self.series_selector.set_series_id(None)
         self.tagselector.load_with_ids([])
         self.scope_combo.setCurrentIndex(0)
         self.order_combo.setCurrentIndex(0)
         self.filter_timer.stop()
         self.apply_filter_real()
 
-    def load_with_params(self, work_id=None, serial_number=None, **kwargs):
+    def load_with_params(
+        self,
+        work_id=None,
+        serial_number=None,
+        director=None,
+        maker_id=None,
+        label_id=None,
+        series_id=None,
+        **kwargs,
+    ):
         target_work_id = work_id
         if target_work_id is None and serial_number:
             try:
-                target_work_id = get_workid_by_serialnumber(str(serial_number).strip())
+                target_work_id = submit_db_raw(
+                    lambda: get_workid_by_serialnumber(str(serial_number).strip())
+                ).result()
             except Exception:
-                logging.exception("ShelfPage: failed to resolve work_id from serial_number")
+                logging.exception(
+                    "ShelfPage: failed to resolve work_id from serial_number"
+                )
                 return
-        if target_work_id is None:
+
+        if target_work_id is not None:
+            try:
+                target_work_id = int(target_work_id)
+            except (TypeError, ValueError):
+                return
+
+            self._clear_filters_for_jump()
+
+            if self.shelf_view.load_work_id(target_work_id):
+                return
+
+            # Delay one event-loop tick so a freshly lazy-loaded page can finish applying its initial data.
+            QTimer.singleShot(
+                0, lambda wid=target_work_id: self.shelf_view.load_work_id(wid)
+            )
             return
 
-        try:
-            target_work_id = int(target_work_id)
-        except (TypeError, ValueError):
+        def _positive_id(v) -> int | None:
+            if v is None:
+                return None
+            try:
+                i = int(v)
+                return i if i > 0 else None
+            except (TypeError, ValueError):
+                return None
+
+        d = str(director).strip() if director is not None else ""
+        mid = _positive_id(maker_id)
+        lid = _positive_id(label_id)
+        sid = _positive_id(series_id)
+        if not d and mid is None and lid is None and sid is None:
             return
 
         self._clear_filters_for_jump()
-
-        if self.shelf_view.loadworkid(target_work_id):
-            return
-
-        # Delay one event-loop tick so a freshly lazy-loaded page can finish applying its initial data.
-        QTimer.singleShot(0, lambda wid=target_work_id: self.shelf_view.loadworkid(wid))
+        if d:
+            self.director_input.setText(d)
+        if mid is not None:
+            self.maker_selector.set_maker(mid)
+        if lid is not None:
+            self.label_selector.set_label(lid)
+        if sid is not None:
+            self.series_selector.set_series_id(sid)
+        self.apply_filter_real()
 
     @Slot()
     def _clear_all_search(self) -> None:
@@ -238,7 +349,9 @@ class ShelfPage(QWidget):
         self.title_input.setText("")
         self.story_input.setText("")
         self.serial_number_input.setText("")
-        self.maker_input.setText("")
+        self.maker_selector.set_maker(None)
+        self.label_selector.set_label(None)
+        self.series_selector.set_series_id(None)
         self.tagselector.load_with_ids([])
         self.apply_filter()
 
@@ -246,7 +359,9 @@ class ShelfPage(QWidget):
     def reload_input(self) -> None:
         self.serial_number_input.reload_items()
         self.director_input.reload_items()
-        self.maker_input.reload_items()
+        self.maker_selector.reload_makers()
+        self.label_selector.reload_labels()
+        self.series_selector.reload_series()
 
     @Slot(bool)
     def update_green_mode(self, green_mode: bool) -> None:
@@ -265,7 +380,9 @@ class ShelfPage(QWidget):
         self.actor = self.actor_input.text().strip()
         self.title = self.title_input.text().strip()
         self.serial_number = self.serial_number_input.text().strip()
-        self.studio = self.maker_input.text().strip()
+        self.maker_id = self.maker_selector.get_maker()
+        self.label_id = self.label_selector.get_label()
+        self.series_id = self.series_selector.get_series_id()
         self.tag_ids = self.tagselector.get_selected_ids()
         self.scope = self.scope_combo.currentText()
         self.order = self.order_combo.currentText()
@@ -290,8 +407,6 @@ class ShelfPage(QWidget):
 SELECT 
     work.work_id
 FROM work
-LEFT JOIN 
-    prefix_maker_relation p ON p.prefix = SUBSTR(work.serial_number, 1, INSTR(work.serial_number, '-') - 1)
         """
         cte_parts = []
 
@@ -321,19 +436,6 @@ WHERE cn LIKE ? OR jp LIKE ?
             cte_parts.append(withsql)
             params.extend([f"%{self.actor}%", f"%{self.actor}%"])
 
-        if self.studio:
-            withsql = """
-filter_maker AS(
-SELECT 
-    DISTINCT maker_id
-FROM 
-    maker
-WHERE cn_name LIKE ? OR jp_name LIKE ?
-)
-"""
-            cte_parts.append(withsql)
-            params.extend([f"%{self.studio}%", f"%{self.studio}%"])
-
         cte_sql = ""
         if cte_parts:
             cte_sql = "WITH " + ",\n".join(cte_parts) + "\n"
@@ -344,10 +446,12 @@ WHERE cn_name LIKE ? OR jp_name LIKE ?
             query += "JOIN priv.favorite_work fav ON fav.work_id=work.work_id\n"
 
         if self.scope == "已撸过":
-            query += "JOIN priv.masturbation  ON priv.masturbation.work_id=work.work_id\n"
+            query += (
+                "JOIN priv.masturbation  ON priv.masturbation.work_id=work.work_id\n"
+            )
 
         if self.order == "拍摄年龄顺序" or self.order == "拍摄年龄逆序":
-            query += "JOIN v_work_all_info v ON work.work_id = v.work_id\n"
+            query += "JOIN v_work_avg_age_info v ON work.work_id = v.work_id\n"
 
         if self.actress:
             query += """
@@ -360,10 +464,6 @@ JOIN filtered_actresses f ON actress.actress_id = f.actress_id
 JOIN work_actor_relation ON work_actor_relation.work_id=work.work_id
 JOIN filtered_actors fa ON fa.actor_id = work_actor_relation.actor_id
 """
-        if self.studio:
-            query += """
-JOIN filter_maker ON filter_maker.maker_id=p.maker_id
-"""
 
         if self.tag_ids:
             placeholders = ",".join("?" for _ in self.tag_ids)
@@ -373,7 +473,7 @@ JOIN filter_maker ON filter_maker.maker_id=p.maker_id
         query += "WHERE is_deleted=0\n"
 
         if self.keyword:
-            query += "AND work.story LIKE ?\n"
+            query += "AND work.notes LIKE ?\n"
             params.append(f"%{self.keyword}%")
 
         if self.order == "拍摄年龄顺序" or self.order == "拍摄年龄逆序":
@@ -390,9 +490,21 @@ JOIN filter_maker ON filter_maker.maker_id=p.maker_id
             query += "AND work.serial_number LIKE ?\n"
             params.append(f"%{self.serial_number}%")
 
+        if self.maker_id is not None:
+            query += "AND work.maker_id = ?\n"
+            params.append(self.maker_id)
+
         if self.title:
             query += "AND work.cn_title LIKE ?\n"
             params.append(f"%{self.title}%")
+
+        if self.label_id:
+            query += "AND work.label_id = ?\n"
+            params.append(self.label_id)
+
+        if self.series_id:
+            query += "AND work.series_id = ?\n"
+            params.append(self.series_id)
 
         if self.scope == "收藏未观看":
             query += "AND work.work_id NOT IN (SELECT work_id FROM priv.masturbation WHERE work_id IS NOT NULL)\n"
@@ -405,15 +517,16 @@ HAVING COUNT(DISTINCT wtr2.tag_id) = ?
             """
             params.append(num_tags)
 
+        random_order = False
         match self.order:
             case "发布时间顺序":
                 order = "ORDER BY work.release_date\n"
             case "发布时间逆序":
                 order = "ORDER BY work.release_date DESC\n"
             case "拍摄年龄顺序":
-                order = "ORDER BY (SELECT avg_age FROM v_work_all_info WHERE work_id=work.work_id)\n"
+                order = "ORDER BY (SELECT avg_age FROM v_work_avg_age_info WHERE work_id=work.work_id)\n"
             case "拍摄年龄逆序":
-                order = "ORDER BY (SELECT avg_age FROM v_work_all_info WHERE work_id=work.work_id) DESC\n"
+                order = "ORDER BY (SELECT avg_age FROM v_work_avg_age_info WHERE work_id=work.work_id) DESC\n"
             case "添加逆序":
                 order = "ORDER BY work.create_time DESC\n"
             case "添加顺序":
@@ -423,37 +536,53 @@ HAVING COUNT(DISTINCT wtr2.tag_id) = ?
             case "番号逆序":
                 order = "ORDER BY work.serial_number DESC\n"
             case "制作商顺序":
-                order = "ORDER BY p.maker_id IS NULL, p.maker_id, work.serial_number\n"
+                order = "ORDER BY work.maker_id IS NULL, work.maker_id, work.serial_number\n"
             case "制作商逆序":
-                order = "ORDER BY p.maker_id IS NULL DESC, p.maker_id DESC, work.serial_number DESC\n"
+                order = "ORDER BY work.maker_id IS NULL DESC, work.maker_id DESC, work.serial_number DESC\n"
             case "更新时间逆序":
                 order = "ORDER BY work.update_time DESC\n"
             case "更新时间顺序":
                 order = "ORDER BY work.update_time\n"
+            case "随机顺序":
+                order = (
+                    "ORDER BY ("
+                    "((work.work_id * ?) % 1000003) + "
+                    "((work.work_id * work.work_id * ?) % 1000033)"
+                    ") % 1000037, work.work_id\n"
+                )
+                random_order = True
             case _:
                 order = "ORDER BY work.create_time DESC\n"
 
         query += order
+        if random_order:
+            params.append(self.random_seed)
+            params.append(self.random_seed2)
 
-        with sqlite3.connect(f"file:{DATABASE}?mode=ro", uri=True) as conn:
-            cursor = conn.cursor()
-            if (
-                self.scope == "收藏库范围"
-                or self.scope == "收藏未观看"
-                or self.scope == "已撸过"
-            ):
-                attach_private_db(cursor)
-            cursor.execute(query, params)
-            results = cursor.fetchall()
-            if (
-                self.scope == "收藏库范围"
-                or self.scope == "收藏未观看"
-                or self.scope == "已撸过"
-            ):
-                detach_private_db(cursor)
+        def _run_read() -> list[int]:
+            with sqlite3.connect(f"file:{DATABASE}?mode=ro", uri=True) as conn:
+                cursor = conn.cursor()
+                if (
+                    self.scope == "收藏库范围"
+                    or self.scope == "收藏未观看"
+                    or self.scope == "已撸过"
+                ):
+                    attach_private_db(cursor)
+                cursor.execute(query, params)
+                results = cursor.fetchall()
+                if (
+                    self.scope == "收藏库范围"
+                    or self.scope == "收藏未观看"
+                    or self.scope == "已撸过"
+                ):
+                    detach_private_db(cursor)
+            return [row[0] for row in results]
 
-        return [row[0] for row in results]
+        return submit_db_raw(_run_read).result()
 
     @Slot()
     def refresh(self) -> None:
+        if self.order_combo.currentText() == "随机顺序":
+            self.random_seed = random.randint(1, 1_000_000)
+            self.random_seed2 = random.randint(1, 1_000_000)
         self.apply_filter_real()

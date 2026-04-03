@@ -2,6 +2,7 @@
 阶段一：PaneWidget = TabBar + StackedWidget，支持 Tab 顺序拖拽与关闭。
 测试文件在tests/test_pane_widget.py
 """
+
 from typing import Callable
 
 from PySide6.QtWidgets import (
@@ -151,13 +152,16 @@ class ClosableTabBar(QTabBar):
                     """
                 )
 
+
 class DraggableTabBar(ClosableTabBar):
     """支持跨窗格拖拽的 TabBar。"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._drag_start_pos: QPoint | None = None
-        self._drag_source_content_id: str | None = None  # 拖动开始时记录的 tab，避免栏内换位后取错
+        self._drag_source_content_id: str | None = (
+            None  # 拖动开始时记录的 tab，避免栏内换位后取错
+        )
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -233,13 +237,15 @@ class DraggableTabBar(ClosableTabBar):
 class PaneWidget(QWidget):
     """窗格 = Tab 栏 + 内容区（StackedWidget），每个 Tab 对应一个内容页。"""
 
-    pane_empty = Signal(object)  # 参数为 self（被关闭的 PaneWidget）
+    paneEmpty = Signal(object)  # 参数为 self（被关闭的 PaneWidget）
 
     def __init__(self, pane_id: str = "", parent=None):
         super().__init__(parent)
         self._pane_id = pane_id or id(self).__hex__()
         self._icon_only = False
-        self._get_content_closeable: Callable[[str], bool] | None = None  # 由 WorkspaceManager 设置，单一数据源
+        self._get_content_closeable: Callable[[str], bool] | None = (
+            None  # 由 WorkspaceManager 设置，单一数据源
+        )
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -337,15 +343,13 @@ class PaneWidget(QWidget):
         self._stack.setCurrentIndex(idx)
         self._tab_bar._update_close_buttons_visibility()
         self._refresh_tab_bar_layout()
-        QTimer.singleShot(0, self._refresh_tab_bar_layout)  
-
+        QTimer.singleShot(0, self._refresh_tab_bar_layout)
 
     def _on_tab_close_requested(self, index: int) -> None:
         """Tab 关闭请求：按 content_id 移除内容，空则发出 pane_empty（empty 判断在此统一处理）。"""
         content_id = self._tab_bar.tabData(index)
         if content_id is not None:
             self.remove_content(content_id)
-
 
     def remove_content(self, content_id: str) -> bool:
         """移除内容页，返回是否成功。当 widget 已被移走（如先 add 到别窗格再 remove）时只移除 tab，不从 stack 移除。"""
@@ -362,7 +366,7 @@ class PaneWidget(QWidget):
         self._refresh_tab_bar_layout()
         QTimer.singleShot(0, self._refresh_tab_bar_layout)
         if self._tab_bar.count() == 0:
-            self.pane_empty.emit(self)
+            self.paneEmpty.emit(self)
         return True
 
     def current_content_id(self) -> str | None:
@@ -391,7 +395,6 @@ class PaneWidget(QWidget):
             return
         self._stack.removeWidget(w)
         self._stack.insertWidget(to_index, w)
-
 
     def get_content_title(self, content_id: str) -> str:
         """根据 content_id 获取 Tab 标题（tabText 或 tabToolTip）。"""

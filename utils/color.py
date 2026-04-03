@@ -1,6 +1,7 @@
 import numpy as np
 
-def oklch_to_srgb(L, C, H,autopair=True):
+
+def oklch_to_srgb(L, C, H, autopair=True):
     """批量 OKLCH → sRGB (0-255 int)
     #这个转换和官方的没有区别
     """
@@ -13,36 +14,40 @@ def oklch_to_srgb(L, C, H,autopair=True):
 
     # 广播数组以匹配形状
     L, a, b = np.broadcast_arrays(L, a, b)
-    
+
     # 构造 (..., 3) 矩阵
     lab = np.stack([L, a, b], axis=-1)
 
     # OKLCH -> LMS (pre-cube)
     # 矩阵 M1 (转置后用于右乘)
-    M1 = np.array([
-        [1.0, 1.0, 1.0],
-        [0.3963377774, -0.1055613458, -0.0894841775],
-        [0.2158037573, -0.0638541728, -1.2914855480]
-    ])
-    
+    M1 = np.array(
+        [
+            [1.0, 1.0, 1.0],
+            [0.3963377774, -0.1055613458, -0.0894841775],
+            [0.2158037573, -0.0638541728, -1.2914855480],
+        ]
+    )
+
     lms_ = lab @ M1
-    lms = lms_ ** 3
+    lms = lms_**3
 
     # LMS -> Linear sRGB
     # 矩阵 M2 (转置后用于右乘)
-    M2 = np.array([
-        [4.0767416621, -1.2684380046, -0.0041960863],
-        [-3.3077115913, 2.6097574011, -0.7034186147],
-        [0.2309699292, -0.3413193965, 1.7076147010]
-    ])
-    
+    M2 = np.array(
+        [
+            [4.0767416621, -1.2684380046, -0.0041960863],
+            [-3.3077115913, 2.6097574011, -0.7034186147],
+            [0.2309699292, -0.3413193965, 1.7076147010],
+        ]
+    )
+
     rgb_lin = lms @ M2
 
     # linear → sRGB gamma + clip
     def gamma(x):
-        return np.where(x <= 0.0031308, x * 12.92, 1.055 * x**(1/2.4) - 0.055)
+        return np.where(x <= 0.0031308, x * 12.92, 1.055 * x ** (1 / 2.4) - 0.055)
 
-    #超出范围的自动匹配最近的颜色
+    # 超出范围的自动匹配最近的颜色
     if autopair:
         srgb = np.clip(gamma(rgb_lin), 0.0, 1.0)
     else:
@@ -53,12 +58,14 @@ def oklch_to_srgb(L, C, H,autopair=True):
         mask = mask1 | mask2
         srgb = np.where(mask, 1.0, np.clip(srgb_uncapped, 0.0, 1.0))
 
-
     return np.round(srgb * 255).astype(int)
+
 
 def linear_to_srgb(linear):
     # Gamma 校正 + clipping 到 [0,1]
-    gamma = np.where(linear <= 0.0031308,linear * 12.92,1.055 * linear**(1/2.4) - 0.055)
+    gamma = np.where(
+        linear <= 0.0031308, linear * 12.92, 1.055 * linear ** (1 / 2.4) - 0.055
+    )
     return np.clip(gamma, 0, 1)
 
 
@@ -72,9 +79,21 @@ def linear_srgb_to_oklch(rgb):
 
     # 1. 线性变换到 LMS 锥体响应空间
     # 这里的系数对应 C++ 中的 l, m, s 计算
-    l = 0.4122214708 * rgb[..., 0] + 0.5363325363 * rgb[..., 1] + 0.0514459929 * rgb[..., 2]
-    m = 0.2119034982 * rgb[..., 0] + 0.6806995451 * rgb[..., 1] + 0.1073969566 * rgb[..., 2]
-    s = 0.0883024619 * rgb[..., 0] + 0.2817188376 * rgb[..., 1] + 0.6299787005 * rgb[..., 2]
+    l = (
+        0.4122214708 * rgb[..., 0]
+        + 0.5363325363 * rgb[..., 1]
+        + 0.0514459929 * rgb[..., 2]
+    )
+    m = (
+        0.2119034982 * rgb[..., 0]
+        + 0.6806995451 * rgb[..., 1]
+        + 0.1073969566 * rgb[..., 2]
+    )
+    s = (
+        0.0883024619 * rgb[..., 0]
+        + 0.2817188376 * rgb[..., 1]
+        + 0.6299787005 * rgb[..., 2]
+    )
 
     # 2. 非线性压缩：开三次方 (Perceptual non-linearity)
     # cbrt 在处理负数时比 x**(1/3) 更鲁棒
@@ -101,30 +120,31 @@ def linear_srgb_to_oklch(rgb):
     return np.stack([L, C, h_deg], axis=-1)
 
 
-
 def srgb_to_linear(c_srgb):
     # 对每个颜色分量进行逆伽马校正
-    c_linear = np.where(c_srgb <= 0.04045, c_srgb / 12.92, ((c_srgb + 0.055) / 1.055) ** 2.4)
+    c_linear = np.where(
+        c_srgb <= 0.04045, c_srgb / 12.92, ((c_srgb + 0.055) / 1.055) ** 2.4
+    )
     return c_linear
 
-def srgb_to_oklch(hexRGB:str):
-    '''srgb转oklch
+
+def srgb_to_oklch(hexRGB: str):
+    """srgb转oklch
     hex格式
-    '''
+    """
     # 1. 清理并解析 HEX 字符串
-    hexRGB = hexRGB.lstrip('#').strip()
+    hexRGB = hexRGB.lstrip("#").strip()
     if len(hexRGB) != 6:
         raise ValueError("HEX 颜色必须是 6 位（RRGGBB）格式")
-    
+
     try:
         r = int(hexRGB[0:2], 16)
         g = int(hexRGB[2:4], 16)
         b = int(hexRGB[4:6], 16)
     except ValueError:
         raise ValueError("无效的 HEX 颜色格式")
-    
+
     # 2. 转为 0~1 范围的 sRGB 值
     srgb = np.array([r, g, b], dtype=np.float32) / 255.0
-    linear=srgb_to_linear(srgb)
+    linear = srgb_to_linear(srgb)
     return linear_srgb_to_oklch(linear)
-    

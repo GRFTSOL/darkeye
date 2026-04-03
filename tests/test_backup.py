@@ -3,9 +3,11 @@ from pathlib import Path
 
 import pytest
 import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from core.database.backup_utils import _copy_tree
 from core.database.backup_utils import _copy_tree, restore_backup_safely
+
 
 def test_copy_tree_src_not_exists(tmp_path):
     src = tmp_path / "src"
@@ -65,15 +67,19 @@ def test_copy_tree_overwrite(tmp_path):
     assert (dst / "file.txt").read_text(encoding="utf-8") == "from_src"
 
 
-
 import sqlite3
+
 
 def _init_db(path: Path, rows: list[tuple[str]]):
     """在给定路径创建一个简单表 test_table，并插入若干行"""
     conn = sqlite3.connect(path)
     try:
-        conn.execute("CREATE TABLE test_table (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)")
-        conn.executemany("INSERT INTO test_table (name) VALUES (?)", [(r,) for r in rows])
+        conn.execute(
+            "CREATE TABLE test_table (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)"
+        )
+        conn.executemany(
+            "INSERT INTO test_table (name) VALUES (?)", [(r,) for r in rows]
+        )
         conn.commit()
     finally:
         conn.close()

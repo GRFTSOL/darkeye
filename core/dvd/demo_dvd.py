@@ -1,4 +1,5 @@
 """Qt Quick 3D 加载 DVD 模型演示。"""
+
 from __future__ import annotations
 
 import sys
@@ -14,11 +15,12 @@ from PySide6.QtCore import QUrl
 
 from config import MESHES_PATH, MAPS_PATH
 from core.database.query import get_works_for_dvd, get_work_ids_with_cover
-from core.dvd.DvdShelfView import cover_url_to_texture_url, path_to_file_url
+from core.dvd.dvd_shelf_view import cover_url_to_texture_url, path_to_file_url
 
 
-class work:
-    '''弄一个数据类'''
+class Work:
+    """弄一个数据类"""
+
     def __init__(self, work_id, serial_number, cover_url) -> None:
         self.work_id = work_id
         self.serial_number = serial_number
@@ -33,8 +35,8 @@ class work:
         self.story = ""
 
     @classmethod
-    def from_dict(cls, d: dict) -> "work":
-        """从 get_works_for_dvd 返回的 dict 构建 work 实例"""
+    def from_dict(cls, d: dict) -> Work:
+        """从 get_works_for_dvd 返回的 dict 构建 Work 实例"""
         return cls(
             work_id=d.get("work_id"),
             serial_number=d.get("serial_number") or "",

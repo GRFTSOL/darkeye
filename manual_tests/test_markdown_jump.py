@@ -1,4 +1,11 @@
-from PySide6.QtWidgets import QApplication, QTextBrowser, QFileDialog, QVBoxLayout, QWidget, QPushButton
+from PySide6.QtWidgets import (
+    QApplication,
+    QTextBrowser,
+    QFileDialog,
+    QVBoxLayout,
+    QWidget,
+    QPushButton,
+)
 from PySide6.QtCore import QUrl
 import re, sys, os
 
@@ -31,7 +38,10 @@ class MarkdownViewer(QWidget):
         """加载 markdown 文件"""
         if not file_path:
             file_path, _ = QFileDialog.getOpenFileName(
-                self, "选择 Markdown 文件", self.base_dir, "Markdown Files (*.md);;All Files (*)"
+                self,
+                "选择 Markdown 文件",
+                self.base_dir,
+                "Markdown Files (*.md);;All Files (*)",
             )
         if not file_path:
             return
@@ -59,7 +69,9 @@ class MarkdownViewer(QWidget):
         else:
             # 外部链接交给系统打开
             import webbrowser
+
             webbrowser.open(url.toString())
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

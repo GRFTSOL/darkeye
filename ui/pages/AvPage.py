@@ -1,3 +1,4 @@
+import logging
 import re
 from pathlib import Path
 
@@ -68,6 +69,7 @@ class AvPage(LazyWidget):
         btn_preview.setCheckable(True)
         btn_preview.setChecked(True)
         btn_edit = Button("编辑")
+        btn_edit.setEnabled(False)
         btn_edit.setCheckable(True)
         self._mode_group = QButtonGroup(self)
         self._mode_group.addButton(btn_preview)
@@ -133,7 +135,8 @@ class AvPage(LazyWidget):
         else:
             handle = "#cccccc"
             handle_hover = "#888888"
-        self._splitter.setStyleSheet(f"""
+        self._splitter.setStyleSheet(
+            f"""
             QSplitter::handle {{
                 background: {handle};
                 width: 1px;
@@ -144,7 +147,8 @@ class AvPage(LazyWidget):
             QSplitter::handle:hover {{
                 background: {handle_hover};
             }}
-        """)
+        """
+        )
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -194,9 +198,14 @@ class AvPage(LazyWidget):
                 for i, segment in enumerate(parts[:-1]):
                     parent_path = parent_path / segment
                     if parent_path not in dir_nodes:
-                        dir_item = QTreeWidgetItem(self._tree if i == 0 else dir_nodes[parent_path.parent], [segment])
+                        dir_item = QTreeWidgetItem(
+                            self._tree if i == 0 else dir_nodes[parent_path.parent],
+                            [segment],
+                        )
                         dir_nodes[parent_path] = dir_item
-                parent_item = dir_nodes[root_path / parts[0]] if len(parts) > 1 else self._tree
+                parent_item = (
+                    dir_nodes[root_path / parts[0]] if len(parts) > 1 else self._tree
+                )
                 for i in range(1, len(parts) - 1):
                     parent_path = root_path
                     for j in range(i + 1):
@@ -269,6 +278,7 @@ class AvPage(LazyWidget):
                 text = path.read_text(encoding="utf-8")
                 self._editor.setPlainText(text)
             except Exception:
+                logging.exception("AvPage: 读取 Markdown 到编辑器失败 path=%s", path)
                 self._editor.setPlainText("")
         self._editor.blockSignals(False)
         self._edit_dirty = False
@@ -289,7 +299,7 @@ class AvPage(LazyWidget):
             path.write_text(self._editor.toPlainText(), encoding="utf-8")
             self._edit_dirty = False
         except Exception:
-            pass
+            logging.exception("AvPage: 自动保存 Markdown 失败 path=%s", path)
 
     def _switch_to_preview(self) -> None:
         if self._stack.currentIndex() == 1 and self._edit_dirty and self._current_path:
@@ -320,4 +330,5 @@ class AvPage(LazyWidget):
                 self._browser.setPlainText(f"未找到页面：{page}")
         else:
             from PySide6.QtGui import QDesktopServices
+
             QDesktopServices.openUrl(url)
