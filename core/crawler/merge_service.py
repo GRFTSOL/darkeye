@@ -96,12 +96,15 @@ def merge_crawl_results(
         or javtxt_result.get("maker")
         or ""
     )
-    series = (
-        avdanyuwiki_result.get("series")
-        or javdb_result.get("series")
-        or javtxt_result.get("series")
-        or ""
-    )
+    _avdan_series = avdanyuwiki_result.get("series") or ""
+    if _avdan_series in ("", "----"):
+        series = (
+            javdb_result.get("series")
+            or javtxt_result.get("series")
+            or ""
+        )
+    else:
+        series = _avdan_series
 
     label = (
         avdanyuwiki_result.get("label")
