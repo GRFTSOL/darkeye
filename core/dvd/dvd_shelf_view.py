@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from sre_parse import POSSESSIVE_REPEAT
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -787,9 +788,11 @@ class DvdShelfView(QWidget):
             logging.warning("DVD Fanart 预览写库：JSON 序列化失败")
             return
         if update_work_byhand_(int(wid), fanart=raw):
-            from controller.global_signal_bus import global_signals
+            pass
+            #这里不要去发射更新的信息，剧照属于附加的信息
+            #from controller.global_signal_bus import global_signals
 
-            global_signals.workDataChanged.emit()
+            #global_signals.workDataChanged.emit()
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
