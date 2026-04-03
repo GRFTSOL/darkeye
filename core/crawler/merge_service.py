@@ -84,6 +84,11 @@ def merge_crawl_results(
     serial_lower = canonical_serial.lower()
     cover_list.append("https://fourhoi.com/" + serial_lower + "/cover-n.jpg")
 
+    #最后的保底，这个是有水印的
+    javdburl=javdb_result.get("cover") or ""
+    if javdburl:
+        cover_list.append(javdburl)
+
     maker = (
         avdanyuwiki_result.get("maker")
         or javlib_result.get("maker")
@@ -123,7 +128,12 @@ def merge_crawl_results(
         if g not in excluded_genres
     ]
 
-    jp_title = javlib_result.get("title", javtxt_result.get("jp_title", ""))
+    jp_title = (
+        javlib_result.get("title")
+        or javtxt_result.get("jp_title")
+        or javdb_result.get("title")
+        or ""
+    )
 
     fanart_list = javlib_result.get("fanart") or javdb_result.get("fanart") or []
 

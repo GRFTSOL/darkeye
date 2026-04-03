@@ -5,7 +5,15 @@
 (function() {
     const api = chrome || browser;
     if (!window.location.href.includes("javdb.com")) return;
-  
+
+    /** 首尾空白、去掉末尾 -v/-z/v/z（不区分大小写），并统一大写以便与检索一致。 */
+    function normalizeCatalogId(value) {
+        return (value || "")
+            .trim()
+            .replace(/-?[vz]$/i, "")
+            .toUpperCase();
+    }
+
     api.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.command === "javdb-dvdid"){
           sessionStorage.setItem('darkeye_auto_parse', 'true')
@@ -18,10 +26,6 @@
   
     function search_javdb(){//先解析多个结果，然后根据番号选择，找到目标页面，然后跳转后详细解析
         console.log("开始搜索javdb");
-        const normalizeId = (value) => (value || "")
-            .trim()
-            .replace(/-?[vz]$/i, "")
-            .toUpperCase();
         const videos = document.querySelectorAll('div.item');
         if (videos.length === 0) {
             if (document.title.includes("Just a moment") || document.title.includes("Attention Required") || document.querySelector('#challenge-running')) {
@@ -62,11 +66,13 @@
                 url: href ? `https://javdb.com${href}` : ""
             };
         });
-        const searchId = normalizeId(sessionStorage.getItem('id'));
+        const searchId = normalizeCatalogId(sessionStorage.getItem('id'));
         let targetUrl = null;
 
         if (searchId) {
-            const matched = results.find(item => normalizeId(item.id) === searchId);
+            const matched = results.find(
+                (item) => normalizeCatalogId(item.id) === searchId
+            );
             if (matched) {
                 targetUrl = matched.url;
             }
@@ -90,16 +96,23 @@
 
           const data = {};
 
-          // 番号：h2.title 里第一个 strong
-          const idStrong = videoDetail.querySelector("h2.title strong");
-          if (idStrong) {
-              let idText = idStrong.textContent.trim();
-              idText = idText.replace(/\s+$/,""); // 去掉末尾空格
-              idText = idText.replace(/-?[vz]$/i, "");
-              data.id = idText;
-          } else {
-              data.id = "";
-          }
+          const panelBlocks = videoDetail.querySelectorAll(
+              ".movie-panel-info .panel-block"
+          );
+          const getPanelValue = (labelText) => {
+              for (const block of panelBlocks) {
+                  const strongEl = block.querySelector("strong");
+                  if (!strongEl) continue;
+                  if (strongEl.textContent.trim().startsWith(labelText)) {
+                      const val = block.querySelector(".value");
+                      return val ? val.textContent.trim() : "";
+                  }
+              }
+              return "";
+          };
+
+          // 番号：详情页「番號」面板（规范化同 search_javdb）
+          data.id = normalizeCatalogId(getPanelValue("番號:"));
           console.log("番号: " + data.id);
 
           // 标题：优先当前显示标题（中文），否则用原始标题（日文）
@@ -113,20 +126,6 @@
               data.title = "";
           }
           console.log("标题: " + data.title);
-
-          // 面板块集合
-          const panelBlocks = videoDetail.querySelectorAll(".movie-panel-info .panel-block");
-          const getPanelValue = (labelText) => {
-              for (const block of panelBlocks) {
-                  const strongEl = block.querySelector("strong");
-                  if (!strongEl) continue;
-                  if (strongEl.textContent.trim().startsWith(labelText)) {
-                      const val = block.querySelector(".value");
-                      return val ? val.textContent.trim() : "";
-                  }
-              }
-              return "";
-          };
 
           data.release_date = getPanelValue("日期:");
           const lengthRaw = getPanelValue("時長:");
@@ -187,8 +186,8 @@
               : [];
 
           // 封面，这个不要封面，有水印，宁可空也不要水印
-          //const imgElement = videoDetail.querySelector(".video-cover");
-          //data.image = imgElement ? imgElement.src : "";
+          const imgElement = videoDetail.querySelector(".video-cover");
+          data.cover = imgElement ? imgElement.src : "";
 
           sessionStorage.setItem('darkeye_auto_parse', 'false');
           console.log(data);
@@ -215,4 +214,3 @@
         }
     }
   })();
-  
