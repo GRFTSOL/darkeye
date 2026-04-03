@@ -364,6 +364,90 @@ def get_recent_work_notes_rows(limit: int) -> list[tuple]:
         return []
 
 
+def get_work_series_rows() -> list[tuple[int, int]]:
+    """返回有有效系列的作品：(work_id, series_id)。
+
+    排除 series_id 为 1 的占位系列；排除软删除作品。
+    """
+    query = """
+    SELECT work_id, series_id
+    FROM work
+    WHERE series_id IS NOT NULL
+    AND series_id > 0
+    AND series_id != 1
+    AND IFNULL(is_deleted, 0) = 0
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            return [(int(row[0]), int(row[1])) for row in cursor.fetchall()]
+    except Exception as e:
+        logging.error(f"get_work_series_rows 查询时数据库错误: {e}")
+        return []
+
+
+def get_most_recent_work_for_graph_sync() -> (
+    tuple[int, str, str | None, int | None, int] | None
+):
+    """按 ``update_time`` 最新的一条作品记录，供图增量同步系列与软删除状态。
+
+    Returns:
+        ``(work_id, serial_number, notes, series_id, is_deleted)``，
+        其中 ``is_deleted`` 为 0/1（数据库缺省时视为 0）。
+        无数据时返回 ``None``。
+    """
+    query = """
+    SELECT work_id, serial_number, notes, series_id,
+           IFNULL(is_deleted, 0) AS is_deleted
+    FROM work
+    ORDER BY update_time DESC
+    LIMIT 1
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            row = cursor.fetchone()
+        if row is None:
+            return None
+        notes = row[2]
+        series_id = row[3]
+        return (
+            int(row[0]),
+            str(row[1]),
+            notes if notes is None else str(notes),
+            int(series_id) if series_id is not None else None,
+            int(row[4]),
+        )
+    except Exception as e:
+        logging.error(f"get_most_recent_work_for_graph_sync 查询时数据库错误: {e}")
+        return None
+
+
+def get_work_ids_for_series(series_id: int) -> list[int]:
+    """返回指定系列下、与 ``get_work_series_rows`` 相同过滤规则的 work_id 列表。"""
+    if series_id is None or series_id <= 1:
+        return []
+    query = """
+    SELECT work_id
+    FROM work
+    WHERE series_id = ?
+    AND series_id IS NOT NULL
+    AND series_id > 0
+    AND series_id != 1
+    AND IFNULL(is_deleted, 0) = 0
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, (series_id,))
+            return [int(r[0]) for r in cursor.fetchall()]
+    except Exception as e:
+        logging.error(f"get_work_ids_for_series 查询时数据库错误: {e}")
+        return []
+
+
 def get_serial_number_map() -> dict:
     query = "SELECT serial_number, work_id FROM work"
     try:
