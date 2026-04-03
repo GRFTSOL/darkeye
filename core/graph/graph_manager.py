@@ -6,7 +6,7 @@ from PySide6.QtCore import QObject, Signal
 
 from core.graph.text_parser import parse_wikilinks
 from core.database.query import (
-    get_workid_by_serialnumber,
+    get_active_workid_by_serialnumber,
     get_actress_from_work_id,
     get_serial_number_map,
     get_work_notes_rows,
@@ -197,8 +197,8 @@ class GraphManager(QObject):
                 target_work_id = serial_map.get(target_serial)
 
                 if target_work_id is None:
-                    # 尝试补救查询
-                    target_work_id = get_workid_by_serialnumber(target_serial)
+                    # 尝试补救查询（不纳入软删除作品）
+                    target_work_id = get_active_workid_by_serialnumber(target_serial)
 
                 if target_work_id:
                     # 构造 Target 节点 ID
@@ -231,6 +231,30 @@ class GraphManager(QObject):
         self._initialized = False
         self.initialize()
 
+    def prune_soft_deleted_work_nodes(self, *, emit_diff: bool = True) -> None:
+        """从内存图 G 中移除已软删除的作品节点（及其边）。不重建整张图。"""
+        if self.G is None or not self._initialized:
+            return
+
+        from core.database.connection import get_connection
+        from config import DATABASE
+
+        with get_connection(DATABASE, True) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT work_id FROM work WHERE IFNULL(is_deleted, 0) = 1")
+            deleted_ids = [row[0] for row in cur.fetchall()]
+
+        removed = False
+        with self._lock:
+            for wid in deleted_ids:
+                nid = f"w{wid}"
+                if self.G.has_node(nid):
+                    self.G.remove_node(nid)
+                    removed = True
+
+        if removed and emit_diff:
+            self.graphDiffSignal.emit([{"op": "prune_soft_deleted"}])
+
     def _connect_signals_handler(self):
         """
         在主线程中处理信号连接，由 _connectSignalsRequested 信号触发
@@ -249,6 +273,8 @@ class GraphManager(QObject):
             self.initialize()
             return
         logging.info(f"更新图关系")
+        self.prune_soft_deleted_work_nodes(emit_diff=True)
+
         rows = get_recent_work_notes_rows(limit)
         if not rows:
             return
@@ -290,7 +316,9 @@ class GraphManager(QObject):
                     for target_serial, alias in links:
                         target_work_id = serial_map.get(target_serial)
                         if target_work_id is None:
-                            target_work_id = get_workid_by_serialnumber(target_serial)
+                            target_work_id = get_active_workid_by_serialnumber(
+                                target_serial
+                            )
 
                         if target_work_id:
                             target_node_id = f"w{target_work_id}"

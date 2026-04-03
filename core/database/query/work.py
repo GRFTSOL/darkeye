@@ -336,6 +336,7 @@ def get_work_notes_rows() -> list[tuple]:
     SELECT work_id, serial_number, notes
     FROM work
     WHERE notes IS NOT NULL AND notes != ''
+    AND IFNULL(is_deleted, 0) = 0
     """
     try:
         with get_connection(DATABASE, True) as conn:
@@ -351,6 +352,7 @@ def get_recent_work_notes_rows(limit: int) -> list[tuple]:
     query = """
     SELECT work_id, serial_number, notes
     FROM work
+    WHERE IFNULL(is_deleted, 0) = 0
     ORDER BY update_time DESC
     LIMIT ?
     """
@@ -365,7 +367,10 @@ def get_recent_work_notes_rows(limit: int) -> list[tuple]:
 
 
 def get_serial_number_map() -> dict:
-    query = "SELECT serial_number, work_id FROM work"
+    query = """
+    SELECT serial_number, work_id FROM work
+    WHERE IFNULL(is_deleted, 0) = 0
+    """
     try:
         with get_connection(DATABASE, True) as conn:
             cursor = conn.cursor()
@@ -463,6 +468,23 @@ def get_workid_by_serialnumber(serial_number) -> int | None:
             return None
         else:
             return id[0]
+
+
+def get_active_workid_by_serialnumber(serial_number) -> int | None:
+    """番号解析为 work_id，排除软删除作品（关系图、笔记引用等只看有效片）。"""
+    query = """
+        SELECT work_id
+        FROM work
+        WHERE serial_number = ?
+        AND IFNULL(is_deleted, 0) = 0
+        """
+    with get_connection(DATABASE, True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query, (serial_number,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return row[0]
 
 
 def get_javtxt_id_by_serialnumber(serial_number) -> int | None:

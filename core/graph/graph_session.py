@@ -154,6 +154,9 @@ class GraphViewSession(QObject):
         if G is None:
             return
 
+        # 与 DB 同步：去掉已软删作品，避免仅 new_load 时仍用内存里的旧节点
+        self.manager.prune_soft_deleted_work_nodes(emit_diff=False)
+
         self.sub_G = self.apply_filter(G)
 
         self.dataReady.emit({"cmd": "load_graph", "graph": self.sub_G, "modify": False})

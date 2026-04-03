@@ -47,16 +47,24 @@ def generate_graph() -> nx.Graph:
     cursor.execute(q1)
     actresses = cursor.fetchall()
     q2 = """
-    SELECT 
+    SELECT
     work_id,
     serial_number
     FROM
     work
+    WHERE IFNULL(is_deleted, 0) = 0
     """
     cursor.execute(q2)
     works = cursor.fetchall()
 
-    cursor.execute("SELECT work_id, actress_id FROM work_actress_relation")
+    cursor.execute(
+        """
+        SELECT war.work_id, war.actress_id
+        FROM work_actress_relation war
+        JOIN work w ON w.work_id = war.work_id
+        WHERE IFNULL(w.is_deleted, 0) = 0
+        """
+    )
     relations = cursor.fetchall()
 
     cursor.close()
