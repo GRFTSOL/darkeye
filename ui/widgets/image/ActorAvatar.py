@@ -14,7 +14,8 @@ class ActorAvatar(OctImage):
         self._d = 150  # 直径
         # self.setStyleSheet("border: 1px solid red; border-radius: 4px;")
         self._actor_id = actor_id
-
+        self.setCursor(Qt.PointingHandCursor)
+        
     def mouseReleaseEvent(self, event: QMouseEvent):
         from controller.global_signal_bus import global_signals
 
