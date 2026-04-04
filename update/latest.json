@@ -1,10 +1,10 @@
 {
   "app": "DarkEye",
-  "latestVersion": "1.2.1",
-  "releaseNotes": "NFO导入加入进度条,封面图片存储的时候后缀取消,添加随机顺序,标签选择器隐藏+持久化",
+  "latestVersion": "1.2.2",
+  "releaseNotes": "软删除与回收站优化，添加新按钮,汇总查询表优化，添加排序功能,设置视频播放的浏览器地址,Jvedio提取的外置脚本,graph加上series的互联",
   "package": {
-    "url": "http://yinruizhe.asia/DarkEye-v1.2.1.tar.zst",
-    "sha256": "55b09e12c2dd562b6016e4de59400963c000bad03d1ece3db2c79498755847c4",
-    "size": 83904462
+    "url": "http://yinruizhe.asia/DarkEye-v1.2.2.tar.zst",
+    "sha256": "99247709b05ca011a98b47168399fd6aa8614ec5fa2c08dd7f539d138b253af7",
+    "size": 81226605
   }
 }
