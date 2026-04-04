@@ -998,3 +998,32 @@ QPushButton#DesignChip[tone="warning"] {
 QPushButton#DesignChip[tone="error"] {
     border-color: {{color_error}};
 }
+
+/* ----- TokenLinkCard (objectName=DesignLinkCard) ----- */
+QFrame#DesignLinkCard {
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    background-color: {{color_bg}};
+}
+
+QFrame#DesignLinkCard:hover {
+    border-color: {{color_primary}};
+    background-color: {{color_bg_input}};
+}
+
+QFrame#DesignLinkCard:focus {
+    border-color: {{color_border_focus}};
+}
+
+QLabel#DesignLinkCardTitle {
+    color: {{color_text}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+    font-weight: 600;
+}
+
+QLabel#DesignLinkCardDescription {
+    color: {{color_text_placeholder}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+}

@@ -15,7 +15,7 @@
 
 ## 2. 当前代码现状（基线）
 
-1. `darkeye_ui.components.__all__`：59 个导出名。
+1. `darkeye_ui.components.__all__`：61 个导出名。
 2. `darkeye_ui.__all__`：29 个导出名。
 3. `__all__` 自检通过：
    - `all(name in dir(darkeye_ui) for name in darkeye_ui.__all__) == True`
@@ -71,7 +71,7 @@
 
 ---
 
-## 4. 现有公共组件清单（59）
+## 4. 现有公共组件清单（61）
 
 以下清单来自 `darkeye_ui.components.__all__`。
 
@@ -110,15 +110,16 @@
 
 1. `TokenTabWidget`
 2. `TokenGroupBox`
-3. `TokenCollapsibleSection`
-4. `TokenVerticalTabBar`
-5. `Sidebar2`
-6. `ModernScrollMenu`
-7. `LazyScrollArea`
-8. `TransparentWidget`
-9. `Breadcrumb`
-10. `Pagination`
-11. `SearchBar`
+3. `TokenLinkCard`
+4. `TokenCollapsibleSection`
+5. `TokenVerticalTabBar`
+6. `Sidebar2`
+7. `ModernScrollMenu`
+8. `LazyScrollArea`
+9. `TransparentWidget`
+10. `Breadcrumb`
+11. `Pagination`
+12. `SearchBar`
 
 ### 4.4 反馈与状态
 

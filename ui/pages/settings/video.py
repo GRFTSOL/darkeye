@@ -33,9 +33,7 @@ class VideoSettingPage(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        self.pathManagement = MultiplePathManagement(label_text="视频文件夹路径管理：")
-        self.pathManagement.setMinimumHeight(300)
-        layout.addWidget(self.pathManagement)
+
 
         player_row = QHBoxLayout()
         player_row.addWidget(Label("本地播放器（可选）："))
@@ -52,6 +50,10 @@ class VideoSettingPage(QWidget):
         self.btn_browse_player.clicked.connect(self._browse_local_player_exe)
         player_row.addWidget(self.btn_browse_player)
         layout.addLayout(player_row)
+        
+        self.pathManagement = MultiplePathManagement(label_text="视频文件夹路径管理：")
+        self.pathManagement.setMinimumHeight(300)
+        layout.addWidget(self.pathManagement)
 
         self.btn_update_db_video = Button("扫描本地视频提取番号并录入数据库")
         self.btn_update_db_video.setToolTip(
