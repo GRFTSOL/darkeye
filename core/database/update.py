@@ -388,7 +388,6 @@ def update_db_actress(id: int, data: dict):
                 id,
             ),
         )
-        
 
         # 更新英文名,假名；主日文名与站点不一致时同步为 data["日文名"]
         cursor.execute(
@@ -402,7 +401,7 @@ def update_db_actress(id: int, data: dict):
                 "UPDATE actress_name SET cn=?,jp=? WHERE actress_id=? AND name_type=1",
                 (incoming_jp, incoming_jp, id),
             )
-        
+
         # 更新英文名,假名
         cursor.execute(
             "UPDATE actress_name SET en=?,kana=? WHERE actress_id=?",
@@ -485,6 +484,150 @@ def update_work_javtxt(id, javtxt_id):
         cursor.close()
         conn.close()
     return 0
+
+
+def _split_video_url_field(raw: str | None) -> list[str]:
+    """按英文逗号拆分 video_url；strip 并丢弃空段。路径内若含逗号会被误切分（与存储约定一致）。"""
+    if raw is None or not str(raw).strip():
+        return []
+    return [x.strip() for x in str(raw).split(",") if x.strip()]
+
+
+def merge_work_video_urls_batch(work_id_to_paths: dict[int, list[str]]) -> int:
+    """将本地视频绝对路径合并写入 work.video_url（逗号分隔、去重保序）。
+
+    在已有内容上追加新路径；与合并后完全相同时跳过 UPDATE。
+    成功后需由调用方 emit: global_signals.workDataChanged
+
+    Args:
+        work_id_to_paths: work_id -> 本轮扫描到的路径列表
+
+    Returns:
+        实际执行了 UPDATE 的 work 行数。
+    """
+    if not work_id_to_paths:
+        return 0
+
+    conn = get_connection(DATABASE, False)
+    cursor = conn.cursor()
+    n_updated = 0
+
+    try:
+        for work_id, path_list in work_id_to_paths.items():
+            additions = [p.strip() for p in path_list if p and str(p).strip()]
+            if not additions:
+                continue
+
+            cursor.execute(
+                "SELECT video_url FROM work WHERE work_id = ?",
+                (work_id,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                logging.warning(
+                    "merge_work_video_urls_batch: work_id=%s 不存在，跳过", work_id
+                )
+                continue
+
+            existing_parts = _split_video_url_field(row[0])
+            merged: list[str] = []
+            seen: set[str] = set()
+            for x in existing_parts:
+                if x not in seen:
+                    merged.append(x)
+                    seen.add(x)
+            for x in additions:
+                if x not in seen:
+                    merged.append(x)
+                    seen.add(x)
+
+            new_val = ",".join(merged)
+            old_val = ",".join(existing_parts)
+            if new_val == old_val:
+                continue
+
+            cursor.execute(
+                "UPDATE work SET video_url = ? WHERE work_id = ?",
+                (new_val if new_val else None, work_id),
+            )
+            n_updated += 1
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        logging.exception("merge_work_video_urls_batch 失败: %s", e)
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+
+    return n_updated
+
+
+def replace_work_video_urls_batch(work_id_to_paths: dict[int, list[str]]) -> int:
+    """用本次扫描结果完全覆盖 work.video_url（不保留库中原路径）。
+
+    多条路径以英文逗号分隔，列表内去重保序；无有效路径时写入 NULL。
+    与分割去空后拼回的值相同时跳过 UPDATE。
+    成功后需由调用方 emit: global_signals.workDataChanged。
+
+    Args:
+        work_id_to_paths: work_id -> 本轮扫描到的路径列表
+
+    Returns:
+        实际执行了 UPDATE 的 work 行数。
+    """
+    if not work_id_to_paths:
+        return 0
+
+    conn = get_connection(DATABASE, False)
+    cursor = conn.cursor()
+    n_updated = 0
+
+    try:
+        for work_id, path_list in work_id_to_paths.items():
+            parts = [p.strip() for p in path_list if p and str(p).strip()]
+            merged: list[str] = []
+            seen: set[str] = set()
+            for x in parts:
+                if x not in seen:
+                    merged.append(x)
+                    seen.add(x)
+
+            new_val = ",".join(merged) if merged else None
+
+            cursor.execute(
+                "SELECT video_url FROM work WHERE work_id = ?",
+                (work_id,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                logging.warning(
+                    "replace_work_video_urls_batch: work_id=%s 不存在，跳过", work_id
+                )
+                continue
+
+            old_parts = _split_video_url_field(row[0])
+            old_val = ",".join(old_parts) if old_parts else None
+            if old_val == new_val:
+                continue
+
+            cursor.execute(
+                "UPDATE work SET video_url = ? WHERE work_id = ?",
+                (new_val, work_id),
+            )
+            n_updated += 1
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        logging.exception("replace_work_video_urls_batch 失败: %s", e)
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+
+    return n_updated
 
 
 def update_titlestory(serial_number, cn_title, jp_title, cn_story, jp_story):

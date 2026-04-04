@@ -35,6 +35,7 @@ from .token_collapsible_section import TokenCollapsibleSection
 from .token_date_time_edit import TokenDateTimeEdit
 from .token_group_box import TokenGroupBox
 from .token_key_sequence_edit import TokenKeySequenceEdit
+from .token_link_card import TokenLinkCard
 from .token_list_view import TokenListView
 from .token_progress_bar import IndeterminateProgressBar, ProgressBar, TokenProgressBar
 from .token_radio_button import TokenRadioButton
@@ -95,6 +96,7 @@ __all__ = [
     "TokenDateTimeEdit",
     "TokenGroupBox",
     "TokenKeySequenceEdit",
+    "TokenLinkCard",
     "TokenListView",
     "TokenModalDialog",
     "TokenProgressBar",

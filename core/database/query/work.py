@@ -98,6 +98,7 @@ def get_workinfo_by_workid(work_id: int) -> dict:
     work.label_id AS label_id,
     work.series_id AS series_id,
     work.fanart AS fanart,
+    work.video_url AS video_url,
     (SELECT cn_name FROM maker WHERE maker_id = work.maker_id) AS studio_name,
     (SELECT cn_name FROM label WHERE label_id = work.label_id) AS label_name,
     (SELECT cn_name FROM series WHERE series_id = work.series_id) AS series_name

@@ -8,6 +8,9 @@ from PySide6.QtWidgets import (
     QWidget,
     QScrollArea,
     QFrame,
+    QMenu,
+    QStyle,
+    QToolButton,
 )
 from PySide6.QtCore import (
     Qt,
@@ -19,6 +22,7 @@ from PySide6.QtCore import (
     QThreadPool,
     QTimer,
 )
+from PySide6.QtGui import QCursor
 
 from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfig
 from ui.widgets.CrawlerToolBox import CrawlerAutoPage
@@ -51,11 +55,13 @@ from core.database.query import (
     exist_actress,
 )
 from core.database.insert import InsertNewWorkByHand, rename_save_image
-from core.database.update import update_work_byhand
-from utils.utils import delete_image, mse, translate_text_sync
+from core.database.update import _split_video_url_field, update_work_byhand
+from utils.serial_number import serial_number_equal
+from utils.utils import delete_image, mse, play_video, translate_text_sync
 
 
 from darkeye_ui import LazyWidget
+from controller.app_context import get_theme_manager
 from controller.message_service import MessageBoxService, IMessageService
 
 from core.crawler.worker import Worker, wire_worker_finished
@@ -158,6 +164,7 @@ class ViewModel(QObject):
 
     modifyStateChanged = Signal(str, bool)  # 发出修改什么控件的信号
     workload = Signal(str)  # 发送给view使用
+    workInfoReloaded = Signal()
 
     def __init__(self, model=None, message_service: IMessageService = None):
         super().__init__()
@@ -737,6 +744,7 @@ class ViewModel(QObject):
         # 样式还原
         self.set_change_widget_default()
         logging.debug("加载信息完成")
+        self.workInfoReloaded.emit()
 
     def _clear_all_info(self):
         """清空所有的面板里的内容除了input_serial_number"""
@@ -973,6 +981,7 @@ class AddWorkTabPage3(LazyWidget):
 
         self.update_commit_btn("add_work", ButtonState.DISABLED)
         self.update_commit_btn("load", ButtonState.DISABLED)
+        self._refresh_local_video_button()
 
     def init_ui(self) -> None:
         from core.database.db_queue import submit_db_raw
@@ -1019,11 +1028,15 @@ class AddWorkTabPage3(LazyWidget):
         self.btn_trans_title = IconPushButton(
             icon_name="languages", icon_size=16, out_size=16
         )
-        self.btn_trans_title.setToolTip("翻译日文标题成中文并写在上方 中文标题框 内")
+        self.btn_trans_title.setToolTip(
+            "翻译日文标题成中文并写在「中文标题与剧情」窗格标题框内"
+        )
         self.btn_trans_story = IconPushButton(
             icon_name="languages", icon_size=16, out_size=16
         )
-        self.btn_trans_story.setToolTip("翻译日文剧情成中文并写在上方 中文剧情框 内")
+        self.btn_trans_story.setToolTip(
+            "翻译日文剧情成中文并写在「中文标题与剧情」窗格剧情框内"
+        )
         jp_title_label_layout = QHBoxLayout()
         jp_story_label_layout = QHBoxLayout()
         jp_title_label_layout.addWidget(self.label_jp_title)
@@ -1102,7 +1115,7 @@ class AddWorkTabPage3(LazyWidget):
         cover_layout.setContentsMargins(0, 0, 0, 0)
         cover_layout.addWidget(self.coverdroplabel)
 
-        # 基础信息栏
+        # 基础信息（番号等，与中文/日文文案各为独立窗格）
         basic_info_container = QWidget()
         basic_layout = QVBoxLayout(basic_info_container)
         left_small_layout1 = QHBoxLayout()
@@ -1129,6 +1142,19 @@ class AddWorkTabPage3(LazyWidget):
         left_small_layout7.addWidget(self.label_series)
         left_small_layout7.addWidget(self.input_series)
 
+        self.label_local_video = Label("本地视频：")
+        self.btn_local_video = QToolButton()
+        self.btn_local_video.setAutoRaise(False)
+        self.btn_local_video.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+        )
+        self.btn_local_video.setToolTip("播放本地视频（与 DVD 书架相同，按 video_url）")
+        self.btn_local_video.setFixedSize(36, 28)
+        left_small_layout8 = QHBoxLayout()
+        left_small_layout8.addWidget(self.label_local_video)
+        left_small_layout8.addWidget(self.btn_local_video)
+        left_small_layout8.addStretch(1)
+
         basic_layout.addLayout(left_small_layout1)
         basic_layout.addLayout(left_small_layout2)
         basic_layout.addLayout(left_small_layout3)
@@ -1136,16 +1162,22 @@ class AddWorkTabPage3(LazyWidget):
         basic_layout.addLayout(left_small_layout5)
         basic_layout.addLayout(left_small_layout6)
         basic_layout.addLayout(left_small_layout7)
-
-        basic_layout.addWidget(self.label_cn_title)
-        basic_layout.addWidget(self.cn_title)
-        basic_layout.addWidget(self.label_cn_story)
-        basic_layout.addWidget(self.cn_story)
-        basic_layout.addLayout(jp_title_label_layout)
-        basic_layout.addWidget(self.jp_title)
-        basic_layout.addLayout(jp_story_label_layout)
-        basic_layout.addWidget(self.jp_story)
+        basic_layout.addLayout(left_small_layout8)
         basic_layout.addWidget(self.btn_add_work)
+
+        cn_text_container = QWidget()
+        cn_text_layout = QVBoxLayout(cn_text_container)
+        cn_text_layout.addWidget(self.label_cn_title)
+        cn_text_layout.addWidget(self.cn_title)
+        cn_text_layout.addWidget(self.label_cn_story)
+        cn_text_layout.addWidget(self.cn_story)
+
+        jp_text_container = QWidget()
+        jp_text_layout = QVBoxLayout(jp_text_container)
+        jp_text_layout.addLayout(jp_title_label_layout)
+        jp_text_layout.addWidget(self.jp_title)
+        jp_text_layout.addLayout(jp_story_label_layout)
+        jp_text_layout.addWidget(self.jp_story)
 
         # 女优选择器
         actress_container = QWidget()
@@ -1191,6 +1223,9 @@ class AddWorkTabPage3(LazyWidget):
         pane_tag = self._workspace_manager.split(
             pane_basic, Placement.Right, ratio=0.25
         )
+        pane_cn_text = self._workspace_manager.split(
+            pane_basic, Placement.Bottom, ratio=0.42
+        )
         pane_fanart = self._workspace_manager.split(
             pane_tag, Placement.Bottom, ratio=0.2
         )
@@ -1211,7 +1246,17 @@ class AddWorkTabPage3(LazyWidget):
             root, make_config("封面栏", cover_container, closeable=False)
         )
         self._workspace_manager.fill_pane(
-            pane_basic, make_config("基础信息", basic_info_container, closeable=False)
+            pane_basic,
+            make_config("基础信息", basic_info_container, closeable=False),
+        )
+
+        self._workspace_manager.fill_pane(
+            pane_cn_text,
+            make_config("日文标题与剧情", jp_text_container, closeable=False),
+        )
+        self._workspace_manager.fill_pane(
+            pane_cn_text,
+            make_config("中文标题与剧情", cn_text_container, closeable=False),
         )
         self._workspace_manager.fill_pane(
             pane_actress, make_config("男优选择器", actor_container, closeable=False)
@@ -1227,7 +1272,7 @@ class AddWorkTabPage3(LazyWidget):
         )
         self._workspace_manager.fill_pane(
             pane_force,
-            make_config("力导向图区", self.forceview_container, closeable=False),
+            make_config("图谱", self.forceview_container, closeable=False),
         )
         self._workspace_manager.fill_pane(
             pane_editor, make_config("自由记录区", editor_container, closeable=False)
@@ -1475,6 +1520,11 @@ class AddWorkTabPage3(LazyWidget):
             self.viewmodel.on_work_selected
         )  # 核心
         self.viewmodel.serialNumberChanged.connect(self._sync_fanart_add_enabled)
+        self.viewmodel.serialNumberChanged.connect(
+            lambda *_a: QTimer.singleShot(0, self._refresh_local_video_button)
+        )
+        self.viewmodel.workInfoReloaded.connect(self._refresh_local_video_button)
+        self.btn_local_video.clicked.connect(self._on_local_video_play_clicked)
         self.input_serial_number.returnPressed.connect(
             self.viewmodel._load_from_db
         )  # 按enter后查询
@@ -1494,11 +1544,20 @@ class AddWorkTabPage3(LazyWidget):
         global_signals.downloadSuccess.connect(self.update_cover)
         global_signals.workDataChanged.connect(self.input_serial_number.reload_items)
         global_signals.workDataChanged.connect(self.input_director.reload_items)
+        global_signals.workDataChanged.connect(
+            self._on_work_data_changed_sync_local_video
+        )
         global_signals.makerDataChanged.connect(self.input_maker.reload_makers)
         global_signals.labelDataChanged.connect(self.input_label.reload_labels)
         global_signals.seriesDataChanged.connect(self.input_series.reload_series)
 
         self._sync_fanart_add_enabled()
+
+        _tm = get_theme_manager()
+        if _tm is not None:
+            _tm.themeChanged.connect(
+                lambda _tid: self._apply_local_video_button_style()
+            )
 
     # ----------------------------------------------------------
     #          爬虫函数，QCheckBox触发，未MVVM,与UI耦合
@@ -1581,6 +1640,100 @@ class AddWorkTabPage3(LazyWidget):
     @Slot()
     def _sync_fanart_add_enabled(self, *_args):
         self.fanart_strip.set_can_add(bool(self.viewmodel.get_serial_number().strip()))
+
+    def _apply_local_video_button_style(self) -> None:
+        btn = self.btn_local_video
+        mgr = get_theme_manager()
+        if mgr is None:
+            return
+        t = mgr.tokens()
+        r = t.radius_md
+        if btn.isEnabled():
+            btn.setStyleSheet(
+                f"""
+                QToolButton {{
+                    background: {t.color_primary};
+                    color: {t.color_text_inverse};
+                    border: none;
+                    border-radius: {r};
+                    padding: 4px;
+                }}
+                QToolButton:hover {{
+                    background: {t.color_primary_hover};
+                }}
+                """
+            )
+        else:
+            btn.setStyleSheet(
+                f"""
+                QToolButton {{
+                    background: {t.color_bg_input};
+                    color: {t.color_text_disabled};
+                    border: 1px solid {t.color_border};
+                    border-radius: {r};
+                    padding: 4px;
+                }}
+                """
+            )
+
+    def _refresh_local_video_button(self) -> None:
+        vm = self.viewmodel
+        cur = vm.get_serial_number().strip()
+        ow = getattr(vm, "original_work", None) or {}
+        enabled = False
+        if (
+            getattr(vm, "work_id", None) is not None
+            and bool(ow)
+            and cur
+            and serial_number_equal(cur, str(ow.get("serial_number", "") or ""))
+        ):
+            paths = _split_video_url_field(ow.get("video_url"))
+            enabled = len(paths) > 0
+        self.btn_local_video.setEnabled(enabled)
+        self._apply_local_video_button_style()
+
+    @Slot()
+    def _on_local_video_play_clicked(self) -> None:
+        wid = self.viewmodel.work_id
+        if wid is None:
+            return
+        info = get_workinfo_by_workid(wid)
+        if not info:
+            self.msg.show_info("提示", "没有可播放的视频")
+            return
+        path_strs = _split_video_url_field(info.get("video_url"))
+        if not path_strs:
+            self.msg.show_info("提示", "没有可播放的视频")
+            return
+        menu = QMenu(self)
+        for path_str in path_strs:
+            p = Path(path_str).expanduser()
+            act = menu.addAction(p.name)
+            act.setData(str(p))
+        chosen = menu.exec(QCursor.pos())
+        if chosen:
+            play_video(Path(chosen.data()))
+
+    @Slot()
+    def _on_work_data_changed_sync_local_video(self) -> None:
+        vm = self.viewmodel
+        if getattr(vm, "work_id", None) is None:
+            self._refresh_local_video_button()
+            return
+        ow = getattr(vm, "original_work", None)
+        if not ow:
+            self._refresh_local_video_button()
+            return
+        cur = vm.get_serial_number().strip()
+        if not cur or not serial_number_equal(
+            cur, str(ow.get("serial_number", "") or "")
+        ):
+            self._refresh_local_video_button()
+            return
+        inf = get_workinfo_by_workid(vm.work_id)
+        if inf:
+            ow["video_url"] = inf.get("video_url")
+        self._refresh_local_video_button()
 
     # ----------------------------------------------------------
     #                         UI样式修改

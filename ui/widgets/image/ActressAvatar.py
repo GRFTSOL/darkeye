@@ -13,6 +13,7 @@ class ActressAvatar(OctImage):
         self._d = 150  # 直径
 
         self._actress_id = actress_id
+        self.setCursor(Qt.PointingHandCursor)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         from ui.navigation.router import Router

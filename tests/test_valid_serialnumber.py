@@ -110,6 +110,11 @@ def test_convert_special_serialnumber(input_code, expected):
         ("345simm-336-C", "SIMM-336"),
         ("IPX-580C", "IPX-580"),
         ("[s64ss.com]IPX-580C", "IPX-580"),
+        ("ssni001","SSNI-001"),
+        ("ssni001C","SSNI-001"),
+        ("ssni00234","SSNI-234"),
+        ("1star00356","STAR-356"),
+        ("1star00356c","STAR-356"),
     ],
 )
 def test_extract_serial_from_string(text, expected):

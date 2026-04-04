@@ -25,7 +25,6 @@ from PySide6.QtQuickWidgets import QQuickWidget
 
 from config import (
     FANART_PATH,
-    get_video_path,
     MESHES_PATH,
     MAPS_PATH,
     HDR_PATH,
@@ -43,9 +42,9 @@ from core.database.query import (
 from core.database.query.private import query_work
 from core.database.insert import insert_liked_work
 from core.database.delete import delete_favorite_work
-from core.database.update import mark_delete, update_work_byhand_
+from core.database.update import mark_delete, update_work_byhand_, _split_video_url_field
 from ui.widgets.image.FanartStripWidget import FanartStripWidget
-from utils.utils import find_video, play_video, get_text_color_from_background
+from utils.utils import play_video, get_text_color_from_background
 
 if TYPE_CHECKING:
     from core.graph.force_directed_view_widget import ForceDirectedViewWidget
@@ -1169,25 +1168,22 @@ class DvdShelfView(QWidget):
         return True
 
     def show_video_menu_for_index(self, virtual_index: int) -> None:
-        """点击 CD 后弹出视频菜单供选择，复用 SingleWorkPage 的 show_video_menu 逻辑。"""
+        """点击 CD 后弹出视频菜单：使用数据库 work.video_url（英文逗号分隔的本地路径）。"""
         if not (0 <= virtual_index < len(self._work_ids)):
             return
         work_id = self._work_ids[virtual_index]
-        info = get_workinfo_by_workid(work_id)
-        serial_number = (info or {}).get("serial_number", "").strip()
-        if not serial_number:
-            return
-
-        video_paths = find_video(serial_number, get_video_path())
-        if not video_paths:
+        info = get_workinfo_by_workid(work_id) or {}
+        path_strs = _split_video_url_field(info.get("video_url"))
+        if not path_strs:
             msg = MessageBoxService(self)
             msg.show_info("提示", "没有可播放的视频")
             return
 
         menu = QMenu(self)
-        for path in video_paths:
-            action = menu.addAction(path.name)
-            action.setData(str(path))
+        for path_str in path_strs:
+            p = Path(path_str).expanduser()
+            action = menu.addAction(p.name)
+            action.setData(str(p))
 
         chosen_action = menu.exec(QCursor.pos())
         if chosen_action:

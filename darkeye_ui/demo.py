@@ -84,6 +84,7 @@ from darkeye_ui.components import (
     TokenSpinBox,
     TokenTabWidget,
     TokenGroupBox,
+    TokenLinkCard,
     TokenTableWidget,
     TransparentWidget,
     VerticalTextLabel,
@@ -399,6 +400,34 @@ def _build_page_containers(theme_mgr: ThemeManager) -> QWidget:
     gb_lay.addWidget(TokenRadioButton("模式 A", parent))
     gb_lay.addWidget(TokenRadioButton("模式 B", parent))
     left.addWidget(gb)
+    left.addWidget(Label("TokenLinkCard（令牌驱动边框，点击打开链接）"))
+    link_cards = QWidget(parent)
+    link_cards_lay = QVBoxLayout(link_cards)
+    link_cards_lay.setContentsMargins(0, 0, 0, 0)
+    link_cards_lay.setSpacing(8)
+    link_cards_lay.addWidget(
+        TokenLinkCard(
+            "示例项目 A",
+            "悬停高亮边框；聚焦为 color_border_focus",
+            "https://example.com",
+            link_cards,
+            theme_manager=theme_mgr,
+        ),
+        0,
+        Qt.AlignmentFlag.AlignHCenter,
+    )
+    link_cards_lay.addWidget(
+        TokenLinkCard(
+            "示例项目 B",
+            "回车或空格也会打开链接",
+            "https://example.org",
+            link_cards,
+            theme_manager=theme_mgr,
+        ),
+        0,
+        Qt.AlignmentFlag.AlignHCenter,
+    )
+    left.addWidget(link_cards)
     right.addWidget(Label("令牌驱动 TokenTableWidget"))
     table = TokenTableWidget(parent, theme_manager=theme_mgr)
     table.setColumnCount(3)
