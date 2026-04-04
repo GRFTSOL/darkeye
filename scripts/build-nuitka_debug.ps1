@@ -248,7 +248,7 @@ $nuitkaArgs = @(
     "--noinclude-dlls=qt6sql.dll",
 
     #测试不需要的dll,显卡驱动正常是不需要opengl32sw.dll的,这个是用于无显卡驱动的机器的。
-    "--noinclude-dlls=opengl32sw.dll",
+    #"--noinclude-dlls=opengl32sw.dll",
     "--noinclude-dlls=qt6qmllocalstorage.dll",
     "--noinclude-dlls=qt6qmlnetwork.dll",
     "--noinclude-dlls=qt6qmlxmllistmodel.dll",
