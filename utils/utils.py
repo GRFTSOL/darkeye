@@ -562,9 +562,11 @@ def sort_dict_list_by_keys(data: list[dict], key_order: list[str]) -> list[dict]
 # 视频相关
 def get_video_names_from_paths(
     video_paths: list[Path], video_extensions: list[str] = None
-) -> list[str]:
+) -> tuple[list[str], list[tuple[str, str]]]:
     """获取指定路径下所有视频文件的番号列表。
-    对每个视频文件提取番号（如 IPX-247），返回去重后的列表。
+
+    对每个视频文件提取番号（如 IPX-247），返回去重后的番号列表，以及无法从文件名
+    识别番号的文件列表（每项为 ``(无后缀文件名, 绝对路径)``，按扫描顺序）。
     """
     if video_extensions is None:
         video_extensions = [
@@ -579,6 +581,7 @@ def get_video_names_from_paths(
         ]
 
     result: set[str] = set()
+    no_serial: list[tuple[str, str]] = []
 
     for folder in video_paths:
         try:
@@ -594,11 +597,67 @@ def get_video_names_from_paths(
                         if serial:
                             result.add(serial)
                         else:
-                            logging.warning(f"无法提取番号: {name}")
+                            try:
+                                path_str = str(file_path.resolve(strict=False))
+                            except OSError:
+                                path_str = str(file_path.expanduser())
+                            no_serial.append((name, path_str))
+                            logging.warning(
+                                "无法提取番号: 名称=%s 路径=%s", name, path_str
+                            )
         except PermissionError:
             print(f"  无权限访问：{folder}")
 
-    return list(result)
+    return list(result), no_serial
+
+
+def collect_video_paths_with_serial(
+    video_paths: list[Path], video_extensions: list[str] | None = None
+) -> list[tuple[str, str | None]]:
+    """扫描目录下视频文件，返回 (绝对路径字符串, 番号或 None)。
+
+    番号提取规则与 get_video_names_from_paths 相同（extract_serial_from_string）。
+    无番号时仍返回该文件一行，第二项为 None，并已打 warning 日志。
+    """
+    if video_extensions is None:
+        video_extensions = [
+            ".mp4",
+            ".avi",
+            ".mkv",
+            ".mov",
+            ".wmv",
+            ".flv",
+            ".rmvb",
+            ".ts",
+        ]
+
+    out: list[tuple[str, str | None]] = []
+
+    for folder in video_paths:
+        try:
+            for root, dirs, files in os.walk(folder):
+                for file in files:
+                    file_path = Path(root) / file
+                    if (
+                        file_path.is_file()
+                        and file_path.suffix.lower() in video_extensions
+                    ):
+                        try:
+                            resolved = file_path.resolve(strict=False)
+                        except OSError:
+                            resolved = file_path.expanduser()
+                        path_str = str(resolved)
+                        name = file_path.stem
+                        serial = extract_serial_from_string(name)
+                        if not serial:
+                            logging.warning(
+                                "无法提取番号: 名称=%s 路径=%s", name, path_str
+                            )
+                        out.append((path_str, serial))
+        except PermissionError:
+            print(f"  无权限访问：{folder}")
+
+    return out
 
 
 def find_video(

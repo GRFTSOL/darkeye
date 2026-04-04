@@ -19,7 +19,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("暗之眼 " + "V" + APP_VERSION)
         self.setWindowIcon(QIcon(str(ICONS_PATH / "logo.svg")))
-        self.resize(1200, 800)
+        self.resize(1200, 600)
         self.open = False
 
         # ======================整体布局设置==========================
