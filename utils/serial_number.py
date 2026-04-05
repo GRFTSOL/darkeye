@@ -231,12 +231,13 @@ def is_valid_serialnumber(code: str) -> bool:
 def convert_fanza(serial_number: str) -> str:
     """将传统的番号转化成 fanza 番号模式
     例如 IPX-247   ---->   ipx00247
+    这个对接需要查fanza,而且这个还有时效性。
     """
 
     lower_code = serial_number.lower()
     converted_code = lower_code.replace("-", "00")
 
-    if any(converted_code.startswith(p) for p in ("start", "stars", "star", "sdde")):
+    if any(converted_code.startswith(p) for p in ("start", "stars", "star", "sdde","namh")):
         converted_code = "1" + converted_code
     return converted_code
 
