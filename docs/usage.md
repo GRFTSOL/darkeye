@@ -176,16 +176,20 @@ Firefox 插件已加载（上一节的步骤）
 
 
 ### 从Jvedio把数据转过来
-目前有老哥写了脚本，通过运行脚本可以把Jvedio的数据导出nfo，然后导入本软件
+目前感谢[4965898](https://github.com/4965898)老哥写了脚本，通过运行脚本可以把Jvedio的数据导出nfo，然后导入本软件
 
-https://raw.githubusercontent.com/de4321/darkeye/main/scripts/jvideo2nfo.py
+https://raw.githubusercontent.com/de4321/darkeye/refs/heads/main/scripts/jvideo2nfo.py
 
-位置在scripts/jvideo2fno.py 下载下来
+浏览器打开后右键保存py文件
+
+或者打开仓库位置在scripts/jvideo2fno.py 下载下来
 
 修改下面的两个位置
 ![](assets/jvedio2nfo.jpg)
 
-然后导到一个文件夹里，然后通过方式四导入本软件就行了。
+使用Python运行脚本，产生一个包含nfo的闻文件夹
+
+然后通过方式四导入本软件就行了。
 
 
 ## 作品信息不完整？

@@ -61,6 +61,7 @@ https://de4321.github.io/darkeye/usage/#jvedio
 - [mdcz](https://github.com/ShotHeadman/mdcz) 参考其中从本地视频名字中提取番号的代码，并且尝试去适配其nfo
 - [Jvedio](https://github.com/hitchao/Jvedio) 接入其数据库，将数据导出
 - [JavSP](https://github.com/Yuukiy/JavSP) 看看某些网站的爬虫逻辑
+- [JAV-JHS](https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs) 参考其javdb FC2 信息
 
 
 # 🚀 开发方向
