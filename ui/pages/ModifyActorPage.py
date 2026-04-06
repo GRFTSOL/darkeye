@@ -1,5 +1,4 @@
 from PySide6.QtWidgets import (
-    QHBoxLayout,
     QVBoxLayout,
     QFormLayout,
     QWidget,
@@ -12,13 +11,16 @@ import logging
 
 from darkeye_ui import LazyWidget
 from controller.message_service import MessageBoxService, IMessageService
+
+from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfig
+
 from ui.basic import MovableTableView
 from core.database.query import get_actor_allname, get_serial_number
 from darkeye_ui.components.button import Button
 from darkeye_ui.components.label import Label
 from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.token_spin_box import TokenSpinBox
-from ui.widgets import ActressAvatarDropWidget
+from ui.widgets import ActorAvatarDropWidget
 from ui.widgets.text.WikiTextEdit import WikiTextEdit
 
 
@@ -215,12 +217,19 @@ class ModifyActorPage(LazyWidget):
     def init_ui(self):
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
-        # mainlayout.addSpacing(70)
 
-        hlayout = QHBoxLayout()
-        mainlayout.addLayout(hlayout)
+        self._workspace_manager = WorkspaceManager(self)
+        mainlayout.addWidget(self._workspace_manager.widget())
+        root = self._workspace_manager.get_root_pane()
+
+        def make_config(
+            title: str, w: QWidget, closeable: bool = True
+        ) -> ContentConfig:
+            cfg = self._workspace_manager.create_content_config()
+            return cfg.set_window_title(title).set_widget(w).set_closeable(closeable)
+
         self.moveable_name = MovableTableView()
-        self.avatar = ActressAvatarDropWidget("actor")
+        self.avatar = ActorAvatarDropWidget()
 
         self.notes_panel = QWidget()
         notes_vlayout = QVBoxLayout(self.notes_panel)
@@ -229,10 +238,16 @@ class ModifyActorPage(LazyWidget):
         self.input_notes = WikiTextEdit()
         self.input_notes.set_completer_func(get_serial_number)
         self.input_notes.setMinimumWidth(280)
+        self.input_notes.setMinimumHeight(120)
         self.input_notes.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
         notes_vlayout.addWidget(self.input_notes, 1)
+
+        self.moveable_name.tableView.setMinimumHeight(160)
+        self.moveable_name.tableView.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
 
         self.input_handsome = TokenSpinBox()
         self.input_handsome.setRange(0, 2)
@@ -240,24 +255,59 @@ class ModifyActorPage(LazyWidget):
         self.input_fat = TokenSpinBox()
         self.input_fat.setRange(0, 2)
 
-        self.basic = QWidget()
-        self.basic.setFixedWidth(300)
-        vlayout = QVBoxLayout(self.basic)
-        vlayout.addWidget(self.avatar)
-        formlayout = QFormLayout()
-        vlayout.addLayout(formlayout)
-
         self.btn_commit = Button("提交修改")
         self.btn_delete = IconPushButton(icon_name="trash_2")
 
+        avatar_container = QWidget()
+        avatar_layout = QVBoxLayout(avatar_container)
+        avatar_layout.setContentsMargins(0, 0, 0, 0)
+        avatar_layout.addWidget(self.avatar, 1)
+        avatar_container.setMinimumWidth(260)
+
+        form_container = QWidget()
+        form_container.setMinimumWidth(260)
+        form_layout = QVBoxLayout(form_container)
+        form_layout.setContentsMargins(0, 0, 0, 0)
+        formlayout = QFormLayout()
+        form_layout.addLayout(formlayout)
         formlayout.addRow(Label("颜值"), self.input_handsome)
         formlayout.addRow(Label("胖瘦"), self.input_fat)
-        formlayout.addRow("", self.btn_commit)
-        formlayout.addRow("", self.btn_delete)
 
-        hlayout.addWidget(self.basic)
-        hlayout.addWidget(self.moveable_name, 2)
-        hlayout.addWidget(self.notes_panel, 1)
+        actions_container = QWidget()
+        actions_layout = QVBoxLayout(actions_container)
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.addWidget(self.btn_commit)
+        actions_layout.addWidget(self.btn_delete)
+
+        name_container = QWidget()
+        name_layout = QVBoxLayout(name_container)
+        name_layout.setContentsMargins(0, 0, 0, 0)
+        name_layout.addWidget(self.moveable_name, 1)
+
+        pane_right = self._workspace_manager.split(root, Placement.Right, ratio=0.68)
+        pane_notes = self._workspace_manager.split(
+            pane_right, Placement.Right, ratio=0.33
+        )
+        pane_lower = self._workspace_manager.split(root, Placement.Bottom, ratio=0.6)
+        pane_actions = self._workspace_manager.split(
+            pane_lower, Placement.Bottom, ratio=0.22
+        )
+
+        self._workspace_manager.fill_pane(
+            root, make_config("头像", avatar_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_lower, make_config("基础信息", form_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_actions, make_config("操作", actions_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_right, make_config("名字表", name_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_notes, make_config("自由记录", self.notes_panel, closeable=False)
+        )
 
     def config(self):
         """配置model与view"""
