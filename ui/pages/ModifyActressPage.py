@@ -14,6 +14,8 @@ import logging
 from darkeye_ui import LazyWidget
 from controller.message_service import MessageBoxService, IMessageService
 
+from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfig
+
 from ui.basic import MovableTableView
 from core.database.query import get_actress_allname, get_serial_number
 from ui.widgets import ActressAvatarDropWidget
@@ -502,8 +504,16 @@ class ModifyActressPage(LazyWidget):
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
 
-        hlayout = QHBoxLayout()
-        mainlayout.addLayout(hlayout)
+        self._workspace_manager = WorkspaceManager(self)
+        mainlayout.addWidget(self._workspace_manager.widget())
+        root = self._workspace_manager.get_root_pane()
+
+        def make_config(
+            title: str, w: QWidget, closeable: bool = True
+        ) -> ContentConfig:
+            cfg = self._workspace_manager.create_content_config()
+            return cfg.set_window_title(title).set_widget(w).set_closeable(closeable)
+
         self.moveable_name = MovableTableView()
         self.avatar = ActressAvatarDropWidget("actress")
         # 列表页里 Label+大图默认 sizeHint 很大，且基类 setMaximumHeight(800) 会允许被行高一起拉高
@@ -530,12 +540,6 @@ class ModifyActressPage(LazyWidget):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
-        self.basic = QWidget()
-        self.basic.setFixedWidth(300)
-        vlayout = QVBoxLayout(self.basic)
-        vlayout.addWidget(self.avatar)
-        formlayout = QFormLayout()
-        vlayout.addLayout(formlayout)
         self.input_height = TokenSpinBox()
         self.input_height.setRange(0, 190)
         self.input_waist = TokenSpinBox()
@@ -566,6 +570,18 @@ class ModifyActressPage(LazyWidget):
         self.smalllayout.addWidget(self.btn_show)
         self.smalllayout.addWidget(self.btn_delete)
 
+        avatar_container = QWidget()
+        avatar_layout = QVBoxLayout(avatar_container)
+        avatar_layout.setContentsMargins(0, 0, 0, 0)
+        avatar_layout.addWidget(self.avatar)
+        avatar_container.setMinimumWidth(260)
+
+        form_container = QWidget()
+        form_container.setMinimumWidth(260)
+        form_layout = QVBoxLayout(form_container)
+        form_layout.setContentsMargins(0, 0, 0, 0)
+        formlayout = QFormLayout()
+        form_layout.addLayout(formlayout)
         formlayout.addRow(Label("身高(cm)"), self.input_height)
         formlayout.addRow(Label("罩杯"), self.input_cup)
         formlayout.addRow(Label("胸围(cm)"), self.input_bust)
@@ -576,15 +592,46 @@ class ModifyActressPage(LazyWidget):
         formlayout.addRow(Label("需要更新"), self.need_update)
         formlayout.addRow(Label("minnano-av id"), self.input_minnano_id)
 
-        formlayout.addRow("", self.btn_commit)
-        formlayout.addRow("", self.btn_claw_update)
-        # formlayout.addRow("",self.btn_printModel)
-        formlayout.addRow("", self.btn_minnano)
-        formlayout.addRow("", self.smallwidget)
+        actions_container = QWidget()
+        actions_layout = QVBoxLayout(actions_container)
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.addWidget(self.btn_commit)
+        actions_layout.addWidget(self.btn_claw_update)
+        actions_layout.addWidget(self.btn_minnano)
+        actions_layout.addWidget(self.smallwidget)
 
-        hlayout.addWidget(self.basic)
-        hlayout.addWidget(self.moveable_name, 2)
-        hlayout.addWidget(self.notes_panel, 1)
+        name_container = QWidget()
+        name_layout = QVBoxLayout(name_container)
+        name_layout.setContentsMargins(0, 0, 0, 0)
+        name_layout.addWidget(self.moveable_name, 1)
+
+        # root: 左列 | 右侧（名字表 | 自由记录）
+        pane_right = self._workspace_manager.split(root, Placement.Right, ratio=0.68)
+        pane_notes = self._workspace_manager.split(
+            pane_right, Placement.Right, ratio=0.4
+        )
+        # root: 头像 | 下方（表单 | 操作）
+        pane_lower = self._workspace_manager.split(root, Placement.Bottom, ratio=0.72)
+
+        pane_actions=self._workspace_manager.split(
+            pane_right, Placement.Bottom, ratio=0.22
+        )
+
+        self._workspace_manager.fill_pane(
+            root, make_config("头像", avatar_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_lower, make_config("基础信息", form_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_actions, make_config("操作", actions_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_right, make_config("名字表", name_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_notes, make_config("自由记录", self.notes_panel, closeable=False)
+        )
 
     def config(self):
         """配置model与view"""
