@@ -516,11 +516,6 @@ class ModifyActressPage(LazyWidget):
 
         self.moveable_name = MovableTableView()
         self.avatar = ActressAvatarDropWidget("actress")
-        # 列表页里 Label+大图默认 sizeHint 很大，且基类 setMaximumHeight(800) 会允许被行高一起拉高
-        self.avatar.setMaximumHeight(300)
-        self.avatar.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
 
         self.notes_panel = QWidget()
         notes_vlayout = QVBoxLayout(self.notes_panel)
@@ -573,7 +568,7 @@ class ModifyActressPage(LazyWidget):
         avatar_container = QWidget()
         avatar_layout = QVBoxLayout(avatar_container)
         avatar_layout.setContentsMargins(0, 0, 0, 0)
-        avatar_layout.addWidget(self.avatar)
+        avatar_layout.addWidget(self.avatar, 1)
         avatar_container.setMinimumWidth(260)
 
         form_container = QWidget()
@@ -611,9 +606,9 @@ class ModifyActressPage(LazyWidget):
             pane_right, Placement.Right, ratio=0.4
         )
         # root: 头像 | 下方（表单 | 操作）
-        pane_lower = self._workspace_manager.split(root, Placement.Bottom, ratio=0.72)
+        pane_lower = self._workspace_manager.split(root, Placement.Bottom, ratio=0.6)
 
-        pane_actions=self._workspace_manager.split(
+        pane_actions = self._workspace_manager.split(
             pane_right, Placement.Bottom, ratio=0.22
         )
 
