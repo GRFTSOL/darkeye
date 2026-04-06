@@ -826,6 +826,33 @@ QTabWidget#DesignTabWidget::pane {
     top: -1px;
 }
 
+/* ----- myads 工作区窗格 TabBar（ui/myads/pane_widget ClosableTabBar） -----
+   与上方 TokenTabWidget 标签条同一套令牌样式，管理页添加作品与编辑页分区一致 */
+QTabBar#WorkspaceDemoTabBar {
+    background-color: transparent;
+    border: none;
+}
+
+QTabBar#WorkspaceDemoTabBar::tab {
+    background-color: transparent;
+    color: {{color_text_placeholder}};
+    padding: 5px 0px;
+    margin-right: 20px;
+    font-size: {{font_size_base}};
+    font-family: {{font_family_base}};
+    border: none;
+}
+
+QTabBar#WorkspaceDemoTabBar::tab:hover {
+    color: {{color_text}};
+}
+
+QTabBar#WorkspaceDemoTabBar::tab:selected {
+    color: {{color_text}};
+    font-weight: bold;
+    border-bottom: {{border_width}} solid {{color_primary}};
+}
+
 /* ----- TokenGroupBox (objectName=DesignGroupBox) ----- */
 QGroupBox#DesignGroupBox {
     background-color: {{color_bg}};
