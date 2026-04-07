@@ -39,10 +39,9 @@
 版本迁移时注意`更新浏览器插件`，由于爬虫的特殊性，这个爬虫很可能老失效。需要反馈然后人工修改。
 
 ## Jvedio迁移数据
-下载下面的脚本，然后按照提示运行
-[`scripts/jvedio2nfo.py`](https://raw.githubusercontent.com/de4321/darkeye/main/scripts/jvedio2nfo.py)
+见文档
 
-要求电脑上有python,然后最主要的是改地址。运行后会得到一个里面都是nfo文件的文件夹。使用软件中导入nfo就行了。
+https://de4321.github.io/darkeye/usage/#jvedio
 
 # Community
 
@@ -62,6 +61,7 @@
 - [mdcz](https://github.com/ShotHeadman/mdcz) 参考其中从本地视频名字中提取番号的代码，并且尝试去适配其nfo
 - [Jvedio](https://github.com/hitchao/Jvedio) 接入其数据库，将数据导出
 - [JavSP](https://github.com/Yuukiy/JavSP) 看看某些网站的爬虫逻辑
+- [JAV-JHS](https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs) 参考其javdb FC2 信息
 
 
 # 🚀 开发方向

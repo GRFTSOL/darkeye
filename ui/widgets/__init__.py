@@ -14,7 +14,7 @@ from .image.CoverImage import CoverImage, CoverImageFixed
 from .image.CoverDropWidget import CoverDropWidget
 from .image.FanartStripWidget import FanartStripWidget
 from .image.ActressAvatarDropWidget import ActressAvatarDropWidget
-from .image.ActorAvatar import ActorAvatar
+from .image.ActorAvatar import ActorAvatar, ActorAvatarDropWidget
 from .image.ActorCard import ActorCard
 
 
