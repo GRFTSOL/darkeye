@@ -5,7 +5,7 @@ import logging
 import traceback
 from typing import Dict
 
-from config import resource_path
+from config import get_translation_engine, resource_path
 from core.schema.model import CrawledWorkData
 from utils.utils import translate_text_sync
 
@@ -160,11 +160,18 @@ def merge_crawl_results(
     }
 
     try:
-        if work_merge["cn_title"] == "" and work_merge["jp_title"] != "":
+        engine = get_translation_engine()
+        force_translate = engine == "llm"
+
+        if work_merge["jp_title"] != "" and (
+            force_translate or work_merge["cn_title"] == ""
+        ):
             work_merge["cn_title"] = translate_text_sync(
                 work_merge["jp_title"], fallback="empty"
             )
-        if work_merge["cn_story"] == "" and work_merge["jp_story"] != "":
+        if work_merge["jp_story"] != "" and (
+            force_translate or work_merge["cn_story"] == ""
+        ):
             work_merge["cn_story"] = translate_text_sync(
                 work_merge["jp_story"], fallback="empty"
             )

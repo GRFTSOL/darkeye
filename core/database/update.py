@@ -9,14 +9,18 @@
 import logging
 import random
 import time
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from utils.utils import translate_text_sync
 
 from config import DATABASE
 from .connection import get_connection
 from sqlite3 import Cursor, IntegrityError
-from .query.work import get_works_for_auto_cn_translation
+from .query.work import (
+    get_works_for_auto_cn_translation,
+    get_works_for_force_cn_translation,
+)
 
 # ----------------------------------------------------------------------------------------------------------
 #                                               公共数据库的更新
@@ -1338,6 +1342,67 @@ def batch_translate_missing_cn_fields() -> str:
     return (
         f"共 {len(rows)} 条待处理，已写入 {rows_touched} 条作品；"
         f"补充 cn_title {n_cn_title} 项，cn_story {n_cn_story} 项"
+    )
+
+
+def batch_force_translate_cn_fields(
+    max_workers: int = 4,
+    progress_cb: Callable[[int, int, float], None] | None = None,
+) -> str:
+    """
+    后台强制批量翻译：只要有 jp_title/jp_story，就覆盖写入 cn_title/cn_story。
+    并发执行翻译（默认 4 个 worker），数据库写入仍在主线程串行执行。
+    调用后需 emit: global_signals.workDataChanged
+    """
+    rows = get_works_for_force_cn_translation()
+    if not rows:
+        return "没有可强制翻译的作品"
+    total = len(rows)
+    done = 0
+    started_at = time.perf_counter()
+    if progress_cb is not None:
+        progress_cb(0, total, 0.0)
+
+    def _translate_row(row: dict) -> tuple[int, dict[str, str]]:
+        work_id = int(row.get("work_id"))
+        jp_t = (row.get("jp_title") or "").strip()
+        jp_s = (row.get("jp_story") or "").strip()
+        fields: dict[str, str] = {}
+        if jp_t:
+            out_t = translate_text_sync(jp_t)
+            if out_t:
+                fields["cn_title"] = out_t
+        if jp_s:
+            out_s = translate_text_sync(jp_s)
+            if out_s:
+                fields["cn_story"] = out_s
+        return work_id, fields
+
+    rows_touched = 0
+    n_cn_title = 0
+    n_cn_story = 0
+    workers = max(1, int(max_workers))
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(_translate_row, row) for row in rows]
+        for fut in as_completed(futures):
+            done += 1
+            if progress_cb is not None:
+                progress_cb(done, total, time.perf_counter() - started_at)
+            work_id, fields = fut.result()
+            if not fields:
+                continue
+            if update_work_byhand_(work_id, **fields):
+                rows_touched += 1
+                if "cn_title" in fields:
+                    n_cn_title += 1
+                if "cn_story" in fields:
+                    n_cn_story += 1
+
+    return (
+        f"共 {len(rows)} 条待处理，已覆盖写入 {rows_touched} 条作品；"
+        f"覆盖 cn_title {n_cn_title} 项，cn_story {n_cn_story} 项；"
+        f"并发 worker={workers}；耗时 {time.perf_counter() - started_at:.1f}s"
     )
 
 
