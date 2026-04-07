@@ -11,7 +11,8 @@ import random
 import threading
 from collections import OrderedDict
 import sqlite3
-from config import DATABASE
+from config import DATABASE, get_translation_runtime_settings
+from core.translation import get_translator_engine
 
 from .serial_number import (
     convert_fanza,
@@ -174,14 +175,12 @@ def png_to_jpg_pillow(input_path, output_path=None, quality=95):
         print(f"转换失败: {e}")
 
 
-from googletrans import Translator
-
 _TRANSLATION_CACHE_MAXSIZE = 512
-_translation_cache: "OrderedDict[tuple[str, str], str]" = OrderedDict()
+_translation_cache: "OrderedDict[tuple[str, str, str, str], str]" = OrderedDict()
 _translation_cache_lock = threading.Lock()
 
 
-def _translation_cache_get(key: tuple[str, str]) -> str | None:
+def _translation_cache_get(key: tuple[str, str, str, str]) -> str | None:
     with _translation_cache_lock:
         value = _translation_cache.get(key)
         if value is None:
@@ -191,7 +190,7 @@ def _translation_cache_get(key: tuple[str, str]) -> str | None:
         return value
 
 
-def _translation_cache_set(key: tuple[str, str], value: str) -> None:
+def _translation_cache_set(key: tuple[str, str, str, str], value: str) -> None:
     with _translation_cache_lock:
         _translation_cache[key] = value
         _translation_cache.move_to_end(key)
@@ -210,7 +209,7 @@ async def translate_text(
     use_cache: bool = True,
 ) -> str:
     """
-    调用 googletrans 异步翻译（不稳定，做超时/重试/缓存/降级）。
+    调用已配置翻译引擎进行异步翻译（支持 google / llm）。
 
     - **fallback="empty"**: 失败返回空字符串（避免把日文写进中文字段）
     - **fallback="source"**: 失败返回原文（适合手动按钮场景）
@@ -219,48 +218,52 @@ async def translate_text(
     if not src:
         return ""
 
-    cache_key = (dest, src)
+    runtime_cfg = get_translation_runtime_settings()
+    if timeout_s is not None:
+        runtime_cfg = runtime_cfg.__class__(
+            timeout_s=float(timeout_s),
+            retries=runtime_cfg.retries,
+            backoff_base_s=runtime_cfg.backoff_base_s,
+            fallback=runtime_cfg.fallback,
+        )
+    if retries is not None:
+        runtime_cfg = runtime_cfg.__class__(
+            timeout_s=runtime_cfg.timeout_s,
+            retries=int(retries),
+            backoff_base_s=runtime_cfg.backoff_base_s,
+            fallback=runtime_cfg.fallback,
+        )
+    if backoff_base_s is not None:
+        runtime_cfg = runtime_cfg.__class__(
+            timeout_s=runtime_cfg.timeout_s,
+            retries=runtime_cfg.retries,
+            backoff_base_s=float(backoff_base_s),
+            fallback=runtime_cfg.fallback,
+        )
+    if fallback is not None:
+        runtime_cfg = runtime_cfg.__class__(
+            timeout_s=runtime_cfg.timeout_s,
+            retries=runtime_cfg.retries,
+            backoff_base_s=runtime_cfg.backoff_base_s,
+            fallback=fallback,
+        )
+
+    engine, engine_cfg = get_translator_engine()
+    cache_key = (
+        engine_cfg.engine or "google",
+        engine_cfg.model or "",
+        dest,
+        src,
+    )
     if use_cache:
         cached = _translation_cache_get(cache_key)
         if cached is not None:
             return cached
 
-    last_exc: Exception | None = None
-    for attempt in range(max(0, retries) + 1):
-        try:
-            translator = Translator()
-            coro = translator.translate(src, dest=dest)
-            result = await asyncio.wait_for(coro, timeout=timeout_s)
-            out = (getattr(result, "text", "") or "").strip()
-            if out:
-                if use_cache:
-                    _translation_cache_set(cache_key, out)
-                return out
-            last_exc = RuntimeError("Empty translate result")
-        except Exception as e:
-            last_exc = e
-            logging.warning(
-                "translate_text失败 attempt=%s/%s dest=%s err=%s",
-                attempt + 1,
-                max(0, retries) + 1,
-                dest,
-                repr(e),
-            )
-
-        if attempt < max(0, retries):
-            # 指数退避 + 抖动
-            await asyncio.sleep(
-                backoff_base_s * (2**attempt) + random.uniform(0.0, 0.2)
-            )
-
-    if fallback == "source":
-        return src
-    # fallback == "empty"
-    if last_exc is not None:
-        logging.warning(
-            "translate_text最终失败，已降级返回空字符串: %s", repr(last_exc)
-        )
-    return ""
+    out = await engine.translate(src, dest=dest, runtime=runtime_cfg)
+    if out and use_cache:
+        _translation_cache_set(cache_key, out)
+    return out
 
 
 def translate_text_sync(

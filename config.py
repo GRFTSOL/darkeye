@@ -277,6 +277,95 @@ def set_last_auto_update_check_week(week_key: str) -> None:
     settings.sync()
 
 
+def get_translation_engine() -> str:
+    return settings.value("Translation/Engine", "llm", type=str).strip().lower()
+
+
+def set_translation_engine(value: str) -> None:
+    settings.setValue("Translation/Engine", (value or "llm").strip().lower())
+    settings.sync()
+
+
+def get_translation_model() -> str:
+    return settings.value("Translation/Model", "", type=str).strip()
+
+
+def set_translation_model(value: str) -> None:
+    settings.setValue("Translation/Model", (value or "").strip())
+    settings.sync()
+
+
+def get_translation_base_url() -> str:
+    return settings.value("Translation/BaseUrl", "", type=str).strip()
+
+
+def set_translation_base_url(value: str) -> None:
+    settings.setValue("Translation/BaseUrl", (value or "").strip())
+    settings.sync()
+
+
+def get_translation_api_key() -> str:
+    return settings.value("Translation/ApiKey", "", type=str).strip()
+
+
+def set_translation_api_key(value: str) -> None:
+    settings.setValue("Translation/ApiKey", (value or "").strip())
+    settings.sync()
+
+
+def get_translation_timeout_s() -> float:
+    return float(settings.value("Translation/TimeoutS", 12.0, type=float))
+
+
+def set_translation_timeout_s(value: float) -> None:
+    settings.setValue("Translation/TimeoutS", max(1.0, float(value)))
+    settings.sync()
+
+
+def get_translation_retries() -> int:
+    return int(settings.value("Translation/Retries", 2, type=int))
+
+
+def set_translation_retries(value: int) -> None:
+    settings.setValue("Translation/Retries", max(0, int(value)))
+    settings.sync()
+
+
+def get_translation_fallback() -> str:
+    fallback = settings.value("Translation/Fallback", "empty", type=str).strip()
+    return fallback if fallback in {"empty", "source"} else "empty"
+
+
+def set_translation_fallback(value: str) -> None:
+    normalized = (value or "empty").strip().lower()
+    settings.setValue(
+        "Translation/Fallback",
+        normalized if normalized in {"empty", "source"} else "empty",
+    )
+    settings.sync()
+
+
+def get_translation_engine_settings():
+    from core.translation.base import TranslationEngineConfig
+
+    return TranslationEngineConfig(
+        engine=get_translation_engine(),
+        model=get_translation_model(),
+        base_url=get_translation_base_url(),
+        api_key=get_translation_api_key(),
+    )
+
+
+def get_translation_runtime_settings():
+    from core.translation.base import TranslationRuntimeConfig
+
+    return TranslationRuntimeConfig(
+        timeout_s=get_translation_timeout_s(),
+        retries=get_translation_retries(),
+        fallback=get_translation_fallback(),
+    )
+
+
 # ========== 更新清单 URL（随版本发布的 ini，非用户 settings.ini）==========
 _UPDATE_INI = resource_path("resources/config/update.ini")
 # 内置兜底：资源文件缺失或字段无效时使用（与 resources/config/update.ini 保持一致）
