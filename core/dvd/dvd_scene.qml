@@ -409,6 +409,14 @@ View3D {
                             // 将展开态同步给 Dvd.qml（开盒动画）。
                             when: dvdLoader.item && typeof dvdLoader.item.expanded !== "undefined"
                         }
+                        Binding {
+                            target: dvdLoader.item
+                            property: "discNoVideoTilt"
+                            value: view3d.expandedDelegateIndex === index
+                                && typeof dvdBridge !== "undefined" && dvdBridge
+                                && !dvdBridge.expandedWorkHasLocalVideo
+                            when: dvdLoader.item && typeof dvdLoader.item.discNoVideoTilt !== "undefined"
+                        }
                     }
                 }
                 // 可见窗口复用时，贴图变化需同步到现有 item。
