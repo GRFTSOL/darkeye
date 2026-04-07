@@ -4,7 +4,6 @@ Parent connects panel signals to view/session.
 """
 
 import logging
-import token
 from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtWidgets import (
@@ -13,7 +12,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QHBoxLayout,
     QFormLayout,
-    QRadioButton,
     QScrollArea,
     QSizePolicy,
 )
@@ -187,12 +185,6 @@ class ForceViewSettingsPanel(QScrollArea):
         effect_form.addRow(Label("连接力强度"), self.link_strength)
         effect_form.addRow(Label("连接距离"), self.link_length)
 
-        # Graph type radio buttons
-        self.radio_graph_all = TokenRadioButton("总图", self)
-        self.radio_graph_favorite = TokenRadioButton("片关系图", self)
-        self.radio_graph_test = TokenRadioButton("2000点图", self)
-        self.radio_graph_all.setChecked(True)
-
         effect_section.add_layout(effect_form)
 
         # --- Display Section ---
@@ -298,8 +290,12 @@ class ForceViewSettingsPanel(QScrollArea):
         self.label_fps = Label()
         self.label_alpha = Label()
         graph_type_layout = QHBoxLayout()
+        self.radio_graph_all = TokenRadioButton("总图", self)
+        self.radio_graph_ego = TokenRadioButton("中心图", self)
+        self.radio_graph_test = TokenRadioButton("2000点图", self)
+        self.radio_graph_all.setChecked(True)
         graph_type_layout.addWidget(self.radio_graph_all)
-        graph_type_layout.addWidget(self.radio_graph_favorite)
+        graph_type_layout.addWidget(self.radio_graph_ego)
         graph_type_layout.addWidget(self.radio_graph_test)
 
         # Control buttons
@@ -442,8 +438,8 @@ class ForceViewSettingsPanel(QScrollArea):
         self.radio_graph_all.toggled.connect(
             lambda checked: self.graphModeChanged.emit("all") if checked else None
         )
-        self.radio_graph_favorite.toggled.connect(
-            lambda checked: self.graphModeChanged.emit("favorite") if checked else None
+        self.radio_graph_ego.toggled.connect(
+            lambda checked: self.graphModeChanged.emit("ego") if checked else None
         )
         self.radio_graph_test.toggled.connect(
             lambda checked: self.graphModeChanged.emit("test") if checked else None

@@ -19,9 +19,10 @@ if hasattr(os, "add_dll_directory"):
 
 from cpp_bindings.forced_direct_view.PyForceView import ForceViewOpenGL
 from core.graph.graph_session import GraphViewSession
-from core.graph.graph_filter import PassThroughFilter, EgoFilter
+from core.graph.graph_filter import PassThroughFilter, EgoFilter, FavoriteWorkFilter
 from core.graph.force_view_settings_panel import ForceViewSettingsPanel
 from darkeye_ui.components.state_toggle_button import StateToggleButton
+from darkeye_ui.components.token_check_box import TokenCheckBox
 from core.graph.image_overlay_widget import ImageOverlayWidget
 
 
@@ -95,9 +96,14 @@ class ForceDirectedViewWidget(QWidget):
         )
 
         self.panel = ForceViewSettingsPanel(self)
+        self.page_favorite_toggle = TokenCheckBox("仅显示收藏作品图", self)
+        self.page_favorite_toggle.setChecked(False)
+        self.page_favorite_toggle.setMinimumWidth(160)
+        self.page_favorite_toggle.setVisible(False)
 
         self.settings_button.raise_()
         self.panel.raise_()
+        self.page_favorite_toggle.raise_()
 
     def signal_connect(self):
         self.settings_button.clicked.connect(self._toggle_panel)
@@ -134,6 +140,9 @@ class ForceDirectedViewWidget(QWidget):
         self.panel.removeEdgeRequested.connect(self._on_removeEdgeRequested)
 
         self.panel.graphModeChanged.connect(self._switch_graph)
+        self.page_favorite_toggle.toggled.connect(
+            lambda checked: self._switch_graph("favorite" if checked else "all")
+        )
         self.panel.contentSizeChanged.connect(
             lambda: QTimer.singleShot(0, self._update_panel_geometry)
         )
@@ -356,6 +365,16 @@ class ForceDirectedViewWidget(QWidget):
             )
             self.panel.raise_()
             self.settings_button.raise_()
+        if self.page_favorite_toggle.isVisible():
+            toggle_size: QSize = self.page_favorite_toggle.sizeHint()
+            self.page_favorite_toggle.move(
+                max(margin, rect.width() - toggle_size.width() - margin - offset_x),
+                max(
+                    margin,
+                    rect.height() - toggle_size.height() - margin - offset_y,
+                ),
+            )
+            self.page_favorite_toggle.raise_()
 
     def _toggle_panel(self):
         if self.panel.isVisible():
@@ -372,6 +391,15 @@ class ForceDirectedViewWidget(QWidget):
                 self.settings_button.raise_()
 
             QTimer.singleShot(0, delayed_adjust)
+
+    def set_page_graph_filter_toggle_visible(self, visible: bool) -> None:
+        """控制右下角图过滤切换是否可见（默认仅在 ForceDirectPage 开启）。"""
+        show_toggle = bool(visible)
+        self.page_favorite_toggle.setVisible(show_toggle)
+        if not show_toggle and self.page_favorite_toggle.isChecked():
+            self.page_favorite_toggle.setChecked(False)
+            self._switch_graph("all")
+        self._update_panel_geometry()
 
     def _on_nodeColorGroupChanged(self, group: str, color: QColor) -> None:
         """面板修改某类节点颜色后，更新覆盖并实时推送到 view。"""
@@ -391,28 +419,24 @@ class ForceDirectedViewWidget(QWidget):
 
     def _switch_graph(self, mode: str):
         """
-        切换图类型：只是用于测试使用
-        - all: 使用 PassThroughFilter，全图
-        - favorite: 使用 EgoFilter 或你自定义的“片关系图”过滤器
-        - test: 使用随机图（不经过 GraphManager）
+        切换图类型：
+        - all: 全量图
+        - favorite: 喜欢作品图（喜欢作品 + 关联女优）
         """
-        if mode == "test":
-            # 测试模式：直接生成一张随机小图，不走 GraphManager / Session
-            G = nx.gnm_random_graph(200, 400)
-            # 这里你也可以给节点加 label/group 属性
-            for n in G.nodes():
-                G.nodes[n]["label"] = f"n{n}"
-            self._set_graph_from_networkx(G, modify=False)
-            return
+        if hasattr(self, "page_favorite_toggle"):
+            should_checked = mode == "favorite"
+            if self.page_favorite_toggle.isChecked() != should_checked:
+                self.page_favorite_toggle.blockSignals(True)
+                self.page_favorite_toggle.setChecked(should_checked)
+                self.page_favorite_toggle.blockSignals(False)
 
-        # 其他模式走 GraphViewSession + GraphManager
         if mode == "all":
             self.session.set_filter(PassThroughFilter())
-        elif mode == "favorite":
-            # 示例：以某个中心点的 ego 图作为“片关系图”
-            # center_id 你可以改成当前选中的作品/女优，比如 "a100" / "w123"
-            center_id = "a36"
-            self.session.set_filter(EgoFilter(center_id=center_id, radius=2))
+        elif mode == "ego":
+            # 保留原先测试中心点逻辑
+            self.session.set_filter(EgoFilter(center_id="a36", radius=2))
+        elif mode=="favorite":
+            self.session.set_filter(FavoriteWorkFilter())
         else:
             self.session.set_filter(PassThroughFilter())
 
