@@ -46,6 +46,41 @@ const tabNavigateContext = new Map();
 let crawlerWindowId = null; // 专用爬虫窗口 ID
 let crawlerWindowPromise = null; // 创建中的窗口 Promise，避免多任务同时开多个窗口
 
+/** 专用窗口内标签总数达到该值时通知桌面（去重：跌破后再回升才再报） */
+const CRAWLER_BACKLOG_THRESHOLD = 7;//正常情况下大于7个就通知桌面
+let backlogWarningArmed = true;
+
+function maybeNotifyCrawlerBacklog() {
+  if (crawlerWindowId === null) {
+    return Promise.resolve();
+  }
+  return browser.tabs
+    .query({ windowId: crawlerWindowId })
+    .then((tabs) => {
+      const count = tabs.length;
+      if (count >= CRAWLER_BACKLOG_THRESHOLD && backlogWarningArmed) {
+        backlogWarningArmed = false;
+        fetch(`${SERVER_URL}/api/v1/crawler-backlog-warning`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            browser: "firefox",
+            count,
+            threshold: CRAWLER_BACKLOG_THRESHOLD,
+          }),
+        }).catch((err) => {
+          console.error("DarkEye: crawler-backlog-warning failed", err);
+        });
+      }
+      if (count < CRAWLER_BACKLOG_THRESHOLD) {
+        backlogWarningArmed = true;
+      }
+    })
+    .catch((err) => {
+      console.error("DarkEye: maybeNotifyCrawlerBacklog", err);
+    });
+}
+
 function handleCommand(data) {//处理服务器发送来的命令
   if (data.type === "navigate") {
     const url = data.url;
@@ -80,6 +115,7 @@ function handleCommand(data) {//处理服务器发送来的命令
             if (tab && tab.id !== undefined) {
               pendingCrawlers.set(tab.id, { type, serial: serial_number });
             }
+            return maybeNotifyCrawlerBacklog();
           })
           .catch((err) => {
             console.error("DarkEye: 爬虫窗口可能已被关闭，重新创建", err);
@@ -134,6 +170,13 @@ function handleCommand(data) {//处理服务器发送来的命令
 
 // 监听页面加载完成，启动对应爬虫 content script
 browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (
+    changeInfo.status === "complete" &&
+    crawlerWindowId !== null &&
+    tab.windowId === crawlerWindowId
+  ) {
+    maybeNotifyCrawlerBacklog();
+  }
   if (changeInfo.status === 'complete' && pendingCrawlers.has(tabId)) {
     const task = pendingCrawlers.get(tabId);
     
@@ -160,11 +203,15 @@ browser.windows.onRemoved.addListener((windowId) => {
   if (windowId === crawlerWindowId) {
     crawlerWindowId = null;
     crawlerWindowPromise = null;
+    backlogWarningArmed = true;
   }
 });
 
 browser.tabs.onRemoved.addListener((tabId) => {
   tabNavigateContext.delete(tabId);
+  if (crawlerWindowId !== null) {
+    maybeNotifyCrawlerBacklog();
+  }
 });
 
 // 接收 content script 消息，转发到本地服务器

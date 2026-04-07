@@ -209,6 +209,33 @@ class CrawlerRequest(BaseModel):
     serial_number: str
 
 
+class CrawlerBacklogWarningBody(BaseModel):
+    count: int
+    browser: str = "firefox"
+    threshold: int = 7
+
+
+@app.post("/api/v1/crawler-backlog-warning")
+async def crawler_backlog_warning(body: CrawlerBacklogWarningBody):
+    """
+    浏览器插件报告专用爬虫窗口标签过多，通知桌面弹窗。
+    """
+    if body.count < body.threshold:
+        return {"status": "ignored", "reason": "below_threshold"}
+    try:
+        logger.info(
+            "Crawler backlog warning: browser=%s count=%s threshold=%s",
+            body.browser,
+            body.count,
+            body.threshold,
+        )
+        bridge.crawlerBacklogWarning.emit(body.count, body.browser)
+        return {"status": "success", "message": "notified"}
+    except Exception as e:
+        logger.error("crawler_backlog_warning: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/v1/startcrawler")
 async def start_crawler(data: CrawlerRequest):
     """
