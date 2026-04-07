@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QSizePolicy, QFileDialog, QMenu, QWidget
+from PySide6.QtWidgets import QLabel, QSizePolicy, QFileDialog, QMenu, QWidget
 from PySide6.QtGui import (
     QPixmap,
     QImage,
@@ -11,18 +11,24 @@ from PySide6.QtCore import Qt, Signal, Slot
 import shutil, logging, os, subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional
 
 from config import ACTRESSIMAGES_PATH, TEMP_PATH, ACTORIMAGES_PATH
 from controller.message_service import MessageBoxService
-from darkeye_ui.components.label import Label
+from ui.widgets.image.CoverDropWidget import _container_qss_from_tokens
+
+if TYPE_CHECKING:
+    from darkeye_ui.design.theme_manager import ThemeManager
 
 
-class _ActressAvatarDropLabel(Label):
-    """内部拖放头像 Label；实际显示区域由外层容器按宽高比居中后设定。"""
+class _ActressAvatarDropLabel(QLabel):
+    """内部拖放头像 QLabel（与 Cover 内层一致，不用 DesignLabel，避免透明背景导致 QSS 边框不画）。"""
 
     coverChanged = Signal()
 
-    def __init__(self, type="actress"):
+    _DIRTY_BORDER_QSS = "2px solid #FFA500"
+
+    def __init__(self, type="actress", theme_manager: Optional["ThemeManager"] = None):
         super().__init__()
         if type == "actress":
             self.show_text = "把女优头像拖进来"
@@ -35,20 +41,60 @@ class _ActressAvatarDropLabel(Label):
         self.setAcceptDrops(True)  # 允许拖放
         self.setText(self.show_text)
         self.setAlignment(Qt.AlignCenter)
-        self.setStyleSheet(
-            """
-        Label {
-            border: 2px dashed gray;
-            font-size: 16px;
-            padding: 0px;
-            margin: 0px;
-        }
-        """
-        )
+        # 与 CoverDropWidget 内层一致：用 #container + 令牌虚线边框
+        self.setObjectName("container")
+        if theme_manager is None:
+            try:
+                from controller.app_context import get_theme_manager
+
+                theme_manager = get_theme_manager()
+            except Exception as e:
+                logging.debug(
+                    "_ActressAvatarDropLabel: 获取主题管理器失败: %s",
+                    e,
+                    exc_info=True,
+                )
+                theme_manager = None
+        self._theme_manager = theme_manager
+        # 未保存提示等场景覆盖边框（完整 border 值，与 Cover 一致）
+        self._border_override: Optional[str] = None
+        self._apply_token_styles()
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._apply_token_styles)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._original_pixmap = None  # 保存原始图像,这个是个QPixmap对象
         self._path = None  # 这个是核心
         self.msg = MessageBoxService(self)
+
+    def _apply_token_styles(self) -> None:
+        """与 _CoverDropLabel 相同：令牌虚线边，可选 _border_override。"""
+        if self._border_override:
+            self.setStyleSheet(
+                f"QLabel#container{{border: {self._border_override}; "
+                f"font-size: 16px; padding: 0px; margin: 0px;}}"
+            )
+            return
+        if self._theme_manager is not None:
+            t = self._theme_manager.tokens()
+            # 使用 QLabel#container 提高优先级，避免被上级 QSS 冲掉边框
+            qss = _container_qss_from_tokens(t).replace(
+                "#container {", "QLabel#container {", 1
+            )
+            self.setStyleSheet(qss)
+        else:
+            self.setStyleSheet(
+                "QLabel#container{border: 2px dashed gray; font-size: 16px; "
+                "padding: 0px; margin: 0px;}"
+            )
+
+    def set_dirty_highlight(self, on: bool) -> None:
+        """为「相对基准已修改」等场景高亮边框；False 恢复令牌/默认虚线框。"""
+        want = bool(on)
+        new_override = self._DIRTY_BORDER_QSS if want else None
+        if self._border_override == new_override:
+            return
+        self._border_override = new_override
+        self._apply_token_styles()
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
@@ -197,10 +243,15 @@ class ActressAvatarDropWidget(QWidget):
 
     coverChanged = Signal()
 
-    def __init__(self, type="actress", aspect_ratio: float = 1.0):
+    def __init__(
+        self,
+        type="actress",
+        aspect_ratio: float = 1.0,
+        theme_manager: Optional["ThemeManager"] = None,
+    ):
         super().__init__()
         self._aspect_ratio = aspect_ratio
-        self._inner = _ActressAvatarDropLabel(type)
+        self._inner = _ActressAvatarDropLabel(type, theme_manager=theme_manager)
         self._inner.setParent(self)
         self._inner.coverChanged.connect(self.coverChanged.emit)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -223,3 +274,7 @@ class ActressAvatarDropWidget(QWidget):
 
     def get_image(self) -> str:
         return self._inner.get_image()
+
+    def set_dirty_highlight(self, on: bool) -> None:
+        """高亮头像区域边框，表示相对加载基准已变更。"""
+        self._inner.set_dirty_highlight(on)

@@ -7,8 +7,14 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QObject, Signal, Property, Slot, QThreadPool
 
-
+import copy
+import json
 import logging
+from enum import Enum
+from pathlib import Path
+
+from config import ACTRESSIMAGES_PATH
+from utils.utils import mse
 
 
 from darkeye_ui import LazyWidget
@@ -29,6 +35,12 @@ from darkeye_ui.components.label import Label
 from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.input import LineEdit
 from darkeye_ui.components.token_spin_box import TokenSpinBox
+
+
+class ButtonState(Enum):
+    NORMAL = 1
+    WARNING = 2
+    DISABLED = 3
 
 
 class Model:
@@ -85,15 +97,161 @@ class ViewModel(QObject):
     actressNameChanged = Signal(list)
     notesChanged = Signal(str)
 
+    modifyStateChanged = Signal(str, bool)
+    btnStateChanged = Signal(str, object)
+
     def __init__(self, model: Model = None, message_service: IMessageService = None):
         super().__init__()
         self.model: Model = model
         self.msg: MessageBoxService = message_service
 
+        self._cheakable: bool = False
+        self.original_actress: dict | None = None
+        self._change_detection_connected: bool = False
+        self._changed_flags: dict[str, bool] = {
+            "height": False,
+            "cup": False,
+            "birthday": False,
+            "hip": False,
+            "waist": False,
+            "bust": False,
+            "debut_date": False,
+            "need_update": False,
+            "minnano_url": False,
+            "image_urlA": False,
+            "actress_name": False,
+            "notes": False,
+        }
+        self._btn_state: dict[str, ButtonState] = {
+            "commit": ButtonState.DISABLED,
+        }
+
         bridge = ServerBridge()
 
         bridge.actressIdReceived.connect(self.set_minnano_id)
         bridge.minnanoActressCaptureReceived.connect(self.apply_minnano_capture)
+
+    def set_state(self, key: str, value: bool) -> None:
+        if key not in self._changed_flags:
+            raise KeyError(f"Unknown change flag key: {key}")
+        v = bool(value)
+        if self._changed_flags[key] != v:
+            self._changed_flags[key] = v
+            self.modifyStateChanged.emit(key, v)
+
+    def set_change_widget_default(self) -> None:
+        for key in self._changed_flags:
+            self.set_state(key, False)
+
+    def set_btn_state(self, key: str, value: ButtonState) -> None:
+        if key not in self._btn_state:
+            raise KeyError(f"Unknown button state key: {key}")
+        if self._btn_state[key] != value:
+            self._btn_state[key] = value
+            self.btnStateChanged.emit(key, value)
+
+    @staticmethod
+    def _actress_names_fingerprint(names: list | None) -> str:
+        if not names:
+            return "[]"
+        return json.dumps(names, ensure_ascii=False, sort_keys=True, default=str)
+
+    @Slot()
+    def check_actress_name_change(self) -> None:
+        if not self._cheakable or self.original_actress is None:
+            return
+        cur = self.get_actress_name()
+        orig = self.original_actress.get("actress_name")
+        self.set_state(
+            "actress_name",
+            self._actress_names_fingerprint(cur)
+            != self._actress_names_fingerprint(orig),
+        )
+        self.update_commit_button_state()
+
+    @Slot()
+    def check_change(self, field: str, new_value) -> None:
+        if not self._cheakable or self.original_actress is None:
+            return
+        if field not in self._changed_flags:
+            return
+        original_value = self.original_actress.get(field)
+        if field == "need_update":
+            self.set_state(field, bool(original_value) != bool(new_value))
+        elif original_value is None or new_value is None:
+            self.set_state(field, original_value != new_value)
+        elif isinstance(original_value, list) and isinstance(new_value, list):
+            self.set_state(field, original_value != new_value)
+        else:
+            self.set_state(field, original_value != new_value)
+        self.update_commit_button_state()
+
+    @Slot()
+    def check_image_change(self) -> None:
+        if not self._cheakable or self.original_actress is None:
+            return
+        orig_rel = self.original_actress.get("image_urlA") or ""
+        if isinstance(orig_rel, str):
+            orig_rel = orig_rel.strip()
+        else:
+            orig_rel = ""
+        cur = self.get_image_urlA() or ""
+        if isinstance(cur, str):
+            cur = cur.strip()
+        else:
+            cur = ""
+
+        if not orig_rel:
+            self.set_state("image_urlA", bool(cur))
+        elif not cur:
+            self.set_state("image_urlA", True)
+        else:
+            orig_path = Path(ACTRESSIMAGES_PATH) / orig_rel
+            p_cur = Path(cur)
+            cur_path = p_cur if p_cur.is_absolute() else Path(ACTRESSIMAGES_PATH) / cur
+            try:
+                if not orig_path.is_file() or not cur_path.is_file():
+                    self.set_state("image_urlA", str(orig_path) != str(cur_path))
+                else:
+                    self.set_state(
+                        "image_urlA", mse(str(orig_path), str(cur_path)) != 0
+                    )
+            except Exception:
+                self.set_state("image_urlA", orig_rel != cur)
+        self.update_commit_button_state()
+
+    def update_commit_button_state(self) -> None:
+        if any(self._changed_flags.values()):
+            self.set_btn_state("commit", ButtonState.WARNING)
+        else:
+            self.set_btn_state("commit", ButtonState.DISABLED)
+
+    def setup_change_detection(self) -> None:
+        if self._change_detection_connected:
+            return
+        self._change_detection_connected = True
+        self.heightChanged.connect(
+            lambda: self.check_change("height", self.get_height())
+        )
+        self.cupChanged.connect(lambda: self.check_change("cup", self.get_cup()))
+        self.birthdayChanged.connect(
+            lambda: self.check_change("birthday", self.get_birthday())
+        )
+        self.hipChanged.connect(lambda: self.check_change("hip", self.get_hip()))
+        self.waistChanged.connect(lambda: self.check_change("waist", self.get_waist()))
+        self.bustChanged.connect(lambda: self.check_change("bust", self.get_bust()))
+        self.debutDateChanged.connect(
+            lambda: self.check_change("debut_date", self.get_debut_date())
+        )
+        self.needUpdateChanged.connect(
+            lambda: self.check_change("need_update", self.get_need_update())
+        )
+        self.minnanoIdChanged.connect(
+            lambda: self.check_change("minnano_url", self.get_minnano_id())
+        )
+        self.notesChanged.connect(lambda: self.check_change("notes", self.get_notes()))
+        self.actressNameChanged.connect(self.check_actress_name_change)
+        self.imageUrlAChanged.connect(self.check_image_change)
 
     def get_actress_id(self):
         return self.model._actress_id
@@ -262,9 +420,12 @@ class ViewModel(QObject):
         """加载"""
         from core.database.query import get_actress_info
 
+        self._cheakable = False
         actress = get_actress_info(actress_id)
         if not actress:
             self.msg.show_warning("错误", "未找到该女优信息")
+            self.original_actress = None
+            self.update_commit_button_state()
             return
         logging.debug(f"设置actress_id:{actress_id}")
         self.set_actress_id(actress_id)
@@ -279,8 +440,13 @@ class ViewModel(QObject):
         self.set_debut_date(actress.get("debut_date") or "")
         self.set_image_urlA(actress.get("image_urlA") or "")
         self.set_actress_name(get_actress_allname(self.actress_id))
-        self.set_need_update(actress.get("need_update") or False)
+        self.set_need_update(bool(actress.get("need_update")))
         self.set_notes(actress.get("notes") or "")
+
+        self.original_actress = copy.deepcopy(self.model.to_dict())
+        self._cheakable = True
+        self.set_change_widget_default()
+        self.update_commit_button_state()
 
     @Slot()
     def submit(self):
@@ -691,6 +857,72 @@ class ModifyActressPage(LazyWidget):
 
         self.input_notes.textChanged.connect(self._notes_ui_to_vm)
         self.vm.notesChanged.connect(self._notes_vm_to_ui)
+
+        self.vm.setup_change_detection()
+        self.vm.modifyStateChanged.connect(self.modify_state_change)
+        self.vm.btnStateChanged.connect(self.update_commit_btn)
+        self.update_commit_btn("commit", ButtonState.DISABLED)
+
+    @Slot(str, bool)
+    def modify_state_change(self, key: str, value: bool) -> None:
+        highlight_line = "QLineEdit#DesignInput { border: 2px solid #FFA500; }"
+        highlight_spin = "QSpinBox#DesignSpinBox { border: 2px solid #FFA500; }"
+        highlight_combo = "QComboBox#DesignComboBox { border: 2px solid #FFA500; }"
+        highlight_text = "QTextEdit#DesignTextEdit { border: 2px solid #FFA500; }"
+        highlight_table = "QTableView#DesignTableView { border: 2px solid #FFA500; }"
+        highlight_toggle = (
+            "QWidget#DesignToggleSwitch { border: 2px solid #FFA500; "
+            "border-radius: 4px; }"
+        )
+
+        mapping = [
+            ("height", self.input_height, highlight_spin, ""),
+            ("hip", self.input_hip, highlight_spin, ""),
+            ("waist", self.input_waist, highlight_spin, ""),
+            ("bust", self.input_bust, highlight_spin, ""),
+            ("cup", self.input_cup, highlight_combo, ""),
+            ("birthday", self.input_birthday, highlight_line, ""),
+            ("debut_date", self.input_debut_date, highlight_line, ""),
+            ("minnano_url", self.input_minnano_id, highlight_line, ""),
+            ("need_update", self.need_update, highlight_toggle, ""),
+            ("notes", self.input_notes, highlight_text, ""),
+            ("actress_name", self.moveable_name.tableView, highlight_table, ""),
+        ]
+        for field, widget, style_on, style_off in mapping:
+            if key == field:
+                widget.setStyleSheet(style_on if value else style_off)
+                return
+        if key == "image_urlA":
+            self.avatar.set_dirty_highlight(value)
+
+    @Slot(str, object)
+    def update_commit_btn(self, key: str, state) -> None:
+        if key != "commit":
+            return
+        if state == ButtonState.WARNING:
+            self.btn_commit.setEnabled(True)
+            self.btn_commit.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: #FFA500;
+                    color: white;
+                    border-radius: 5px;
+                    padding: 6px;
+                }
+                """
+            )
+        elif state == ButtonState.DISABLED:
+            self.btn_commit.setEnabled(False)
+            self.btn_commit.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: #999999;
+                    color: #CCCCCC;
+                    border-radius: 5px;
+                    padding: 6px;
+                }
+                """
+            )
 
     def _notes_ui_to_vm(self):
         if self._notes_binding_lock:
