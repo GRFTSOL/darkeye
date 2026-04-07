@@ -99,10 +99,32 @@ View3D {
         }
     }
 
-    // 将可见窗口内索引映射回全量列表索引。
+    // 将可见窗口内 delegate 索引映射回全量 work 索引（与 Repeater3D delegate 的 targetVirtualIndex 一致）。
     function expandedVirtualIndexFor(delegateIndex) {
-        return (typeof dvdVisibleStart !== "undefined" ? dvdVisibleStart : 0) + delegateIndex
+        if (delegateIndex < 0)
+            return -1
+        var vStart = (typeof dvdVisibleStart !== "undefined" ? dvdVisibleStart : 0)
+        var dCount = (typeof dvdCount !== "undefined" ? dvdCount : 0)
+        var frozenD = _frozenSelectedDelegateIndex
+        var frozenV = _frozenSelectedVirtualIndex
+        if (frozenD >= 0 && delegateIndex === frozenD && frozenV >= 0)
+            return frozenV
+        var visibleEnd = vStart + Math.max(0, dCount - 1)
+        var shouldReserve = frozenD >= 0
+            && delegateIndex !== frozenD
+            && frozenV >= vStart
+            && frozenV <= visibleEnd
+        if (!shouldReserve)
+            return vStart + delegateIndex
+        var reservedLocalOffset = frozenV - vStart
+        var nonSelectedRank = delegateIndex < frozenD ? delegateIndex : delegateIndex - 1
+        var targetSourceIndex = nonSelectedRank + (nonSelectedRank >= reservedLocalOffset ? 1 : 0)
+        return vStart + targetSourceIndex
     }
+
+    readonly property int selectedWorkVirtualIndex: selectedDelegateIndex < 0
+        ? -1
+        : expandedVirtualIndexFor(selectedDelegateIndex)
 
     function cancelPendingCollapseAfterClose() {
         _pendingCollapseSelectedIndex = -1

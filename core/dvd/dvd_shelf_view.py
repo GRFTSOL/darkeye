@@ -660,13 +660,18 @@ class DvdShelfView(QWidget):
                 self._loadworkid_has_expanded = False
 
         show_force = selected_delegate_index >= 0 and expanded_delegate_index < 0
+        root = self._root_scene_object()
         if show_force:
-            virtual_index = self._load_start + selected_delegate_index
+            virtual_index = -1
+            if root is not None:
+                try:
+                    virtual_index = int(root.property("selectedWorkVirtualIndex"))
+                except (TypeError, ValueError):
+                    virtual_index = -1
             if not (0 <= virtual_index < len(self._work_ids)):
                 show_force = False
             # 折叠关闭动画过程中（QML 会先 expanded=-1，selected 保持一段时间），不要显示 overlay，避免关闭时闪一下。
             if show_force:
-                root = self._root_scene_object()
                 if (
                     root is not None
                     and root.property("_pendingCollapseSelectedIndex") is not None
