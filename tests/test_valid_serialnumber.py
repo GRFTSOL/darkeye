@@ -115,6 +115,7 @@ def test_convert_special_serialnumber(input_code, expected):
         ("ssni00234","SSNI-234"),
         ("1star00356","STAR-356"),
         ("1star00356c","STAR-356"),
+        ("MKBD-S127 無碼 KIRARI 127 前田かおり最強の伝説 永久保存完全版3時間 : 前田かおり","MKBD-S127")
     ],
 )
 def test_extract_serial_from_string(text, expected):

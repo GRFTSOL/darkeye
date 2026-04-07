@@ -146,7 +146,9 @@ class _Pat:
 
 
 # 与 number.ts 大致一致；Python 侧有意差异（见单行注释）：
-# - lazy2/lazy3 提前于 \\d{3,}-[A-Z]{3,}；省略纯 \\d-\\d；增 glued_jav；N\\d{4} 早于 [A-Z]+-[A-Z]\\d+。
+# - lazy2/lazy3 提前于 \\d{3,}-[A-Z]{3,}；省略纯 \\d-\\d；增 glued_jav；
+# - N\\d{4} 须早于 [A-Z]+-[A-Z]\\d+（避免吞掉 FOO-N1234）；
+# - [A-Z]+-[A-Z]\\d+ 须早于 [A-Z]{2,}-\\d{2,}（先命中 MKBD-S127，再命中 KIRARI-127）。
 _ORDERED_SERIAL_PATTERNS: tuple[_Pat, ...] = (
     _Pat("single", r"(FC2-\d{5,})"),
     _Pat("single", r"(FC2\d{5,})"),
@@ -163,10 +165,9 @@ _ORDERED_SERIAL_PATTERNS: tuple[_Pat, ...] = (
     _Pat("single", r"(MKY-[A-Z]+-\d{3,})"),
     _Pat("fanza00", r"([A-Z]{2,})00(\d{3})"),
     _Pat("single", r"(\d{2,}[A-Z]{2,}-\d{2,}[A-Z]?)"),
-    _Pat("single", r"([A-Z]{2,}-\d{2,}[A-Z]?)"),
-    # 早于 ([A-Z]+-[A-Z]\d+)，否则 \"FOO-N1234\" 会被整条吞掉
     _Pat("single", r"(?:^|[^A-Z])(N\d{4})(?:[^A-Z]|$)"),
     _Pat("single", r"([A-Z]+-[A-Z]\d+)"),
+    _Pat("single", r"([A-Z]{2,}-\d{2,}[A-Z]?)"),
     # 紧邻 字母+数字，避免 lazy 规则把噪声音词与数字拼成番号
     _Pat("glued_jav", r"([A-Z]{2,6})(\d{1,5})(?=$|[-_\s\[\](){}【】（）]|[A-Z]{2,})"),
     _Pat("lazy2", r"([A-Z]{3,}).*?(\d{2,})"),
@@ -179,42 +180,72 @@ _COMPILED_ORDERED = tuple(
     (p, re.compile(p.regex, _RE_IU)) for p in _ORDERED_SERIAL_PATTERNS
 )
 
+# 仅「字母-两位及以上数字」且原文为「字母 空白 数字」时排除（如 KIRARI 127）；不作用于 MKBD-S127 等。
+_SPACE_JOINED_WORD_NUMBER_SERIAL_RE = re.compile(r"^([A-Z]{2,})-(\d{2,})$", _RE_IU)
 
-def _extract_from_normalized(normalized: str) -> str | None:
+
+def _candidate_is_space_joined_word_number(serial: str, original: str) -> bool:
+    """规范化后为 PREFIX-DIGITS（横线后纯数字），但原文对应片段仅为空格连接的词与数。"""
+
+    m = _SPACE_JOINED_WORD_NUMBER_SERIAL_RE.match(serial.strip().upper())
+    if not m:
+        return False
+    prefix, digits = m.group(1), m.group(2)
+    return bool(
+        re.search(
+            rf"{re.escape(prefix)}\s+{re.escape(digits)}\b",
+            original,
+            flags=_RE_IU,
+        )
+    )
+
+
+def _extract_from_normalized(
+    normalized: str, original: str | None = None
+) -> str | None:
     for pat, cre in _COMPILED_ORDERED:
         m = cre.search(normalized)
         if not m:
             continue
         if pat.kind == "fanza00":
             raw = f"{m.group(1)}-{m.group(2)}"
-            return normalize_number(raw)
-        if pat.kind == "glued_jav":
+            out = normalize_number(raw)
+        elif pat.kind == "glued_jav":
             raw = f"{m.group(1)}-{m.group(2)}"
-            return normalize_number(raw)
-        if pat.kind == "h_prefix":
+            out = normalize_number(raw)
+        elif pat.kind == "h_prefix":
             raw = f"{m.group(1)}-{m.group(2)}"
-            return normalize_number(raw)
-        if pat.kind in ("lazy2", "lazy3"):
+            out = normalize_number(raw)
+        elif pat.kind in ("lazy2", "lazy3"):
             raw = f"{m.group(1)}-{m.group(2)}"
-            return normalize_number(raw)
-        g1 = m.group(1) if m.lastindex and m.lastindex >= 1 else None
-        raw = g1 if g1 is not None else m.group(0)
-        # N\d{4} 等整段匹配在 group(1)
-        if g1 is None and m.groups():
-            raw = next((g for g in m.groups() if g), m.group(0))
-        return normalize_number(raw)
+            out = normalize_number(raw)
+        else:
+            g1 = m.group(1) if m.lastindex and m.lastindex >= 1 else None
+            raw = g1 if g1 is not None else m.group(0)
+            if g1 is None and m.groups():
+                raw = next((g for g in m.groups() if g), m.group(0))
+            out = normalize_number(raw)
+        if original and _candidate_is_space_joined_word_number(out, original):
+            continue
+        return out
     return None
 
 
-def _fallback_simple_serial(normalized: str) -> str | None:
-    m = re.search(r"[A-Z]{2,6}-\d{1,5}", normalized, _RE_IU)
-    if m:
-        return normalize_number(m.group(0)).upper()
-    m = re.search(r"[A-Z]{2,6}\d{1,5}", normalized, _RE_IU)
-    if m:
+def _fallback_simple_serial(
+    normalized: str, original: str | None = None
+) -> str | None:
+    for m in re.finditer(r"[A-Z]{2,6}-\d{1,5}", normalized, _RE_IU):
+        cand = normalize_number(m.group(0)).upper()
+        if original and _candidate_is_space_joined_word_number(cand, original):
+            continue
+        return cand
+    for m in re.finditer(r"[A-Z]{2,6}\d{1,5}", normalized, _RE_IU):
         s = m.group(0)
         fused = re.sub(r"^([A-Z]+)(\d+)$", r"\1-\2", s, flags=_RE_IU)
-        return normalize_number(fused).upper()
+        cand = normalize_number(fused).upper()
+        if original and _candidate_is_space_joined_word_number(cand, original):
+            continue
+        return cand
     return None
 
 
@@ -275,7 +306,8 @@ def extract_serial_from_string(
     normalized = normalize_raw_name(str(text).strip(), escape_strings)
     if not normalized:
         return None
-    extracted = _extract_from_normalized(normalized)
+    raw_text = str(text).strip()
+    extracted = _extract_from_normalized(normalized, raw_text)
     if extracted:
         return extracted.upper()
-    return _fallback_simple_serial(normalized)
+    return _fallback_simple_serial(normalized, raw_text)
