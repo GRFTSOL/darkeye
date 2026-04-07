@@ -18,12 +18,12 @@
 
 # 💡 快速开始
 ## 下载
-[![下载 Windows 版本](https://img.shields.io/badge/%20下载-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.2.1/DarkEye-v1.2.1.zip)
+[![下载 Windows 版本](https://img.shields.io/badge/%20下载-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.2.2/DarkEye-v1.2.2.zip)
 下载程序，解压,打开exe即可使用
 
-[![下载Chrome/Edge插件](https://img.shields.io/badge/%20下载-Chrome/Edge插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.1/chrome_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。
+[![下载Chrome/Edge插件](https://img.shields.io/badge/%20下载-Chrome/Edge插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.2/chrome_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。
 
-[![下载FireFox插件](https://img.shields.io/badge/%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.1/firefox_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。
+[![下载FireFox插件](https://img.shields.io/badge/%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.2/firefox_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。
 
 ## 插件安装
 👉 https://de4321.github.io/darkeye/usage/#_2
@@ -34,13 +34,14 @@
 ## 版本迁移
 👉 https://de4321.github.io/darkeye/faq/
 
-版本迁移时注意更新浏览器插件，由于爬虫的特殊性，这个爬虫很可能老失效。需要反馈然后人工修改。
+现在正常情况下在设置里点击自动更新就行了，但是这个只更新了软件的本体，插件还是要手动去下载更新的。目前似乎找不到一种更好的更新插件的方式，主要是这个插件上架不了市场。
+
+版本迁移时注意`更新浏览器插件`，由于爬虫的特殊性，这个爬虫很可能老失效。需要反馈然后人工修改。
 
 ## Jvedio迁移数据
-下载下面的脚本，然后按照提示运行
-[`scripts/xxx.py`（raw）](https://raw.githubusercontent.com/de4321/darkeye/main/scripts/jvedio2nfo.py)
+见文档
 
-要求电脑上有python,然后最主要的是改地址
+https://de4321.github.io/darkeye/usage/#jvedio
 
 # Community
 
@@ -60,6 +61,7 @@
 - [mdcz](https://github.com/ShotHeadman/mdcz) 参考其中从本地视频名字中提取番号的代码，并且尝试去适配其nfo
 - [Jvedio](https://github.com/hitchao/Jvedio) 接入其数据库，将数据导出
 - [JavSP](https://github.com/Yuukiy/JavSP) 看看某些网站的爬虫逻辑
+- [JAV-JHS](https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs) 参考其javdb FC2 信息
 
 
 # 🚀 开发方向

@@ -943,11 +943,11 @@ def update_actress_name(cursor: Cursor, actress_name: list[dict], actress_id) ->
         # 假设 name_type 0 为主要名字，1为其他名字
         # 且 redirect_actress_name_id 指向上一条记录
         if i == 0:
-            # 列表的第一条数据，name_type=0，redirect_id=None
+            # 列表的第一条数据，name_type=1，redirect_id=None
             name_type = 1
             redirect_id = None
         else:
-            # 后续数据，name_type=1，redirect_id指向上一条数据的ID
+            # 后续数据，name_type=0，redirect_id指向上一条数据的ID
             name_type = 0
             redirect_id = last_id
 
@@ -1080,7 +1080,7 @@ def update_actor_byhand(actor_id, handsome, fat, image_url, actor_name, notes=""
 
     except Exception as e:
         conn.rollback()
-        logging.info(f"更新女优数据失败{e}")
+        logging.info(f"更新男优数据失败{e}")
         return False
     finally:
         cursor.close()

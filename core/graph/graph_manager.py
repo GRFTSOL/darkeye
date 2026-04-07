@@ -1,5 +1,6 @@
 import logging
-
+from collections import defaultdict
+from itertools import combinations
 from typing import Optional
 from threading import Lock
 from PySide6.QtCore import QObject, Signal
@@ -10,6 +11,9 @@ from core.database.query import (
     get_actress_from_work_id,
     get_serial_number_map,
     get_work_notes_rows,
+    get_work_series_rows,
+    get_work_ids_for_series,
+    get_most_recent_work_for_graph_sync,
     get_recent_work_notes_rows,
 )
 
@@ -143,6 +147,7 @@ class GraphManager(QObject):
 
             # 2. 从数据库加载 notes 并解析 [[]] 引用，叠加到基图中
             self._augment_with_story_relations()
+            self._augment_with_series_relations()
 
             self._initialized = True
 
@@ -216,6 +221,122 @@ class GraphManager(QObject):
                                 )
                                 # logging.debug(f"Added reference edge: {source_serial} -> {target_serial}")
 
+    def _augment_with_series_relations(self):
+        """
+        把同 series_id 的作品在无向图上两两相连（clique）。
+
+        边属性 type 为 ``series``，与 story 引用的 ``reference``、参演边区分。
+        若两作品间已有任意无向边则跳过，不覆盖已有 type。
+        """
+        rows = get_work_series_rows()
+        by_series: dict[int, list[int]] = defaultdict(list)
+        for work_id, series_id in rows:
+            by_series[series_id].append(work_id)
+
+        added = 0
+        groups_with_pair = 0
+        for _, work_ids in by_series.items():
+            work_ids = sorted(set(work_ids))
+            if len(work_ids) < 2:
+                continue
+            groups_with_pair += 1
+            for w_a, w_b in combinations(work_ids, 2):
+                u, v = f"w{w_a}", f"w{w_b}"
+                if u == v:
+                    continue
+                if not self.G.has_node(u) or not self.G.has_node(v):
+                    continue
+                if self.G.has_edge(u, v):
+                    continue
+                self.G.add_edge(u, v, type="series")
+                added += 1
+        logging.info(
+            "Series augmentation: %d series groups with 2+ works, added %d edges.",
+            groups_with_pair,
+            added,
+        )
+
+    @staticmethod
+    def _normalize_graph_series_id(series_id_raw) -> Optional[int]:
+        """与库内系列边规则一致：有效系列须为整数且 > 1。"""
+        if series_id_raw is None:
+            return None
+        try:
+            sid = int(series_id_raw)
+        except (TypeError, ValueError):
+            return None
+        if sid <= 1:
+            return None
+        return sid
+
+    def _remove_series_edges_incident_to_work(
+        self, work_id: int, changes: list
+    ) -> None:
+        """删除与某作品节点关联的、``type=series`` 的无向边，并记录 diff。"""
+        nid = f"w{work_id}"
+        if not self.G.has_node(nid):
+            return
+        for u, v, data in list(self.G.edges(nid, data=True)):
+            if data.get("type") != "series":
+                continue
+            if self.G.has_edge(u, v):
+                self.G.remove_edge(u, v)
+                changes.append({"op": "remove_edge", "u": u, "v": v})
+
+    def _rebuild_series_edges_for_series_id(
+        self, series_id: int, changes: list
+    ) -> None:
+        """按当前库数据重建某 ``series_id`` 下作品间的 series 边（先剥旧再添全连接）。
+        包括从无到有以及改变系列
+        """
+        work_ids = get_work_ids_for_series(series_id)
+        nodes_w = {f"w{w}" for w in work_ids}
+
+        edges_to_drop: set[tuple[str, str]] = set()
+        for nid in nodes_w:
+            if not self.G.has_node(nid):
+                continue
+            for u, v, data in self.G.edges(nid, data=True):
+                if data.get("type") != "series":
+                    continue
+                edges_to_drop.add(tuple(sorted((u, v))))
+
+        for u, v in edges_to_drop:
+            if self.G.has_edge(u, v):
+                self.G.remove_edge(u, v)
+                changes.append({"op": "remove_edge", "u": u, "v": v})
+
+        if len(work_ids) < 2:
+            return
+
+        for w_a, w_b in combinations(sorted(set(work_ids)), 2):
+            u, v = f"w{w_a}", f"w{w_b}"
+            if not self.G.has_node(u) or not self.G.has_node(v):
+                continue
+            if self.G.has_edge(u, v):
+                continue
+            self.G.add_edge(u, v, type="series")
+            changes.append(
+                {"op": "add_edge", "u": u, "v": v, "attr": {"type": "series"}}
+            )
+
+    def _sync_series_edges_from_latest_work(self, changes: list) -> None:
+        """依据 ``update_time`` 最新的一条作品：软删则去掉其 series 边；否则重建其所属系列。"""
+        row = get_most_recent_work_for_graph_sync()
+        if row is None:
+            return
+        work_id, _serial, _notes, series_id_raw, is_deleted = row
+        if is_deleted != 0:#作品被软删除，去掉其系列边与节点，节点是另外被删除了
+            self._remove_series_edges_incident_to_work(work_id, changes)
+            return
+
+        sid = self._normalize_graph_series_id(series_id_raw)
+        if sid is None:#作品没有series_id，去掉其系列边
+            self._remove_series_edges_incident_to_work(work_id, changes)
+            return
+        #重建作品的系列边与节点
+        self._rebuild_series_edges_for_series_id(sid, changes)
+
     def get_graph(self):
         """
         获取图对象，对外使用的只读接口
@@ -266,8 +387,8 @@ class GraphManager(QObject):
 
     def update_recent_changes(self, limit: int = 3):
         """
-        增量更新：获取最近更新的 limit 条作品，重建引用关系与女优-作品关系
-        通常在用户修改了作品信息（如 Story）或添加新作品后调用
+        增量更新：按 ``update_time`` 最新的一条作品同步系列边（软删去边 / 否则重建该系列）；
+        并获取最近更新的 limit 条作品，重建引用关系与女优-作品关系。
         """
         if not self._initialized:
             self.initialize()
@@ -402,6 +523,8 @@ class GraphManager(QObject):
                         logging.debug(
                             f"添加女优边: {actress_node_id} -> {source_node_id}"
                         )
+
+            self._sync_series_edges_from_latest_work(changes)
 
         if changes:
             logging.info(f"图更新完成，共 {len(changes)} 个变更操作")

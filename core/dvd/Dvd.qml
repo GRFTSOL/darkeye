@@ -9,6 +9,8 @@ Node {
     property int delegateIndex: -1
     /** 展开状态：横着时再次点击触发展开，back 不动，spine 沿 back 轴转 -90°，front 沿 spine 转后再沿自身轴转 -90° */
     property bool expanded: false
+    /** 展开且无本地视频时，盘面绕主轴（X）在盘面平面内顺时偏转（由 dvd_scene 注入） */
+    property bool discNoVideoTilt: false
     // Expose the spine center anchor for scene-level action overlay projection.
     property var actionAnchorNode: spineActionAnchor
     // Expose the front center anchor for scene-level title/story overlay projection.
@@ -77,51 +79,63 @@ Node {
         cullMode: Material.NoCulling
     }
 
-    Model {
-        id: cD
-        objectName: "cD"
-        pickable: true
+    Node {
+        id: cdRollNode
         x: -0.0048184
         y: 0.095
         z: -0.0667828
-        eulerRotation.x: discSpinAngle
-        eulerRotation.y: 0
-        eulerRotation.z: 0
-        scale.x: 1
-        scale.y: 1
-        scale.z: 1
-        source: (typeof meshesPath !== "undefined" ? meshesPath : "meshes/") + "cD.mesh"
 
+        // 自转与「无视频」提示都在主轴 X 上：平面内偏转，不用 Y/Z 翘盘面。
+        Node {
+            id: cdSpinNode
+            property real cdNoVideoPlaneTwistDeg: discNoVideoTilt ? 30 : 0
+            eulerRotation: Qt.vector3d(discSpinAngle + cdNoVideoPlaneTwistDeg, 0, 0)
+            Behavior on cdNoVideoPlaneTwistDeg {
+                NumberAnimation { duration: 380; easing.type: Easing.OutCubic }
+            }
 
-        // CD 盘面也调成更哑光、少金属的 toon 风格
-        PrincipledMaterial {
-            id: transparent_material
-            baseColor: "#ffffffcc"
-            metalness: 0
-            roughness: 0.9
-            cullMode: Material.NoCulling
-            alphaMode: PrincipledMaterial.Blend
+            Model {
+                id: cD
+                objectName: "cD"
+                pickable: true
+                scale.x: 1
+                scale.y: 1
+                scale.z: 1
+                source: (typeof meshesPath !== "undefined" ? meshesPath : "meshes/") + "cD.mesh"
+
+                // CD 盘面也调成更哑光、少金属的 toon 风格
+                PrincipledMaterial {
+                    id: transparent_material
+                    baseColor: "#ffffffcc"
+                    metalness: 0
+                    roughness: 0.9
+                    cullMode: Material.NoCulling
+                    alphaMode: PrincipledMaterial.Blend
+                }
+
+                PrincipledMaterial {
+                    id: rainbow_material
+                    baseColor: "#ffcccccc"
+                    metalness: 0.15
+                    roughness: 0.85
+                    cullMode: Material.NoCulling
+                }
+                materials: [
+                    pic_material,
+                    transparent_material,
+                    rainbow_material
+                ]
+            }
         }
 
-        PrincipledMaterial {
-            id: rainbow_material
-            baseColor: "#ffcccccc"
-            metalness: 0.15
-            roughness: 0.85
-            cullMode: Material.NoCulling
+        // 挂在 cdRollNode 下、与 cdSpinNode 同级，避免随盘面绕 X 的平面偏转/自转一起转，
+        // 否则锚点会在盘心周围画圆，剧照条 2D 投影会偏。
+        Node {
+            id: fanartStripAnchor
+            x: 0
+            y: -0.06
+            z: 0
         }
-        materials: [
-            pic_material,
-            transparent_material,
-            rainbow_material
-        ]
-    }
-
-    Node {
-        id: fanartStripAnchor
-        x: cD.x
-        y: cD.y - 0.06
-        z: cD.z
     }
 
     Model {

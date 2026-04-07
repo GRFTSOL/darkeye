@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QSizePolicy, QFileDialog, QMenu
+from PySide6.QtWidgets import QLabel, QSizePolicy, QFileDialog, QMenu, QWidget
 from PySide6.QtGui import (
     QPixmap,
     QImage,
@@ -11,24 +11,24 @@ from PySide6.QtCore import Qt, Signal, Slot
 import shutil, logging, os, subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional
 
 from config import ACTRESSIMAGES_PATH, TEMP_PATH, ACTORIMAGES_PATH
 from controller.message_service import MessageBoxService
-from darkeye_ui.components.label import Label
+from ui.widgets.image.CoverDropWidget import _container_qss_from_tokens
+
+if TYPE_CHECKING:
+    from darkeye_ui.design.theme_manager import ThemeManager
 
 
-def is_temp_path(path: str | Path) -> bool:
-    """判断路径是否是临时路径（检查路径中包含'temp'）"""
-    path_obj = Path(path) if isinstance(path, str) else path
-    return "temp" in path_obj.parts  # 检查路径各部分是否包含'temp'
-
-
-class ActressAvatarDropWidget(Label):
-    """可拖动式添加封面的Label"""
+class _ActressAvatarDropLabel(QLabel):
+    """内部拖放头像 QLabel（与 Cover 内层一致，不用 DesignLabel，避免透明背景导致 QSS 边框不画）。"""
 
     coverChanged = Signal()
 
-    def __init__(self, type="actress"):
+    _DIRTY_BORDER_QSS = "2px solid #FFA500"
+
+    def __init__(self, type="actress", theme_manager: Optional["ThemeManager"] = None):
         super().__init__()
         if type == "actress":
             self.show_text = "把女优头像拖进来"
@@ -37,27 +37,64 @@ class ActressAvatarDropWidget(Label):
             self.show_text = "把男优头像拖进来"
             self.base_path = ACTORIMAGES_PATH
 
-        self._aspect_ratio = 1  # 宽高比
-        self.setMaximumHeight(800)
         self.setScaledContents(False)  # 关闭默认拉伸
         self.setAcceptDrops(True)  # 允许拖放
         self.setText(self.show_text)
         self.setAlignment(Qt.AlignCenter)
-        self.setStyleSheet(
-            """
-        Label {
-            border: 2px dashed gray;
-            font-size: 16px;
-            padding: 0px;
-            margin: 0px;
-        }
-        """
-        )
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # 与 CoverDropWidget 内层一致：用 #container + 令牌虚线边框
+        self.setObjectName("container")
+        if theme_manager is None:
+            try:
+                from controller.app_context import get_theme_manager
+
+                theme_manager = get_theme_manager()
+            except Exception as e:
+                logging.debug(
+                    "_ActressAvatarDropLabel: 获取主题管理器失败: %s",
+                    e,
+                    exc_info=True,
+                )
+                theme_manager = None
+        self._theme_manager = theme_manager
+        # 未保存提示等场景覆盖边框（完整 border 值，与 Cover 一致）
+        self._border_override: Optional[str] = None
+        self._apply_token_styles()
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._apply_token_styles)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._original_pixmap = None  # 保存原始图像,这个是个QPixmap对象
         self._path = None  # 这个是核心
-        # 这个要实现双向绑定的状态，传进来图片地址,数据驱动，而不是手动去设置
         self.msg = MessageBoxService(self)
+
+    def _apply_token_styles(self) -> None:
+        """与 _CoverDropLabel 相同：令牌虚线边，可选 _border_override。"""
+        if self._border_override:
+            self.setStyleSheet(
+                f"QLabel#container{{border: {self._border_override}; "
+                f"font-size: 16px; padding: 0px; margin: 0px;}}"
+            )
+            return
+        if self._theme_manager is not None:
+            t = self._theme_manager.tokens()
+            # 使用 QLabel#container 提高优先级，避免被上级 QSS 冲掉边框
+            qss = _container_qss_from_tokens(t).replace(
+                "#container {", "QLabel#container {", 1
+            )
+            self.setStyleSheet(qss)
+        else:
+            self.setStyleSheet(
+                "QLabel#container{border: 2px dashed gray; font-size: 16px; "
+                "padding: 0px; margin: 0px;}"
+            )
+
+    def set_dirty_highlight(self, on: bool) -> None:
+        """为「相对基准已修改」等场景高亮边框；False 恢复令牌/默认虚线框。"""
+        want = bool(on)
+        new_override = self._DIRTY_BORDER_QSS if want else None
+        if self._border_override == new_override:
+            return
+        self._border_override = new_override
+        self._apply_token_styles()
 
     def contextMenuEvent(self, event):
         menu = QMenu(self)
@@ -73,19 +110,16 @@ class ActressAvatarDropWidget(Label):
 
         menu.exec(event.globalPos())
 
-    # ✅ 新增：打开图片所在文件夹
     def open_image_folder(self):
         if not self._path or not os.path.exists(self._path):
             self.msg.show_info("错误", "当前没有可打开的图片。")
             return
 
-        folder = os.path.dirname(self._path)
-
         try:
             if os.name == "nt":  # Windows
                 subprocess.run(["explorer", "/select,", self._path])
             elif os.name == "posix":  # macOS / Linux
-                subprocess.run(["xdg-open", folder])
+                subprocess.run(["xdg-open", os.path.dirname(self._path)])
         except Exception as e:
             logging.error("无法打开文件夹: %s", e)
             self.msg.show_info("错误", f"无法打开文件夹: {e}")
@@ -118,35 +152,28 @@ class ActressAvatarDropWidget(Label):
             file_path = url.toLocalFile()
             if self.is_image(file_path):
                 self._path = self.temp_save_image(file_path)
-                self._show_image()  # 拖入后显示，实现绑定
+                self._show_image()
                 self.coverChanged.emit()
             else:
                 self.msg.show_info("文件类型错误", f"不是图片文件：{file_path}")
 
     def temp_save_image(self, src_path: str) -> str:
         """使用pathlib保存图片到临时目录"""
-        src = Path(src_path)  # 将源路径转为Path对象
+        src = Path(src_path)
 
-        # 生成带时间戳的新文件名
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        dst_name = f"image_{timestamp}{src.suffix.lower()}"  # 直接获取后缀
+        dst_name = f"image_{timestamp}{src.suffix.lower()}"
 
-        TEMP_PATH.mkdir(parents=True, exist_ok=True)  # 若不存在临时目录，自动创建
-        # 构建目标路径（自动处理跨平台路径分隔符）
+        TEMP_PATH.mkdir(parents=True, exist_ok=True)
         dst_path = Path(TEMP_PATH) / dst_name
 
-        # 拷贝文件
-        shutil.copy(src, dst_path)  # Path对象可直接用于shutil.copy
+        shutil.copy(src, dst_path)
         logging.info("图片已临时保存到%s", dst_path)
 
-        # 返回字符串路径（兼容旧代码）
         return str(dst_path)
 
     def is_image(self, path: str | Path) -> bool:
-        """使用 pathlib 判断文件是否是图片（支持传入字符串或Path对象）"""
-        # 统一转为 Path 对象处理
         file_path = Path(path) if isinstance(path, str) else path
-        # 获取后缀并判断（更简洁的写法）
         return file_path.suffix.lower() in {
             ".jpg",
             ".jpeg",
@@ -157,23 +184,15 @@ class ActressAvatarDropWidget(Label):
         }
 
     def _show_image(self):
-        """
-        内部函数，显示一半的图片
-        使用 QImage 处理，用 QPixmap 显示
-        """
         if self._path is None:
             self.setText("无封面")
             return
 
-        # 1. 使用 QImage 读取图片
         original_image = QImage(str(self._path))
         if original_image.isNull():
             logging.warning("图片加载失败,可能是不存在图片")
             self.setText("无封面")
             return
-
-        # 3. 将处理后的 QImage 转换为 QPixmap 并缩放
-        # 直接在 QPixmap 上进行缩放，因为显示性能更优
 
         self._original_pixmap = QPixmap.fromImage(original_image)
         scaled_pixmap = self._original_pixmap.scaled(
@@ -181,38 +200,26 @@ class ActressAvatarDropWidget(Label):
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
-
-        # 4. 将最终的 QPixmap 设置到 Label 上
         self.setPixmap(scaled_pixmap)
 
     def resizeEvent(self, event):
-        """改变大小的事件"""
-        w = self.width()
-        h = self.height()
-        h = int(w * self._aspect_ratio)
-        self.setFixedHeight(h)  # 或者你想 setFixedWidth(int(h * aspect_ratio))
         if self._original_pixmap:
             scaled = self._original_pixmap.scaled(
-                self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+                self.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation,
             )
             super().setPixmap(scaled)
         super().resizeEvent(event)
 
     @Slot(str)
     def set_image(self, relative_image_path: str | None):
-        """这是提供给外部的接口
-        这个是输入相对地址给外面的界面用的，set后立刻显示，实现绑定
-        """
         cover_changed = False
-        # logging.debug("设置的相对路径是:%s",relative_image_path)
         if relative_image_path is None or relative_image_path == "":
-            # if self._path is not None and is_temp_path(self._path):#这个临时保存后再次切换就有问题了
-            #    self.delete_image()#现在有个问题就是这个临时文件夹会变大，不清理的话，找个函数清理
-            # 先删除临时路径的文件
             if self._path is not None:
                 cover_changed = True
             self._path = None
-            self._original_pixmap = None  # 清空原始图像
+            self._original_pixmap = None
             self.setPixmap(QPixmap())
             self.setText(self.show_text)
             if cover_changed:
@@ -228,5 +235,46 @@ class ActressAvatarDropWidget(Label):
         self.coverChanged.emit()
 
     def get_image(self) -> str:
-        """返回现在的URL"""
         return self._path
+
+
+class ActressAvatarDropWidget(QWidget):
+    """可拖动式添加头像；在父容器内按宽高比占满并居中（与 CoverDropWidget 相同的外框适配方式）。"""
+
+    coverChanged = Signal()
+
+    def __init__(
+        self,
+        type="actress",
+        aspect_ratio: float = 1.0,
+        theme_manager: Optional["ThemeManager"] = None,
+    ):
+        super().__init__()
+        self._aspect_ratio = aspect_ratio
+        self._inner = _ActressAvatarDropLabel(type, theme_manager=theme_manager)
+        self._inner.setParent(self)
+        self._inner.coverChanged.connect(self.coverChanged.emit)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setMinimumSize(0, 0)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        w, h = self.width(), self.height()
+        if h <= 0 or w <= 0:
+            return
+        if w / h >= self._aspect_ratio:
+            tw, th = int(h * self._aspect_ratio), h
+        else:
+            tw, th = w, int(w / self._aspect_ratio)
+        self._inner.setFixedSize(tw, th)
+        self._inner.move((w - tw) // 2, (h - th) // 2)
+
+    def set_image(self, relative_image_path: str | None):
+        self._inner.set_image(relative_image_path)
+
+    def get_image(self) -> str:
+        return self._inner.get_image()
+
+    def set_dirty_highlight(self, on: bool) -> None:
+        """高亮头像区域边框，表示相对加载基准已变更。"""
+        self._inner.set_dirty_highlight(on)

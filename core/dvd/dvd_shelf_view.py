@@ -121,6 +121,7 @@ class DvdBridge(QObject):
     expandedWorkMakerIdChanged = Signal()
     expandedWorkLabelIdChanged = Signal()
     expandedWorkSeriesIdChanged = Signal()
+    expandedWorkHasLocalVideoChanged = Signal()
 
     def __init__(self, view: "DvdShelfView") -> None:
         super().__init__()
@@ -142,6 +143,7 @@ class DvdBridge(QObject):
         self._expanded_work_maker_id = -1
         self._expanded_work_label_id = -1
         self._expanded_work_series_id = -1
+        self._expanded_work_has_local_video = True
 
     def _get_camera_x(self) -> float:
         return self._camera_x
@@ -391,6 +393,21 @@ class DvdBridge(QObject):
         _get_expanded_work_series_id,
         _set_expanded_work_series_id,
         notify=expandedWorkSeriesIdChanged,
+    )
+
+    def _get_expanded_work_has_local_video(self) -> bool:
+        return self._expanded_work_has_local_video
+
+    def _set_expanded_work_has_local_video(self, v: bool) -> None:
+        if self._expanded_work_has_local_video != v:
+            self._expanded_work_has_local_video = v
+            self.expandedWorkHasLocalVideoChanged.emit()
+
+    expandedWorkHasLocalVideo = Property(
+        bool,
+        _get_expanded_work_has_local_video,
+        _set_expanded_work_has_local_video,
+        notify=expandedWorkHasLocalVideoChanged,
     )
 
     def set_expanded_favorited(self, v: bool) -> None:
@@ -643,13 +660,18 @@ class DvdShelfView(QWidget):
                 self._loadworkid_has_expanded = False
 
         show_force = selected_delegate_index >= 0 and expanded_delegate_index < 0
+        root = self._root_scene_object()
         if show_force:
-            virtual_index = self._load_start + selected_delegate_index
+            virtual_index = -1
+            if root is not None:
+                try:
+                    virtual_index = int(root.property("selectedWorkVirtualIndex"))
+                except (TypeError, ValueError):
+                    virtual_index = -1
             if not (0 <= virtual_index < len(self._work_ids)):
                 show_force = False
             # 折叠关闭动画过程中（QML 会先 expanded=-1，selected 保持一段时间），不要显示 overlay，避免关闭时闪一下。
             if show_force:
-                root = self._root_scene_object()
                 if (
                     root is not None
                     and root.property("_pendingCollapseSelectedIndex") is not None
@@ -850,6 +872,7 @@ class DvdShelfView(QWidget):
         self._bridge.expandedWorkActors = []
         self._bridge.expandedWorkDirector = ""
         self._bridge.expandedWorkStudio = ""
+        self._bridge._set_expanded_work_has_local_video(True)
         self._clear_fanart_strip_overlay()
         self._jump_camera_to(0.0)
 
@@ -1223,11 +1246,14 @@ class DvdShelfView(QWidget):
             self._bridge.expandedWorkMakerId = -1
             self._bridge.expandedWorkLabelId = -1
             self._bridge.expandedWorkSeriesId = -1
+            self._bridge._set_expanded_work_has_local_video(True)
             self._clear_fanart_strip_overlay()
             return
 
         work_id = self._work_ids[virtual_index]
         info = get_workinfo_by_workid(work_id) or {}
+        path_strs = _split_video_url_field(info.get("video_url"))
+        self._bridge._set_expanded_work_has_local_video(len(path_strs) > 0)
 
         title = self._pick_first_nonempty_text(
             info, ("cn_title", "jp_title", "serial_number")

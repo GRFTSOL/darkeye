@@ -63,8 +63,10 @@ class RotateButton(IconPushButton):
         center = QPointF(self.width() / 2, self.height() / 2)
         painter.translate(center)
         painter.rotate(self._angle)
-        w, h = pixmap.width(), pixmap.height()
-        target = QRectF(-w / 2, -h / 2, w, h)
+        # 高分屏下图标 pixmap 为物理像素尺寸且带 devicePixelRatio；paintEvent 坐标为逻辑像素。
+        sz = self.iconSize()
+        iw, ih = float(sz.width()), float(sz.height())
+        target = QRectF(-iw / 2, -ih / 2, iw, ih)
         painter.drawPixmap(target, pixmap, QRectF(pixmap.rect()))
         painter.end()
 

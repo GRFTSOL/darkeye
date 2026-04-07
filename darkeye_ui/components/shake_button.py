@@ -61,8 +61,9 @@ class ShakeButton(IconPushButton):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         center_x = self.width() / 2 + self._offset
         center_y = self.height() / 2
-        w, h = pixmap.width(), pixmap.height()
-        target = QRectF(center_x - w / 2, center_y - h / 2, w, h)
+        sz = self.iconSize()
+        iw, ih = float(sz.width()), float(sz.height())
+        target = QRectF(center_x - iw / 2, center_y - ih / 2, iw, ih)
         painter.drawPixmap(target, pixmap, QRectF(pixmap.rect()))
         painter.end()
 
