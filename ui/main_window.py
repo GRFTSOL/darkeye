@@ -4,7 +4,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 import logging
 
-from config import ICONS_PATH, APP_VERSION, set_max_window
+from config import ICONS_PATH, APP_VERSION, is_max_window, set_max_window
 from controller.shortcut_registry import ShortcutRegistry
 from controller.shortcut_bindings import (
     setup_mainwindow_actions,
@@ -48,6 +48,13 @@ class MainWindow(QMainWindow):
 
         # 延后到窗口 show / event loop 启动后再初始化爬虫管理器，避免 import/构造阻塞主窗口首帧
         QTimer.singleShot(0, self._ensure_crawler_manager_initialized)
+
+    def show_initial(self) -> None:
+        """首次显示主窗口：按上次退出时是否最大化恢复（与 config.set_max_window 对应）。"""
+        if is_max_window():
+            self.showMaximized()
+        else:
+            self.show()
 
     def _install_opengl_bootstrap(self) -> None:
         """

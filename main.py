@@ -244,7 +244,7 @@ def _run_main_app():
         window = MainWindow()
 
     with profiler.measure_execution("MainWindow显示", sync=True):
-        window.show()
+        window.show_initial()
         if show_splash and splash is not None:
             splash.finish(window)
     profiler.checkpoint("主窗口显示完成")

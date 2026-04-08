@@ -99,6 +99,9 @@ USER_SHORTCUT_PATH = resource_path("data/shortcuts.json")  # 用户快捷键列�
 CRAWLER_NAV_BUTTONS_PATH = resource_path(
     "data/crawler_nav_buttons.json"
 )  # 手动导航按钮配置
+ADD_WORK_WORKSPACE_LAYOUT_PATH = resource_path(
+    "data/add_work_workspace_layout.json"
+)  # 添加作品页 myads 工作区布局（随 data 备份）
 
 TEMP_PATH = get_path("Paths/Temp", "data/temp/")  # 存一些临时文件，包括图片等等
 
@@ -420,7 +423,9 @@ def get_avwiki_latest_json_url() -> str:
         url = cp.get("Update", "AvwikiLatestJsonUrl", fallback="").strip()
         if url:
             return url
-        logging.warning("update.ini 中 AvwikiLatestJsonUrl 为空，使用内置 AVWiki 更新地址")
+        logging.warning(
+            "update.ini 中 AvwikiLatestJsonUrl 为空，使用内置 AVWiki 更新地址"
+        )
     except OSError:
         logging.exception(
             "读取 resources/config/update.ini 时发生路径/权限等系统错误，"

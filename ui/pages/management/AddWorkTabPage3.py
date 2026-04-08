@@ -24,6 +24,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import QCursor
 
+from ui.myads.pane_widget import PaneWidget
 from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfig
 from ui.widgets.CrawlerToolBox import CrawlerAutoPage
 from ui.widgets.crawler_nav_page import CrawlerManualNavPage
@@ -37,7 +38,12 @@ from pathlib import Path
 from enum import Enum
 
 
-from config import FANART_PATH, TEMP_PATH, WORKCOVER_PATH
+from config import (
+    ADD_WORK_WORKSPACE_LAYOUT_PATH,
+    FANART_PATH,
+    TEMP_PATH,
+    WORKCOVER_PATH,
+)
 from ui.widgets import (
     ActressSelector,
     CompleterLineEdit,
@@ -997,6 +1003,100 @@ class AddWorkTabPage3(LazyWidget):
     def __init__(self):
         super().__init__()
 
+    def _build_default_addwork_workspace(self) -> None:
+        """默认分割与填充（与首次进入页面时的布局一致）。"""
+        w = self._workspace_manager
+        root = w.get_root_pane()
+
+        def cfg(slot: str) -> ContentConfig:
+            title, widget, closeable = self._addwork_slot_widgets[slot]
+            c = w.create_content_config(content_id=f"addwork_{slot}")
+            return c.set_window_title(title).set_widget(widget).set_closeable(closeable)
+
+        pane_basic = w.split(root, Placement.Right, ratio=0.7)
+        pane_tag = w.split(pane_basic, Placement.Right, ratio=0.25)
+        pane_cn_text = w.split(pane_basic, Placement.Bottom, ratio=0.42)
+        pane_fanart = w.split(pane_tag, Placement.Bottom, ratio=0.2)
+        pane_force = w.split(pane_tag, Placement.Right, ratio=0.5)
+        pane_actress = w.split(root, Placement.Bottom, ratio=0.5)
+        pane_editor = w.split(pane_force, Placement.Bottom, ratio=0.4)
+
+        w.fill_pane(root, cfg("settings"))
+        w.fill_pane(root, cfg("crawler"))
+        w.fill_pane(root, cfg("nav"))
+        w.fill_pane(root, cfg("cover"))
+        w.fill_pane(pane_basic, cfg("basic"))
+
+        w.fill_pane(pane_cn_text, cfg("jp_text"))
+        w.fill_pane(pane_cn_text, cfg("cn_text"))
+        w.fill_pane(pane_actress, cfg("actor"))
+        w.fill_pane(pane_actress, cfg("actress"))
+        w.fill_pane(pane_tag, cfg("tag"))
+        w.fill_pane(pane_fanart, cfg("fanart"))
+        w.fill_pane(pane_force, cfg("force"))
+        w.fill_pane(pane_editor, cfg("editor"))
+
+    def _addwork_get_content_descriptor(
+        self, pane: PaneWidget, content_id: str
+    ) -> dict | None:
+        widget = pane.get_content_widget(content_id)
+        if widget is None:
+            return None
+        slot = widget.property("addwork_slot")
+        if slot in (None, ""):
+            return None
+        slot_s = str(slot)
+        return {
+            "addwork_slot": slot_s,
+            "content_id": content_id,
+            "title": pane.get_content_title(content_id),
+            "closeable": self._workspace_manager.is_content_closeable(content_id),
+        }
+
+    def _addwork_content_factory(self, desc: dict) -> ContentConfig | None:
+        slot = desc.get("addwork_slot")
+        if not slot or slot not in self._addwork_slot_widgets:
+            return None
+        default_title, widget, default_closeable = self._addwork_slot_widgets[slot]
+        title = desc.get("title", default_title)
+        content_id = desc.get("content_id", f"addwork_{slot}")
+        closeable = desc.get("closeable", default_closeable)
+        cfg = self._workspace_manager.create_content_config(content_id=content_id)
+        return cfg.set_window_title(title).set_widget(widget).set_closeable(closeable)
+
+    def _on_save_addwork_workspace_layout(self) -> None:
+        path = ADD_WORK_WORKSPACE_LAYOUT_PATH
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self._workspace_manager.save_layout(
+                path,
+                get_content_descriptor=self._addwork_get_content_descriptor,
+            )
+            self.msg.show_info("布局已保存", f"已写入：\n{path}")
+        except Exception as e:
+            logging.exception("保存添加作品工作区布局失败")
+            self.msg.show_warning("保存失败", str(e))
+
+    def _on_restore_initial_addwork_workspace(self) -> None:
+        path = ADD_WORK_WORKSPACE_LAYOUT_PATH
+        try:
+            self._workspace_manager.reset_to_single_empty_pane()
+            self._build_default_addwork_workspace()
+        except Exception as e:
+            logging.exception("恢复添加作品默认工作区失败")
+            self.msg.show_warning("恢复失败", str(e))
+            return
+        try:
+            if path.exists():
+                path.unlink()
+        except OSError as e:
+            logging.warning("删除已保存的布局文件失败: %s", e)
+        self.msg.show_info(
+            "已恢复初始布局",
+            "工作区已恢复为默认拆分与标签顺序。\n"
+            "若曾保存过布局，已删除保存文件，下次启动也使用默认布局。",
+        )
+
     def _lazy_load(self):
         logging.info("----------加载打开添加/更改作品信息界面----------")
 
@@ -1109,19 +1209,7 @@ class AddWorkTabPage3(LazyWidget):
         self.input_notes = WikiTextEdit()
         self.input_notes.set_completer_func(get_serial_number)
 
-        # ---------- 工作区布局（与 ui/myads/tests/demo.py 用法一致） ----------
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        self._workspace_manager = WorkspaceManager(self)
-        main_layout.addWidget(self._workspace_manager.widget())
-        root = self._workspace_manager.get_root_pane()
-
-        def make_config(
-            title: str, w: QWidget, closeable: bool = True
-        ) -> ContentConfig:
-            cfg = self._workspace_manager.create_content_config()
-            return cfg.set_window_title(title).set_widget(w).set_closeable(closeable)
-
+        # ---------- 工作区子容器（先于 WorkspaceManager，便于布局序列化） ----------
         # 爬虫区
         self.crawler_auto_page = CrawlerAutoPage()
         self.crawler_auto_page.btn_get_crawler = IconPushButton(
@@ -1209,16 +1297,16 @@ class AddWorkTabPage3(LazyWidget):
         cn_text_container = QWidget()
         cn_text_layout = QVBoxLayout(cn_text_container)
         cn_text_layout.addWidget(self.label_cn_title)
-        cn_text_layout.addWidget(self.cn_title)
+        cn_text_layout.addWidget(self.cn_title, 1)
         cn_text_layout.addWidget(self.label_cn_story)
-        cn_text_layout.addWidget(self.cn_story)
+        cn_text_layout.addWidget(self.cn_story, 3)
 
         jp_text_container = QWidget()
         jp_text_layout = QVBoxLayout(jp_text_container)
         jp_text_layout.addLayout(jp_title_label_layout)
-        jp_text_layout.addWidget(self.jp_title)
+        jp_text_layout.addWidget(self.jp_title, 1)
         jp_text_layout.addLayout(jp_story_label_layout)
-        jp_text_layout.addWidget(self.jp_story)
+        jp_text_layout.addWidget(self.jp_story, 3)
 
         # 女优选择器
         actress_container = QWidget()
@@ -1259,65 +1347,64 @@ class AddWorkTabPage3(LazyWidget):
         editor_layout.setContentsMargins(0, 0, 0, 0)
         editor_layout.addWidget(self.input_notes)
 
-        # 先搭架子再填充：root -> … basic, tag 列；tag 列内先纵向拆出 Fanart，再横向 tag | forceview；forceview 下拆 editor
-        pane_basic = self._workspace_manager.split(root, Placement.Right, ratio=0.7)
-        pane_tag = self._workspace_manager.split(
-            pane_basic, Placement.Right, ratio=0.25
+        self._addwork_settings_container = QWidget()
+        settings_layout = QVBoxLayout(self._addwork_settings_container)
+        settings_layout.setContentsMargins(8, 8, 8, 8)
+        settings_layout.addWidget(Label("工作区"))
+        self._btn_save_addwork_layout = Button("保存布局")
+        self._btn_save_addwork_layout.clicked.connect(
+            self._on_save_addwork_workspace_layout
         )
-        pane_cn_text = self._workspace_manager.split(
-            pane_basic, Placement.Bottom, ratio=0.42
+        settings_layout.addWidget(self._btn_save_addwork_layout)
+        self._btn_restore_addwork_layout = Button("恢复初始布局")
+        self._btn_restore_addwork_layout.setToolTip(
+            "恢复为程序默认拆分与标签，并删除已保存的布局文件"
         )
-        pane_fanart = self._workspace_manager.split(
-            pane_tag, Placement.Bottom, ratio=0.2
+        self._btn_restore_addwork_layout.clicked.connect(
+            self._on_restore_initial_addwork_workspace
         )
-        pane_force = self._workspace_manager.split(pane_tag, Placement.Right, ratio=0.5)
-        pane_actress = self._workspace_manager.split(root, Placement.Bottom, ratio=0.5)
-        pane_editor = self._workspace_manager.split(
-            pane_force, Placement.Bottom, ratio=0.4
-        )
+        settings_layout.addWidget(self._btn_restore_addwork_layout)
+        settings_layout.addStretch(1)
 
-        # 同一个pane内是按顺序填充
-        self._workspace_manager.fill_pane(
-            root, make_config("爬虫区", crawler_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            root, make_config("外部导航", nav_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            root, make_config("封面栏", cover_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            pane_basic,
-            make_config("基础信息", basic_info_container, closeable=False),
-        )
+        self._addwork_slot_widgets: dict[str, tuple[str, QWidget, bool]] = {
+            "crawler": ("爬虫区", crawler_container, False),
+            "nav": ("外部导航", nav_container, False),
+            "cover": ("封面栏", cover_container, False),
+            "basic": ("基础信息", basic_info_container, False),
+            "settings": ("设置", self._addwork_settings_container, False),
+            "jp_text": ("日文标题与剧情", jp_text_container, False),
+            "cn_text": ("中文标题与剧情", cn_text_container, False),
+            "actor": ("男优选择器", actor_container, False),
+            "actress": ("女优选择器", actress_container, False),
+            "tag": ("标签选择器", tag_container, False),
+            "fanart": ("剧照", self.fanart_frame, False),
+            "force": ("图谱", self.forceview_container, False),
+            "editor": ("自由记录区", editor_container, False),
+        }
+        for _slot, (_t, w, __) in self._addwork_slot_widgets.items():
+            w.setProperty("addwork_slot", _slot)
 
-        self._workspace_manager.fill_pane(
-            pane_cn_text,
-            make_config("日文标题与剧情", jp_text_container, closeable=False),
-        )
-        self._workspace_manager.fill_pane(
-            pane_cn_text,
-            make_config("中文标题与剧情", cn_text_container, closeable=False),
-        )
-        self._workspace_manager.fill_pane(
-            pane_actress, make_config("男优选择器", actor_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            pane_actress, make_config("女优选择器", actress_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            pane_tag, make_config("标签选择器", tag_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            pane_fanart, make_config("剧照", self.fanart_frame, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            pane_force,
-            make_config("图谱", self.forceview_container, closeable=False),
-        )
-        self._workspace_manager.fill_pane(
-            pane_editor, make_config("自由记录区", editor_container, closeable=False)
-        )
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        self._workspace_manager = WorkspaceManager(self)
+        main_layout.addWidget(self._workspace_manager.widget())
+
+        layout_path = ADD_WORK_WORKSPACE_LAYOUT_PATH
+        if layout_path.exists():
+            try:
+                self._workspace_manager.load_layout(
+                    layout_path,
+                    content_factory=self._addwork_content_factory,
+                )
+            except Exception as e:
+                logging.warning(
+                    "加载添加作品工作区布局失败，使用默认布局: %s",
+                    e,
+                    exc_info=True,
+                )
+                self._build_default_addwork_workspace()
+        else:
+            self._build_default_addwork_workspace()
 
         QTimer.singleShot(0, self._init_forceview)
 
