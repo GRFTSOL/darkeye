@@ -281,11 +281,11 @@ def set_last_auto_update_check_week(week_key: str) -> None:
 
 
 def get_translation_engine() -> str:
-    return settings.value("Translation/Engine", "llm", type=str).strip().lower()
+    return settings.value("Translation/Engine", "google", type=str).strip().lower()
 
 
 def set_translation_engine(value: str) -> None:
-    settings.setValue("Translation/Engine", (value or "llm").strip().lower())
+    settings.setValue("Translation/Engine", (value or "google").strip().lower())
     settings.sync()
 
 
