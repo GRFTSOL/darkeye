@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DarkEye Capture",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Capture page content for DarkEye",
   "action": {
     "default_icon": "icons/logo.png",
@@ -20,13 +20,7 @@
   "host_permissions": [
     "http://127.0.0.1/*",
     "http://localhost/*",
-    "*://javdb.com/*",
-    "*://www.javdb.com/*",
-    "*://www.javlibrary.com/*",
-    "*://*.dmm.co.jp/*",
-    "*://www.minnano-av.com/*",
-    "*://javtxt.com/*",
-    "*://www.javtxt.com/*"
+    "<all_urls>"
   ],
   "content_scripts": [
     {

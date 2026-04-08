@@ -57,10 +57,24 @@ def _quality_badge_qss_from_tokens(t: "ThemeTokens") -> str:
     )
 
 
+class _ClickableQualityBadge(QLabel):
+    """「非高清图」角标：左键点击发信号（由页面侧处理 Fanza 下载等逻辑）。"""
+
+    clicked = Signal()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+
 class _CoverDropLabel(QLabel):
     """内部可拖放封面 QLabel，保持原有显示与拖放逻辑；文字与边框颜色由设计令牌控制。"""
 
     coverChanged = Signal()
+    lowQualityCoverBadgeClicked = Signal()
     _LOW_QUALITY_THRESHOLD_BYTES = 500 * 1024
 
     def __init__(self, theme_manager: Optional["ThemeManager"] = None):
@@ -87,9 +101,12 @@ class _CoverDropLabel(QLabel):
         # 当外部需要强调提示（例如“封面已修改未保存”）时，允许覆盖边框样式。
         # 形式为完整的 QSS border 值，例如："2px dashed orange"。
         self._border_override: Optional[str] = None
-        self._badge = QLabel("非高清图", self)
+        self._badge = _ClickableQualityBadge("非高清图", self)
         self._badge.setObjectName("coverQualityBadge")
         self._badge.setAlignment(Qt.AlignCenter)
+        self._badge.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._badge.setToolTip("点击从 Fanza 下载可能的大图封面")
+        self._badge.clicked.connect(self.lowQualityCoverBadgeClicked.emit)
         self._apply_badge_token_styles()
         self._badge.adjustSize()
         self._badge.hide()
@@ -363,6 +380,7 @@ class CoverDropWidget(QWidget):
     """可拖动式添加封面的控件，在父容器内按宽高比占满并居中，不产生滚动条。文字与边框由设计令牌控制。"""
 
     coverChanged = Signal()
+    lowQualityCoverBadgeClicked = Signal()
 
     def __init__(
         self, aspect_ratio: float = 0.7, theme_manager: Optional["ThemeManager"] = None
@@ -373,6 +391,9 @@ class CoverDropWidget(QWidget):
         self._inner._aspect_ratio = aspect_ratio
         self._inner.setParent(self)
         self._inner.coverChanged.connect(self.coverChanged.emit)
+        self._inner.lowQualityCoverBadgeClicked.connect(
+            self.lowQualityCoverBadgeClicked.emit
+        )
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.setMinimumSize(0, 0)
 

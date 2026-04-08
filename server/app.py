@@ -1,6 +1,10 @@
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
+import base64
 import json, sqlite3, asyncio, logging
+from datetime import datetime
+from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +12,7 @@ from fastapi.responses import StreamingResponse
 
 from .bridge import bridge
 
-from config import DATABASE
+from config import DATABASE, TEMP_PATH
 
 # 配置日志
 logger = logging.getLogger("server")
@@ -281,6 +285,100 @@ async def receive_crawler_result(data: Dict[str, Any]):
     except Exception as e:
         logger.error(f"Error processing capture data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class CoverImageFetchRequest(BaseModel):
+    url: str
+    request_id: str
+
+
+class CoverImageFetchResult(BaseModel):
+    request_id: str
+    ok: bool
+    error: Optional[str] = None
+    content_base64: Optional[str] = None
+
+
+def _allowed_dmm_cover_fetch_url(url: str) -> bool:
+    try:
+        p = urlparse(url.strip())
+        if p.scheme not in ("http", "https"):
+            return False
+        h = (p.hostname or "").lower()
+        return h == "dmm.co.jp" or h.endswith(".dmm.co.jp")
+    except Exception:
+        return False
+
+
+@app.post("/api/v1/cover-image-fetch")
+async def broadcast_cover_image_fetch(body: CoverImageFetchRequest):
+    """通过 SSE 通知浏览器插件用 fetch 拉取 DMM 图片（走浏览器网络栈）。"""
+    rid = (body.request_id or "").strip()
+    if not rid:
+        raise HTTPException(status_code=400, detail="request_id required")
+    if not _allowed_dmm_cover_fetch_url(body.url):
+        raise HTTPException(status_code=400, detail="url host not allowed")
+    dead_clients: List[asyncio.Queue] = []
+    message = {
+        "type": "fetch_cover_image",
+        "url": body.url.strip(),
+        "request_id": rid,
+    }
+    event_data = f"data: {json.dumps(message)}\n\n"
+    for client in sse_clients:
+        try:
+            await client.put(event_data)
+        except Exception:
+            dead_clients.append(client)
+    for dead in dead_clients:
+        if dead in sse_clients:
+            sse_clients.remove(dead)
+    return {"status": "success", "listener_count": len(sse_clients)}
+
+
+@app.post("/api/v1/cover-image-fetch-result")
+async def receive_cover_image_fetch_result(body: CoverImageFetchResult):
+    """接收插件回传的 base64 图片，写入临时目录并发信号给 Qt。"""
+    rid = (body.request_id or "").strip()
+    if not rid:
+        raise HTTPException(status_code=400, detail="request_id required")
+
+    if not body.ok:
+        bridge.coverBrowserFetchResult.emit(rid, None, body.error or "失败")
+        return {"status": "success"}
+
+    b64 = (body.content_base64 or "").strip()
+    if not b64:
+        bridge.coverBrowserFetchResult.emit(rid, None, "无图片数据")
+        return {"status": "success"}
+
+    try:
+        raw = base64.b64decode(b64, validate=True)
+    except Exception as e:
+        bridge.coverBrowserFetchResult.emit(rid, None, f"解码失败: {e}")
+        return {"status": "success"}
+
+    max_bytes = 30 * 1024 * 1024
+    if len(raw) > max_bytes:
+        bridge.coverBrowserFetchResult.emit(rid, None, "图片过大")
+        return {"status": "success"}
+
+    min_bytes = 5 * 1024
+    if len(raw) < min_bytes:
+        bridge.coverBrowserFetchResult.emit(rid, None, "图片过小（小于 5KB）")
+        return {"status": "success"}
+
+    TEMP_PATH.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out = Path(TEMP_PATH) / f"fanza_pl_browser_{ts}.jpg"
+    try:
+        out.write_bytes(raw)
+    except OSError as e:
+        bridge.coverBrowserFetchResult.emit(rid, None, f"写入失败: {e}")
+        return {"status": "success"}
+
+    bridge.coverBrowserFetchResult.emit(rid, str(out.resolve()), "")
+    return {"status": "success"}
 
 
 @app.get("/events")

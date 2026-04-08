@@ -44,6 +44,7 @@ def test_is_valid_serialnumber(code, expected):
         ("XYZ-1", "xyz001"),
         ("NoDash", "nodash"),
         ("abc-DEF", "abc00def"),
+        ("KNMB-001", "h_491knmb00001"),
     ],
 )
 def test_convert_fanza(input_code, expected):

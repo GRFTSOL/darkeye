@@ -268,8 +268,14 @@ def convert_fanza(serial_number: str) -> str:
     lower_code = serial_number.lower()
     converted_code = lower_code.replace("-", "00")
 
-    if any(converted_code.startswith(p) for p in ("start", "stars", "star", "sdde","namh")):
+    if any(converted_code.startswith(p) for p in ("start", "stars", "star", "sdde","kmhrs")):#这里的是只有一半封面的
         converted_code = "1" + converted_code
+    if any(converted_code.startswith(p) for p in ("namh","dldss","fns","fsdss","boko","sdam","hawa","moon","mogi","nhdtb")):#这个是有正常大封面的
+        converted_code = "1" + converted_code
+    if converted_code.startswith("knmb"):
+        converted_code = "h_491" + converted_code
+    if converted_code.startswith("isrd"):
+        converted_code = "24" + converted_code
     return converted_code
 
 

@@ -50,6 +50,60 @@ let crawlerWindowPromise = null; // 创建中的窗口 Promise，避免多任务
 const CRAWLER_BACKLOG_THRESHOLD = 7;//正常情况下大于7个就通知桌面
 let backlogWarningArmed = true;
 
+/** Uint8Array -> base64（避免大文件 String.fromCharCode 爆栈） */
+function uint8ToBase64(u8) {
+  const CHUNK = 0x8000;
+  let s = "";
+  for (let i = 0; i < u8.length; i += CHUNK) {
+    s += String.fromCharCode.apply(
+      null,
+      u8.subarray(i, Math.min(i + CHUNK, u8.length))
+    );
+  }
+  return btoa(s);
+}
+
+function postCoverFetchResult(request_id, ok, error, content_base64) {
+  fetch(`${SERVER_URL}/api/v1/cover-image-fetch-result`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      request_id,
+      ok,
+      error: error || null,
+      content_base64: content_base64 || null,
+    }),
+  }).catch((err) => {
+    console.error("DarkEye: cover-image-fetch-result failed", err);
+  });
+}
+
+function fetchCoverImageForDesktop(imageUrl, request_id) {
+  const minBytes = 5 * 1024;
+  fetch(imageUrl, { credentials: "omit", cache: "no-store" })
+    .then((r) => {
+      if (!r.ok) {
+        postCoverFetchResult(request_id, false, `HTTP ${r.status}`, null);
+        return null;
+      }
+      return r.arrayBuffer();
+    })
+    .then((buf) => {
+      if (!buf) return;
+      const u8 = new Uint8Array(buf);
+      if (u8.length < minBytes) {
+        postCoverFetchResult(request_id, false, "图片过小（小于 5KB）", null);
+        return;
+      }
+      const b64 = uint8ToBase64(u8);
+      postCoverFetchResult(request_id, true, null, b64);
+    })
+    .catch((e) => {
+      console.error("DarkEye: fetchCoverImageForDesktop", e);
+      postCoverFetchResult(request_id, false, String(e), null);
+    });
+}
+
 function maybeNotifyCrawlerBacklog() {
   if (crawlerWindowId === null) {
     return Promise.resolve();
@@ -164,6 +218,14 @@ function handleCommand(data) {//处理服务器发送来的命令
     if (web==="fanza"){//开始执行对fanza的爬虫,第一步就是跳转
       const url = "https://www.dmm.co.jp/mono/-/search/=/searchstr="+String(serial_number);
       addPendingInNewWindow(url, "fanza");
+    }
+  }
+  if (data.type === "fetch_cover_image") {
+    const imageUrl = data.url;
+    const request_id = data.request_id;
+    if (imageUrl && request_id) {
+      console.log("DarkEye: fetch_cover_image", request_id);
+      fetchCoverImageForDesktop(imageUrl, request_id);
     }
   }
 }

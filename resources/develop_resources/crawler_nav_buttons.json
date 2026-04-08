@@ -15,31 +15,22 @@
     "description": "获得故事与标题，但是没有封面"
   },
   {
-    "name": "minnao-av",
-    "url": "https://www.minnano-av.com/search_result.php?search_scope=actress&search_word={serial}&search=+Go",
-    "description": "女优信息"
-  },
-  {
     "name": "avdanyuwiki",
     "url": "https://avdanyuwiki.com/?s={serial}",
     "serial_transform": "fanza",
     "description": "作品男优信息"
   },
   {
+    "name": "fanza大图封面",
+    "url": "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{serial}/{serial}pl.jpg",
+    "serial_transform": "fanza",
+    "description": "fanza大图封面可能链接"
+  },
+  {
     "name": "fanza",
     "url": "https://www.dmm.co.jp/search/=/searchstr={serial}/limit=30/sort=rankprofile",
     "serial_transform": "fanza",
     "description": "fanza售卖网站，非日本本土，需日本vpn且特殊插件才能访问"
-  },
-  {
-    "name": "prestige",
-    "url": "https://www.prestige-av.com/",
-    "description": "prestige网站，非日本本土，需日本vpn且特殊插件才能访问"
-  },
-  {
-    "name": "MGS",
-    "url": "https://www.mgstage.com",
-    "description": "mgs素人网站，非日本本土，需日本vpn且特殊插件才能访问"
   },
   {
     "name": "金鸡儿奖",
@@ -55,25 +46,5 @@
     "name": "片假名",
     "url": "https://zh.wikipedia.org/wiki/%E7%89%87%E5%81%87%E5%90%8D",
     "description": "片假名"
-  },
-  {
-    "name": "AV女優大辞典wiki",
-    "url": "https://av-help.memo.wiki/",
-    "description": "AV女優大辞典wiki"
-  },
-  {
-    "name": "avwiki",
-    "url": "https://av-wiki.net/?s={serial}",
-    "description": "avwiki，这个查作品是跳到fanza"
-  },
-  {
-    "name": "素人女优wiki",
-    "url": "https://shiroutowiki.work/?s={serial}",
-    "description": "素人女优wiki，这网站查不到正规的"
-  },
-  {
-    "name": "avwikidb",
-    "url": "https://avwikidb.com/",
-    "description": "素人女优数据库"
   }
 ]
