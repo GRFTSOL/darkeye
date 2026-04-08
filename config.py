@@ -281,6 +281,7 @@ def set_last_auto_update_check_week(week_key: str) -> None:
 _UPDATE_INI = resource_path("resources/config/update.ini")
 # 内置兜底：资源文件缺失或字段无效时使用（与 resources/config/update.ini 保持一致）
 DEFAULT_LATEST_JSON_URL = "https://yinruizhe.asia/latest.json"
+DEFAULT_AVWIKI_LATEST_JSON_URL = "https://yinruizhe.asia/avwiki/avwiki_latest.json"
 
 
 def get_latest_json_url() -> str:
@@ -313,3 +314,35 @@ def get_latest_json_url() -> str:
             "resources/config/update.ini 解析失败（格式无效），使用内置默认更新地址"
         )
     return DEFAULT_LATEST_JSON_URL
+
+
+def get_avwiki_latest_json_url() -> str:
+    """
+    从随安装包发布的 resources/config/update.ini 读取 avwiki 清单地址。
+    该地址用于知识库资源手动更新，与应用本体更新地址解耦。
+    """
+    p = _UPDATE_INI
+    if not p.is_file():
+        logging.warning("未找到 resources/config/update.ini，使用内置 AVWiki 更新地址")
+        return DEFAULT_AVWIKI_LATEST_JSON_URL
+    cp = configparser.ConfigParser()
+    try:
+        cp.read(p, encoding="utf-8")
+        url = cp.get("Update", "AvwikiLatestJsonUrl", fallback="").strip()
+        if url:
+            return url
+        logging.warning("update.ini 中 AvwikiLatestJsonUrl 为空，使用内置 AVWiki 更新地址")
+    except OSError:
+        logging.exception(
+            "读取 resources/config/update.ini 时发生路径/权限等系统错误，"
+            "使用内置 AVWiki 更新地址"
+        )
+    except UnicodeDecodeError:
+        logging.exception(
+            "resources/config/update.ini 无法按 UTF-8 解码，使用内置 AVWiki 更新地址"
+        )
+    except configparser.Error:
+        logging.exception(
+            "resources/config/update.ini 解析失败（格式无效），使用内置 AVWiki 更新地址"
+        )
+    return DEFAULT_AVWIKI_LATEST_JSON_URL
