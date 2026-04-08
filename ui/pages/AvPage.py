@@ -1,8 +1,9 @@
 import logging
 import re
+import threading
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl, QTimer
+from PySide6.QtCore import QObject, Qt, QUrl, QTimer, Signal
 from PySide6.QtWidgets import (
     QSplitter,
     QTreeWidget,
@@ -20,9 +21,11 @@ from PySide6.QtGui import QFont
 
 from config import AVWIKI_PATH
 from darkeye_ui import LazyWidget
+from controller.message_service import MessageBoxService
 from darkeye_ui.components.button import Button
 from darkeye_ui.components.input import PlainTextEdit
 from darkeye_ui.design.theme_context import resolve_theme_manager
+from utils.avwiki_updater import check_and_update_avwiki
 
 
 def _preprocess_wiki_links(text: str) -> str:
@@ -39,6 +42,8 @@ class AvPage(LazyWidget):
         self._edit_dirty = False
         self._save_timer: QTimer | None = None
         self._watcher: QFileSystemWatcher | None = None
+        self._msg: MessageBoxService | None = None
+        self._btn_update: Button | None = None
 
     def _lazy_load(self):
         layout = QVBoxLayout(self)
@@ -71,12 +76,15 @@ class AvPage(LazyWidget):
         btn_edit = Button("编辑")
         btn_edit.setEnabled(False)
         btn_edit.setCheckable(True)
+        self._btn_update = Button("更新知识库")
+
         self._mode_group = QButtonGroup(self)
         self._mode_group.addButton(btn_preview)
         self._mode_group.addButton(btn_edit)
         toolbar = QHBoxLayout()
         toolbar.addWidget(btn_preview)
         toolbar.addWidget(btn_edit)
+        toolbar.addWidget(self._btn_update)
         toolbar.addStretch()
         right_layout.addLayout(toolbar)
 
@@ -110,6 +118,7 @@ class AvPage(LazyWidget):
 
         btn_preview.clicked.connect(self._switch_to_preview)
         btn_edit.clicked.connect(self._switch_to_edit)
+        self._btn_update.clicked.connect(self._on_update_avwiki_clicked)
 
         self._tree.itemClicked.connect(self._on_tree_item_clicked)
 
@@ -125,6 +134,39 @@ class AvPage(LazyWidget):
 
         self._build_tree()
         self._select_first_and_load()
+        self._msg = MessageBoxService(self)
+
+    def _on_update_avwiki_clicked(self) -> None:
+        if self._btn_update is None:
+            return
+        self._btn_update.setEnabled(False)
+        self._btn_update.setText("更新中...")
+
+        class _Notifier(QObject):
+            done = Signal(bool, str, str)
+
+        notifier = _Notifier(self)
+
+        def on_done(success: bool, title: str, message: str) -> None:
+            if self._btn_update is not None:
+                self._btn_update.setEnabled(True)
+                self._btn_update.setText("更新知识库")
+            if self._msg is None:
+                return
+            if success:
+                self._msg.show_info(title, message)
+                self._build_tree()
+                self._restore_selection()
+            else:
+                self._msg.show_critical(title, message)
+
+        notifier.done.connect(on_done)
+
+        def run() -> None:
+            res = check_and_update_avwiki()
+            notifier.done.emit(res.success, res.title, res.message)
+
+        threading.Thread(target=run, daemon=True).start()
 
     def _apply_splitter_style(self) -> None:
         """用当前主题 token 设置 splitter 把手样式，随主题变色。"""

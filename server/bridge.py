@@ -16,6 +16,7 @@ class ServerBridge(QObject):
     javlibFinished = Signal(dict)
     fanzaFinished = Signal(dict)
     javdbFinished = Signal(dict)
+    crawlerBacklogWarning = Signal(int, str)
 
     _instance = None
 

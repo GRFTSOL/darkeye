@@ -1,8 +1,10 @@
 # 这个依赖注入使用，但是现在还是有问题
+import sys
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional
 
-from PySide6.QtWidgets import QMessageBox
-from abc import ABC, abstractmethod
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from darkeye_ui.design.tokens import ThemeTokens, LIGHT_TOKENS
 
@@ -40,12 +42,40 @@ QMessageBox QPushButton:disabled {{
 """
 
 
+def _win32_try_set_foreground(widget) -> None:
+    """尽量把窗口提到前台（受系统焦点策略限制，可能失败）。"""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        hwnd = int(widget.winId())
+        if hwnd:
+            ctypes.windll.user32.SetForegroundWindow(hwnd)
+    except Exception:
+        pass
+
+
+def _bring_parent_to_attention(parent) -> None:
+    """恢复最小化、提升 Z 序、激活并闪烁任务栏，便于用户注意到后台弹窗。"""
+    app = QApplication.instance()
+    if app is None or parent is None:
+        return
+    if parent.isMinimized():
+        parent.showNormal()
+    parent.raise_()
+    parent.activateWindow()
+    app.setActiveWindow(parent)
+    QApplication.alert(parent, 2000)
+    _win32_try_set_foreground(parent)
+
+
 class IMessageService(ABC):
     @abstractmethod
     def show_info(self, title, message): ...
 
     @abstractmethod
-    def show_warning(self, title, message): ...
+    def show_warning(self, title, message, *, attention_grabbing: bool = False): ...
 
     @abstractmethod
     def show_critical(self, title, message): ...
@@ -80,10 +110,14 @@ class MessageBoxService(IMessageService):
         self._apply_tokens_to_box(box)
         box.exec()
 
-    def show_warning(self, title, message):
+    def show_warning(self, title, message, *, attention_grabbing: bool = False):
+        if attention_grabbing:
+            _bring_parent_to_attention(self.parent)
         box = QMessageBox(
             QMessageBox.Warning, title, message, QMessageBox.Ok, self.parent
         )
+        if attention_grabbing:
+            box.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
         self._apply_tokens_to_box(box)
         box.exec()
 

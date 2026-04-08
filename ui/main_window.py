@@ -259,6 +259,7 @@ class MainWindow(QMainWindow):
         from server.bridge import bridge
 
         bridge.captureReceived.connect(self.handle_capture_data)
+        bridge.crawlerBacklogWarning.connect(self._on_crawler_backlog_warning)
 
     def closeEvent(self, event) -> None:
         logging.info("--------------------程序关闭--------------------")
@@ -342,6 +343,18 @@ class MainWindow(QMainWindow):
         route_name = self._menu_to_route.get(menu_id)
         if route_name:
             self.router.push(route_name)
+
+    @Slot(int, str)
+    def _on_crawler_backlog_warning(self, count: int, browser: str) -> None:
+        from controller.message_service import MessageBoxService
+
+        msg = MessageBoxService(parent=self)
+        msg.show_warning(
+            "爬虫标签页积压",
+            f"专用爬虫窗口中标签数已达 {count} 个，说明需要反爬验证了"
+            "适时关闭失效标签或者过反爬验证",
+            attention_grabbing=True,
+        )
 
     @Slot(dict)
     def handle_capture_data(self, data: dict) -> None:
