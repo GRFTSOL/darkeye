@@ -8,7 +8,8 @@
     "tabs",
     "http://127.0.0.1/*",
     "http://localhost/*",
-    "*://*.dmm.co.jp/*"
+    "*://*.dmm.co.jp/*",
+    "*://*/*"
   ],
   "background": {"scripts": ["background.js"]},
   "browser_action": {

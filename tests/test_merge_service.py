@@ -27,19 +27,22 @@ def _get_merge_service():
     if real_core:
         return importlib.import_module(_MERGE_SERVICE_MODULE)
 
-    sys.modules.setdefault("utils", types.ModuleType("utils"))
+    utils_pkg = sys.modules.setdefault("utils", types.ModuleType("utils"))
+    utils_pkg.__path__ = [str(_ROOT / "utils")]
     if "utils.utils" not in sys.modules:
         uu = types.ModuleType("utils.utils")
         uu.translate_text_sync = lambda text, fallback="": text
         sys.modules["utils.utils"] = uu
 
-    sys.modules.setdefault("config", types.ModuleType("config"))
-    if not hasattr(sys.modules["config"], "resource_path"):
+    cfg = sys.modules.setdefault("config", types.ModuleType("config"))
+    if not hasattr(cfg, "resource_path"):
 
         def resource_path(relative_path):
             return str(_ROOT / relative_path)
 
-        sys.modules["config"].resource_path = resource_path
+        cfg.resource_path = resource_path
+    if not hasattr(cfg, "get_translation_engine"):
+        cfg.get_translation_engine = lambda: ""
 
     core_pkg = types.ModuleType("core")
     core_pkg.__path__ = [str(_ROOT / "core")]
@@ -239,6 +242,72 @@ def test_merge_runtime_from_javlib_length_when_no_avdan_runtime(_tr, _eg):
     }
     out = merge_service.merge_crawl_results(results, "R-2")
     assert out.runtime == 88
+
+
+@patch("core.crawler.merge_service.exclude_genre_set", return_value=frozenset())
+@patch("core.crawler.merge_service.translate_text_sync", return_value="x")
+def test_merge_skips_fanza_pl_when_maker_sod(_tr, _eg):
+    """SOD 片商不插入 awsimgsrc PL 优先封面。"""
+    results = {
+        "javlib": {},
+        "avdanyuwiki": {"maker": "SODクリエイト"},
+        "javdb": {},
+        "javtxt": {},
+    }
+    out = merge_service.merge_crawl_results(results, "ABC-999")
+    assert not any(
+        u.startswith("https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/")
+        for u in out.cover_url_list
+    )
+
+
+@patch("core.crawler.merge_service.exclude_genre_set", return_value=frozenset())
+@patch("core.crawler.merge_service.translate_text_sync", return_value="x")
+def test_merge_skips_fanza_pl_when_release_before_2019(_tr, _eg):
+    """2019 年前发售的不插入 awsimgsrc PL。"""
+    results = {
+        "javlib": {"release_date": "2018-06-01"},
+        "avdanyuwiki": {},
+        "javdb": {},
+        "javtxt": {},
+    }
+    out = merge_service.merge_crawl_results(results, "IPX-100")
+    assert not any(
+        u.startswith("https://awsimgsrc.dmm.co.jp/") for u in out.cover_url_list
+    )
+
+
+@patch("core.crawler.merge_service.exclude_genre_set", return_value=frozenset())
+@patch("core.crawler.merge_service.translate_text_sync", return_value="x")
+def test_merge_inserts_fanza_pl_when_release_2019_or_later(_tr, _eg):
+    """2019 年及以后仍插入 awsimgsrc PL（在无片商/前缀跳过时）。"""
+    results = {
+        "javlib": {"release_date": "2019-01-15"},
+        "avdanyuwiki": {},
+        "javdb": {},
+        "javtxt": {},
+    }
+    out = merge_service.merge_crawl_results(results, "IPX-100")
+    assert any(
+        u.startswith("https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/")
+        for u in out.cover_url_list
+    )
+
+
+@patch("core.crawler.merge_service.exclude_genre_set", return_value=frozenset())
+@patch("core.crawler.merge_service.translate_text_sync", return_value="x")
+def test_merge_skips_fanza_pl_when_serial_prefix_start(_tr, _eg):
+    """番号前缀在配置列表中时不插入 awsimgsrc PL。"""
+    results = {
+        "javlib": {},
+        "avdanyuwiki": {"maker": "----"},
+        "javdb": {},
+        "javtxt": {},
+    }
+    out = merge_service.merge_crawl_results(results, "STARS-123")
+    assert not any(
+        u.startswith("https://awsimgsrc.dmm.co.jp/") for u in out.cover_url_list
+    )
 
 
 @patch("core.crawler.merge_service.exclude_genre_set", return_value=frozenset())
