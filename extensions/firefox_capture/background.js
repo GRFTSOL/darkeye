@@ -47,7 +47,7 @@ let crawlerWindowId = null; // 专用爬虫窗口 ID
 let crawlerWindowPromise = null; // 创建中的窗口 Promise，避免多任务同时开多个窗口
 
 /** 专用窗口内标签总数达到该值时通知桌面（去重：跌破后再回升才再报） */
-const CRAWLER_BACKLOG_THRESHOLD = 7;//正常情况下大于7个就通知桌面
+const CRAWLER_BACKLOG_THRESHOLD = 10;//正常情况下大于10个就通知桌面
 let backlogWarningArmed = true;
 
 /** Uint8Array -> base64（避免大文件 String.fromCharCode 爆栈） */
@@ -219,6 +219,10 @@ function handleCommand(data) {//处理服务器发送来的命令
       const url = "https://www.dmm.co.jp/mono/-/search/=/searchstr="+String(serial_number);
       addPendingInNewWindow(url, "fanza");
     }
+    if (web==="javtxt"){
+      const url = "https://javtxt.com/search?type=id&q="+encodeURIComponent(String(serial_number));
+      addPendingInNewWindow(url, "javtxt");
+    }
   }
   if (data.type === "fetch_cover_image") {
     const imageUrl = data.url;
@@ -252,6 +256,9 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     } else if(task.type === "fanza"){
       browser.tabs.sendMessage(tabId, { command: "fanza-dvdid", serial: task.serial });
       console.log("fanza爬虫开始:" + tabId);
+    } else if (task.type === "javtxt") {
+      browser.tabs.sendMessage(tabId, { command: "javtxt-dvdid", serial: task.serial });
+      console.log("javtxt爬虫开始:" + tabId);
     }
     
     // 注意：如果我们采用 Content Script 自动接力模式，这里可能不需要删除，每次刷新时判断有无任务，有就处理，直接任务全部结束

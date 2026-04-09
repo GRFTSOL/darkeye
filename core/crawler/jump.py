@@ -41,8 +41,9 @@ def send_navigate_request(url: str, context: dict | None = None):
 
 
 def send_crawler_request(web: str, serial_number: str):
-    """发送爬取指令到本地服务器，由，本地服务器去指挥浏览器插件
-    web:javlib,javdb
+    """发送爬取指令到本地服务器，由本地服务器经 SSE 指挥浏览器插件。
+
+    ``web``：javlib、javdb、javtxt、fanza 等。
     """
     import requests
 

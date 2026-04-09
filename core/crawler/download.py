@@ -11,7 +11,7 @@ import requests
 
 from config import DATABASE
 from core.database.update import update_titlestory
-from .javtxt import fetch_javtxt_movie_info
+from .javtxt import fetch_javtxt_movie_info_via_http
 
 _LOCAL_COVER_FETCH_BASE = "http://127.0.0.1:56789"
 _COVER_FETCH_WAIT_S = 45.0
@@ -223,7 +223,7 @@ def update_title_story_db():
 
     for serial_number in serial_number_list:
         print(serial_number)
-        data = fetch_javtxt_movie_info(serial_number)
+        data = fetch_javtxt_movie_info_via_http(serial_number)
         if data is not None:
             update_titlestory(
                 serial_number,

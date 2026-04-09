@@ -16,6 +16,7 @@ class ServerBridge(QObject):
     javlibFinished = Signal(dict)
     fanzaFinished = Signal(dict)
     javdbFinished = Signal(dict)
+    javtxtFinished = Signal(dict)
     crawlerBacklogWarning = Signal(int, str)
     # 浏览器插件拉取 DMM 封面完成：request_id, 临时文件绝对路径或 None, 错误说明（成功为空串）
     coverBrowserFetchResult = Signal(str, object, str)

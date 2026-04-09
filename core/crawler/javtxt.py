@@ -1,13 +1,19 @@
+import logging
 import re
+import threading
+
 import requests
 from bs4 import BeautifulSoup
-from utils.utils import convert_fanza, serial_number_equal
-import logging
-from core.database.update import update_work_javtxt
+
 from core.database.query import (
-    get_workid_by_serialnumber,
     get_javtxt_id_by_serialnumber,
+    get_workid_by_serialnumber,
 )
+from core.database.update import update_work_javtxt
+from core.crawler.jump import send_crawler_request
+from server.bridge import bridge
+from utils.utils import serial_number_equal
+
 from .basic import fetch_url
 
 """需要非日本ip才能爬"""
@@ -175,22 +181,65 @@ def scrape_javtxt_movie_details(url: str) -> dict:
         return {}
 
 
+def jump_to_javtxt(serial_number: str) -> dict:
+    """由浏览器插件在页面内爬取（同步阻塞），逻辑与 jump_to_javdb 一致。"""
+    event = threading.Event()
+    result_container: dict = {"data": {}}
+
+    def temp_callback(data: dict) -> None:
+        if serial_number_equal(data.get("id", ""), serial_number):
+            result_container["data"] = data
+            event.set()
+
+    bridge.javtxtFinished.connect(temp_callback)
+    try:
+        send_crawler_request("javtxt", serial_number)
+        is_set = event.wait(timeout=20)
+        if not is_set:
+            logging.info("Error: JavTxt crawl timeout for %s", serial_number)
+            return {}
+        return result_container["data"]
+    finally:
+        try:
+            bridge.javtxtFinished.disconnect(temp_callback)
+        except Exception as e:
+            logging.debug(
+                "jump_to_javtxt: 断开临时回调失败（可能未连接）: %s",
+                e,
+                exc_info=True,
+            )
+
+
+def fetch_javtxt_movie_info_via_http(serial_number: str) -> dict:
+    """
+    无缓存 HTTP：搜索番号后抓取详情（不经过浏览器插件）。
+    供批量脚本等无插件环境使用。
+    """
+    truepage = search_work(serial_number)
+    if truepage is None:
+        logging.info("Javtxt HTTP：搜不到番号，结束")
+        return {}
+    base = "https://javtxt.com"
+    url = base + truepage
+    logging.info("请求 javtxt URL: %s", url)
+    return scrape_javtxt_movie_details(url)
+
+
 def fetch_javtxt_movie_info(serial_number: str) -> dict:
     """
-    根据番号获取JAVTXT网站上的电影详细信息（带缓存机制）。
-        #标记非正规作品，非正规作品是没有封面，导演，故事等等的
+    根据番号获取 JAVTXT 网站上的电影详细信息（带缓存机制）。
+        # 标记非正规作品，非正规作品是没有封面，导演，故事等等的
     流程：
-    1. 先检查本地是否有该番号对应的JAVTXT ID缓存
-    2. 若无缓存则进行搜索获取ID
-    3. 使用ID构建最终URL并抓取详细信息
+    1. 先检查本地是否有该番号对应的 JAVTXT ID 缓存
+    2. 若无缓存则进行搜索获取 ID
+    3. 使用 ID 构建最终 URL 并抓取详细信息
 
     Args:
-        serial_number (str): 影片番号(如ABP-123)
+        serial_number (str): 影片番号(如 ABP-123)
 
     Returns:
-        dict | None: 包含电影信息的字典，结构同scrape_javtxt_movie_details()
-                    如果获取失败则返回None
-
+        dict: 包含电影信息的字典，结构同 scrape_javtxt_movie_details()；
+            获取失败则返回空字典。
     """
     javtxt_id = get_javtxt_id_by_serialnumber(serial_number)
     if javtxt_id is None:  # 先查有无缓存
@@ -198,26 +247,23 @@ def fetch_javtxt_movie_info(serial_number: str) -> dict:
         if truepage is None:
             logging.info("Javtxt_id无缓而且搜不到,结束")
             return {}
-        else:
-            # 无缓搜索到
-            javtxt_id = truepage.split("/")[
-                -1
-            ]  # 这个存到数据库里面缓存，后面的时候就不需要一级查找
-            work_id = get_workid_by_serialnumber(serial_number)
-            logging.info(
-                f"获取到新JAVTXT ID: {javtxt_id}并写入本地缓存，work_id:{work_id}"
-            )
-            if work_id is not None:
-                update_work_javtxt(work_id, javtxt_id)
+        javtxt_id = truepage.split("/")[-1]
+        work_id = get_workid_by_serialnumber(serial_number)
+        logging.info(
+            "获取到新JAVTXT ID: %s并写入本地缓存，work_id:%s",
+            javtxt_id,
+            work_id,
+        )
+        if work_id is not None:
+            update_work_javtxt(work_id, javtxt_id)
     else:  # 有缓存
-        logging.info(f"番号 {serial_number} 使用缓存JAVTXT ID: {javtxt_id}")
+        logging.info("番号 %s 使用缓存JAVTXT ID: %s", serial_number, javtxt_id)
         truepage = "/v/" + str(javtxt_id)
 
     base = "https://javtxt.com"
     url = base + truepage
-    logging.info(f"请求javatxt URL: {url}")
+    logging.info("请求javatxt URL: %s", url)
 
-    # 7. 调用详情页抓取函数
     return scrape_javtxt_movie_details(url)
 
 

@@ -339,9 +339,9 @@ class CrawlerManager2(QObject):
             self._crawl_pool.start(worker)
             print(f"已发送javdb请求，serial:{serial}")
         elif source == "javtxt":
-            from core.crawler.javtxt import fetch_javtxt_movie_info
+            from core.crawler.javtxt import jump_to_javtxt
 
-            worker = Worker(lambda: fetch_javtxt_movie_info(serial))
+            worker = Worker(lambda: jump_to_javtxt(serial))
             relay = ResultRelay(self, "javtxt", serial)
             self._source_relays[("javtxt", serial)] = relay
             worker.signals.setParent(relay)
