@@ -40,6 +40,28 @@ function connectSSE() {
   }
 }
 
+/** 与 ``utils.serial_number.convert_fanza`` 一致，供 avdanyuwiki 首跳搜索串。 */
+function convertFanzaForAvdanyuwiki(serial_number) {
+  let converted_code = String(serial_number).toLowerCase().replace(/-/g, "00");
+  const halfCoverPrefixes = ["start", "stars", "star", "sdde", "kmhrs"];
+  const fullCoverPrefixes = [
+    "namh", "dldss", "fns", "fsdss", "boko", "sdam", "hawa", "moon", "mogi", "nhdtb",
+  ];
+  if (halfCoverPrefixes.some((p) => converted_code.startsWith(p))) {
+    converted_code = "1" + converted_code;
+  }
+  if (fullCoverPrefixes.some((p) => converted_code.startsWith(p))) {
+    converted_code = "1" + converted_code;
+  }
+  if (converted_code.startsWith("knmb")) {
+    converted_code = "h_491" + converted_code;
+  }
+  if (converted_code.startsWith("isrd")) {
+    converted_code = "24" + converted_code;
+  }
+  return converted_code;
+}
+
 const pendingCrawlers = new Map();
 /** 桌面 navigate 写入：tabId -> { actress_id?, source? } */
 const tabNavigateContext = new Map();
@@ -47,7 +69,7 @@ let crawlerWindowId = null; // 专用爬虫窗口 ID
 let crawlerWindowPromise = null; // 创建中的窗口 Promise，避免多任务同时开多个窗口
 
 /** 专用窗口内标签总数达到该值时通知桌面（去重：跌破后再回升才再报） */
-const CRAWLER_BACKLOG_THRESHOLD = 10;//正常情况下大于10个就通知桌面
+const CRAWLER_BACKLOG_THRESHOLD = 13;//正常情况下大于10个就通知桌面
 let backlogWarningArmed = true;
 
 /** Uint8Array -> base64（避免大文件 String.fromCharCode 爆栈） */
@@ -223,6 +245,11 @@ function handleCommand(data) {//处理服务器发送来的命令
       const url = "https://javtxt.com/search?type=id&q="+encodeURIComponent(String(serial_number));
       addPendingInNewWindow(url, "javtxt");
     }
+    if (web==="avdanyuwiki"){
+      const q = convertFanzaForAvdanyuwiki(String(serial_number));
+      const url = "https://avdanyuwiki.com/?s=" + encodeURIComponent(q);
+      addPendingInNewWindow(url, "avdanyuwiki");
+    }
   }
   if (data.type === "fetch_cover_image") {
     const imageUrl = data.url;
@@ -259,6 +286,9 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     } else if (task.type === "javtxt") {
       browser.tabs.sendMessage(tabId, { command: "javtxt-dvdid", serial: task.serial });
       console.log("javtxt爬虫开始:" + tabId);
+    } else if (task.type === "avdanyuwiki") {
+      browser.tabs.sendMessage(tabId, { command: "avdanyuwiki-dvdid", serial: task.serial });
+      console.log("avdanyuwiki爬虫开始:" + tabId);
     }
     
     // 注意：如果我们采用 Content Script 自动接力模式，这里可能不需要删除，每次刷新时判断有无任务，有就处理，直接任务全部结束

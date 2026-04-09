@@ -216,7 +216,7 @@ class CrawlerRequest(BaseModel):
 class CrawlerBacklogWarningBody(BaseModel):
     count: int
     browser: str = "firefox"
-    threshold: int = 10
+    threshold: int = 13
 
 
 @app.post("/api/v1/crawler-backlog-warning")
@@ -279,6 +279,8 @@ async def receive_crawler_result(data: Dict[str, Any]):
             bridge.javdbFinished.emit(data.get("data", {}))
         elif web == "javtxt":
             bridge.javtxtFinished.emit(data.get("data", {}))
+        elif web == "avdanyuwiki":
+            bridge.avdanyuwikiFinished.emit(data.get("data", {}))
         elif web == "fanza":
             pass
         else:
