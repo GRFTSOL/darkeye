@@ -49,6 +49,8 @@ $nuitkaArgs = @(
     "--include-data-dir=resources/meshes=resources/meshes",
     "--include-data-dir=darkeye_ui/styles=darkeye_ui/styles",
     "--include-data-dir=core/dvd/icons=core/dvd/icons",
+    "--include-data-dir=extensions/firefox_capture=extensions/firefox_capture",
+    "--include-data-dir=extensions/chrome_capture=extensions/chrome_capture",
     #qml要手动收集
     "--include-data-file=core/dvd/dvd_scene.qml=core/dvd/dvd_scene.qml",
     "--include-data-file=core/dvd/Dvd.qml=core/dvd/Dvd.qml",
