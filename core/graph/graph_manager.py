@@ -385,7 +385,7 @@ class GraphManager(QObject):
         global_signals.workDataChanged.connect(self.update_recent_changes)
         logging.info("绑定 workDataChanged -> update_recent_changes")
 
-    def update_recent_changes(self, limit: int = 3):
+    def update_recent_changes(self, limit: int = 1):
         """
         增量更新：按 ``update_time`` 最新的一条作品同步系列边（软删去边 / 否则重建该系列）；
         并获取最近更新的 limit 条作品，重建引用关系与女优-作品关系。
