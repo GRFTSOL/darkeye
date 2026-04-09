@@ -6,18 +6,6 @@ from PySide6.QtCore import QObject, QThreadPool, Signal, Slot, Qt
 from core.crawler.worker import Worker
 
 
-class DownloadRelay(QObject):
-    """防止下载 Worker 回调期间 relay 被回收。"""
-
-    def __init__(self, downloader):
-        super().__init__()
-        self.downloader = downloader
-
-    @Slot(object)
-    def handle(self, result):
-        self.downloader._on_download_result(result)
-
-
 class SequentialDownloader(QObject):
     """顺序尝试多个 URL 下载封面（每步一个 Worker）。"""
 
@@ -98,13 +86,13 @@ class SequentialDownloader(QObject):
                 )
             return
 
-        from core.crawler.download import download_image
+        from core.crawler.download import download_image_js
 
         url = self.urls.popleft()
         self._current_index += 1
         self._emit_progress(f"正在下载封面 {self._current_index} ...")
 
-        worker = Worker(lambda: download_image(url, self.save_path))
+        worker = Worker(lambda: download_image_js(url, self.save_path))
         relay = DownloadRelay(self)
         worker.signals.setParent(relay)
         relay.moveToThread(self.manager.thread())
@@ -145,3 +133,15 @@ class SequentialDownloader(QObject):
             if self.current_worker_id == worker_id:
                 self.current_worker_id = None
                 self._download_in_progress = False
+
+
+class DownloadRelay(QObject):
+    """防止下载 Worker 回调期间 relay 被回收。"""
+
+    def __init__(self, downloader: SequentialDownloader):
+        super().__init__()
+        self.downloader = downloader
+
+    @Slot(object)
+    def handle(self, result):
+        self.downloader._on_download_result(result)

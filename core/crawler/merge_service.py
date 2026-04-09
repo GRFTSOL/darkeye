@@ -2,14 +2,82 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import traceback
 from typing import Dict
 
 from config import get_translation_engine, resource_path
 from core.schema.model import CrawledWorkData
+from utils.serial_number import convert_fanza
 from utils.utils import translate_text_sync
 
 _exclude_genre_cache: frozenset[str] | None = None
+
+# awsimgsrc ``...pl.jpg`` 对部分片商仅为半页或未对应，勿插到 cover 源首位。
+_FANZA_PL_SKIP_MAKER_SUBSTR: frozenset[str] = frozenset(
+    (
+        "sod",
+        "SOD Create",
+        "ソフト・オン・デマンド",
+        "SODクリエイト",
+        "prestige",
+        "プレステージ"
+    )
+)
+# 品番横杠前前缀（大写），多为 SOD 系；可按需扩充。
+_FANZA_PL_SKIP_SERIAL_PREFIXES: frozenset[str] = frozenset(
+    (
+        "START",
+        "STARS",
+        "SDJS",
+        "SDAB",
+        "SDDE",
+        "SDMU",
+        "SDNM",
+        "SDMM",
+        "SDAF",
+        "SDHS",
+        "FC2",
+        "LUXU",
+    )
+)
+
+
+def _fanza_pl_serial_head(serial: str) -> str:
+    """品番前缀：有横杠取横杠前；否则取连续字母前缀（如 IPX836 -> IPX）。"""
+    s = serial.strip().upper()
+    if not s:
+        return ""
+    if "-" in s:
+        return s.split("-", 1)[0]
+    i = 0
+    while i < len(s) and s[i].isalpha():
+        i += 1
+    return s[:i] if i else s
+
+
+def _skip_fanza_pl_priority_cover(maker: str, canonical_serial: str) -> bool:
+    """是否跳过插入 FANZA awsimgsrc PL 封面（片商或番号前缀命中即跳过）。"""
+    m = (maker or "").strip().lower()
+    if m and any(sub in m for sub in _FANZA_PL_SKIP_MAKER_SUBSTR):
+        return True
+    head = _fanza_pl_serial_head(canonical_serial)
+    return bool(head) and head in _FANZA_PL_SKIP_SERIAL_PREFIXES
+
+
+# awsimgsrc PL 对早年片常无对应或质量差；仅当解析到年份且 < 此值时不插 PL。
+_FANZA_PL_MIN_RELEASE_YEAR = 2018
+
+
+def _release_year_is_before(release_date: str, year: int) -> bool:
+    """若 ``release_date`` 中可解析出 19xx/20xx 年份且严格小于 ``year`` 则 True。"""
+    s = (release_date or "").strip()
+    if not s:
+        return False
+    m = re.search(r"(?:19|20)\d{2}", s)
+    if not m:
+        return False
+    return int(m.group(0)) < year
 
 
 def exclude_genre_set() -> frozenset[str]:
@@ -75,20 +143,6 @@ def merge_crawl_results(
             return []
         return [x] if isinstance(x, str) else (x if isinstance(x, list) else [])
 
-    cover_list = [
-        u for u in _urls(javlib_result.get("image")) if u and isinstance(u, str)
-    ]
-    avdanurl = avdanyuwiki_result.get("cover") or ""
-    if avdanurl:
-        cover_list.append(avdanurl)
-    serial_lower = canonical_serial.lower()
-    cover_list.append("https://fourhoi.com/" + serial_lower + "/cover-n.jpg")
-
-    #最后的保底，这个是有水印的
-    javdburl=javdb_result.get("cover") or ""
-    if javdburl:
-        cover_list.append(javdburl)
-
     maker = (
         avdanyuwiki_result.get("maker")
         or javlib_result.get("maker")
@@ -96,13 +150,35 @@ def merge_crawl_results(
         or javtxt_result.get("maker")
         or ""
     )
+
+    cover_list = [
+        u for u in _urls(javlib_result.get("image")) if u and isinstance(u, str)
+    ]
+    sn = canonical_serial.strip()
+    if (
+        sn
+        and not _skip_fanza_pl_priority_cover(maker, sn)
+        and not _release_year_is_before(release_date, _FANZA_PL_MIN_RELEASE_YEAR)
+    ):
+        cid = convert_fanza(sn.upper())
+        fanza_pl = (
+            f"https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{cid}/{cid}pl.jpg"
+        )
+        cover_list.insert(0, fanza_pl)
+    avdanurl = avdanyuwiki_result.get("cover") or ""
+    if avdanurl:
+        cover_list.append(avdanurl)
+    serial_lower = canonical_serial.lower()
+    cover_list.append("https://fourhoi.com/" + serial_lower + "/cover-n.jpg")
+
+    # 最后的保底，这个是有水印的
+    javdburl = javdb_result.get("cover") or ""
+    if javdburl:
+        cover_list.append(javdburl)
+
     _avdan_series = avdanyuwiki_result.get("series") or ""
     if _avdan_series in ("", "----"):
-        series = (
-            javdb_result.get("series")
-            or javtxt_result.get("series")
-            or ""
-        )
+        series = javdb_result.get("series") or javtxt_result.get("series") or ""
     else:
         series = _avdan_series
 

@@ -63,7 +63,7 @@ async def health_check():
 @app.post("/api/v1/check_existence")
 async def check_existence(request: CheckExistenceRequest):
     """
-    批量检查番号是否存在于本地数据库
+    批量检查番号是否存在于本地数据库,这个是给浏览器插件用的
     """
     try:
         items = request.items
@@ -111,7 +111,7 @@ async def check_existence(request: CheckExistenceRequest):
 @app.post("/api/v1/minnano-actress-capture")
 async def receive_minnano_actress_capture(body: Dict[str, Any]):
     """
-    接收插件在女优详情页采集的完整字段，经 bridge 回填编辑界面。
+    接收插件在女优详情页采集的完整字段，经 bridge 回填编辑界面。这个是给浏览器插件用的
     body: { "context": { "actress_id"? }, "data": { 日文名, ... }, "url"? }
     """
     try:
@@ -290,6 +290,7 @@ async def receive_crawler_result(data: Dict[str, Any]):
 class CoverImageFetchRequest(BaseModel):
     url: str
     request_id: str
+    allow_any_host: bool = False
 
 
 class CoverImageFetchResult(BaseModel):
@@ -310,14 +311,43 @@ def _allowed_dmm_cover_fetch_url(url: str) -> bool:
         return False
 
 
+def _allowed_any_http_cover_url(url: str) -> bool:
+    """允许任意 http(s) 图片 URL（仅校验 scheme 与 netloc）。"""
+    try:
+        p = urlparse(url.strip())
+        if p.scheme not in ("http", "https"):
+            return False
+        return bool(p.netloc)
+    except Exception:
+        return False
+
+
+def _finish_cover_image_fetch(
+    rid: str, temp_path: Optional[str], error: Optional[str] = None
+) -> None:
+    """插件回填完成后通知 Qt（与 ``coverBrowserFetchResult`` 订阅方一致）。"""
+    err = (error or "").strip()
+    bridge.coverBrowserFetchResult.emit(rid, temp_path, err)
+
+
 @app.post("/api/v1/cover-image-fetch")
 async def broadcast_cover_image_fetch(body: CoverImageFetchRequest):
-    """通过 SSE 通知浏览器插件用 fetch 拉取 DMM 图片（走浏览器网络栈）。"""
+    """通过 SSE 通知浏览器插件用 fetch 拉取 DMM 图片（走浏览器网络栈）。
+    这个是给本地桌面软件使用的，通知浏览器插件去拉取图片
+    """
     rid = (body.request_id or "").strip()
     if not rid:
         raise HTTPException(status_code=400, detail="request_id required")
-    if not _allowed_dmm_cover_fetch_url(body.url):
+    if body.allow_any_host:
+        if not _allowed_any_http_cover_url(body.url):
+            raise HTTPException(status_code=400, detail="invalid url")
+    elif not _allowed_dmm_cover_fetch_url(body.url):
         raise HTTPException(status_code=400, detail="url host not allowed")
+
+    listener_count = len(sse_clients)
+    if listener_count == 0:
+        return {"status": "success", "listener_count": 0}
+
     dead_clients: List[asyncio.Queue] = []
     message = {
         "type": "fetch_cover_image",
@@ -338,34 +368,36 @@ async def broadcast_cover_image_fetch(body: CoverImageFetchRequest):
 
 @app.post("/api/v1/cover-image-fetch-result")
 async def receive_cover_image_fetch_result(body: CoverImageFetchResult):
-    """接收插件回传的 base64 图片，写入临时目录并发信号给 Qt。"""
+    """接收插件回传的 base64 图片，写入临时目录并发信号给 Qt。
+    这个是给浏览器插件用的，把下载的图片传到本地的临时目录
+    """
     rid = (body.request_id or "").strip()
     if not rid:
         raise HTTPException(status_code=400, detail="request_id required")
 
     if not body.ok:
-        bridge.coverBrowserFetchResult.emit(rid, None, body.error or "失败")
+        _finish_cover_image_fetch(rid, None, body.error or "失败")
         return {"status": "success"}
 
     b64 = (body.content_base64 or "").strip()
     if not b64:
-        bridge.coverBrowserFetchResult.emit(rid, None, "无图片数据")
+        _finish_cover_image_fetch(rid, None, "无图片数据")
         return {"status": "success"}
 
     try:
         raw = base64.b64decode(b64, validate=True)
     except Exception as e:
-        bridge.coverBrowserFetchResult.emit(rid, None, f"解码失败: {e}")
+        _finish_cover_image_fetch(rid, None, f"解码失败: {e}")
         return {"status": "success"}
 
     max_bytes = 30 * 1024 * 1024
     if len(raw) > max_bytes:
-        bridge.coverBrowserFetchResult.emit(rid, None, "图片过大")
+        _finish_cover_image_fetch(rid, None, "图片过大")
         return {"status": "success"}
 
     min_bytes = 5 * 1024
     if len(raw) < min_bytes:
-        bridge.coverBrowserFetchResult.emit(rid, None, "图片过小（小于 5KB）")
+        _finish_cover_image_fetch(rid, None, "图片过小（小于 5KB）")
         return {"status": "success"}
 
     TEMP_PATH.mkdir(parents=True, exist_ok=True)
@@ -374,10 +406,10 @@ async def receive_cover_image_fetch_result(body: CoverImageFetchResult):
     try:
         out.write_bytes(raw)
     except OSError as e:
-        bridge.coverBrowserFetchResult.emit(rid, None, f"写入失败: {e}")
+        _finish_cover_image_fetch(rid, None, f"写入失败: {e}")
         return {"status": "success"}
 
-    bridge.coverBrowserFetchResult.emit(rid, str(out.resolve()), "")
+    _finish_cover_image_fetch(rid, str(out.resolve()), "")
     return {"status": "success"}
 
 
