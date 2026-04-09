@@ -54,7 +54,7 @@ from darkeye_ui.design.icon import (
     SVG_ARROW_RIGHT,
 )
 from core.crawler.worker import Worker
-from core.crawler.download import download_image_with_retry
+from core.crawler.download import download_image_js
 from core.database.insert import rename_save_image
 
 LOCAL_ABS_KEY = "_local_abs"
@@ -265,7 +265,7 @@ def _fanart_download_task(url: str) -> tuple[str, str, str | None, str]:
     fd, tmp_path = tempfile.mkstemp(suffix=ext)
     os.close(fd)
     try:
-        ok, msg = download_image_with_retry(url, tmp_path, timeout_s=30, retries=2)
+        ok, msg = download_image_js(url, tmp_path)
         if not ok:
             try:
                 os.remove(tmp_path)
@@ -400,7 +400,8 @@ class FanartEditDialog(QDialog):
             parent=self,
         )
         self._btn_download.setToolTip(
-            "从网址下载图片到 Fanart 目录，文件名为链接路径末尾的 .jpg 名"
+            "通过已连接本地服务的浏览器扩展从网址拉取图片到 Fanart 目录，"
+            "文件名为链接路径末尾解析出的 .jpg 名"
         )
         self._btn_download.clicked.connect(self._on_download_url)
         url_row.addWidget(self._btn_download, 0)
