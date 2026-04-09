@@ -4,8 +4,84 @@ const SERVER_URL = "http://localhost:56789";
 const pendingCrawlers = new Map();
 /** 桌面 navigate 写入：tabId -> { actress_id?, source? } */
 const tabNavigateContext = new Map();
-let crawlerWindowId = null; // 专用爬虫窗口 ID
-let crawlerWindowPromise = null; // 创建中的窗口 Promise，避免多任务同时开多个窗口
+/** session 中持久化，避免 MV3 service worker 休眠后丢失 ID */
+const CRAWLER_WINDOW_STORAGE_KEY = "crawlerWindowId";
+let crawlerWindowId = null; // 专用爬虫窗口 ID（内存缓存，与 session 同步）
+/** 并发 ensure 只跑一次创建逻辑 */
+let crawlerWindowEnsurePromise = null;
+
+async function crawlerWindowExists(windowId) {
+  try {
+    await chrome.windows.get(windowId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function hydrateCrawlerWindowIdFromStorage() {
+  try {
+    const data = await chrome.storage.session.get(CRAWLER_WINDOW_STORAGE_KEY);
+    const stored = data[CRAWLER_WINDOW_STORAGE_KEY];
+    if (stored == null) {
+      crawlerWindowId = null;
+      return;
+    }
+    if (await crawlerWindowExists(stored)) {
+      crawlerWindowId = stored;
+    } else {
+      await chrome.storage.session.remove(CRAWLER_WINDOW_STORAGE_KEY);
+      crawlerWindowId = null;
+    }
+  } catch (e) {
+    console.error("DarkEye: hydrateCrawlerWindowIdFromStorage", e);
+  }
+}
+
+async function clearCrawlerWindowPersistence() {
+  crawlerWindowId = null;
+  crawlerWindowEnsurePromise = null;
+  try {
+    await chrome.storage.session.remove(CRAWLER_WINDOW_STORAGE_KEY);
+  } catch (e) {
+    console.error("DarkEye: clearCrawlerWindowPersistence", e);
+  }
+}
+
+/**
+ * 返回可用的爬虫专用窗口 ID：优先 session 中已保存且仍存在的窗口，否则创建。
+ */
+async function ensureCrawlerWindowId() {
+  if (crawlerWindowEnsurePromise) {
+    return crawlerWindowEnsurePromise;
+  }
+  crawlerWindowEnsurePromise = (async () => {
+    try {
+      await hydrateCrawlerWindowIdFromStorage();
+      if (crawlerWindowId != null) {
+        return crawlerWindowId;
+      }
+      const crawlerHomeUrl = "https://www.baidu.com";
+      const win = await chrome.windows.create({
+        url: crawlerHomeUrl,
+        type: "normal",
+        focused: false,
+        state: "minimized",
+      });
+      crawlerWindowId = win.id;
+      await chrome.storage.session.set({
+        [CRAWLER_WINDOW_STORAGE_KEY]: win.id,
+      });
+      return win.id;
+    } catch (e) {
+      console.error("DarkEye: ensureCrawlerWindowId", e);
+      throw e;
+    } finally {
+      crawlerWindowEnsurePromise = null;
+    }
+  })();
+  return crawlerWindowEnsurePromise;
+}
 
 /** 专用窗口内标签总数达到该值时通知桌面（去重：跌破后再回升才再报） */
 const CRAWLER_BACKLOG_THRESHOLD = 7; // 正常情况下大于7个就通知桌面
@@ -134,42 +210,19 @@ function handleCommand(data) {
             }
             return maybeNotifyCrawlerBacklog();
           })
-          .catch((err) => {
+          .catch(async (err) => {
             console.error("DarkEye: 爬虫窗口可能已被关闭，重新创建", err);
-            crawlerWindowId = null;
-            crawlerWindowPromise = null;
+            await clearCrawlerWindowPersistence();
+            backlogWarningArmed = true;
             addPendingInNewWindow(url, type);
           });
       };
 
-      // 已有专用窗口：直接在该窗口新建标签
-      if (crawlerWindowId !== null) {
-        addTab(crawlerWindowId);
-        return;
-      }
-
-      // 没有专用窗口：复用“正在创建”的 Promise，保证多任务只开一个窗口
-      if (crawlerWindowPromise === null) {
-        const crawlerHomeUrl = "https://www.baidu.com";
-        crawlerWindowPromise = chrome.windows
-          .create({
-            url: crawlerHomeUrl,
-            type: "normal",
-            focused: false,
-            state: "minimized",
-          })
-          .then((win) => {
-            crawlerWindowId = win.id;
-            return win.id;
-          })
-          .catch((err) => {
-            console.error("DarkEye: 创建爬虫窗口失败", err);
-            crawlerWindowPromise = null;
-            throw err;
-          });
-      }
-
-      crawlerWindowPromise.then((windowId) => addTab(windowId));
+      ensureCrawlerWindowId()
+        .then((windowId) => addTab(windowId))
+        .catch((err) => {
+          console.error("DarkEye: 获取/创建爬虫窗口失败", err);
+        });
     };
     if (web === "javlib") {
       // 开始执行对javlibrary的爬虫,第一步就是跳转
@@ -240,12 +293,17 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
-// 窗口关闭时重置专用爬虫窗口 ID 与 Promise
-chrome.windows.onRemoved.addListener((windowId) => {
-  if (windowId === crawlerWindowId) {
-    crawlerWindowId = null;
-    crawlerWindowPromise = null;
-    backlogWarningArmed = true;
+// 窗口关闭时重置专用爬虫窗口 ID（与 session 一致，含 SW 重启后仅 storage 有 ID 的情况）
+chrome.windows.onRemoved.addListener(async (removedId) => {
+  try {
+    const data = await chrome.storage.session.get(CRAWLER_WINDOW_STORAGE_KEY);
+    const stored = data[CRAWLER_WINDOW_STORAGE_KEY];
+    if (removedId === crawlerWindowId || removedId === stored) {
+      await clearCrawlerWindowPersistence();
+      backlogWarningArmed = true;
+    }
+  } catch (e) {
+    console.error("DarkEye: windows.onRemoved", e);
   }
 });
 
@@ -391,10 +449,13 @@ async function ensureOffscreen() {
 
 chrome.runtime.onStartup.addListener(() => {
   ensureOffscreen();
+  hydrateCrawlerWindowIdFromStorage();
 });
 
 chrome.runtime.onInstalled.addListener(() => {
   ensureOffscreen();
+  hydrateCrawlerWindowIdFromStorage();
 });
 
 ensureOffscreen();
+hydrateCrawlerWindowIdFromStorage();
