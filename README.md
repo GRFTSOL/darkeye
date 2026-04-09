@@ -9,21 +9,20 @@
 ![GitHub release](https://img.shields.io/github/v/release/de4321/darkeye)
 ![GitHub Repo stars](https://img.shields.io/github/stars/de4321/darkeye?style=social)
 ![GitHub all releases](https://img.shields.io/github/downloads/de4321/darkeye/total)
-[![Homepage](https://img.shields.io/badge/homepage-darkeye-blue)](https://de4321.github.io/darkeye-webpage/)
-[![Discord](https://img.shields.io/discord/1482965984104153229?label=Discord&logo=discord)](https://discord.gg/3thnEguWUk)
-
 
 [📖 在线文档](https://de4321.github.io/darkeye/)
 [🎥 视频介绍](https://www.bilibili.com/video/BV162AuzXEQe/?share_source=copy_web&vd_source=e470911706e2af5719ccc7bb4efe5ff1)
+[🌐 官网](https://de4321.github.io/darkeye-webpage/)
+[💬 Discord](https://discord.gg/3thnEguWUk)
 
 # 💡 快速开始
 ## 下载
 [![下载 Windows 版本](https://img.shields.io/badge/%20下载-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.2.2/DarkEye-v1.2.2.zip)
 下载程序，解压,打开exe即可使用
 
-[![下载Chrome/Edge插件](https://img.shields.io/badge/%20下载-Chrome/Edge插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.2/chrome_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。
+[![下载Chrome/Edge插件](https://img.shields.io/badge/%20下载-Chrome/Edge插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.2/chrome_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。插件选择自己的浏览器，只下载对应的一个就行了。
 
-[![下载FireFox插件](https://img.shields.io/badge/%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.2/firefox_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。
+[![下载FireFox插件](https://img.shields.io/badge/%20下载-Firefox插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.2/firefox_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。插件选择自己的浏览器，只下载对应的一个就行了。
 
 ## 插件安装
 👉 https://de4321.github.io/darkeye/usage/#_2
@@ -87,6 +86,8 @@ https://de4321.github.io/darkeye/usage/#jvedio
 - [x] Jvedio数据导出NFO(测试中)
 - [ ] NFO数据导出(形成共识后开发)
 - [x] 自动检测下载更新
+- [x] LLM翻译+一键覆盖翻译
+
 
 
 拟物化的dvd
