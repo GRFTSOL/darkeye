@@ -1,25 +1,39 @@
 from PySide6.QtWidgets import (
-    QHBoxLayout,
     QVBoxLayout,
     QFormLayout,
     QWidget,
     QSizePolicy,
 )
-from PySide6.QtCore import Qt, QObject, Signal, Property, Slot
+from PySide6.QtCore import QObject, Signal, Property, Slot
 
-
+import copy
+import json
 import logging
+from enum import Enum
+from pathlib import Path
+
+from config import ACTORIMAGES_PATH
+from utils.utils import mse
 
 from darkeye_ui import LazyWidget
 from controller.message_service import MessageBoxService, IMessageService
+
+from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfig
+
 from ui.basic import MovableTableView
 from core.database.query import get_actor_allname, get_serial_number
 from darkeye_ui.components.button import Button
 from darkeye_ui.components.label import Label
 from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.token_spin_box import TokenSpinBox
-from ui.widgets import ActressAvatarDropWidget
+from ui.widgets import ActorAvatarDropWidget
 from ui.widgets.text.WikiTextEdit import WikiTextEdit
+
+
+class ButtonState(Enum):
+    NORMAL = 1
+    WARNING = 2
+    DISABLED = 3
 
 
 class Model:
@@ -55,10 +69,129 @@ class ViewModel(QObject):
     handsomeChanged = Signal(int)
     notesChanged = Signal(str)
 
+    modifyStateChanged = Signal(str, bool)
+    btnStateChanged = Signal(str, object)
+
     def __init__(self, model: Model = None, message_service: IMessageService = None):
         super().__init__()
         self.model: Model = model
         self.msg: MessageBoxService = message_service
+
+        self._cheakable: bool = False
+        self.original_actor: dict | None = None
+        self._change_detection_connected: bool = False
+        self._changed_flags: dict[str, bool] = {
+            "handsome": False,
+            "fat": False,
+            "image_url": False,
+            "actor_name": False,
+            "notes": False,
+        }
+        self._btn_state: dict[str, ButtonState] = {
+            "commit": ButtonState.DISABLED,
+        }
+
+    def set_state(self, key: str, value: bool) -> None:
+        if key not in self._changed_flags:
+            raise KeyError(f"Unknown change flag key: {key}")
+        v = bool(value)
+        if self._changed_flags[key] != v:
+            self._changed_flags[key] = v
+            self.modifyStateChanged.emit(key, v)
+
+    def set_change_widget_default(self) -> None:
+        for key in self._changed_flags:
+            self.set_state(key, False)
+
+    def set_btn_state(self, key: str, value: ButtonState) -> None:
+        if key not in self._btn_state:
+            raise KeyError(f"Unknown button state key: {key}")
+        if self._btn_state[key] != value:
+            self._btn_state[key] = value
+            self.btnStateChanged.emit(key, value)
+
+    @staticmethod
+    def _actor_names_fingerprint(names: list | None) -> str:
+        if not names:
+            return "[]"
+        return json.dumps(names, ensure_ascii=False, sort_keys=True, default=str)
+
+    @Slot()
+    def check_actor_name_change(self) -> None:
+        if not self._cheakable or self.original_actor is None:
+            return
+        cur = self.get_actor_name()
+        orig = self.original_actor.get("actor_name")
+        self.set_state(
+            "actor_name",
+            self._actor_names_fingerprint(cur) != self._actor_names_fingerprint(orig),
+        )
+        self.update_commit_button_state()
+
+    @Slot()
+    def check_change(self, field: str, new_value) -> None:
+        if not self._cheakable or self.original_actor is None:
+            return
+        if field not in self._changed_flags:
+            return
+        original_value = self.original_actor.get(field)
+        if original_value is None or new_value is None:
+            self.set_state(field, original_value != new_value)
+        elif isinstance(original_value, list) and isinstance(new_value, list):
+            self.set_state(field, original_value != new_value)
+        else:
+            self.set_state(field, original_value != new_value)
+        self.update_commit_button_state()
+
+    @Slot()
+    def check_image_change(self) -> None:
+        if not self._cheakable or self.original_actor is None:
+            return
+        orig_rel = self.original_actor.get("image_url") or ""
+        if isinstance(orig_rel, str):
+            orig_rel = orig_rel.strip()
+        else:
+            orig_rel = ""
+        cur = self.get_image_url() or ""
+        if isinstance(cur, str):
+            cur = cur.strip()
+        else:
+            cur = ""
+
+        if not orig_rel:
+            self.set_state("image_url", bool(cur))
+        elif not cur:
+            self.set_state("image_url", True)
+        else:
+            orig_path = Path(ACTORIMAGES_PATH) / orig_rel
+            p_cur = Path(cur)
+            cur_path = p_cur if p_cur.is_absolute() else Path(ACTORIMAGES_PATH) / cur
+            try:
+                if not orig_path.is_file() or not cur_path.is_file():
+                    self.set_state("image_url", str(orig_path) != str(cur_path))
+                else:
+                    self.set_state("image_url", mse(str(orig_path), str(cur_path)) != 0)
+            except Exception:
+                self.set_state("image_url", orig_rel != cur)
+        self.update_commit_button_state()
+
+    def update_commit_button_state(self) -> None:
+        if any(self._changed_flags.values()):
+            self.set_btn_state("commit", ButtonState.WARNING)
+        else:
+            self.set_btn_state("commit", ButtonState.DISABLED)
+
+    def setup_change_detection(self) -> None:
+        if self._change_detection_connected:
+            return
+        self._change_detection_connected = True
+        self.handsomeChanged.connect(
+            lambda: self.check_change("handsome", self.get_handsome())
+        )
+        self.fatChanged.connect(lambda: self.check_change("fat", self.get_fat()))
+        self.notesChanged.connect(lambda: self.check_change("notes", self.get_notes()))
+        self.actorNameChanged.connect(self.check_actor_name_change)
+        self.imageUrlChanged.connect(self.check_image_change)
 
     def get_actor_id(self):
         return self.model._actor_id
@@ -133,17 +266,25 @@ class ViewModel(QObject):
         """加载"""
         from core.database.query import get_actor_info
 
+        self._cheakable = False
         actor = get_actor_info(actor_id)
         if not actor:
             self.msg.show_warning("错误", "未找到该男优信息")
+            self.original_actor = None
+            self.update_commit_button_state()
             return
         logging.debug(f"设置actor_id:{actor_id}")
-        self.set_handsome(actor.get("handsome" or 0))
-        self.set_fat(actor.get("fat" or 0))
+        self.set_handsome(actor.get("handsome") or 0)
+        self.set_fat(actor.get("fat") or 0)
         self.set_actor_id(actor_id)
         self.set_image_url(actor.get("image_url") or "")
         self.set_actor_name(get_actor_allname(self.actor_id))
         self.set_notes(actor.get("notes") or "")
+
+        self.original_actor = copy.deepcopy(self.model.to_dict())
+        self._cheakable = True
+        self.set_change_widget_default()
+        self.update_commit_button_state()
 
     @Slot()
     def submit(self):
@@ -215,12 +356,19 @@ class ModifyActorPage(LazyWidget):
     def init_ui(self):
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
-        # mainlayout.addSpacing(70)
 
-        hlayout = QHBoxLayout()
-        mainlayout.addLayout(hlayout)
+        self._workspace_manager = WorkspaceManager(self)
+        mainlayout.addWidget(self._workspace_manager.widget())
+        root = self._workspace_manager.get_root_pane()
+
+        def make_config(
+            title: str, w: QWidget, closeable: bool = True
+        ) -> ContentConfig:
+            cfg = self._workspace_manager.create_content_config()
+            return cfg.set_window_title(title).set_widget(w).set_closeable(closeable)
+
         self.moveable_name = MovableTableView()
-        self.avatar = ActressAvatarDropWidget("actor")
+        self.avatar = ActorAvatarDropWidget()
 
         self.notes_panel = QWidget()
         notes_vlayout = QVBoxLayout(self.notes_panel)
@@ -229,10 +377,16 @@ class ModifyActorPage(LazyWidget):
         self.input_notes = WikiTextEdit()
         self.input_notes.set_completer_func(get_serial_number)
         self.input_notes.setMinimumWidth(280)
+        self.input_notes.setMinimumHeight(120)
         self.input_notes.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
         notes_vlayout.addWidget(self.input_notes, 1)
+
+        self.moveable_name.tableView.setMinimumHeight(160)
+        self.moveable_name.tableView.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
 
         self.input_handsome = TokenSpinBox()
         self.input_handsome.setRange(0, 2)
@@ -240,24 +394,59 @@ class ModifyActorPage(LazyWidget):
         self.input_fat = TokenSpinBox()
         self.input_fat.setRange(0, 2)
 
-        self.basic = QWidget()
-        self.basic.setFixedWidth(300)
-        vlayout = QVBoxLayout(self.basic)
-        vlayout.addWidget(self.avatar)
-        formlayout = QFormLayout()
-        vlayout.addLayout(formlayout)
-
         self.btn_commit = Button("提交修改")
         self.btn_delete = IconPushButton(icon_name="trash_2")
 
+        avatar_container = QWidget()
+        avatar_layout = QVBoxLayout(avatar_container)
+        avatar_layout.setContentsMargins(0, 0, 0, 0)
+        avatar_layout.addWidget(self.avatar, 1)
+        avatar_container.setMinimumWidth(260)
+
+        form_container = QWidget()
+        form_container.setMinimumWidth(260)
+        form_layout = QVBoxLayout(form_container)
+        form_layout.setContentsMargins(0, 0, 0, 0)
+        formlayout = QFormLayout()
+        form_layout.addLayout(formlayout)
         formlayout.addRow(Label("颜值"), self.input_handsome)
         formlayout.addRow(Label("胖瘦"), self.input_fat)
-        formlayout.addRow("", self.btn_commit)
-        formlayout.addRow("", self.btn_delete)
 
-        hlayout.addWidget(self.basic)
-        hlayout.addWidget(self.moveable_name, 2)
-        hlayout.addWidget(self.notes_panel, 1)
+        actions_container = QWidget()
+        actions_layout = QVBoxLayout(actions_container)
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.addWidget(self.btn_commit)
+        actions_layout.addWidget(self.btn_delete)
+
+        name_container = QWidget()
+        name_layout = QVBoxLayout(name_container)
+        name_layout.setContentsMargins(0, 0, 0, 0)
+        name_layout.addWidget(self.moveable_name, 1)
+
+        pane_right = self._workspace_manager.split(root, Placement.Right, ratio=0.68)
+        pane_notes = self._workspace_manager.split(
+            pane_right, Placement.Right, ratio=0.33
+        )
+        pane_lower = self._workspace_manager.split(root, Placement.Bottom, ratio=0.6)
+        pane_actions = self._workspace_manager.split(
+            pane_lower, Placement.Bottom, ratio=0.22
+        )
+
+        self._workspace_manager.fill_pane(
+            root, make_config("头像", avatar_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_lower, make_config("基础信息", form_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_actions, make_config("操作", actions_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_right, make_config("名字表", name_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_notes, make_config("自由记录", self.notes_panel, closeable=False)
+        )
 
     def config(self):
         """配置model与view"""
@@ -299,6 +488,59 @@ class ModifyActorPage(LazyWidget):
 
         self.input_notes.textChanged.connect(self._notes_ui_to_vm)
         self.vm.notesChanged.connect(self._notes_vm_to_ui)
+
+        self.vm.setup_change_detection()
+        self.vm.modifyStateChanged.connect(self.modify_state_change)
+        self.vm.btnStateChanged.connect(self.update_commit_btn)
+        self.update_commit_btn("commit", ButtonState.DISABLED)
+
+    @Slot(str, bool)
+    def modify_state_change(self, key: str, value: bool) -> None:
+        highlight_spin = "QSpinBox#DesignSpinBox { border: 2px solid #FFA500; }"
+        highlight_text = "QTextEdit#DesignTextEdit { border: 2px solid #FFA500; }"
+        highlight_table = "QTableView#DesignTableView { border: 2px solid #FFA500; }"
+
+        mapping = [
+            ("handsome", self.input_handsome, highlight_spin, ""),
+            ("fat", self.input_fat, highlight_spin, ""),
+            ("notes", self.input_notes, highlight_text, ""),
+            ("actor_name", self.moveable_name.tableView, highlight_table, ""),
+        ]
+        for field, widget, style_on, style_off in mapping:
+            if key == field:
+                widget.setStyleSheet(style_on if value else style_off)
+                return
+        if key == "image_url":
+            self.avatar.set_dirty_highlight(value)
+
+    @Slot(str, object)
+    def update_commit_btn(self, key: str, state) -> None:
+        if key != "commit":
+            return
+        if state == ButtonState.WARNING:
+            self.btn_commit.setEnabled(True)
+            self.btn_commit.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: #FFA500;
+                    color: white;
+                    border-radius: 5px;
+                    padding: 6px;
+                }
+                """
+            )
+        elif state == ButtonState.DISABLED:
+            self.btn_commit.setEnabled(False)
+            self.btn_commit.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: #999999;
+                    color: #CCCCCC;
+                    border-radius: 5px;
+                    padding: 6px;
+                }
+                """
+            )
 
     def _notes_ui_to_vm(self):
         if self._notes_binding_lock:

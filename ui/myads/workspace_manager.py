@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Callable
 
@@ -326,6 +327,34 @@ class WorkspaceManager:
         with path.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
+    def _sync_pane_counter_from_tree(self) -> None:
+        """加载布局后同步内部窗格序号，避免后续 split 生成与已存在 pane_id 冲突。"""
+        max_n = 0
+        for pane in self._layout_tree.panes():
+            m = re.fullmatch(r"pane_(\d+)", pane.pane_id)
+            if m:
+                max_n = max(max_n, int(m.group(1)))
+        self._pane_counter = max(self._pane_counter, max_n)
+
+    def reset_to_single_empty_pane(self) -> None:
+        """移除全部窗格并回到单个空窗格，便于重新执行默认 split/fill（如「恢复初始布局」）。"""
+        self._content_closeable.clear()
+        for pane in list(self._layout_tree.panes()):
+            try:
+                pane.paneEmpty.disconnect(self._on_pane_empty)
+            except (TypeError, RuntimeError) as e:
+                logging.debug(
+                    "reset_to_single_empty_pane: disconnect pane_empty: %s",
+                    e,
+                    exc_info=True,
+                )
+            self._layout_tree.remove_pane(pane)
+        if not self._layout_tree.panes():
+            p = self._new_pane()
+            self._layout_tree.add_pane_to_root(p)
+            self._register_pane(p)
+        self._sync_pane_counter_from_tree()
+
     def load_layout(
         self,
         path: str | Path,
@@ -334,6 +363,7 @@ class WorkspaceManager:
     ) -> None:
         """从 path 加载布局与内容。content_factory(descriptor) 根据描述创建 ContentConfig；
         不提供时仅恢复布局结构，窗格为空。支持旧格式（仅 layout 的 JSON）。"""
+        self._content_closeable.clear()
         data = LayoutTree.load_layout_file(path)
         layout_dict = data.get("layout", data)
         pane_contents = data.get("pane_contents", {})
@@ -369,6 +399,8 @@ class WorkspaceManager:
                     cfg = content_factory(desc)
                     if cfg is not None:
                         self.fill_pane(pane, cfg)
+
+        self._sync_pane_counter_from_tree()
 
     def create_content_config(self, content_id: str | None = None) -> ContentConfig:
         """创建内容配置，content_id 为 None 时由内部自动分配。"""

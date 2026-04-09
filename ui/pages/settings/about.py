@@ -27,8 +27,9 @@ from config import (
     get_latest_json_url,
     set_last_auto_update_check_week,
 )
-from darkeye_ui.components import Label, Button
+from darkeye_ui.components import Label, Button, TokenLinkCard
 from darkeye_ui.components.token_radio_button import TokenRadioButton
+from controller.app_context import get_theme_manager
 from controller.message_service import MessageBoxService
 
 URLOPEN_TIMEOUT_SECONDS = 8
@@ -305,41 +306,87 @@ class LastPage(QWidget):
         layout3 = QHBoxLayout()
         layout4 = QHBoxLayout()
         form_layout = QFormLayout()
-
-        githubLabel = Label()
-        githubLabel.setText('<a href="https://github.com/de4321/darkeye">GitHub</a>')
-        githubLabel.setTextFormat(Qt.RichText)
-        githubLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        githubLabel.setOpenExternalLinks(True)
-
-        discordLabel = Label()
-        discordLabel.setText('<a href="https://discord.gg/N7wJVNVA">Discord</a>')
-        discordLabel.setTextFormat(Qt.RichText)
-        discordLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        discordLabel.setOpenExternalLinks(True)
-
-        websiteLabel = Label()
-        websiteLabel.setText(
-            '<a href="https://de4321.github.io/darkeye-webpage/">官网</a>'
+        form_layout.setLabelAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
         )
-        websiteLabel.setTextFormat(Qt.RichText)
-        websiteLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        websiteLabel.setOpenExternalLinks(True)
 
-        documentLabel = Label()
-        documentLabel.setText('<a href="https://de4321.github.io/darkeye/">文档</a>')
-        documentLabel.setTextFormat(Qt.RichText)
-        documentLabel.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        documentLabel.setOpenExternalLinks(True)
+        theme_mgr = get_theme_manager()
 
         links_row = QWidget()
-        links_layout = QHBoxLayout(links_row)
+        links_layout = QVBoxLayout(links_row)
         links_layout.setContentsMargins(0, 0, 0, 0)
-        links_layout.addWidget(githubLabel)
-        links_layout.addWidget(discordLabel)
-        links_layout.addWidget(websiteLabel)
-        links_layout.addWidget(documentLabel)
-        links_layout.addStretch()
+        links_layout.setSpacing(10)
+        for card_title, blurb, href in (
+            (
+                "GitHub",
+                "源代码仓库与问题反馈",
+                "https://github.com/de4321/darkeye",
+            ),
+            (
+                "Discord",
+                "社区讨论与支持频道",
+                "https://discord.gg/N7wJVNVA",
+            ),
+            (
+                "官网",
+                "产品介绍与主页",
+                "https://de4321.github.io/darkeye-webpage/",
+            ),
+            (
+                "文档",
+                "使用说明与开发文档",
+                "https://de4321.github.io/darkeye/",
+            ),
+        ):
+            links_layout.addWidget(
+                TokenLinkCard(
+                    card_title,
+                    blurb,
+                    href,
+                    links_row,
+                    theme_manager=theme_mgr,
+                ),
+                0,
+                Qt.AlignmentFlag.AlignHCenter,
+            )
+
+        ref_row = QWidget()
+        ref_layout = QVBoxLayout(ref_row)
+        ref_layout.setContentsMargins(0, 0, 0, 0)
+        ref_layout.setSpacing(10)
+        for card_title, blurb, href in (
+            (
+                "mdcz",
+                "开源媒体库元数据刮削与管理，上游mdcx的重写",
+                "https://github.com/ShotHeadman/mdcz",
+            ),
+            (
+                "Jvedio",
+                "Windows 本地影片管理与刮削工具",
+                "https://github.com/hitchao/Jvedio",
+            ),
+            (
+                "JavSP",
+                "JAV刮削工具",
+                "https://github.com/Yuukiy/JavSP",
+            ),
+            (
+                "JAV-JHS",
+                "油猴脚本，站点体验增强",
+                "https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs",
+            ),
+        ):
+            ref_layout.addWidget(
+                TokenLinkCard(
+                    card_title,
+                    blurb,
+                    href,
+                    ref_row,
+                    theme_manager=theme_mgr,
+                ),
+                0,
+                Qt.AlignmentFlag.AlignHCenter,
+            )
 
         layout1.addWidget(Label(f"当前版本{APP_VERSION}"))
         btn_check_update = Button("检查更新")
@@ -401,6 +448,7 @@ class LastPage(QWidget):
         layout4.addWidget(btn_chrome)
 
         form_layout.addRow(Label("项目链接"), links_row)
+        form_layout.addRow(Label("参考项目"), ref_row)
         layout.addLayout(layout1)
         layout.addLayout(layout2)
         layout.addLayout(layout3)

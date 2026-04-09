@@ -98,6 +98,7 @@ def get_workinfo_by_workid(work_id: int) -> dict:
     work.label_id AS label_id,
     work.series_id AS series_id,
     work.fanart AS fanart,
+    work.video_url AS video_url,
     (SELECT cn_name FROM maker WHERE maker_id = work.maker_id) AS studio_name,
     (SELECT cn_name FROM label WHERE label_id = work.label_id) AS label_name,
     (SELECT cn_name FROM series WHERE series_id = work.series_id) AS series_name
@@ -534,6 +535,36 @@ def get_works_for_auto_cn_translation() -> list[dict]:
             return [dict(zip(column_names, row)) for row in rows]
     except sqlite3.Error as e:
         logging.error("get_works_for_auto_cn_translation 查询失败: %s", e)
+        return []
+
+
+def get_works_for_force_cn_translation() -> list[dict]:
+    """需要强制翻译的作品（只要日文标题或日文简介非空就选中）。"""
+    query = """
+    SELECT
+        w.work_id,
+        w.serial_number,
+        w.jp_title,
+        w.cn_title,
+        w.jp_story,
+        w.cn_story
+    FROM work w
+    WHERE IFNULL(w.is_deleted, 0) = 0
+    AND (
+        (w.jp_title IS NOT NULL AND TRIM(w.jp_title) != '')
+        OR
+        (w.jp_story IS NOT NULL AND TRIM(w.jp_story) != '')
+    )
+    """
+    try:
+        with get_connection(DATABASE, True) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            column_names = [description[0] for description in cursor.description]
+            return [dict(zip(column_names, row)) for row in rows]
+    except sqlite3.Error as e:
+        logging.error("get_works_for_force_cn_translation 查询失败: %s", e)
         return []
 
 

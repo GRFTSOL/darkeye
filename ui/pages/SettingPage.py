@@ -12,6 +12,7 @@ from .settings import (
     DBSettingPage,
     LastPage,
     NfoSettingPage,
+    TranslationSettingPage,
     VideoSettingPage,
 )
 
@@ -28,12 +29,14 @@ class SettingPage(LazyWidget):
         page_first = LastPage()
         page_short_cut = ShortCutSettingPage()
         page_common = CommonPage()
+        page_translation = TranslationSettingPage()
 
         my_content = {
             "常规": page_common,
             "视频": page_video,
             "NFO": page_nfo,
             "爬虫": page_clawer,
+            "翻译": page_translation,
             "数据库": page_db,
             "快捷键": page_short_cut,
             "关于软件": page_first,

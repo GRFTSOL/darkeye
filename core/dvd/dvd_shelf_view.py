@@ -25,7 +25,6 @@ from PySide6.QtQuickWidgets import QQuickWidget
 
 from config import (
     FANART_PATH,
-    get_video_path,
     MESHES_PATH,
     MAPS_PATH,
     HDR_PATH,
@@ -43,9 +42,9 @@ from core.database.query import (
 from core.database.query.private import query_work
 from core.database.insert import insert_liked_work
 from core.database.delete import delete_favorite_work
-from core.database.update import mark_delete, update_work_byhand_
+from core.database.update import mark_delete, update_work_byhand_, _split_video_url_field
 from ui.widgets.image.FanartStripWidget import FanartStripWidget
-from utils.utils import find_video, play_video, get_text_color_from_background
+from utils.utils import play_video, get_text_color_from_background
 
 if TYPE_CHECKING:
     from core.graph.force_directed_view_widget import ForceDirectedViewWidget
@@ -122,6 +121,7 @@ class DvdBridge(QObject):
     expandedWorkMakerIdChanged = Signal()
     expandedWorkLabelIdChanged = Signal()
     expandedWorkSeriesIdChanged = Signal()
+    expandedWorkHasLocalVideoChanged = Signal()
 
     def __init__(self, view: "DvdShelfView") -> None:
         super().__init__()
@@ -143,6 +143,7 @@ class DvdBridge(QObject):
         self._expanded_work_maker_id = -1
         self._expanded_work_label_id = -1
         self._expanded_work_series_id = -1
+        self._expanded_work_has_local_video = True
 
     def _get_camera_x(self) -> float:
         return self._camera_x
@@ -392,6 +393,21 @@ class DvdBridge(QObject):
         _get_expanded_work_series_id,
         _set_expanded_work_series_id,
         notify=expandedWorkSeriesIdChanged,
+    )
+
+    def _get_expanded_work_has_local_video(self) -> bool:
+        return self._expanded_work_has_local_video
+
+    def _set_expanded_work_has_local_video(self, v: bool) -> None:
+        if self._expanded_work_has_local_video != v:
+            self._expanded_work_has_local_video = v
+            self.expandedWorkHasLocalVideoChanged.emit()
+
+    expandedWorkHasLocalVideo = Property(
+        bool,
+        _get_expanded_work_has_local_video,
+        _set_expanded_work_has_local_video,
+        notify=expandedWorkHasLocalVideoChanged,
     )
 
     def set_expanded_favorited(self, v: bool) -> None:
@@ -644,13 +660,18 @@ class DvdShelfView(QWidget):
                 self._loadworkid_has_expanded = False
 
         show_force = selected_delegate_index >= 0 and expanded_delegate_index < 0
+        root = self._root_scene_object()
         if show_force:
-            virtual_index = self._load_start + selected_delegate_index
+            virtual_index = -1
+            if root is not None:
+                try:
+                    virtual_index = int(root.property("selectedWorkVirtualIndex"))
+                except (TypeError, ValueError):
+                    virtual_index = -1
             if not (0 <= virtual_index < len(self._work_ids)):
                 show_force = False
             # 折叠关闭动画过程中（QML 会先 expanded=-1，selected 保持一段时间），不要显示 overlay，避免关闭时闪一下。
             if show_force:
-                root = self._root_scene_object()
                 if (
                     root is not None
                     and root.property("_pendingCollapseSelectedIndex") is not None
@@ -851,6 +872,7 @@ class DvdShelfView(QWidget):
         self._bridge.expandedWorkActors = []
         self._bridge.expandedWorkDirector = ""
         self._bridge.expandedWorkStudio = ""
+        self._bridge._set_expanded_work_has_local_video(True)
         self._clear_fanart_strip_overlay()
         self._jump_camera_to(0.0)
 
@@ -1169,25 +1191,22 @@ class DvdShelfView(QWidget):
         return True
 
     def show_video_menu_for_index(self, virtual_index: int) -> None:
-        """点击 CD 后弹出视频菜单供选择，复用 SingleWorkPage 的 show_video_menu 逻辑。"""
+        """点击 CD 后弹出视频菜单：使用数据库 work.video_url（英文逗号分隔的本地路径）。"""
         if not (0 <= virtual_index < len(self._work_ids)):
             return
         work_id = self._work_ids[virtual_index]
-        info = get_workinfo_by_workid(work_id)
-        serial_number = (info or {}).get("serial_number", "").strip()
-        if not serial_number:
-            return
-
-        video_paths = find_video(serial_number, get_video_path())
-        if not video_paths:
+        info = get_workinfo_by_workid(work_id) or {}
+        path_strs = _split_video_url_field(info.get("video_url"))
+        if not path_strs:
             msg = MessageBoxService(self)
             msg.show_info("提示", "没有可播放的视频")
             return
 
         menu = QMenu(self)
-        for path in video_paths:
-            action = menu.addAction(path.name)
-            action.setData(str(path))
+        for path_str in path_strs:
+            p = Path(path_str).expanduser()
+            action = menu.addAction(p.name)
+            action.setData(str(p))
 
         chosen_action = menu.exec(QCursor.pos())
         if chosen_action:
@@ -1227,11 +1246,14 @@ class DvdShelfView(QWidget):
             self._bridge.expandedWorkMakerId = -1
             self._bridge.expandedWorkLabelId = -1
             self._bridge.expandedWorkSeriesId = -1
+            self._bridge._set_expanded_work_has_local_video(True)
             self._clear_fanart_strip_overlay()
             return
 
         work_id = self._work_ids[virtual_index]
         info = get_workinfo_by_workid(work_id) or {}
+        path_strs = _split_video_url_field(info.get("video_url"))
+        self._bridge._set_expanded_work_has_local_video(len(path_strs) > 0)
 
         title = self._pick_first_nonempty_text(
             info, ("cn_title", "jp_title", "serial_number")

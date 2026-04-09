@@ -9,14 +9,18 @@
 import logging
 import random
 import time
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from utils.utils import translate_text_sync
 
 from config import DATABASE
 from .connection import get_connection
 from sqlite3 import Cursor, IntegrityError
-from .query.work import get_works_for_auto_cn_translation
+from .query.work import (
+    get_works_for_auto_cn_translation,
+    get_works_for_force_cn_translation,
+)
 
 # ----------------------------------------------------------------------------------------------------------
 #                                               公共数据库的更新
@@ -388,7 +392,6 @@ def update_db_actress(id: int, data: dict):
                 id,
             ),
         )
-        
 
         # 更新英文名,假名；主日文名与站点不一致时同步为 data["日文名"]
         cursor.execute(
@@ -402,7 +405,7 @@ def update_db_actress(id: int, data: dict):
                 "UPDATE actress_name SET cn=?,jp=? WHERE actress_id=? AND name_type=1",
                 (incoming_jp, incoming_jp, id),
             )
-        
+
         # 更新英文名,假名
         cursor.execute(
             "UPDATE actress_name SET en=?,kana=? WHERE actress_id=?",
@@ -485,6 +488,150 @@ def update_work_javtxt(id, javtxt_id):
         cursor.close()
         conn.close()
     return 0
+
+
+def _split_video_url_field(raw: str | None) -> list[str]:
+    """按英文逗号拆分 video_url；strip 并丢弃空段。路径内若含逗号会被误切分（与存储约定一致）。"""
+    if raw is None or not str(raw).strip():
+        return []
+    return [x.strip() for x in str(raw).split(",") if x.strip()]
+
+
+def merge_work_video_urls_batch(work_id_to_paths: dict[int, list[str]]) -> int:
+    """将本地视频绝对路径合并写入 work.video_url（逗号分隔、去重保序）。
+
+    在已有内容上追加新路径；与合并后完全相同时跳过 UPDATE。
+    成功后需由调用方 emit: global_signals.workDataChanged
+
+    Args:
+        work_id_to_paths: work_id -> 本轮扫描到的路径列表
+
+    Returns:
+        实际执行了 UPDATE 的 work 行数。
+    """
+    if not work_id_to_paths:
+        return 0
+
+    conn = get_connection(DATABASE, False)
+    cursor = conn.cursor()
+    n_updated = 0
+
+    try:
+        for work_id, path_list in work_id_to_paths.items():
+            additions = [p.strip() for p in path_list if p and str(p).strip()]
+            if not additions:
+                continue
+
+            cursor.execute(
+                "SELECT video_url FROM work WHERE work_id = ?",
+                (work_id,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                logging.warning(
+                    "merge_work_video_urls_batch: work_id=%s 不存在，跳过", work_id
+                )
+                continue
+
+            existing_parts = _split_video_url_field(row[0])
+            merged: list[str] = []
+            seen: set[str] = set()
+            for x in existing_parts:
+                if x not in seen:
+                    merged.append(x)
+                    seen.add(x)
+            for x in additions:
+                if x not in seen:
+                    merged.append(x)
+                    seen.add(x)
+
+            new_val = ",".join(merged)
+            old_val = ",".join(existing_parts)
+            if new_val == old_val:
+                continue
+
+            cursor.execute(
+                "UPDATE work SET video_url = ? WHERE work_id = ?",
+                (new_val if new_val else None, work_id),
+            )
+            n_updated += 1
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        logging.exception("merge_work_video_urls_batch 失败: %s", e)
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+
+    return n_updated
+
+
+def replace_work_video_urls_batch(work_id_to_paths: dict[int, list[str]]) -> int:
+    """用本次扫描结果完全覆盖 work.video_url（不保留库中原路径）。
+
+    多条路径以英文逗号分隔，列表内去重保序；无有效路径时写入 NULL。
+    与分割去空后拼回的值相同时跳过 UPDATE。
+    成功后需由调用方 emit: global_signals.workDataChanged。
+
+    Args:
+        work_id_to_paths: work_id -> 本轮扫描到的路径列表
+
+    Returns:
+        实际执行了 UPDATE 的 work 行数。
+    """
+    if not work_id_to_paths:
+        return 0
+
+    conn = get_connection(DATABASE, False)
+    cursor = conn.cursor()
+    n_updated = 0
+
+    try:
+        for work_id, path_list in work_id_to_paths.items():
+            parts = [p.strip() for p in path_list if p and str(p).strip()]
+            merged: list[str] = []
+            seen: set[str] = set()
+            for x in parts:
+                if x not in seen:
+                    merged.append(x)
+                    seen.add(x)
+
+            new_val = ",".join(merged) if merged else None
+
+            cursor.execute(
+                "SELECT video_url FROM work WHERE work_id = ?",
+                (work_id,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                logging.warning(
+                    "replace_work_video_urls_batch: work_id=%s 不存在，跳过", work_id
+                )
+                continue
+
+            old_parts = _split_video_url_field(row[0])
+            old_val = ",".join(old_parts) if old_parts else None
+            if old_val == new_val:
+                continue
+
+            cursor.execute(
+                "UPDATE work SET video_url = ? WHERE work_id = ?",
+                (new_val, work_id),
+            )
+            n_updated += 1
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        logging.exception("replace_work_video_urls_batch 失败: %s", e)
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+
+    return n_updated
 
 
 def update_titlestory(serial_number, cn_title, jp_title, cn_story, jp_story):
@@ -800,11 +947,11 @@ def update_actress_name(cursor: Cursor, actress_name: list[dict], actress_id) ->
         # 假设 name_type 0 为主要名字，1为其他名字
         # 且 redirect_actress_name_id 指向上一条记录
         if i == 0:
-            # 列表的第一条数据，name_type=0，redirect_id=None
+            # 列表的第一条数据，name_type=1，redirect_id=None
             name_type = 1
             redirect_id = None
         else:
-            # 后续数据，name_type=1，redirect_id指向上一条数据的ID
+            # 后续数据，name_type=0，redirect_id指向上一条数据的ID
             name_type = 0
             redirect_id = last_id
 
@@ -937,7 +1084,7 @@ def update_actor_byhand(actor_id, handsome, fat, image_url, actor_name, notes=""
 
     except Exception as e:
         conn.rollback()
-        logging.info(f"更新女优数据失败{e}")
+        logging.info(f"更新男优数据失败{e}")
         return False
     finally:
         cursor.close()
@@ -1195,6 +1342,67 @@ def batch_translate_missing_cn_fields() -> str:
     return (
         f"共 {len(rows)} 条待处理，已写入 {rows_touched} 条作品；"
         f"补充 cn_title {n_cn_title} 项，cn_story {n_cn_story} 项"
+    )
+
+
+def batch_force_translate_cn_fields(
+    max_workers: int = 4,
+    progress_cb: Callable[[int, int, float], None] | None = None,
+) -> str:
+    """
+    后台强制批量翻译：只要有 jp_title/jp_story，就覆盖写入 cn_title/cn_story。
+    并发执行翻译（默认 4 个 worker），数据库写入仍在主线程串行执行。
+    调用后需 emit: global_signals.workDataChanged
+    """
+    rows = get_works_for_force_cn_translation()
+    if not rows:
+        return "没有可强制翻译的作品"
+    total = len(rows)
+    done = 0
+    started_at = time.perf_counter()
+    if progress_cb is not None:
+        progress_cb(0, total, 0.0)
+
+    def _translate_row(row: dict) -> tuple[int, dict[str, str]]:
+        work_id = int(row.get("work_id"))
+        jp_t = (row.get("jp_title") or "").strip()
+        jp_s = (row.get("jp_story") or "").strip()
+        fields: dict[str, str] = {}
+        if jp_t:
+            out_t = translate_text_sync(jp_t)
+            if out_t:
+                fields["cn_title"] = out_t
+        if jp_s:
+            out_s = translate_text_sync(jp_s)
+            if out_s:
+                fields["cn_story"] = out_s
+        return work_id, fields
+
+    rows_touched = 0
+    n_cn_title = 0
+    n_cn_story = 0
+    workers = max(1, int(max_workers))
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(_translate_row, row) for row in rows]
+        for fut in as_completed(futures):
+            done += 1
+            if progress_cb is not None:
+                progress_cb(done, total, time.perf_counter() - started_at)
+            work_id, fields = fut.result()
+            if not fields:
+                continue
+            if update_work_byhand_(work_id, **fields):
+                rows_touched += 1
+                if "cn_title" in fields:
+                    n_cn_title += 1
+                if "cn_story" in fields:
+                    n_cn_story += 1
+
+    return (
+        f"共 {len(rows)} 条待处理，已覆盖写入 {rows_touched} 条作品；"
+        f"覆盖 cn_title {n_cn_title} 项，cn_story {n_cn_story} 项；"
+        f"并发 worker={workers}；耗时 {time.perf_counter() - started_at:.1f}s"
     )
 
 

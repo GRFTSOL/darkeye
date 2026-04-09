@@ -46,6 +46,95 @@ const tabNavigateContext = new Map();
 let crawlerWindowId = null; // 专用爬虫窗口 ID
 let crawlerWindowPromise = null; // 创建中的窗口 Promise，避免多任务同时开多个窗口
 
+/** 专用窗口内标签总数达到该值时通知桌面（去重：跌破后再回升才再报） */
+const CRAWLER_BACKLOG_THRESHOLD = 7;//正常情况下大于7个就通知桌面
+let backlogWarningArmed = true;
+
+/** Uint8Array -> base64（避免大文件 String.fromCharCode 爆栈） */
+function uint8ToBase64(u8) {
+  const CHUNK = 0x8000;
+  let s = "";
+  for (let i = 0; i < u8.length; i += CHUNK) {
+    s += String.fromCharCode.apply(
+      null,
+      u8.subarray(i, Math.min(i + CHUNK, u8.length))
+    );
+  }
+  return btoa(s);
+}
+
+function postCoverFetchResult(request_id, ok, error, content_base64) {
+  fetch(`${SERVER_URL}/api/v1/cover-image-fetch-result`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      request_id,
+      ok,
+      error: error || null,
+      content_base64: content_base64 || null,
+    }),
+  }).catch((err) => {
+    console.error("DarkEye: cover-image-fetch-result failed", err);
+  });
+}
+
+function fetchCoverImageForDesktop(imageUrl, request_id) {
+  const minBytes = 5 * 1024;
+  fetch(imageUrl, { credentials: "omit", cache: "no-store" })
+    .then((r) => {
+      if (!r.ok) {
+        postCoverFetchResult(request_id, false, `HTTP ${r.status}`, null);
+        return null;
+      }
+      return r.arrayBuffer();
+    })
+    .then((buf) => {
+      if (!buf) return;
+      const u8 = new Uint8Array(buf);
+      if (u8.length < minBytes) {
+        postCoverFetchResult(request_id, false, "图片过小（小于 5KB）", null);
+        return;
+      }
+      const b64 = uint8ToBase64(u8);
+      postCoverFetchResult(request_id, true, null, b64);
+    })
+    .catch((e) => {
+      console.error("DarkEye: fetchCoverImageForDesktop", e);
+      postCoverFetchResult(request_id, false, String(e), null);
+    });
+}
+
+function maybeNotifyCrawlerBacklog() {
+  if (crawlerWindowId === null) {
+    return Promise.resolve();
+  }
+  return browser.tabs
+    .query({ windowId: crawlerWindowId })
+    .then((tabs) => {
+      const count = tabs.length;
+      if (count >= CRAWLER_BACKLOG_THRESHOLD && backlogWarningArmed) {
+        backlogWarningArmed = false;
+        fetch(`${SERVER_URL}/api/v1/crawler-backlog-warning`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            browser: "firefox",
+            count,
+            threshold: CRAWLER_BACKLOG_THRESHOLD,
+          }),
+        }).catch((err) => {
+          console.error("DarkEye: crawler-backlog-warning failed", err);
+        });
+      }
+      if (count < CRAWLER_BACKLOG_THRESHOLD) {
+        backlogWarningArmed = true;
+      }
+    })
+    .catch((err) => {
+      console.error("DarkEye: maybeNotifyCrawlerBacklog", err);
+    });
+}
+
 function handleCommand(data) {//处理服务器发送来的命令
   if (data.type === "navigate") {
     const url = data.url;
@@ -80,6 +169,7 @@ function handleCommand(data) {//处理服务器发送来的命令
             if (tab && tab.id !== undefined) {
               pendingCrawlers.set(tab.id, { type, serial: serial_number });
             }
+            return maybeNotifyCrawlerBacklog();
           })
           .catch((err) => {
             console.error("DarkEye: 爬虫窗口可能已被关闭，重新创建", err);
@@ -130,10 +220,25 @@ function handleCommand(data) {//处理服务器发送来的命令
       addPendingInNewWindow(url, "fanza");
     }
   }
+  if (data.type === "fetch_cover_image") {
+    const imageUrl = data.url;
+    const request_id = data.request_id;
+    if (imageUrl && request_id) {
+      console.log("DarkEye: fetch_cover_image", request_id);
+      fetchCoverImageForDesktop(imageUrl, request_id);
+    }
+  }
 }
 
 // 监听页面加载完成，启动对应爬虫 content script
 browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (
+    changeInfo.status === "complete" &&
+    crawlerWindowId !== null &&
+    tab.windowId === crawlerWindowId
+  ) {
+    maybeNotifyCrawlerBacklog();
+  }
   if (changeInfo.status === 'complete' && pendingCrawlers.has(tabId)) {
     const task = pendingCrawlers.get(tabId);
     
@@ -160,11 +265,15 @@ browser.windows.onRemoved.addListener((windowId) => {
   if (windowId === crawlerWindowId) {
     crawlerWindowId = null;
     crawlerWindowPromise = null;
+    backlogWarningArmed = true;
   }
 });
 
 browser.tabs.onRemoved.addListener((tabId) => {
   tabNavigateContext.delete(tabId);
+  if (crawlerWindowId !== null) {
+    maybeNotifyCrawlerBacklog();
+  }
 });
 
 // 接收 content script 消息，转发到本地服务器

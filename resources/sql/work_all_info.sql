@@ -84,6 +84,8 @@ SELECT --水平计算表，然后统一合并
     (SELECT actor_list FROM actor_list WHERE work_id=w.work_id)AS actor,
     (SELECT tag_list FROM tag_list WHERE work_id=w.work_id)AS tag,
     w.notes AS notes,
+    w.image_url,
+    w.video_url,
     w.cn_title,
     w.cn_story,
     w.jp_title,

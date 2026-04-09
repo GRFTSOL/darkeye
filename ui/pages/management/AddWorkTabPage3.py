@@ -8,6 +8,9 @@ from PySide6.QtWidgets import (
     QWidget,
     QScrollArea,
     QFrame,
+    QMenu,
+    QStyle,
+    QToolButton,
 )
 from PySide6.QtCore import (
     Qt,
@@ -19,7 +22,9 @@ from PySide6.QtCore import (
     QThreadPool,
     QTimer,
 )
+from PySide6.QtGui import QCursor
 
+from ui.myads.pane_widget import PaneWidget
 from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfig
 from ui.widgets.CrawlerToolBox import CrawlerAutoPage
 from ui.widgets.crawler_nav_page import CrawlerManualNavPage
@@ -27,11 +32,18 @@ import copy
 import json
 import logging
 import uuid
+import requests
+from datetime import datetime
 from pathlib import Path
 from enum import Enum
 
 
-from config import FANART_PATH, WORKCOVER_PATH
+from config import (
+    ADD_WORK_WORKSPACE_LAYOUT_PATH,
+    FANART_PATH,
+    TEMP_PATH,
+    WORKCOVER_PATH,
+)
 from ui.widgets import (
     ActressSelector,
     CompleterLineEdit,
@@ -51,11 +63,12 @@ from core.database.query import (
     exist_actress,
 )
 from core.database.insert import InsertNewWorkByHand, rename_save_image
-from core.database.update import update_work_byhand
-from utils.utils import delete_image, mse, translate_text_sync
+from core.database.update import _split_video_url_field, update_work_byhand
+from utils.utils import delete_image, mse, play_video, translate_text_sync
 
 
 from darkeye_ui import LazyWidget
+from controller.app_context import get_theme_manager
 from controller.message_service import MessageBoxService, IMessageService
 
 from core.crawler.worker import Worker, wire_worker_finished
@@ -73,6 +86,39 @@ from ui.widgets.selectors.maker_selector import MakerSelector
 from ui.widgets.selectors.label_selector import LabelSelector
 from ui.widgets.selectors.series_selector import SeriesSelector
 from core.database.db_queue import submit_db_raw
+from server.bridge import bridge
+from utils.serial_number import convert_fanza, serial_number_equal
+
+
+_LOCAL_SERVER_BASE = "http://127.0.0.1:56789"
+_COVER_BROWSER_WAIT_MS = 45000
+
+
+def _post_cover_image_fetch_sse(url: str, request_id: str) -> tuple[bool, int, str]:
+    """通知本地服务向 SSE 广播，让浏览器插件去拉图片。
+
+    插件**不**直接写 temp：它在 background 里 fetch 图片后 POST base64 到
+    ``/api/v1/cover-image-fetch-result``，由 **FastAPI** 解码并写入 ``TEMP_PATH``，
+    再通过 ``bridge.coverBrowserFetchResult`` 把临时文件的绝对路径发给本页。
+
+    返回 (HTTP 是否成功, 当前 SSE 监听者数量, 错误文案)。
+    """
+    try:
+        r = requests.post(
+            f"{_LOCAL_SERVER_BASE}/api/v1/cover-image-fetch",
+            json={"url": url, "request_id": request_id},
+            timeout=5,
+        )
+        data = r.json() if r.text else {}
+        cnt = int(data.get("listener_count", 0))
+        if not r.ok:
+            detail = data.get("detail", "")
+            if isinstance(detail, list):
+                detail = str(detail)
+            return False, cnt, str(detail or r.reason or r.status_code)
+        return True, cnt, ""
+    except Exception as e:
+        return False, 0, str(e)
 
 
 class ButtonState(Enum):
@@ -158,6 +204,7 @@ class ViewModel(QObject):
 
     modifyStateChanged = Signal(str, bool)  # 发出修改什么控件的信号
     workload = Signal(str)  # 发送给view使用
+    workInfoReloaded = Signal()
 
     def __init__(self, model=None, message_service: IMessageService = None):
         super().__init__()
@@ -737,6 +784,7 @@ class ViewModel(QObject):
         # 样式还原
         self.set_change_widget_default()
         logging.debug("加载信息完成")
+        self.workInfoReloaded.emit()
 
     def _clear_all_info(self):
         """清空所有的面板里的内容除了input_serial_number"""
@@ -955,11 +1003,112 @@ class AddWorkTabPage3(LazyWidget):
     def __init__(self):
         super().__init__()
 
+    def _build_default_addwork_workspace(self) -> None:
+        """默认分割与填充（与首次进入页面时的布局一致）。"""
+        w = self._workspace_manager
+        root = w.get_root_pane()
+
+        def cfg(slot: str) -> ContentConfig:
+            title, widget, closeable = self._addwork_slot_widgets[slot]
+            c = w.create_content_config(content_id=f"addwork_{slot}")
+            return c.set_window_title(title).set_widget(widget).set_closeable(closeable)
+
+        pane_basic = w.split(root, Placement.Right, ratio=0.7)
+        pane_tag = w.split(pane_basic, Placement.Right, ratio=0.25)
+        pane_cn_text = w.split(pane_basic, Placement.Bottom, ratio=0.42)
+        pane_fanart = w.split(pane_tag, Placement.Bottom, ratio=0.2)
+        pane_force = w.split(pane_tag, Placement.Right, ratio=0.5)
+        pane_actress = w.split(root, Placement.Bottom, ratio=0.5)
+        pane_editor = w.split(pane_force, Placement.Bottom, ratio=0.4)
+
+        w.fill_pane(root, cfg("settings"))
+        w.fill_pane(root, cfg("crawler"))
+        w.fill_pane(root, cfg("nav"))
+        w.fill_pane(root, cfg("cover"))
+        w.fill_pane(pane_basic, cfg("basic"))
+
+        w.fill_pane(pane_cn_text, cfg("jp_text"))
+        w.fill_pane(pane_cn_text, cfg("cn_text"))
+        w.fill_pane(pane_actress, cfg("actor"))
+        w.fill_pane(pane_actress, cfg("actress"))
+        w.fill_pane(pane_tag, cfg("tag"))
+        w.fill_pane(pane_fanart, cfg("fanart"))
+        w.fill_pane(pane_force, cfg("force"))
+        w.fill_pane(pane_editor, cfg("editor"))
+
+    def _addwork_get_content_descriptor(
+        self, pane: PaneWidget, content_id: str
+    ) -> dict | None:
+        widget = pane.get_content_widget(content_id)
+        if widget is None:
+            return None
+        slot = widget.property("addwork_slot")
+        if slot in (None, ""):
+            return None
+        slot_s = str(slot)
+        return {
+            "addwork_slot": slot_s,
+            "content_id": content_id,
+            "title": pane.get_content_title(content_id),
+            "closeable": self._workspace_manager.is_content_closeable(content_id),
+        }
+
+    def _addwork_content_factory(self, desc: dict) -> ContentConfig | None:
+        slot = desc.get("addwork_slot")
+        if not slot or slot not in self._addwork_slot_widgets:
+            return None
+        default_title, widget, default_closeable = self._addwork_slot_widgets[slot]
+        title = desc.get("title", default_title)
+        content_id = desc.get("content_id", f"addwork_{slot}")
+        closeable = desc.get("closeable", default_closeable)
+        cfg = self._workspace_manager.create_content_config(content_id=content_id)
+        return cfg.set_window_title(title).set_widget(widget).set_closeable(closeable)
+
+    def _on_save_addwork_workspace_layout(self) -> None:
+        path = ADD_WORK_WORKSPACE_LAYOUT_PATH
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self._workspace_manager.save_layout(
+                path,
+                get_content_descriptor=self._addwork_get_content_descriptor,
+            )
+            self.msg.show_info("布局已保存", f"已写入：\n{path}")
+        except Exception as e:
+            logging.exception("保存添加作品工作区布局失败")
+            self.msg.show_warning("保存失败", str(e))
+
+    def _on_restore_initial_addwork_workspace(self) -> None:
+        path = ADD_WORK_WORKSPACE_LAYOUT_PATH
+        try:
+            self._workspace_manager.reset_to_single_empty_pane()
+            self._build_default_addwork_workspace()
+        except Exception as e:
+            logging.exception("恢复添加作品默认工作区失败")
+            self.msg.show_warning("恢复失败", str(e))
+            return
+        try:
+            if path.exists():
+                path.unlink()
+        except OSError as e:
+            logging.warning("删除已保存的布局文件失败: %s", e)
+        self.msg.show_info(
+            "已恢复初始布局",
+            "工作区已恢复为默认拆分与标签顺序。\n"
+            "若曾保存过布局，已删除保存文件，下次启动也使用默认布局。",
+        )
+
     def _lazy_load(self):
         logging.info("----------加载打开添加/更改作品信息界面----------")
 
         self.original_work = {}  # 加载后原始的数据，用于检测内容修改
         self.msg = MessageBoxService(self)  # 弹窗服务
+        self._fanza_pl_fetching = False
+        self._pending_cover_browser_request_id: str | None = None
+        self._cover_browser_fetch_timer = QTimer(self)
+        self._cover_browser_fetch_timer.setSingleShot(True)
+        self._cover_browser_fetch_timer.timeout.connect(
+            self._on_cover_browser_fetch_timeout
+        )
         self.model = Model()
         self.viewmodel = ViewModel(self.model, self.msg)
         self.init_ui()
@@ -973,6 +1122,7 @@ class AddWorkTabPage3(LazyWidget):
 
         self.update_commit_btn("add_work", ButtonState.DISABLED)
         self.update_commit_btn("load", ButtonState.DISABLED)
+        self._refresh_local_video_button()
 
     def init_ui(self) -> None:
         from core.database.db_queue import submit_db_raw
@@ -1019,11 +1169,15 @@ class AddWorkTabPage3(LazyWidget):
         self.btn_trans_title = IconPushButton(
             icon_name="languages", icon_size=16, out_size=16
         )
-        self.btn_trans_title.setToolTip("翻译日文标题成中文并写在上方 中文标题框 内")
+        self.btn_trans_title.setToolTip(
+            "翻译日文标题成中文并写在「中文标题与剧情」窗格标题框内"
+        )
         self.btn_trans_story = IconPushButton(
             icon_name="languages", icon_size=16, out_size=16
         )
-        self.btn_trans_story.setToolTip("翻译日文剧情成中文并写在上方 中文剧情框 内")
+        self.btn_trans_story.setToolTip(
+            "翻译日文剧情成中文并写在「中文标题与剧情」窗格剧情框内"
+        )
         jp_title_label_layout = QHBoxLayout()
         jp_story_label_layout = QHBoxLayout()
         jp_title_label_layout.addWidget(self.label_jp_title)
@@ -1055,19 +1209,7 @@ class AddWorkTabPage3(LazyWidget):
         self.input_notes = WikiTextEdit()
         self.input_notes.set_completer_func(get_serial_number)
 
-        # ---------- 工作区布局（与 ui/myads/tests/demo.py 用法一致） ----------
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        self._workspace_manager = WorkspaceManager(self)
-        main_layout.addWidget(self._workspace_manager.widget())
-        root = self._workspace_manager.get_root_pane()
-
-        def make_config(
-            title: str, w: QWidget, closeable: bool = True
-        ) -> ContentConfig:
-            cfg = self._workspace_manager.create_content_config()
-            return cfg.set_window_title(title).set_widget(w).set_closeable(closeable)
-
+        # ---------- 工作区子容器（先于 WorkspaceManager，便于布局序列化） ----------
         # 爬虫区
         self.crawler_auto_page = CrawlerAutoPage()
         self.crawler_auto_page.btn_get_crawler = IconPushButton(
@@ -1102,7 +1244,7 @@ class AddWorkTabPage3(LazyWidget):
         cover_layout.setContentsMargins(0, 0, 0, 0)
         cover_layout.addWidget(self.coverdroplabel)
 
-        # 基础信息栏
+        # 基础信息（番号等，与中文/日文文案各为独立窗格）
         basic_info_container = QWidget()
         basic_layout = QVBoxLayout(basic_info_container)
         left_small_layout1 = QHBoxLayout()
@@ -1129,6 +1271,19 @@ class AddWorkTabPage3(LazyWidget):
         left_small_layout7.addWidget(self.label_series)
         left_small_layout7.addWidget(self.input_series)
 
+        self.label_local_video = Label("本地视频：")
+        self.btn_local_video = QToolButton()
+        self.btn_local_video.setAutoRaise(False)
+        self.btn_local_video.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+        )
+        self.btn_local_video.setToolTip("播放本地视频（与 DVD 书架相同，按 video_url）")
+        self.btn_local_video.setFixedSize(36, 28)
+        left_small_layout8 = QHBoxLayout()
+        left_small_layout8.addWidget(self.label_local_video)
+        left_small_layout8.addWidget(self.btn_local_video)
+        left_small_layout8.addStretch(1)
+
         basic_layout.addLayout(left_small_layout1)
         basic_layout.addLayout(left_small_layout2)
         basic_layout.addLayout(left_small_layout3)
@@ -1136,16 +1291,22 @@ class AddWorkTabPage3(LazyWidget):
         basic_layout.addLayout(left_small_layout5)
         basic_layout.addLayout(left_small_layout6)
         basic_layout.addLayout(left_small_layout7)
-
-        basic_layout.addWidget(self.label_cn_title)
-        basic_layout.addWidget(self.cn_title)
-        basic_layout.addWidget(self.label_cn_story)
-        basic_layout.addWidget(self.cn_story)
-        basic_layout.addLayout(jp_title_label_layout)
-        basic_layout.addWidget(self.jp_title)
-        basic_layout.addLayout(jp_story_label_layout)
-        basic_layout.addWidget(self.jp_story)
+        basic_layout.addLayout(left_small_layout8)
         basic_layout.addWidget(self.btn_add_work)
+
+        cn_text_container = QWidget()
+        cn_text_layout = QVBoxLayout(cn_text_container)
+        cn_text_layout.addWidget(self.label_cn_title)
+        cn_text_layout.addWidget(self.cn_title, 1)
+        cn_text_layout.addWidget(self.label_cn_story)
+        cn_text_layout.addWidget(self.cn_story, 3)
+
+        jp_text_container = QWidget()
+        jp_text_layout = QVBoxLayout(jp_text_container)
+        jp_text_layout.addLayout(jp_title_label_layout)
+        jp_text_layout.addWidget(self.jp_title, 1)
+        jp_text_layout.addLayout(jp_story_label_layout)
+        jp_text_layout.addWidget(self.jp_story, 3)
 
         # 女优选择器
         actress_container = QWidget()
@@ -1186,52 +1347,64 @@ class AddWorkTabPage3(LazyWidget):
         editor_layout.setContentsMargins(0, 0, 0, 0)
         editor_layout.addWidget(self.input_notes)
 
-        # 先搭架子再填充：root -> … basic, tag 列；tag 列内先纵向拆出 Fanart，再横向 tag | forceview；forceview 下拆 editor
-        pane_basic = self._workspace_manager.split(root, Placement.Right, ratio=0.7)
-        pane_tag = self._workspace_manager.split(
-            pane_basic, Placement.Right, ratio=0.25
+        self._addwork_settings_container = QWidget()
+        settings_layout = QVBoxLayout(self._addwork_settings_container)
+        settings_layout.setContentsMargins(8, 8, 8, 8)
+        settings_layout.addWidget(Label("工作区"))
+        self._btn_save_addwork_layout = Button("保存布局")
+        self._btn_save_addwork_layout.clicked.connect(
+            self._on_save_addwork_workspace_layout
         )
-        pane_fanart = self._workspace_manager.split(
-            pane_tag, Placement.Bottom, ratio=0.2
+        settings_layout.addWidget(self._btn_save_addwork_layout)
+        self._btn_restore_addwork_layout = Button("恢复初始布局")
+        self._btn_restore_addwork_layout.setToolTip(
+            "恢复为程序默认拆分与标签，并删除已保存的布局文件"
         )
-        pane_force = self._workspace_manager.split(pane_tag, Placement.Right, ratio=0.5)
-        pane_actress = self._workspace_manager.split(root, Placement.Bottom, ratio=0.5)
-        pane_editor = self._workspace_manager.split(
-            pane_force, Placement.Bottom, ratio=0.4
+        self._btn_restore_addwork_layout.clicked.connect(
+            self._on_restore_initial_addwork_workspace
         )
+        settings_layout.addWidget(self._btn_restore_addwork_layout)
+        settings_layout.addStretch(1)
 
-        # 同一个pane内是按顺序填充
-        self._workspace_manager.fill_pane(
-            root, make_config("爬虫区", crawler_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            root, make_config("外部导航", nav_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            root, make_config("封面栏", cover_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            pane_basic, make_config("基础信息", basic_info_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            pane_actress, make_config("男优选择器", actor_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            pane_actress, make_config("女优选择器", actress_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            pane_tag, make_config("标签选择器", tag_container, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            pane_fanart, make_config("剧照", self.fanart_frame, closeable=False)
-        )
-        self._workspace_manager.fill_pane(
-            pane_force,
-            make_config("力导向图区", self.forceview_container, closeable=False),
-        )
-        self._workspace_manager.fill_pane(
-            pane_editor, make_config("自由记录区", editor_container, closeable=False)
-        )
+        self._addwork_slot_widgets: dict[str, tuple[str, QWidget, bool]] = {
+            "crawler": ("爬虫区", crawler_container, False),
+            "nav": ("外部导航", nav_container, False),
+            "cover": ("封面栏", cover_container, False),
+            "basic": ("基础信息", basic_info_container, False),
+            "settings": ("设置", self._addwork_settings_container, False),
+            "jp_text": ("日文标题与剧情", jp_text_container, False),
+            "cn_text": ("中文标题与剧情", cn_text_container, False),
+            "actor": ("男优选择器", actor_container, False),
+            "actress": ("女优选择器", actress_container, False),
+            "tag": ("标签选择器", tag_container, False),
+            "fanart": ("剧照", self.fanart_frame, False),
+            "force": ("图谱", self.forceview_container, False),
+            "editor": ("自由记录区", editor_container, False),
+        }
+        for _slot, (_t, w, __) in self._addwork_slot_widgets.items():
+            w.setProperty("addwork_slot", _slot)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        self._workspace_manager = WorkspaceManager(self)
+        main_layout.addWidget(self._workspace_manager.widget())
+
+        layout_path = ADD_WORK_WORKSPACE_LAYOUT_PATH
+        if layout_path.exists():
+            try:
+                self._workspace_manager.load_layout(
+                    layout_path,
+                    content_factory=self._addwork_content_factory,
+                )
+            except Exception as e:
+                logging.warning(
+                    "加载添加作品工作区布局失败，使用默认布局: %s",
+                    e,
+                    exc_info=True,
+                )
+                self._build_default_addwork_workspace()
+        else:
+            self._build_default_addwork_workspace()
 
         QTimer.singleShot(0, self._init_forceview)
 
@@ -1475,6 +1648,11 @@ class AddWorkTabPage3(LazyWidget):
             self.viewmodel.on_work_selected
         )  # 核心
         self.viewmodel.serialNumberChanged.connect(self._sync_fanart_add_enabled)
+        self.viewmodel.serialNumberChanged.connect(
+            lambda *_a: QTimer.singleShot(0, self._refresh_local_video_button)
+        )
+        self.viewmodel.workInfoReloaded.connect(self._refresh_local_video_button)
+        self.btn_local_video.clicked.connect(self._on_local_video_play_clicked)
         self.input_serial_number.returnPressed.connect(
             self.viewmodel._load_from_db
         )  # 按enter后查询
@@ -1487,6 +1665,11 @@ class AddWorkTabPage3(LazyWidget):
 
         self.navpage.set_serial_number_provider(lambda: self.input_serial_number.text())
 
+        self.coverdroplabel.lowQualityCoverBadgeClicked.connect(
+            self._on_low_quality_cover_badge_clicked
+        )
+        bridge.coverBrowserFetchResult.connect(self._on_cover_browser_fetch_result)
+
         self.btn_add_work.clicked.connect(self.viewmodel.submit)
         self.crawler_auto_page.btn_get_crawler.clicked.connect(self.crawler2)
 
@@ -1494,11 +1677,20 @@ class AddWorkTabPage3(LazyWidget):
         global_signals.downloadSuccess.connect(self.update_cover)
         global_signals.workDataChanged.connect(self.input_serial_number.reload_items)
         global_signals.workDataChanged.connect(self.input_director.reload_items)
+        global_signals.workDataChanged.connect(
+            self._on_work_data_changed_sync_local_video
+        )
         global_signals.makerDataChanged.connect(self.input_maker.reload_makers)
         global_signals.labelDataChanged.connect(self.input_label.reload_labels)
         global_signals.seriesDataChanged.connect(self.input_series.reload_series)
 
         self._sync_fanart_add_enabled()
+
+        _tm = get_theme_manager()
+        if _tm is not None:
+            _tm.themeChanged.connect(
+                lambda _tid: self._apply_local_video_button_style()
+            )
 
     # ----------------------------------------------------------
     #          爬虫函数，QCheckBox触发，未MVVM,与UI耦合
@@ -1566,6 +1758,83 @@ class AddWorkTabPage3(LazyWidget):
         if self.crawler_auto_page.cb_cover.isChecked():
             self.viewmodel.set_cover(file_path)
 
+    @Slot()
+    def _on_low_quality_cover_badge_clicked(self) -> None:
+        """非高清角标：仅通过浏览器插件 fetch（SSE）拉取 Fanza pl 大图。"""
+        if self._fanza_pl_fetching:
+            return
+        sn = self.viewmodel.get_serial_number().strip()
+        if not sn:
+            self.msg.show_info("提示", "请先填写番号")
+            return
+        cid = convert_fanza(sn.upper())
+        url = f"https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{cid}/{cid}pl.jpg"
+        request_id = uuid.uuid4().hex
+        self._pending_cover_browser_request_id = request_id
+        self._fanza_pl_fetching = True
+        self._cover_browser_fetch_timer.stop()
+
+        worker = Worker(lambda u=url, r=request_id: _post_cover_image_fetch_sse(u, r))
+        wire_worker_finished(worker, self._on_cover_fetch_sse_post_finished)
+        QThreadPool.globalInstance().start(worker)
+
+    @Slot(object)
+    def _on_cover_fetch_sse_post_finished(self, result: object) -> None:
+        """本地 HTTP 通知发完后：有 SSE 客户端则等插件回传；否则结束。"""
+        if not self._fanza_pl_fetching:
+            return
+
+        if result is None or not isinstance(result, tuple) or len(result) != 3:
+            self._pending_cover_browser_request_id = None
+            self._fanza_pl_fetching = False
+            self.msg.show_warning(
+                "请求失败",
+                "无法连接本地服务，请确认 DarkEye 已启动。",
+            )
+            return
+
+        ok, cnt, err = result
+        if not ok or cnt == 0:
+            self._pending_cover_browser_request_id = None
+            self._fanza_pl_fetching = False
+            if cnt == 0:
+                self.msg.show_info(
+                    "提示",
+                    "未检测到已连接本地服务的浏览器插件。"
+                    "请打开 Firefox/Chrome、启用 DarkEye 扩展并保证与本软件同时运行后再试。",
+                )
+            else:
+                self.msg.show_warning("通知插件失败", err or "未知原因")
+            return
+
+        self._cover_browser_fetch_timer.start(_COVER_BROWSER_WAIT_MS)
+
+    @Slot()
+    def _on_cover_browser_fetch_timeout(self) -> None:
+        if self._pending_cover_browser_request_id is None:
+            return
+        self._pending_cover_browser_request_id = None
+        self._fanza_pl_fetching = False
+        self.msg.show_info(
+            "提示",
+            "浏览器未在时限内返回图片，请检查扩展是否仍连接本地服务或网络是否正常。",
+        )
+
+    @Slot(str, object, str)
+    def _on_cover_browser_fetch_result(
+        self, request_id: str, path: object, error: str
+    ) -> None:
+        if self._pending_cover_browser_request_id != request_id:
+            return
+        self._cover_browser_fetch_timer.stop()
+        self._pending_cover_browser_request_id = None
+        self._fanza_pl_fetching = False
+        err = (error or "").strip()
+        if path and isinstance(path, str) and not err:
+            self.viewmodel.set_cover(path)
+            return
+        self.msg.show_warning("插件下载失败", err or "未知错误")
+
     def on_set_directview(self, id: str):
         if self.forceview is None:
             self._init_forceview()
@@ -1581,6 +1850,100 @@ class AddWorkTabPage3(LazyWidget):
     @Slot()
     def _sync_fanart_add_enabled(self, *_args):
         self.fanart_strip.set_can_add(bool(self.viewmodel.get_serial_number().strip()))
+
+    def _apply_local_video_button_style(self) -> None:
+        btn = self.btn_local_video
+        mgr = get_theme_manager()
+        if mgr is None:
+            return
+        t = mgr.tokens()
+        r = t.radius_md
+        if btn.isEnabled():
+            btn.setStyleSheet(
+                f"""
+                QToolButton {{
+                    background: {t.color_primary};
+                    color: {t.color_text_inverse};
+                    border: none;
+                    border-radius: {r};
+                    padding: 4px;
+                }}
+                QToolButton:hover {{
+                    background: {t.color_primary_hover};
+                }}
+                """
+            )
+        else:
+            btn.setStyleSheet(
+                f"""
+                QToolButton {{
+                    background: {t.color_bg_input};
+                    color: {t.color_text_disabled};
+                    border: 1px solid {t.color_border};
+                    border-radius: {r};
+                    padding: 4px;
+                }}
+                """
+            )
+
+    def _refresh_local_video_button(self) -> None:
+        vm = self.viewmodel
+        cur = vm.get_serial_number().strip()
+        ow = getattr(vm, "original_work", None) or {}
+        enabled = False
+        if (
+            getattr(vm, "work_id", None) is not None
+            and bool(ow)
+            and cur
+            and serial_number_equal(cur, str(ow.get("serial_number", "") or ""))
+        ):
+            paths = _split_video_url_field(ow.get("video_url"))
+            enabled = len(paths) > 0
+        self.btn_local_video.setEnabled(enabled)
+        self._apply_local_video_button_style()
+
+    @Slot()
+    def _on_local_video_play_clicked(self) -> None:
+        wid = self.viewmodel.work_id
+        if wid is None:
+            return
+        info = get_workinfo_by_workid(wid)
+        if not info:
+            self.msg.show_info("提示", "没有可播放的视频")
+            return
+        path_strs = _split_video_url_field(info.get("video_url"))
+        if not path_strs:
+            self.msg.show_info("提示", "没有可播放的视频")
+            return
+        menu = QMenu(self)
+        for path_str in path_strs:
+            p = Path(path_str).expanduser()
+            act = menu.addAction(p.name)
+            act.setData(str(p))
+        chosen = menu.exec(QCursor.pos())
+        if chosen:
+            play_video(Path(chosen.data()))
+
+    @Slot()
+    def _on_work_data_changed_sync_local_video(self) -> None:
+        vm = self.viewmodel
+        if getattr(vm, "work_id", None) is None:
+            self._refresh_local_video_button()
+            return
+        ow = getattr(vm, "original_work", None)
+        if not ow:
+            self._refresh_local_video_button()
+            return
+        cur = vm.get_serial_number().strip()
+        if not cur or not serial_number_equal(
+            cur, str(ow.get("serial_number", "") or "")
+        ):
+            self._refresh_local_video_button()
+            return
+        inf = get_workinfo_by_workid(vm.work_id)
+        if inf:
+            ow["video_url"] = inf.get("video_url")
+        self._refresh_local_video_button()
 
     # ----------------------------------------------------------
     #                         UI样式修改

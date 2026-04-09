@@ -100,6 +100,7 @@ SVG_PANEL_LEFT_CLOSE='<svg xmlns="http://www.w3.org/2000/svg" width="24" height=
 SVG_PANEL_RIGHT_OPEN='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m10 15-3-3 3-3"/></svg>'
 SVG_PANEL_RIGHT_CLOSE='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m8 9 3 3-3 3"/></svg>'
 
+SVG_LINK='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
 
 BUILTIN_ICONS = {
     "x": SVG_X,
@@ -160,6 +161,7 @@ BUILTIN_ICONS = {
     "panel_left_close": SVG_PANEL_LEFT_CLOSE,
     "panel_right_open": SVG_PANEL_RIGHT_OPEN,
     "panel_right_close": SVG_PANEL_RIGHT_CLOSE,
+    "link": SVG_LINK,
 }   
 
 

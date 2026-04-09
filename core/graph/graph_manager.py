@@ -385,7 +385,7 @@ class GraphManager(QObject):
         global_signals.workDataChanged.connect(self.update_recent_changes)
         logging.info("绑定 workDataChanged -> update_recent_changes")
 
-    def update_recent_changes(self, limit: int = 3):
+    def update_recent_changes(self, limit: int = 1):
         """
         增量更新：按 ``update_time`` 最新的一条作品同步系列边（软删去边 / 否则重建该系列）；
         并获取最近更新的 limit 条作品，重建引用关系与女优-作品关系。
@@ -532,42 +532,3 @@ class GraphManager(QObject):
         else:
             logging.info("图增量更新完成。无拓扑变更。")
 
-
-if __name__ == "__main__":
-    import sys
-    from pathlib import Path
-
-    root_dir = Path(__file__).resolve().parents[2]  # 上两级
-    sys.path.insert(0, str(root_dir))
-    # 配置日志
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
-
-    print("开始测试 GraphManager...")
-
-    # 获取单例
-    manager = GraphManager.instance()
-
-    # 初始化
-    manager.initialize()
-
-    # 获取图
-    G = manager.get_graph()
-
-    print(f"\n图统计信息:")
-    print(f"总节点数: {G.number_of_nodes()}")
-    print(f"总边数: {G.number_of_edges()}")
-
-    # 打印一些示例数据
-    if G.number_of_nodes() > 0:
-        print("\n前5个节点:")
-        for node_id in list(G.nodes())[:5]:
-            print(f"ID: {node_id}, Data: {G.nodes[node_id]}")
-
-    if G.number_of_edges() > 0:
-        print("\n前5条边:")
-        for u, v, data in list(G.edges(data=True))[:5]:
-            print(f"{G.nodes[u].get('label')} -> {G.nodes[v].get('label')}: {data}")
-
-    print("\n测试完成。")

@@ -1,6 +1,10 @@
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
+import base64
 import json, sqlite3, asyncio, logging
+from datetime import datetime
+from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +12,7 @@ from fastapi.responses import StreamingResponse
 
 from .bridge import bridge
 
-from config import DATABASE
+from config import DATABASE, TEMP_PATH
 
 # 配置日志
 logger = logging.getLogger("server")
@@ -59,7 +63,7 @@ async def health_check():
 @app.post("/api/v1/check_existence")
 async def check_existence(request: CheckExistenceRequest):
     """
-    批量检查番号是否存在于本地数据库
+    批量检查番号是否存在于本地数据库,这个是给浏览器插件用的
     """
     try:
         items = request.items
@@ -107,7 +111,7 @@ async def check_existence(request: CheckExistenceRequest):
 @app.post("/api/v1/minnano-actress-capture")
 async def receive_minnano_actress_capture(body: Dict[str, Any]):
     """
-    接收插件在女优详情页采集的完整字段，经 bridge 回填编辑界面。
+    接收插件在女优详情页采集的完整字段，经 bridge 回填编辑界面。这个是给浏览器插件用的
     body: { "context": { "actress_id"? }, "data": { 日文名, ... }, "url"? }
     """
     try:
@@ -209,6 +213,33 @@ class CrawlerRequest(BaseModel):
     serial_number: str
 
 
+class CrawlerBacklogWarningBody(BaseModel):
+    count: int
+    browser: str = "firefox"
+    threshold: int = 7
+
+
+@app.post("/api/v1/crawler-backlog-warning")
+async def crawler_backlog_warning(body: CrawlerBacklogWarningBody):
+    """
+    浏览器插件报告专用爬虫窗口标签过多，通知桌面弹窗。
+    """
+    if body.count < body.threshold:
+        return {"status": "ignored", "reason": "below_threshold"}
+    try:
+        logger.info(
+            "Crawler backlog warning: browser=%s count=%s threshold=%s",
+            body.browser,
+            body.count,
+            body.threshold,
+        )
+        bridge.crawlerBacklogWarning.emit(body.count, body.browser)
+        return {"status": "success", "message": "notified"}
+    except Exception as e:
+        logger.error("crawler_backlog_warning: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/v1/startcrawler")
 async def start_crawler(data: CrawlerRequest):
     """
@@ -254,6 +285,132 @@ async def receive_crawler_result(data: Dict[str, Any]):
     except Exception as e:
         logger.error(f"Error processing capture data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class CoverImageFetchRequest(BaseModel):
+    url: str
+    request_id: str
+    allow_any_host: bool = False
+
+
+class CoverImageFetchResult(BaseModel):
+    request_id: str
+    ok: bool
+    error: Optional[str] = None
+    content_base64: Optional[str] = None
+
+
+def _allowed_dmm_cover_fetch_url(url: str) -> bool:
+    try:
+        p = urlparse(url.strip())
+        if p.scheme not in ("http", "https"):
+            return False
+        h = (p.hostname or "").lower()
+        return h == "dmm.co.jp" or h.endswith(".dmm.co.jp")
+    except Exception:
+        return False
+
+
+def _allowed_any_http_cover_url(url: str) -> bool:
+    """允许任意 http(s) 图片 URL（仅校验 scheme 与 netloc）。"""
+    try:
+        p = urlparse(url.strip())
+        if p.scheme not in ("http", "https"):
+            return False
+        return bool(p.netloc)
+    except Exception:
+        return False
+
+
+def _finish_cover_image_fetch(
+    rid: str, temp_path: Optional[str], error: Optional[str] = None
+) -> None:
+    """插件回填完成后通知 Qt（与 ``coverBrowserFetchResult`` 订阅方一致）。"""
+    err = (error or "").strip()
+    bridge.coverBrowserFetchResult.emit(rid, temp_path, err)
+
+
+@app.post("/api/v1/cover-image-fetch")
+async def broadcast_cover_image_fetch(body: CoverImageFetchRequest):
+    """通过 SSE 通知浏览器插件用 fetch 拉取 DMM 图片（走浏览器网络栈）。
+    这个是给本地桌面软件使用的，通知浏览器插件去拉取图片
+    """
+    rid = (body.request_id or "").strip()
+    if not rid:
+        raise HTTPException(status_code=400, detail="request_id required")
+    if body.allow_any_host:
+        if not _allowed_any_http_cover_url(body.url):
+            raise HTTPException(status_code=400, detail="invalid url")
+    elif not _allowed_dmm_cover_fetch_url(body.url):
+        raise HTTPException(status_code=400, detail="url host not allowed")
+
+    listener_count = len(sse_clients)
+    if listener_count == 0:
+        return {"status": "success", "listener_count": 0}
+
+    dead_clients: List[asyncio.Queue] = []
+    message = {
+        "type": "fetch_cover_image",
+        "url": body.url.strip(),
+        "request_id": rid,
+    }
+    event_data = f"data: {json.dumps(message)}\n\n"
+    for client in sse_clients:
+        try:
+            await client.put(event_data)
+        except Exception:
+            dead_clients.append(client)
+    for dead in dead_clients:
+        if dead in sse_clients:
+            sse_clients.remove(dead)
+    return {"status": "success", "listener_count": len(sse_clients)}
+
+
+@app.post("/api/v1/cover-image-fetch-result")
+async def receive_cover_image_fetch_result(body: CoverImageFetchResult):
+    """接收插件回传的 base64 图片，写入临时目录并发信号给 Qt。
+    这个是给浏览器插件用的，把下载的图片传到本地的临时目录
+    """
+    rid = (body.request_id or "").strip()
+    if not rid:
+        raise HTTPException(status_code=400, detail="request_id required")
+
+    if not body.ok:
+        _finish_cover_image_fetch(rid, None, body.error or "失败")
+        return {"status": "success"}
+
+    b64 = (body.content_base64 or "").strip()
+    if not b64:
+        _finish_cover_image_fetch(rid, None, "无图片数据")
+        return {"status": "success"}
+
+    try:
+        raw = base64.b64decode(b64, validate=True)
+    except Exception as e:
+        _finish_cover_image_fetch(rid, None, f"解码失败: {e}")
+        return {"status": "success"}
+
+    max_bytes = 30 * 1024 * 1024
+    if len(raw) > max_bytes:
+        _finish_cover_image_fetch(rid, None, "图片过大")
+        return {"status": "success"}
+
+    min_bytes = 5 * 1024
+    if len(raw) < min_bytes:
+        _finish_cover_image_fetch(rid, None, "图片过小（小于 5KB）")
+        return {"status": "success"}
+
+    TEMP_PATH.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out = Path(TEMP_PATH) / f"fanza_pl_browser_{ts}.jpg"
+    try:
+        out.write_bytes(raw)
+    except OSError as e:
+        _finish_cover_image_fetch(rid, None, f"写入失败: {e}")
+        return {"status": "success"}
+
+    _finish_cover_image_fetch(rid, str(out.resolve()), "")
+    return {"status": "success"}
 
 
 @app.get("/events")

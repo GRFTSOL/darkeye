@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QVBoxLayout, QWidget
-from PySide6.QtCore import Slot, QThreadPool
+from PySide6.QtCore import Slot, QThreadPool, QTimer
 import logging
 
 from core.crawler.javtxt import top_actresses
@@ -17,6 +17,12 @@ class UpdateManyTabPage(LazyWidget):
         from controller.message_service import MessageBoxService
 
         self.msg = MessageBoxService(self)
+        self._force_translate_done = 0
+        self._force_translate_total = 0
+        self._force_translate_elapsed = 0.0
+        self._force_translate_timer = QTimer(self)
+        self._force_translate_timer.setInterval(400)
+        self._force_translate_timer.timeout.connect(self._on_force_progress_tick)
 
         self.btn_search_actress = Button("更新热门女优")
         self.btn_search_actress.setToolTip("更新javatext热门女优前50")
@@ -36,6 +42,11 @@ class UpdateManyTabPage(LazyWidget):
             "后台执行：有日文标题且中文标题为空时翻译成 cn_title；"
             "有日文简介且中文简介为空时翻译成 cn_story；二者皆无日文源的作品不会请求翻译。"
         )
+        self.btn_force_translate_cn = Button("覆盖翻译标题/简介")
+        self.btn_force_translate_cn.setToolTip(
+            "后台执行：只要有日文标题/简介，就强制翻译并覆盖写入 cn_title/cn_story；"
+            "翻译并发 4 个 worker。"
+        )
 
         self.btn_normalize_cover_names = Button("统一封面文件名为番号.jpg")
         self.btn_normalize_cover_names.setToolTip(
@@ -53,6 +64,7 @@ class UpdateManyTabPage(LazyWidget):
         left_layout.addWidget(self.btn_update_needactress)
         left_layout.addWidget(self.btn_update_maker_by_knowledge)
         left_layout.addWidget(self.btn_batch_translate_cn)
+        left_layout.addWidget(self.btn_force_translate_cn)
         left_layout.addWidget(self.btn_normalize_cover_names)
         left_layout.addStretch()
 
@@ -64,6 +76,7 @@ class UpdateManyTabPage(LazyWidget):
             self.task_update_maker_by_prefix
         )
         self.btn_batch_translate_cn.clicked.connect(self.task_batch_translate_cn)
+        self.btn_force_translate_cn.clicked.connect(self.task_force_translate_cn)
         self.btn_normalize_cover_names.clicked.connect(
             self.task_normalize_cover_filenames
         )
@@ -117,6 +130,61 @@ class UpdateManyTabPage(LazyWidget):
             return
         global_signals.workDataChanged.emit()
         self.msg.show_info("完成", str(result))
+
+    @Slot()
+    def task_force_translate_cn(self):
+        from core.crawler.worker import Worker, wire_worker_finished
+        from core.database.update import batch_force_translate_cn_fields
+
+        self._force_translate_done = 0
+        self._force_translate_total = 0
+        self._force_translate_elapsed = 0.0
+        self.btn_force_translate_cn.setEnabled(False)
+        self._on_force_progress_tick()
+        self._force_translate_timer.start()
+
+        worker = Worker(
+            lambda: batch_force_translate_cn_fields(
+                max_workers=4,
+                progress_cb=self._update_force_translate_progress,
+            )
+        )
+        wire_worker_finished(worker, self._on_force_translate_finished)
+        QThreadPool.globalInstance().start(worker)
+        self.msg.show_info("开始", "正在后台强制翻译并覆盖写库，请稍候…")
+
+    @Slot(object)
+    def _on_force_translate_finished(self, result):
+        from controller.global_signal_bus import global_signals
+
+        self._force_translate_timer.stop()
+        self.btn_force_translate_cn.setEnabled(True)
+        self.btn_force_translate_cn.setText("覆盖翻译标题/简介")
+
+        if result is None:
+            self.msg.show_info("错误", "覆盖翻译失败，请查看日志")
+            return
+        global_signals.workDataChanged.emit()
+        self.msg.show_info("完成", str(result))
+
+    def _update_force_translate_progress(self, done: int, total: int, elapsed_s: float):
+        self._force_translate_done = max(0, int(done))
+        self._force_translate_total = max(0, int(total))
+        self._force_translate_elapsed = max(0.0, float(elapsed_s))
+
+    @Slot()
+    def _on_force_progress_tick(self):
+        total = self._force_translate_total
+        done = min(self._force_translate_done, total) if total else 0
+        elapsed = self._force_translate_elapsed
+        if total > 0:
+            self.btn_force_translate_cn.setText(
+                f"覆盖翻译中 {done}/{total} · {elapsed:.1f}s"
+            )
+        else:
+            self.btn_force_translate_cn.setText(
+                f"覆盖翻译中 0/0 · {elapsed:.1f}s"
+            )
 
     @Slot()
     def task_normalize_cover_filenames(self):

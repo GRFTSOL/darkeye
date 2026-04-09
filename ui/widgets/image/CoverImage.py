@@ -1,20 +1,34 @@
+import logging
+
+import shiboken6
 from PySide6.QtWidgets import QLabel
 from PySide6.QtGui import QMouseEvent, QPixmap, QImage
 from PySide6.QtCore import (
     Qt,
+    QObject,
     Signal,
     QRect,
     QSize,
     QThreadPool,
     QRunnable,
-    SignalInstance,
     Slot,
     QTimer,
 )
-import logging
 from utils.utils import mosaic_qimage
 from controller.global_signal_bus import global_signals
 from ui.navigation.router import Router
+
+
+class _ImageReadyBridge(QObject):
+    """子对象，随封面控件销毁；线程池任务只对它 emit，避免 QLabel 已析构仍发信号。"""
+
+    imageReady = Signal(QImage)
+
+
+def _emit_bridge_if_alive(bridge: _ImageReadyBridge, img: QImage) -> None:
+    if not shiboken6.isValid(bridge):
+        return
+    bridge.imageReady.emit(img)
 
 
 class ImageLoaderRunnable(QRunnable):
@@ -25,13 +39,13 @@ class ImageLoaderRunnable(QRunnable):
         path: str,
         aspect_ratio: float,
         target_size,
-        callback_signal: SignalInstance,
+        bridge: _ImageReadyBridge,
     ):
         super().__init__()
         self.path = path
         self.aspect_ratio = aspect_ratio
         self.target_size = target_size
-        self.callback_signal = callback_signal  # 信号，发回 UI 线程
+        self._bridge = bridge
 
     def run(self):
         img = QImage(str(self.path))
@@ -45,7 +59,7 @@ class ImageLoaderRunnable(QRunnable):
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
-        self.callback_signal.emit(img)  # 发信号回 UI 线程
+        _emit_bridge_if_alive(self._bridge, img)
 
 
 class ImageLoaderRunnable2(QRunnable):
@@ -56,12 +70,12 @@ class ImageLoaderRunnable2(QRunnable):
         path: str,
         aspect_ratio: float,
         target_size,
-        callback_signal: SignalInstance,
+        bridge: _ImageReadyBridge,
     ):
         super().__init__()
         self.path = path
         self.target_size = target_size
-        self.callback_signal = callback_signal  # 信号，发回 UI 线程
+        self._bridge = bridge
 
     def run(self):
         img = QImage(str(self.path))
@@ -71,7 +85,7 @@ class ImageLoaderRunnable2(QRunnable):
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
-        self.callback_signal.emit(img)  # 发信号回 UI 线程
+        _emit_bridge_if_alive(self._bridge, img)
 
 
 class CoverImage(QLabel):
@@ -102,8 +116,9 @@ class CoverImage(QLabel):
         self._masaic = green_mode
         self._standard = standard
         # self.setStyleSheet("border: 1px solid red; border-radius: 4px;")
-        # 绑定信号
-        self.imageReady.connect(self._set_pixmap)
+        self._image_ready_bridge = _ImageReadyBridge(self)
+        self._image_ready_bridge.imageReady.connect(self._set_pixmap)
+        self._image_ready_bridge.imageReady.connect(self.imageReady.emit)
         self._update_image()
 
         global_signals.greenModeChanged.connect(
@@ -129,7 +144,7 @@ class CoverImage(QLabel):
             self.setText("无封面")
             return
         runnable = ImageLoaderRunnable(
-            self._path, self._aspect_ratio, self.size(), self.imageReady
+            self._path, self._aspect_ratio, self.size(), self._image_ready_bridge
         )
         QThreadPool.globalInstance().start(runnable)
 
@@ -138,7 +153,7 @@ class CoverImage(QLabel):
             self.setText("无封面")
             return
         runnable = ImageLoaderRunnable2(
-            self._path, self._aspect_ratio, self.size(), self.imageReady
+            self._path, self._aspect_ratio, self.size(), self._image_ready_bridge
         )
         QThreadPool.globalInstance().start(runnable)
 
@@ -186,7 +201,9 @@ class CoverImageFixed(QLabel):
         self._masaic = green_mode
         self.setFixedSize(self.FIXED_SIZE)
         self.setAlignment(Qt.AlignCenter)
-        self.imageReady.connect(self._set_pixmap)
+        self._image_ready_bridge = _ImageReadyBridge(self)
+        self._image_ready_bridge.imageReady.connect(self._set_pixmap)
+        self._image_ready_bridge.imageReady.connect(self.imageReady.emit)
         self._update_image()
         global_signals.greenModeChanged.connect(self._update_masaic)
 
@@ -202,7 +219,7 @@ class CoverImageFixed(QLabel):
             self.setText("无封面")
             return
         runnable = ImageLoaderRunnable2(
-            self._path, 0.0, self.FIXED_SIZE, self.imageReady
+            self._path, 0.0, self.FIXED_SIZE, self._image_ready_bridge
         )
         QThreadPool.globalInstance().start(runnable)
 

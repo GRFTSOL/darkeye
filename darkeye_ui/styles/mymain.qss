@@ -826,6 +826,33 @@ QTabWidget#DesignTabWidget::pane {
     top: -1px;
 }
 
+/* ----- myads 工作区窗格 TabBar（ui/myads/pane_widget ClosableTabBar） -----
+   与上方 TokenTabWidget 标签条同一套令牌样式，管理页添加作品与编辑页分区一致 */
+QTabBar#WorkspaceDemoTabBar {
+    background-color: transparent;
+    border: none;
+}
+
+QTabBar#WorkspaceDemoTabBar::tab {
+    background-color: transparent;
+    color: {{color_text_placeholder}};
+    padding: 5px 0px;
+    margin-right: 20px;
+    font-size: {{font_size_base}};
+    font-family: {{font_family_base}};
+    border: none;
+}
+
+QTabBar#WorkspaceDemoTabBar::tab:hover {
+    color: {{color_text}};
+}
+
+QTabBar#WorkspaceDemoTabBar::tab:selected {
+    color: {{color_text}};
+    font-weight: bold;
+    border-bottom: {{border_width}} solid {{color_primary}};
+}
+
 /* ----- TokenGroupBox (objectName=DesignGroupBox) ----- */
 QGroupBox#DesignGroupBox {
     background-color: {{color_bg}};
@@ -997,4 +1024,33 @@ QPushButton#DesignChip[tone="warning"] {
 
 QPushButton#DesignChip[tone="error"] {
     border-color: {{color_error}};
+}
+
+/* ----- TokenLinkCard (objectName=DesignLinkCard) ----- */
+QFrame#DesignLinkCard {
+    border: {{border_width}} solid {{color_border}};
+    border-radius: {{radius_md}};
+    background-color: {{color_bg}};
+}
+
+QFrame#DesignLinkCard:hover {
+    border-color: {{color_primary}};
+    background-color: {{color_bg_input}};
+}
+
+QFrame#DesignLinkCard:focus {
+    border-color: {{color_border_focus}};
+}
+
+QLabel#DesignLinkCardTitle {
+    color: {{color_text}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
+    font-weight: 600;
+}
+
+QLabel#DesignLinkCardDescription {
+    color: {{color_text_placeholder}};
+    font-family: {{font_family_base}};
+    font-size: {{font_size_base}};
 }

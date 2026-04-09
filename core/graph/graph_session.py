@@ -205,4 +205,7 @@ class GraphViewSession(QObject):
             if not new_sub_G.has_edge(u, v):
                 diff_list.append({"op": "del_edge", "u": u, "v": v})
 
+        # 必须与当前过滤子图同步，否则下次仍与 new_load 时的快照比较，
+        # diff 会累积成全量差分，UI 重复建点/边导致内存与耗时随更新次数增长。
+        self.sub_G = new_sub_G
         self.diffChanged.emit(diff_list)  # 这个继续转发出去

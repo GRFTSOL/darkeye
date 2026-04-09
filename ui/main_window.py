@@ -4,7 +4,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 import logging
 
-from config import ICONS_PATH, APP_VERSION, set_max_window
+from config import ICONS_PATH, APP_VERSION, is_max_window, set_max_window
 from controller.shortcut_registry import ShortcutRegistry
 from controller.shortcut_bindings import (
     setup_mainwindow_actions,
@@ -19,7 +19,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("暗之眼 " + "V" + APP_VERSION)
         self.setWindowIcon(QIcon(str(ICONS_PATH / "logo.svg")))
-        self.resize(1200, 800)
+        self.resize(1200, 600)
         self.open = False
 
         # ======================整体布局设置==========================
@@ -48,6 +48,13 @@ class MainWindow(QMainWindow):
 
         # 延后到窗口 show / event loop 启动后再初始化爬虫管理器，避免 import/构造阻塞主窗口首帧
         QTimer.singleShot(0, self._ensure_crawler_manager_initialized)
+
+    def show_initial(self) -> None:
+        """首次显示主窗口：按上次退出时是否最大化恢复（与 config.set_max_window 对应）。"""
+        if is_max_window():
+            self.showMaximized()
+        else:
+            self.show()
 
     def _install_opengl_bootstrap(self) -> None:
         """
@@ -259,6 +266,7 @@ class MainWindow(QMainWindow):
         from server.bridge import bridge
 
         bridge.captureReceived.connect(self.handle_capture_data)
+        bridge.crawlerBacklogWarning.connect(self._on_crawler_backlog_warning)
 
     def closeEvent(self, event) -> None:
         logging.info("--------------------程序关闭--------------------")
@@ -342,6 +350,18 @@ class MainWindow(QMainWindow):
         route_name = self._menu_to_route.get(menu_id)
         if route_name:
             self.router.push(route_name)
+
+    @Slot(int, str)
+    def _on_crawler_backlog_warning(self, count: int, browser: str) -> None:
+        from controller.message_service import MessageBoxService
+
+        msg = MessageBoxService(parent=self)
+        msg.show_warning(
+            "爬虫标签页积压",
+            f"专用爬虫窗口中标签数已达 {count} 个，说明需要反爬验证了"
+            "适时关闭失效标签或者过反爬验证",
+            attention_grabbing=True,
+        )
 
     @Slot(dict)
     def handle_capture_data(self, data: dict) -> None:

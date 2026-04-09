@@ -23,6 +23,7 @@ class ForceDirectPage(LazyWidget):
         mainlayout.addWidget(placeholder)
 
         view = ForceDirectedViewWidget()
+        view.set_page_graph_filter_toggle_visible(True)
 
         mainlayout.removeWidget(placeholder)
         placeholder.deleteLater()

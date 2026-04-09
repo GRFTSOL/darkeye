@@ -44,6 +44,7 @@ def test_is_valid_serialnumber(code, expected):
         ("XYZ-1", "xyz001"),
         ("NoDash", "nodash"),
         ("abc-DEF", "abc00def"),
+        ("KNMB-001", "h_491knmb00001"),
     ],
 )
 def test_convert_fanza(input_code, expected):
@@ -110,6 +111,12 @@ def test_convert_special_serialnumber(input_code, expected):
         ("345simm-336-C", "SIMM-336"),
         ("IPX-580C", "IPX-580"),
         ("[s64ss.com]IPX-580C", "IPX-580"),
+        ("ssni001","SSNI-001"),
+        ("ssni001C","SSNI-001"),
+        ("ssni00234","SSNI-234"),
+        ("1star00356","STAR-356"),
+        ("1star00356c","STAR-356"),
+        ("MKBD-S127 無碼 KIRARI 127 前田かおり最強の伝説 永久保存完全版3時間 : 前田かおり","MKBD-S127")
     ],
 )
 def test_extract_serial_from_string(text, expected):

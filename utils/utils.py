@@ -11,7 +11,8 @@ import random
 import threading
 from collections import OrderedDict
 import sqlite3
-from config import DATABASE
+from config import DATABASE, get_translation_runtime_settings
+from core.translation import get_translator_engine
 
 from .serial_number import (
     convert_fanza,
@@ -174,14 +175,12 @@ def png_to_jpg_pillow(input_path, output_path=None, quality=95):
         print(f"转换失败: {e}")
 
 
-from googletrans import Translator
-
 _TRANSLATION_CACHE_MAXSIZE = 512
-_translation_cache: "OrderedDict[tuple[str, str], str]" = OrderedDict()
+_translation_cache: "OrderedDict[tuple[str, str, str, str], str]" = OrderedDict()
 _translation_cache_lock = threading.Lock()
 
 
-def _translation_cache_get(key: tuple[str, str]) -> str | None:
+def _translation_cache_get(key: tuple[str, str, str, str]) -> str | None:
     with _translation_cache_lock:
         value = _translation_cache.get(key)
         if value is None:
@@ -191,7 +190,7 @@ def _translation_cache_get(key: tuple[str, str]) -> str | None:
         return value
 
 
-def _translation_cache_set(key: tuple[str, str], value: str) -> None:
+def _translation_cache_set(key: tuple[str, str, str, str], value: str) -> None:
     with _translation_cache_lock:
         _translation_cache[key] = value
         _translation_cache.move_to_end(key)
@@ -210,7 +209,7 @@ async def translate_text(
     use_cache: bool = True,
 ) -> str:
     """
-    调用 googletrans 异步翻译（不稳定，做超时/重试/缓存/降级）。
+    调用已配置翻译引擎进行异步翻译（支持 google / llm）。
 
     - **fallback="empty"**: 失败返回空字符串（避免把日文写进中文字段）
     - **fallback="source"**: 失败返回原文（适合手动按钮场景）
@@ -219,48 +218,52 @@ async def translate_text(
     if not src:
         return ""
 
-    cache_key = (dest, src)
+    runtime_cfg = get_translation_runtime_settings()
+    if timeout_s is not None:
+        runtime_cfg = runtime_cfg.__class__(
+            timeout_s=float(timeout_s),
+            retries=runtime_cfg.retries,
+            backoff_base_s=runtime_cfg.backoff_base_s,
+            fallback=runtime_cfg.fallback,
+        )
+    if retries is not None:
+        runtime_cfg = runtime_cfg.__class__(
+            timeout_s=runtime_cfg.timeout_s,
+            retries=int(retries),
+            backoff_base_s=runtime_cfg.backoff_base_s,
+            fallback=runtime_cfg.fallback,
+        )
+    if backoff_base_s is not None:
+        runtime_cfg = runtime_cfg.__class__(
+            timeout_s=runtime_cfg.timeout_s,
+            retries=runtime_cfg.retries,
+            backoff_base_s=float(backoff_base_s),
+            fallback=runtime_cfg.fallback,
+        )
+    if fallback is not None:
+        runtime_cfg = runtime_cfg.__class__(
+            timeout_s=runtime_cfg.timeout_s,
+            retries=runtime_cfg.retries,
+            backoff_base_s=runtime_cfg.backoff_base_s,
+            fallback=fallback,
+        )
+
+    engine, engine_cfg = get_translator_engine()
+    cache_key = (
+        engine_cfg.engine or "google",
+        engine_cfg.model or "",
+        dest,
+        src,
+    )
     if use_cache:
         cached = _translation_cache_get(cache_key)
         if cached is not None:
             return cached
 
-    last_exc: Exception | None = None
-    for attempt in range(max(0, retries) + 1):
-        try:
-            translator = Translator()
-            coro = translator.translate(src, dest=dest)
-            result = await asyncio.wait_for(coro, timeout=timeout_s)
-            out = (getattr(result, "text", "") or "").strip()
-            if out:
-                if use_cache:
-                    _translation_cache_set(cache_key, out)
-                return out
-            last_exc = RuntimeError("Empty translate result")
-        except Exception as e:
-            last_exc = e
-            logging.warning(
-                "translate_text失败 attempt=%s/%s dest=%s err=%s",
-                attempt + 1,
-                max(0, retries) + 1,
-                dest,
-                repr(e),
-            )
-
-        if attempt < max(0, retries):
-            # 指数退避 + 抖动
-            await asyncio.sleep(
-                backoff_base_s * (2**attempt) + random.uniform(0.0, 0.2)
-            )
-
-    if fallback == "source":
-        return src
-    # fallback == "empty"
-    if last_exc is not None:
-        logging.warning(
-            "translate_text最终失败，已降级返回空字符串: %s", repr(last_exc)
-        )
-    return ""
+    out = await engine.translate(src, dest=dest, runtime=runtime_cfg)
+    if out and use_cache:
+        _translation_cache_set(cache_key, out)
+    return out
 
 
 def translate_text_sync(
@@ -562,9 +565,11 @@ def sort_dict_list_by_keys(data: list[dict], key_order: list[str]) -> list[dict]
 # 视频相关
 def get_video_names_from_paths(
     video_paths: list[Path], video_extensions: list[str] = None
-) -> list[str]:
+) -> tuple[list[str], list[tuple[str, str]]]:
     """获取指定路径下所有视频文件的番号列表。
-    对每个视频文件提取番号（如 IPX-247），返回去重后的列表。
+
+    对每个视频文件提取番号（如 IPX-247），返回去重后的番号列表，以及无法从文件名
+    识别番号的文件列表（每项为 ``(无后缀文件名, 绝对路径)``，按扫描顺序）。
     """
     if video_extensions is None:
         video_extensions = [
@@ -579,6 +584,7 @@ def get_video_names_from_paths(
         ]
 
     result: set[str] = set()
+    no_serial: list[tuple[str, str]] = []
 
     for folder in video_paths:
         try:
@@ -594,11 +600,67 @@ def get_video_names_from_paths(
                         if serial:
                             result.add(serial)
                         else:
-                            logging.warning(f"无法提取番号: {name}")
+                            try:
+                                path_str = str(file_path.resolve(strict=False))
+                            except OSError:
+                                path_str = str(file_path.expanduser())
+                            no_serial.append((name, path_str))
+                            logging.warning(
+                                "无法提取番号: 名称=%s 路径=%s", name, path_str
+                            )
         except PermissionError:
             print(f"  无权限访问：{folder}")
 
-    return list(result)
+    return list(result), no_serial
+
+
+def collect_video_paths_with_serial(
+    video_paths: list[Path], video_extensions: list[str] | None = None
+) -> list[tuple[str, str | None]]:
+    """扫描目录下视频文件，返回 (绝对路径字符串, 番号或 None)。
+
+    番号提取规则与 get_video_names_from_paths 相同（extract_serial_from_string）。
+    无番号时仍返回该文件一行，第二项为 None，并已打 warning 日志。
+    """
+    if video_extensions is None:
+        video_extensions = [
+            ".mp4",
+            ".avi",
+            ".mkv",
+            ".mov",
+            ".wmv",
+            ".flv",
+            ".rmvb",
+            ".ts",
+        ]
+
+    out: list[tuple[str, str | None]] = []
+
+    for folder in video_paths:
+        try:
+            for root, dirs, files in os.walk(folder):
+                for file in files:
+                    file_path = Path(root) / file
+                    if (
+                        file_path.is_file()
+                        and file_path.suffix.lower() in video_extensions
+                    ):
+                        try:
+                            resolved = file_path.resolve(strict=False)
+                        except OSError:
+                            resolved = file_path.expanduser()
+                        path_str = str(resolved)
+                        name = file_path.stem
+                        serial = extract_serial_from_string(name)
+                        if not serial:
+                            logging.warning(
+                                "无法提取番号: 名称=%s 路径=%s", name, path_str
+                            )
+                        out.append((path_str, serial))
+        except PermissionError:
+            print(f"  无权限访问：{folder}")
+
+    return out
 
 
 def find_video(

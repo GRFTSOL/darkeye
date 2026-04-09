@@ -81,16 +81,23 @@ class WorkPage(LazyWidget):
         # 横向的区域
         scroll = HorizontalScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setFixedHeight(32)
+        # 预留横向滚动条高度，避免 ScrollBarAsNeeded 出现时视口过矮
+        scroll.setFixedHeight(44)
         scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         filterwidget = QWidget()
         filterlayout = QHBoxLayout(filterwidget)
         filterlayout.setContentsMargins(0, 0, 0, 0)
+        filterlayout.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
         filterwidget.setFixedHeight(32)
         filterwidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         scroll.setWidget(filterwidget)
+        scroll.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
         scroll.setStyleSheet(
             """
     QScrollArea {
@@ -190,9 +197,10 @@ class WorkPage(LazyWidget):
         self.scope_combo.addItems(["公共库范围", "收藏库范围", "收藏未观看", "已撸过"])
         self.scope_combo.setCurrentText(self.scope)
         self.filter_widget = QWidget()
-        self.filter_widget.setFixedHeight(40)
+        self.filter_widget.setFixedHeight(44)
         self.filter_layout = QHBoxLayout(self.filter_widget)  # 直接传入 widget
         self.filter_layout.setContentsMargins(10, 0, 10, 0)
+        self.filter_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
         self.btn_toggle_tag_selector = IconPushButton(
             icon_name="layout_panel_left", icon_size=22, out_size=28

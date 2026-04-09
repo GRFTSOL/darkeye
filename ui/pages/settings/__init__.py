@@ -7,6 +7,7 @@ from .database import DBSettingPage
 from .about import LastPage
 from .video import VideoSettingPage
 from .nfo import NfoSettingPage
+from .translation import TranslationSettingPage
 
 __all__ = [
     "CommonPage",
@@ -16,4 +17,5 @@ __all__ = [
     "LastPage",
     "NfoSettingPage",
     "VideoSettingPage",
+    "TranslationSettingPage",
 ]

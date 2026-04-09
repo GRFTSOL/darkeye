@@ -1,9 +1,16 @@
 {
   "manifest_version": 2,
   "name": "DarkEye Capture",
-  "version": "1.2.1",
+  "version": "1.2.4",
   "description": "采集网页的信息到本地，手动采集，无批量操作，需要打开本地软件DarkEye与浏览器插件后才可使用。",
-  "permissions": ["activeTab", "tabs", "http://127.0.0.1/*", "http://localhost/*"],
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "*://*.dmm.co.jp/*",
+    "*://*/*"
+  ],
   "background": {"scripts": ["background.js"]},
   "browser_action": {
     "default_icon": "icons/logo.png",

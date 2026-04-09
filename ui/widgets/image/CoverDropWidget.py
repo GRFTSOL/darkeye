@@ -41,10 +41,41 @@ def _container_qss_from_tokens(t: "ThemeTokens") -> str:
     )
 
 
+def _quality_badge_qss_from_tokens(t: "ThemeTokens") -> str:
+    """根据设计令牌生成「非高清图」角标样式。"""
+    return (
+        "QLabel#coverQualityBadge {"
+        f"background-color: {t.color_bg};"
+        f"color: {t.color_warning};"
+        f"border: {t.border_width} solid {t.color_warning};"
+        f"border-radius: {t.radius_md};"
+        f"font-family: {t.font_family_base};"
+        f"font-size: {t.font_size_base};"
+        "font-weight: 600;"
+        "padding: 1px 6px;"
+        "}"
+    )
+
+
+class _ClickableQualityBadge(QLabel):
+    """「非高清图」角标：左键点击发信号（由页面侧处理 Fanza 下载等逻辑）。"""
+
+    clicked = Signal()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+
 class _CoverDropLabel(QLabel):
     """内部可拖放封面 QLabel，保持原有显示与拖放逻辑；文字与边框颜色由设计令牌控制。"""
 
     coverChanged = Signal()
+    lowQualityCoverBadgeClicked = Signal()
+    _LOW_QUALITY_THRESHOLD_BYTES = 500 * 1024
 
     def __init__(self, theme_manager: Optional["ThemeManager"] = None):
         super().__init__()
@@ -70,6 +101,15 @@ class _CoverDropLabel(QLabel):
         # 当外部需要强调提示（例如“封面已修改未保存”）时，允许覆盖边框样式。
         # 形式为完整的 QSS border 值，例如："2px dashed orange"。
         self._border_override: Optional[str] = None
+        self._badge = _ClickableQualityBadge("非高清图", self)
+        self._badge.setObjectName("coverQualityBadge")
+        self._badge.setAlignment(Qt.AlignCenter)
+        self._badge.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._badge.setToolTip("点击从 Fanza 下载可能的大图封面")
+        self._badge.clicked.connect(self.lowQualityCoverBadgeClicked.emit)
+        self._apply_badge_token_styles()
+        self._badge.adjustSize()
+        self._badge.hide()
         self._apply_token_styles()
         if self._theme_manager is not None:
             self._theme_manager.themeChanged.connect(self._apply_token_styles)
@@ -80,6 +120,7 @@ class _CoverDropLabel(QLabel):
 
     def _apply_token_styles(self) -> None:
         """根据当前主题令牌刷新 #container 的边框与文字样式。"""
+        self._apply_badge_token_styles()
         if self._border_override:
             # 仍使用 #container 选择器，保证命中 objectName="container" 的 label
             self.setStyleSheet(
@@ -92,6 +133,26 @@ class _CoverDropLabel(QLabel):
         else:
             self.setStyleSheet(
                 "#container{border: 2px dashed gray; font-size: 16px; padding: 0px;margin: 0px;}"
+            )
+
+    def _apply_badge_token_styles(self) -> None:
+        """根据当前主题令牌刷新角标样式。"""
+        if not hasattr(self, "_badge"):
+            return
+        if self._theme_manager is not None:
+            t = self._theme_manager.tokens()
+            self._badge.setStyleSheet(_quality_badge_qss_from_tokens(t))
+        else:
+            self._badge.setStyleSheet(
+                "QLabel#coverQualityBadge{"
+                "background-color: rgba(0, 0, 0, 160);"
+                "color: #FFD54F;"
+                "border: 1px solid #FFD54F;"
+                "border-radius: 8px;"
+                "font-size: 12px;"
+                "font-weight: 600;"
+                "padding: 1px 6px;"
+                "}"
             )
 
     def set_border_override(self, border_qss_value: Optional[str]) -> None:
@@ -235,6 +296,31 @@ class _CoverDropLabel(QLabel):
 
         # 4. 将最终的 QPixmap 设置到 QLabel 上
         self.setPixmap(scaled_pixmap)
+        self._update_quality_badge()
+
+    def _update_quality_badge(self) -> None:
+        """低于阈值显示「非高清图」角标，否则隐藏。"""
+        if not self._path:
+            self._badge.hide()
+            return
+        try:
+            size = Path(self._path).stat().st_size
+        except OSError:
+            self._badge.hide()
+            return
+        self._badge.setVisible(size < self._LOW_QUALITY_THRESHOLD_BYTES)
+        self._reposition_badge()
+
+    def _reposition_badge(self) -> None:
+        """将角标放在控件右上角。"""
+        if not self._badge.isVisible():
+            return
+        self._badge.adjustSize()
+        margin = 6
+        x = max(margin, self.width() - self._badge.width() - margin)
+        y = margin
+        self._badge.move(x, y)
+        self._badge.raise_()
 
     def resizeEvent(self, event):
         """改变大小的事件"""
@@ -256,6 +342,7 @@ class _CoverDropLabel(QLabel):
                 target_w, target_h, Qt.KeepAspectRatio, Qt.SmoothTransformation
             )
             super().setPixmap(scaled)
+        self._reposition_badge()
         super().resizeEvent(event)
 
     @Slot(str)
@@ -274,6 +361,7 @@ class _CoverDropLabel(QLabel):
             self._original_pixmap = None  # 清空原始图像
             self.setPixmap(QPixmap())
             self.setText("把JAV封面拖进来")
+            self._badge.hide()
             return
         # logging.debug(str(WORKCOVER_PATH))
         self._path = str(
@@ -292,6 +380,7 @@ class CoverDropWidget(QWidget):
     """可拖动式添加封面的控件，在父容器内按宽高比占满并居中，不产生滚动条。文字与边框由设计令牌控制。"""
 
     coverChanged = Signal()
+    lowQualityCoverBadgeClicked = Signal()
 
     def __init__(
         self, aspect_ratio: float = 0.7, theme_manager: Optional["ThemeManager"] = None
@@ -302,6 +391,9 @@ class CoverDropWidget(QWidget):
         self._inner._aspect_ratio = aspect_ratio
         self._inner.setParent(self)
         self._inner.coverChanged.connect(self.coverChanged.emit)
+        self._inner.lowQualityCoverBadgeClicked.connect(
+            self.lowQualityCoverBadgeClicked.emit
+        )
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.setMinimumSize(0, 0)
 
