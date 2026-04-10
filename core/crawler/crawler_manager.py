@@ -212,6 +212,25 @@ class CrawlerManager2(QObject):
             return ""
         return str(serial).strip()
 
+    _DEFAULT_CRAWL_SOURCES: tuple[str, ...] = (
+        "javlib",
+        "javdb",
+        "javtxt",
+        "avdanyuwiki",
+    )
+
+    def _crawl_sources_for_serial(self, serial_number: str) -> tuple[str, ...]:
+        """按番号形态选择数据源（须与 pending_sources / dispatch 一致）。"""
+        s = self._norm_serial(serial_number)
+        if not s:
+            return ("javdb",)
+        u = s.upper()
+        if u.startswith("FC2") or u.startswith("HEYZO"):
+            return ("javdb",)
+        if s.replace("-", "").isdigit():
+            return ("javdb",)
+        return self._DEFAULT_CRAWL_SOURCES
+
     def _load_unfinished_from_ini(self) -> list[str]:
         from config import settings
 
@@ -298,19 +317,12 @@ class CrawlerManager2(QObject):
     def _execute_crawl(
         self, serial_number, withGUI=False, selected_fields: set[str] | None = None
     ):
-        task = CrawlerTask(
-            serial_number,
-            ["javlib", "javtxt", "avdanyuwiki", "javdb"],
-            withGUI,
-            selected_fields,
-        )
+        sources = self._crawl_sources_for_serial(serial_number)
+        task = CrawlerTask(serial_number, sources, withGUI, selected_fields)
         self.tasks[serial_number] = task
 
-        self._dispatch_request("javlib", serial_number)
-        self._dispatch_request("javdb", serial_number)
-        self._dispatch_request("fanza", serial_number)
-        self._dispatch_request("javtxt", serial_number)
-        self._dispatch_request("avdanyuwiki", serial_number)
+        for src in sources:
+            self._dispatch_request(src, serial_number)
 
     def _dispatch_request(self, source, serial):
         if source == "javlib":
@@ -339,9 +351,9 @@ class CrawlerManager2(QObject):
             self._crawl_pool.start(worker)
             print(f"已发送javdb请求，serial:{serial}")
         elif source == "javtxt":
-            from core.crawler.javtxt import fetch_javtxt_movie_info
+            from core.crawler.javtxt import jump_to_javtxt
 
-            worker = Worker(lambda: fetch_javtxt_movie_info(serial))
+            worker = Worker(lambda: jump_to_javtxt(serial))
             relay = ResultRelay(self, "javtxt", serial)
             self._source_relays[("javtxt", serial)] = relay
             worker.signals.setParent(relay)
@@ -350,9 +362,9 @@ class CrawlerManager2(QObject):
             )
             self._crawl_pool.start(worker)
         elif source == "avdanyuwiki":
-            from core.crawler.avdanyuwiki import SearchInfoDanyukiwi
+            from core.crawler.avdanyuwiki import jump_to_avdanyuwiki
 
-            worker = Worker(lambda: SearchInfoDanyukiwi(serial))
+            worker = Worker(lambda: jump_to_avdanyuwiki(serial))
             relay = ResultRelay(self, "avdanyuwiki", serial)
             self._source_relays[("avdanyuwiki", serial)] = relay
             worker.signals.setParent(relay)

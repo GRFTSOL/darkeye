@@ -128,7 +128,20 @@
 
   if (sessionStorage.getItem('darkeye_auto_parse') === 'true') {
       sessionStorage.removeItem('darkeye_auto_parse');
-      if (!window.location.href.startsWith("https://www.javlibrary.com/cn/vl_searchbyid.php?keyword=")) {
+      const isVlSearchById =
+          window.location.href.startsWith(
+              "https://www.javlibrary.com/cn/vl_searchbyid.php?keyword="
+          );
+      if (isVlSearchById) {
+          // 含 Cloudflare：首次 complete 已消耗 pendingCrawler，通过后整页刷新不会再收
+          // javlibrary-dvdid；需在搜索页主动再跑 search_javlibrary。
+          setTimeout(() => {
+              console.log(
+                  "DarkEye: 搜索页接力（例如已通过验证），继续执行..."
+              );
+              search_javlibrary();
+          }, 800);
+      } else {
           setTimeout(() => {
               console.log("DarkEye: 检测到自动跳转任务，开始解析...");
               parse_data_javlibrary();

@@ -1,14 +1,121 @@
 // background.js for Chrome (Manifest V3; SSE 在 offscreen，经 sse_command 转发)
 const SERVER_URL = "http://localhost:56789";
 
+/** 与 ``utils.serial_number.convert_fanza`` 一致，供 avdanyuwiki 首跳搜索串。 */
+function convertFanzaForAvdanyuwiki(serial_number) {
+  let converted_code = String(serial_number).toLowerCase().replace(/-/g, "00");
+  const halfCoverPrefixes = ["start", "stars", "star", "sdde", "kmhrs"];
+  const fullCoverPrefixes = [
+    "namh",
+    "dldss",
+    "fns",
+    "fsdss",
+    "boko",
+    "sdam",
+    "hawa",
+    "moon",
+    "mogi",
+    "nhdtb",
+  ];
+  if (halfCoverPrefixes.some((p) => converted_code.startsWith(p))) {
+    converted_code = "1" + converted_code;
+  }
+  if (fullCoverPrefixes.some((p) => converted_code.startsWith(p))) {
+    converted_code = "1" + converted_code;
+  }
+  if (converted_code.startsWith("knmb")) {
+    converted_code = "h_491" + converted_code;
+  }
+  if (converted_code.startsWith("isrd")) {
+    converted_code = "24" + converted_code;
+  }
+  return converted_code;
+}
+
 const pendingCrawlers = new Map();
 /** 桌面 navigate 写入：tabId -> { actress_id?, source? } */
 const tabNavigateContext = new Map();
-let crawlerWindowId = null; // 专用爬虫窗口 ID
-let crawlerWindowPromise = null; // 创建中的窗口 Promise，避免多任务同时开多个窗口
+/** session 中持久化，避免 MV3 service worker 休眠后丢失 ID */
+const CRAWLER_WINDOW_STORAGE_KEY = "crawlerWindowId";
+let crawlerWindowId = null; // 专用爬虫窗口 ID（内存缓存，与 session 同步）
+/** 并发 ensure 只跑一次创建逻辑 */
+let crawlerWindowEnsurePromise = null;
+
+async function crawlerWindowExists(windowId) {
+  try {
+    await chrome.windows.get(windowId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function hydrateCrawlerWindowIdFromStorage() {
+  try {
+    const data = await chrome.storage.session.get(CRAWLER_WINDOW_STORAGE_KEY);
+    const stored = data[CRAWLER_WINDOW_STORAGE_KEY];
+    if (stored == null) {
+      crawlerWindowId = null;
+      return;
+    }
+    if (await crawlerWindowExists(stored)) {
+      crawlerWindowId = stored;
+    } else {
+      await chrome.storage.session.remove(CRAWLER_WINDOW_STORAGE_KEY);
+      crawlerWindowId = null;
+    }
+  } catch (e) {
+    console.error("DarkEye: hydrateCrawlerWindowIdFromStorage", e);
+  }
+}
+
+async function clearCrawlerWindowPersistence() {
+  crawlerWindowId = null;
+  crawlerWindowEnsurePromise = null;
+  try {
+    await chrome.storage.session.remove(CRAWLER_WINDOW_STORAGE_KEY);
+  } catch (e) {
+    console.error("DarkEye: clearCrawlerWindowPersistence", e);
+  }
+}
+
+/**
+ * 返回可用的爬虫专用窗口 ID：优先 session 中已保存且仍存在的窗口，否则创建。
+ */
+async function ensureCrawlerWindowId() {
+  if (crawlerWindowEnsurePromise) {
+    return crawlerWindowEnsurePromise;
+  }
+  crawlerWindowEnsurePromise = (async () => {
+    try {
+      await hydrateCrawlerWindowIdFromStorage();
+      if (crawlerWindowId != null) {
+        return crawlerWindowId;
+      }
+      const crawlerHomeUrl = "https://www.baidu.com";
+      const win = await chrome.windows.create({
+        url: crawlerHomeUrl,
+        type: "normal",
+        focused: false,
+        state: "minimized",
+      });
+      crawlerWindowId = win.id;
+      await chrome.storage.session.set({
+        [CRAWLER_WINDOW_STORAGE_KEY]: win.id,
+      });
+      return win.id;
+    } catch (e) {
+      console.error("DarkEye: ensureCrawlerWindowId", e);
+      throw e;
+    } finally {
+      crawlerWindowEnsurePromise = null;
+    }
+  })();
+  return crawlerWindowEnsurePromise;
+}
 
 /** 专用窗口内标签总数达到该值时通知桌面（去重：跌破后再回升才再报） */
-const CRAWLER_BACKLOG_THRESHOLD = 7; // 正常情况下大于7个就通知桌面
+const CRAWLER_BACKLOG_THRESHOLD = 13; // 与 Firefox 扩展一致；正常情况下大于10个就通知桌面
 let backlogWarningArmed = true;
 
 /** Uint8Array -> base64（避免大文件 String.fromCharCode 爆栈） */
@@ -123,6 +230,7 @@ function handleCommand(data) {
   if (data.type === "crawler") {
     const web = data.web;
     const serial_number = data.serial_number;
+    const crawlerContext = data.context || {};
     // 爬虫统一在专用窗口后台打开，不影响当前浏览窗口
     const addPendingInNewWindow = (url, type) => {
       const addTab = (windowId) => {
@@ -130,46 +238,27 @@ function handleCommand(data) {
           .create({ windowId, url, active: false })
           .then((tab) => {
             if (tab && tab.id !== undefined) {
-              pendingCrawlers.set(tab.id, { type, serial: serial_number });
+              pendingCrawlers.set(tab.id, {
+                type,
+                serial: serial_number,
+                context: crawlerContext,
+              });
             }
             return maybeNotifyCrawlerBacklog();
           })
-          .catch((err) => {
+          .catch(async (err) => {
             console.error("DarkEye: 爬虫窗口可能已被关闭，重新创建", err);
-            crawlerWindowId = null;
-            crawlerWindowPromise = null;
+            await clearCrawlerWindowPersistence();
+            backlogWarningArmed = true;
             addPendingInNewWindow(url, type);
           });
       };
 
-      // 已有专用窗口：直接在该窗口新建标签
-      if (crawlerWindowId !== null) {
-        addTab(crawlerWindowId);
-        return;
-      }
-
-      // 没有专用窗口：复用“正在创建”的 Promise，保证多任务只开一个窗口
-      if (crawlerWindowPromise === null) {
-        const crawlerHomeUrl = "https://www.baidu.com";
-        crawlerWindowPromise = chrome.windows
-          .create({
-            url: crawlerHomeUrl,
-            type: "normal",
-            focused: false,
-            state: "minimized",
-          })
-          .then((win) => {
-            crawlerWindowId = win.id;
-            return win.id;
-          })
-          .catch((err) => {
-            console.error("DarkEye: 创建爬虫窗口失败", err);
-            crawlerWindowPromise = null;
-            throw err;
-          });
-      }
-
-      crawlerWindowPromise.then((windowId) => addTab(windowId));
+      ensureCrawlerWindowId()
+        .then((windowId) => addTab(windowId))
+        .catch((err) => {
+          console.error("DarkEye: 获取/创建爬虫窗口失败", err);
+        });
     };
     if (web === "javlib") {
       // 开始执行对javlibrary的爬虫,第一步就是跳转
@@ -189,6 +278,32 @@ function handleCommand(data) {
         "https://www.dmm.co.jp/mono/-/search/=/searchstr=" +
         String(serial_number);
       addPendingInNewWindow(url, "fanza");
+    }
+    if (web === "javtxt") {
+      const url =
+        "https://javtxt.com/search?type=id&q=" +
+        encodeURIComponent(String(serial_number));
+      addPendingInNewWindow(url, "javtxt");
+    }
+    if (web === "avdanyuwiki") {
+      const q = convertFanzaForAvdanyuwiki(String(serial_number));
+      const url =
+        "https://avdanyuwiki.com/?s=" + encodeURIComponent(q);
+      addPendingInNewWindow(url, "avdanyuwiki");
+    }
+    if (web === "minnano") {
+      const ctx = crawlerContext || {};
+      const mid = (ctx.minnano_url && String(ctx.minnano_url).trim()) || "";
+      let url;
+      if (mid) {
+        url = "https://www.minnano-av.com/actress" + mid + ".html";
+      } else {
+        url =
+          "https://www.minnano-av.com/search_result.php?search_scope=actress&search_word=" +
+          encodeURIComponent(String(serial_number)) +
+          "&search=+Go+";
+      }
+      addPendingInNewWindow(url, "minnano");
     }
   }
   if (data.type === "fetch_cover_image") {
@@ -232,6 +347,25 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         serial: task.serial,
       });
       console.log("fanza爬虫开始:" + tabId);
+    } else if (task.type === "javtxt") {
+      chrome.tabs.sendMessage(tabId, {
+        command: "javtxt-dvdid",
+        serial: task.serial,
+      });
+      console.log("javtxt爬虫开始:" + tabId);
+    } else if (task.type === "avdanyuwiki") {
+      chrome.tabs.sendMessage(tabId, {
+        command: "avdanyuwiki-dvdid",
+        serial: task.serial,
+      });
+      console.log("avdanyuwiki爬虫开始:" + tabId);
+    } else if (task.type === "minnano") {
+      chrome.tabs.sendMessage(tabId, {
+        command: "minnano-actress-auto",
+        jpName: task.serial,
+        context: Object.assign({}, task.context || {}, { persist: true }),
+      });
+      console.log("minnano爬虫开始:" + tabId);
     }
 
     // 注意：如果我们采用 Content Script 自动接力模式，这里可能不需要删除，每次刷新时判断有无任务，有就处理，直接任务全部结束
@@ -240,12 +374,17 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
-// 窗口关闭时重置专用爬虫窗口 ID 与 Promise
-chrome.windows.onRemoved.addListener((windowId) => {
-  if (windowId === crawlerWindowId) {
-    crawlerWindowId = null;
-    crawlerWindowPromise = null;
-    backlogWarningArmed = true;
+// 窗口关闭时重置专用爬虫窗口 ID（与 session 一致，含 SW 重启后仅 storage 有 ID 的情况）
+chrome.windows.onRemoved.addListener(async (removedId) => {
+  try {
+    const data = await chrome.storage.session.get(CRAWLER_WINDOW_STORAGE_KEY);
+    const stored = data[CRAWLER_WINDOW_STORAGE_KEY];
+    if (removedId === crawlerWindowId || removedId === stored) {
+      await clearCrawlerWindowPersistence();
+      backlogWarningArmed = true;
+    }
+  } catch (e) {
+    console.error("DarkEye: windows.onRemoved", e);
   }
 });
 
@@ -317,13 +456,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.command === "capture_minnano_actress") {
     const tabId = sender.tab && sender.tab.id;
-    const context =
+    const tabCtx =
       tabId !== undefined ? tabNavigateContext.get(tabId) || {} : {};
+    const msgCtx = message.context || {};
+    const context = Object.assign({}, tabCtx, msgCtx);
     const payload = {
       context,
-      data: message.data,
       url: sender.tab && sender.tab.url ? sender.tab.url : "",
     };
+    if (message.error) {
+      payload.error = message.error;
+    } else {
+      payload.data = message.data;
+    }
     fetch(`${SERVER_URL}/api/v1/minnano-actress-capture`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -333,6 +478,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((data) => {
         console.log("DarkEye: minnano actress capture sent", data);
         sendResponse({ ok: true, data });
+        if (
+          context.persist &&
+          !message.error &&
+          tabId !== undefined
+        ) {
+          setTimeout(() => {
+            chrome.tabs.remove(tabId);
+          }, 10000);
+        }
       })
       .catch((error) => {
         console.error("DarkEye: Failed to send minnano capture", error);
@@ -391,10 +545,13 @@ async function ensureOffscreen() {
 
 chrome.runtime.onStartup.addListener(() => {
   ensureOffscreen();
+  hydrateCrawlerWindowIdFromStorage();
 });
 
 chrome.runtime.onInstalled.addListener(() => {
   ensureOffscreen();
+  hydrateCrawlerWindowIdFromStorage();
 });
 
 ensureOffscreen();
+hydrateCrawlerWindowIdFromStorage();

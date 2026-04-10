@@ -267,6 +267,7 @@ class MainWindow(QMainWindow):
 
         bridge.captureReceived.connect(self.handle_capture_data)
         bridge.crawlerBacklogWarning.connect(self._on_crawler_backlog_warning)
+        bridge.minnanoActressCaptureReceived.connect(self._on_minnano_persist_capture)
 
     def closeEvent(self, event) -> None:
         logging.info("--------------------程序关闭--------------------")
@@ -352,6 +353,12 @@ class MainWindow(QMainWindow):
             self.router.push(route_name)
 
     @Slot(int, str)
+    @Slot(dict)
+    def _on_minnano_persist_capture(self, body: dict) -> None:
+        from core.crawler.minnanoav import handle_minnano_persist_capture_from_extension
+
+        handle_minnano_persist_capture_from_extension(body)
+
     def _on_crawler_backlog_warning(self, count: int, browser: str) -> None:
         from controller.message_service import MessageBoxService
 

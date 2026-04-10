@@ -15,7 +15,7 @@ from core.database.update import (
     update_actress_minnano_id,
 )
 from pathlib import Path
-from core.crawler.download import download_image
+from core.crawler.download import download_image_js
 from .basic import fetch_url
 
 # 测试情况英文名的都有问题，日向なつ，杏奈，高瀬りな,白石もも重名问题
@@ -74,7 +74,11 @@ def analyse(resopnse) -> dict:
     else:
         logging.debug("未找到 class='thumb' 的 div")
 
-    full_img_src = "https://www.minnano-av.com" + img_src
+    # 无 src 时勿拼成站点根 URL，否则插件会拉取 HTML 仍可能“成功”落盘，导致误写 image_urlA
+    if img_src:
+        full_img_src = "https://www.minnano-av.com" + img_src
+    else:
+        full_img_src = ""
 
     section = soup.find("section", id="main-section")
     print(section)
@@ -355,6 +359,103 @@ def SearchActressInfo() -> str:
         return namelist + " 女优数据更新完成"
 
 
+def normalize_minnano_extension_payload(data: dict) -> dict:
+    """插件 JSON 与 persist 写库共用的数值字段规范化。"""
+    out = dict(data)
+    for key in ("身高", "胸围", "腰围", "臀围"):
+        if key in out:
+            try:
+                out[key] = int(out[key] or 0)
+            except (TypeError, ValueError):
+                out[key] = 0
+    return out
+
+
+def handle_minnano_persist_capture_from_extension(body: dict) -> None:
+    """主窗口统一处理：persist 回传写库；失败仅 debug，不打断批量静默."""
+    if not body:
+        return
+    ctx = body.get("context") or {}
+    if not ctx.get("persist"):
+        return
+    if body.get("error"):
+        logging.debug(
+            "minnano persist capture error actress_id=%s err=%s",
+            ctx.get("actress_id"),
+            body.get("error"),
+        )
+        return
+    raw = body.get("data")
+    if not raw:
+        return
+    aid = ctx.get("actress_id")
+    if aid is None:
+        return
+    try:
+        actress_id = int(aid)
+    except (TypeError, ValueError):
+        logging.debug("minnano persist: invalid actress_id %r", aid)
+        return
+    try:
+        data = normalize_minnano_extension_payload(dict(raw))
+        persist_minnano_scrape_to_db(actress_id, data)
+    except Exception:
+        logging.exception("persist minnano from extension (global)")
+        return
+    from controller.global_signal_bus import global_signals
+
+    global_signals.actressDataChanged.emit()
+
+
+def SearchActressInfo_js() -> str:
+    """需更新的女优逐条静默下发浏览器插件；落库依赖插件 persist 回传."""
+    from core.crawler.jump import send_minnano_actress_crawler_request
+    from core.database.query import exist_minnao_id
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    query = """
+    SELECT "女优ID","日文名",need_update
+    FROM v_actress_all_info
+    WHERE need_update=1
+    """
+    cursor.execute(query)
+    tuple_list = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    result = [
+        {"actress_id": a, "jp_name": b, "need_update": c} for a, b, c in tuple_list
+    ]
+    if not tuple_list or all(not item for item in tuple_list):
+        return "无需要更新数据的女优"
+    total_rows = len(result)
+    for i, row in enumerate(result):
+        name = row["jp_name"]
+        actress_id = row["actress_id"]
+        minnano_url = exist_minnao_id(actress_id)
+        send_minnano_actress_crawler_request(name, actress_id, minnano_url, silent=True)
+        if i != total_rows - 1:
+            time.sleep(random.uniform(5, 10))
+    return f"已向浏览器下发 {total_rows} 项 minnano 更新任务"
+
+
+def _local_actress_avatar_file_is_valid(path: str) -> bool:
+    """校验本地文件是否为可读位图。
+
+    插件按 URL 保存的内容可能是 HTML/错误页；download_image_js 仍会复制成功，
+    若不校验会误把相对路径写入 image_urlA。
+    """
+    try:
+        from PIL import Image
+
+        with Image.open(path) as im:
+            im.load()
+            return im.width >= 2 and im.height >= 2
+    except Exception:
+        return False
+
+
 def download_update_profile(id, data: dict):
     """下载女优的头像，并更新数据库
     输入的数据是这样的
@@ -373,15 +474,45 @@ def download_update_profile(id, data: dict):
     }
     """
 
+    raw_url = (data.get("头像地址") or "").strip()
+    if not raw_url:
+        logging.debug("女优头像 URL 为空，跳过下载 actress_id=%s", id)
+        return
+
     image_urlA = str(str(id) + "-" + data["日文名"] + ".jpg")  # 存数据库里的相对地址
     image_path = Path(ACTRESSIMAGES_PATH / image_urlA)  # 实际要下载地址
-    if download_image(data["头像地址"], image_path):
-        update_actress_image(id, image_urlA)  # 写入数据库
+    ok, err = download_image_js(raw_url, str(image_path))
+    if not ok:
+        logging.warning("女优头像下载失败 actress_id=%s err=%s", id, err)
+        return
+    if not _local_actress_avatar_file_is_valid(str(image_path)):
+        logging.warning(
+            "女优头像文件无效（非可用图片），不写入 image_urlA actress_id=%s path=%s",
+            id,
+            image_path,
+        )
+        try:
+            image_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return
+    update_actress_image(id, image_urlA)  # 写入数据库
+
+
+def persist_minnano_scrape_to_db(actress_id: int, new_data: dict) -> None:
+    """将 minnano 解析结果写入数据库（与 SearchSingleActressInfo 成功分支一致）。
+    这个就是直接写入数据库
+    """
+    from core.database.insert import InsertAliasNameReplace
+
+    update_db_actress(actress_id, new_data)
+    InsertAliasNameReplace(actress_id, new_data["alias_chain"])
+    download_update_profile(actress_id, new_data)
+    update_actress_minnano_id(actress_id, new_data["minnano_actress_id"])
 
 
 def SearchSingleActressInfo(actress_id, name: str) -> bool:
     """这个是单个的情况"""
-    from core.database.insert import InsertAliasName
     from core.database.query import exist_minnao_id
 
     logging.info("开启minnano单女优信息爬虫")
@@ -443,13 +574,7 @@ def SearchSingleActressInfo(actress_id, name: str) -> bool:
                 if response.status_code == 200:
                     logging.info("--------------------请求成功--------------------")
                     new_data = analyse(response)
-                    # 更新写入数据库
-                    update_db_actress(actress_id, new_data)
-                    InsertAliasName(actress_id, new_data["alias_chain"])
-                    download_update_profile(actress_id, new_data)
-                    update_actress_minnano_id(
-                        actress_id, new_data["minnano_actress_id"]
-                    )
+                    persist_minnano_scrape_to_db(actress_id, new_data)
                     success = True
                 else:
                     logging.warning("--------------------请求失败--------------------")
@@ -460,11 +585,7 @@ def SearchSingleActressInfo(actress_id, name: str) -> bool:
         else:  # 遇到直接搜索的界面，还有种情况，遇到搜索不出来的界面
             logging.info("遇到直接是女优界面")
             new_data = analyse(response)
-            # 更新写入数据库，也就是说这个是不能爬第二次的，否则就会有问题。
-            update_db_actress(actress_id, new_data)
-            InsertAliasName(actress_id, new_data["alias_chain"])
-            download_update_profile(actress_id, new_data)
-            update_actress_minnano_id(actress_id, new_data["minnano_actress_id"])
+            persist_minnano_scrape_to_db(actress_id, new_data)
             success = True
     else:
         logging.warning("--------------------请求失败--------------------")

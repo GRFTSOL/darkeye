@@ -563,6 +563,223 @@ WHERE work_id=?
     return success
 
 
+def _actress_alias_identity_key(
+    jp: object, kana: object, en: object
+) -> tuple[str, str, str]:
+    """用于别名去重的 (jp, kana, en) 规范化元组。"""
+
+    def _part(x: object) -> str:
+        if x is None:
+            return ""
+        return str(x).strip()
+
+    return (_part(jp), _part(kana), _part(en))
+
+
+def _resolve_actress_name_head_id(cursor, actress_id: int) -> int | None:
+    """当前名所在行：``redirect_actress_name_id IS NULL``；若无则退回该女优最新一行。"""
+    cursor.execute(
+        """
+        SELECT actress_name_id
+        FROM actress_name
+        WHERE actress_id = ? AND redirect_actress_name_id IS NULL
+        ORDER BY actress_name_id DESC
+        LIMIT 1
+        """,
+        (actress_id,),
+    )
+    row = cursor.fetchone()
+    if row is not None:
+        return row[0]
+    cursor.execute(
+        """
+        SELECT actress_name_id
+        FROM actress_name
+        WHERE actress_id = ?
+        ORDER BY actress_name_id DESC
+        LIMIT 1
+        """,
+        (actress_id,),
+    )
+    row = cursor.fetchone()
+    return row[0] if row else None
+
+
+def _delete_actress_name_chain_except_head(
+    cursor, actress_id: int, head_id: int
+) -> int:
+    """删除该女优除链头外的所有 ``actress_name`` 行（按外键自引用顺序自最旧别称起删）。"""
+    removed = 0
+    while True:
+        cursor.execute(
+            """
+            SELECT actress_name_id
+            FROM actress_name
+            WHERE actress_id = ?
+              AND actress_name_id != ?
+              AND actress_name_id NOT IN (
+                  SELECT redirect_actress_name_id
+                  FROM actress_name
+                  WHERE redirect_actress_name_id IS NOT NULL
+              )
+            """,
+            (actress_id, head_id),
+        )
+        batch = [r[0] for r in cursor.fetchall()]
+        if not batch:
+            break
+        for bid in batch:
+            cursor.execute(
+                "DELETE FROM actress_name WHERE actress_name_id = ?",
+                (bid,),
+            )
+            removed += 1
+    return removed
+
+
+def InsertAliasNameReplace(actress_id: int, alias_chain: list[dict] | None) -> bool:
+    """用新别名链覆盖旧链：先删掉除当前名外的全部 ``actress_name``，再插入新链。
+
+    保留链头一行（``redirect_actress_name_id IS NULL``，与 ``update_db_actress`` 更新的主名一致），
+    仅重建历史别称。空 ``alias_chain`` 表示只清空旧别名不写新行。
+
+    调用后需 emit: global_signals.actressDataChanged
+    """
+    conn = get_connection(DATABASE, False)
+    cursor = conn.cursor()
+    success = False
+    try:
+        head_id = _resolve_actress_name_head_id(cursor, actress_id)
+        if head_id is None:
+            logging.warning(
+                "InsertAliasNameReplace: 无 actress_name 行 actress_id=%s", actress_id
+            )
+            success = False
+        else:
+            deleted = _delete_actress_name_chain_except_head(
+                cursor, actress_id, head_id
+            )
+            cur_id = head_id
+
+            cursor.execute(
+                "SELECT jp, kana, en FROM actress_name WHERE actress_name_id = ?",
+                (head_id,),
+            )
+            head_row = cursor.fetchone()
+            existing = {_actress_alias_identity_key(*head_row)} if head_row else set()
+
+            inserted = 0
+            if alias_chain:
+                for alias in reversed(alias_chain):
+                    jp = alias.get("jp")
+                    kana = alias.get("kana")
+                    en = alias.get("en")
+                    key = _actress_alias_identity_key(jp, kana, en)
+                    if key == ("", "", ""):
+                        continue
+                    if key in existing:
+                        continue
+                    cursor.execute(
+                        "INSERT INTO actress_name (actress_id,jp,kana,en,redirect_actress_name_id) "
+                        "VALUES(?,?,?,?,?)",
+                        (actress_id, jp, kana, en, cur_id),
+                    )
+                    new_id = cursor.lastrowid
+                    cur_id = new_id
+                    existing.add(key)
+                    inserted += 1
+
+            conn.commit()
+            logging.info(
+                "InsertAliasNameReplace: actress_id=%s 删除旧别名 %s 条，新插入 %s 条",
+                actress_id,
+                deleted,
+                inserted,
+            )
+            success = True
+    except Exception as e:
+        conn.rollback()
+        logging.warning("InsertAliasNameReplace 失败: %s", e)
+        success = False
+    finally:
+        cursor.close()
+        conn.close()
+    return success
+
+
+def InsertAliasNameMerge(actress_id: int, alias_chain: list[dict] | None) -> bool:
+    """插入女优别名链（锚定当前名、跳过已存在的名字）。
+
+    与 InsertAliasName 相比：
+    - 从 ``redirect_actress_name_id IS NULL`` 的行作为链头挂接，避免该女优已有多条
+      ``actress_name`` 时误选锚点；
+    - 跳过与已有 ``actress_name`` 行（jp/kana/en 规范化后）相同的项，避免重复插入
+      及与「当前名」重复的别名列。
+
+    调用后需 emit: global_signals.actressDataChanged
+    """
+    if not alias_chain:
+        return True
+
+    conn = get_connection(DATABASE, False)
+    cursor = conn.cursor()
+    success = False
+    try:
+        head_id = _resolve_actress_name_head_id(cursor, actress_id)
+        if head_id is None:
+            logging.warning(
+                "InsertAliasNameMerge: 无 actress_name 行 actress_id=%s", actress_id
+            )
+            success = False
+        else:
+            cur_id = head_id
+
+            cursor.execute(
+                "SELECT jp, kana, en FROM actress_name WHERE actress_id = ?",
+                (actress_id,),
+            )
+            existing = {
+                _actress_alias_identity_key(jp, kana, en)
+                for jp, kana, en in cursor.fetchall()
+            }
+
+            inserted = 0
+            for alias in reversed(alias_chain):
+                jp = alias.get("jp")
+                kana = alias.get("kana")
+                en = alias.get("en")
+                key = _actress_alias_identity_key(jp, kana, en)
+                if key == ("", "", ""):
+                    continue
+                if key in existing:
+                    continue
+                cursor.execute(
+                    "INSERT INTO actress_name (actress_id,jp,kana,en,redirect_actress_name_id) "
+                    "VALUES(?,?,?,?,?)",
+                    (actress_id, jp, kana, en, cur_id),
+                )
+                new_id = cursor.lastrowid
+                cur_id = new_id
+                existing.add(key)
+                inserted += 1
+
+            conn.commit()
+            logging.info(
+                "InsertAliasNameMerge: actress_id=%s 新插入别名 %s 条",
+                actress_id,
+                inserted,
+            )
+            success = True
+    except Exception as e:
+        conn.rollback()
+        logging.warning("InsertAliasNameMerge 插入失败: %s", e)
+        success = False
+    finally:
+        cursor.close()
+        conn.close()
+    return success
+
+
 def InsertAliasName(id, alias_chain: list[dict]) -> bool:
     """插入女优别名链。调用后需 emit: global_signals.actressDataChanged"""
     conn = get_connection(DATABASE, False)
