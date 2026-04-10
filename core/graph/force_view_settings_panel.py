@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QColorDialog
-from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtCore import Qt, Signal, QSize, QTimer
 
 from darkeye_ui.components.clickable_slider import ClickableSlider
 from darkeye_ui.components.label import Label
@@ -383,8 +383,6 @@ class ForceViewSettingsPanel(QScrollArea):
         """重写 showEvent 来确保内容宽度正确"""
         super().showEvent(event)
         # 延迟调用以确保布局完成
-        from PySide6.QtCore import QTimer
-
         QTimer.singleShot(0, self._update_content_width)
 
     def _connect_internal(self):
@@ -445,15 +443,20 @@ class ForceViewSettingsPanel(QScrollArea):
             lambda checked: self.graphModeChanged.emit("test") if checked else None
         )
 
-        # Section toggle - update panel size when sections are collapsed/expanded
+        # Section toggle：延后一帧再读 sizeHint 并通知父级。
+        # 同步读经常早于布局提交，第二次展开时累计高度误差更明显，会闪一帧。
         def on_section_toggled():
-            # 先让布局系统更新尺寸计算
-            content_widget = self.widget()
-            if content_widget:
-                content_widget.updateGeometry()
-            # 然后调整面板高度(基于新的内容高度)
-            self._adjust_panel_height()
-            self.contentSizeChanged.emit()
+            def _defer_sync():
+                content_widget = self.widget()
+                if content_widget:
+                    content_widget.updateGeometry()
+                    lay = content_widget.layout()
+                    if lay is not None:
+                        lay.activate()
+                self._adjust_panel_height()
+                self.contentSizeChanged.emit()
+
+            QTimer.singleShot(0, _defer_sync)
 
         self._effect_section.toggled.connect(lambda _: on_section_toggled())
         self._display_section.toggled.connect(lambda _: on_section_toggled())

@@ -140,12 +140,12 @@ class ForceDirectedViewWidget(QWidget):
         self.panel.removeEdgeRequested.connect(self._on_removeEdgeRequested)
 
         self.panel.graphModeChanged.connect(self._switch_graph)
-        self.page_favorite_toggle.toggled.connect(
-            lambda checked: self._switch_graph("favorite" if checked else "all")
-        )
-        self.panel.contentSizeChanged.connect(
-            lambda: QTimer.singleShot(0, self._update_panel_geometry)
-        )
+
+
+
+        # 与面板内 deferred 几何同步配合：此处直接更新，避免再叠一层 singleShot 晚一帧
+        self.panel.contentSizeChanged.connect(self._update_panel_geometry)
+
 
         # 令牌驱动：视图背景、边、节点、文本颜色随主题切换
         if self._theme_manager is not None:

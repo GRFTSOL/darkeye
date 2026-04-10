@@ -92,11 +92,12 @@ class TokenCollapsibleSection(QWidget):
     def toggle_content(self, checked: bool) -> None:
         self._is_expanded = checked
         self._update_icon(checked)
-        self.content.setVisible(checked)
+        # 先更新尺寸策略再显示，避免首帧按 Fixed/旧约束参与布局导致闪动
         if checked:
             self.content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         else:
             self.content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.content.setVisible(checked)
         self.content.updateGeometry()
         self.updateGeometry()
         self.toggled.emit(checked)
