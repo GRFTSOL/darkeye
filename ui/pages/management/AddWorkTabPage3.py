@@ -32,7 +32,6 @@ import copy
 import json
 import logging
 import uuid
-import requests
 from datetime import datetime
 from pathlib import Path
 from enum import Enum
@@ -71,6 +70,7 @@ from darkeye_ui import LazyWidget
 from controller.app_context import get_theme_manager
 from controller.message_service import MessageBoxService, IMessageService
 
+from core.crawler.download import download_image_js
 from core.crawler.worker import Worker, wire_worker_finished
 
 from ui.navigation.router import Router
@@ -86,39 +86,19 @@ from ui.widgets.selectors.maker_selector import MakerSelector
 from ui.widgets.selectors.label_selector import LabelSelector
 from ui.widgets.selectors.series_selector import SeriesSelector
 from core.database.db_queue import submit_db_raw
-from server.bridge import bridge
 from utils.serial_number import convert_fanza, serial_number_equal
 
 
-_LOCAL_SERVER_BASE = "http://127.0.0.1:56789"
-_COVER_BROWSER_WAIT_MS = 45000
+def _download_fanza_pl_cover_via_js(url: str) -> tuple[bool, str, str]:
+    """线程池内：用 ``download_image_js`` 拉取 Fanza pl 大图到 ``TEMP_PATH``。
 
-
-def _post_cover_image_fetch_sse(url: str, request_id: str) -> tuple[bool, int, str]:
-    """通知本地服务向 SSE 广播，让浏览器插件去拉图片。
-
-    插件**不**直接写 temp：它在 background 里 fetch 图片后 POST base64 到
-    ``/api/v1/cover-image-fetch-result``，由 **FastAPI** 解码并写入 ``TEMP_PATH``，
-    再通过 ``bridge.coverBrowserFetchResult`` 把临时文件的绝对路径发给本页。
-
-    返回 (HTTP 是否成功, 当前 SSE 监听者数量, 错误文案)。
+    返回 ``(成功, 绝对路径或空字符串, 错误文案)``。
     """
-    try:
-        r = requests.post(
-            f"{_LOCAL_SERVER_BASE}/api/v1/cover-image-fetch",
-            json={"url": url, "request_id": request_id},
-            timeout=5,
-        )
-        data = r.json() if r.text else {}
-        cnt = int(data.get("listener_count", 0))
-        if not r.ok:
-            detail = data.get("detail", "")
-            if isinstance(detail, list):
-                detail = str(detail)
-            return False, cnt, str(detail or r.reason or r.status_code)
-        return True, cnt, ""
-    except Exception as e:
-        return False, 0, str(e)
+    save_path = str(TEMP_PATH / f"fanza_pl_{uuid.uuid4().hex}.jpg")
+    ok, msg = download_image_js(url, save_path)
+    if ok:
+        return True, save_path, ""
+    return False, "", msg
 
 
 class ButtonState(Enum):
@@ -1103,12 +1083,6 @@ class AddWorkTabPage3(LazyWidget):
         self.original_work = {}  # 加载后原始的数据，用于检测内容修改
         self.msg = MessageBoxService(self)  # 弹窗服务
         self._fanza_pl_fetching = False
-        self._pending_cover_browser_request_id: str | None = None
-        self._cover_browser_fetch_timer = QTimer(self)
-        self._cover_browser_fetch_timer.setSingleShot(True)
-        self._cover_browser_fetch_timer.timeout.connect(
-            self._on_cover_browser_fetch_timeout
-        )
         self.model = Model()
         self.viewmodel = ViewModel(self.model, self.msg)
         self.init_ui()
@@ -1668,7 +1642,6 @@ class AddWorkTabPage3(LazyWidget):
         self.coverdroplabel.lowQualityCoverBadgeClicked.connect(
             self._on_low_quality_cover_badge_clicked
         )
-        bridge.coverBrowserFetchResult.connect(self._on_cover_browser_fetch_result)
 
         self.btn_add_work.clicked.connect(self.viewmodel.submit)
         self.crawler_auto_page.btn_get_crawler.clicked.connect(self.crawler2)
@@ -1760,7 +1733,7 @@ class AddWorkTabPage3(LazyWidget):
 
     @Slot()
     def _on_low_quality_cover_badge_clicked(self) -> None:
-        """非高清角标：仅通过浏览器插件 fetch（SSE）拉取 Fanza pl 大图。"""
+        """非高清角标：用 curl 拉取 Fanza pl 大图。"""
         if self._fanza_pl_fetching:
             return
         sn = self.viewmodel.get_serial_number().strip()
@@ -1769,71 +1742,27 @@ class AddWorkTabPage3(LazyWidget):
             return
         cid = convert_fanza(sn.upper())
         url = f"https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{cid}/{cid}pl.jpg"
-        request_id = uuid.uuid4().hex
-        self._pending_cover_browser_request_id = request_id
         self._fanza_pl_fetching = True
-        self._cover_browser_fetch_timer.stop()
 
-        worker = Worker(lambda u=url, r=request_id: _post_cover_image_fetch_sse(u, r))
-        wire_worker_finished(worker, self._on_cover_fetch_sse_post_finished)
+        worker = Worker(lambda u=url: _download_fanza_pl_cover_via_js(u))
+        wire_worker_finished(worker, self._on_fanza_pl_curl_download_finished)
         QThreadPool.globalInstance().start(worker)
 
     @Slot(object)
-    def _on_cover_fetch_sse_post_finished(self, result: object) -> None:
-        """本地 HTTP 通知发完后：有 SSE 客户端则等插件回传；否则结束。"""
-        if not self._fanza_pl_fetching:
-            return
-
-        if result is None or not isinstance(result, tuple) or len(result) != 3:
-            self._pending_cover_browser_request_id = None
-            self._fanza_pl_fetching = False
-            self.msg.show_warning(
-                "请求失败",
-                "无法连接本地服务，请确认 DarkEye 已启动。",
-            )
-            return
-
-        ok, cnt, err = result
-        if not ok or cnt == 0:
-            self._pending_cover_browser_request_id = None
-            self._fanza_pl_fetching = False
-            if cnt == 0:
-                self.msg.show_info(
-                    "提示",
-                    "未检测到已连接本地服务的浏览器插件。"
-                    "请打开 Firefox/Chrome、启用 DarkEye 扩展并保证与本软件同时运行后再试。",
-                )
-            else:
-                self.msg.show_warning("通知插件失败", err or "未知原因")
-            return
-
-        self._cover_browser_fetch_timer.start(_COVER_BROWSER_WAIT_MS)
-
-    @Slot()
-    def _on_cover_browser_fetch_timeout(self) -> None:
-        if self._pending_cover_browser_request_id is None:
-            return
-        self._pending_cover_browser_request_id = None
+    def _on_fanza_pl_curl_download_finished(self, result: object) -> None:
+        """线程池下载 Fanza pl 完成后回到主线程更新封面。"""
         self._fanza_pl_fetching = False
-        self.msg.show_info(
-            "提示",
-            "浏览器未在时限内返回图片，请检查扩展是否仍连接本地服务或网络是否正常。",
-        )
-
-    @Slot(str, object, str)
-    def _on_cover_browser_fetch_result(
-        self, request_id: str, path: object, error: str
-    ) -> None:
-        if self._pending_cover_browser_request_id != request_id:
+        if result is None:
+            self.msg.show_warning("下载失败", "未知错误")
             return
-        self._cover_browser_fetch_timer.stop()
-        self._pending_cover_browser_request_id = None
-        self._fanza_pl_fetching = False
-        err = (error or "").strip()
-        if path and isinstance(path, str) and not err:
+        if not isinstance(result, tuple) or len(result) != 3:
+            self.msg.show_warning("下载失败", "内部错误")
+            return
+        ok, path, err = result
+        if ok and path:
             self.viewmodel.set_cover(path)
             return
-        self.msg.show_warning("插件下载失败", err or "未知错误")
+        self.msg.show_warning("下载失败", err or "未知错误")
 
     def on_set_directview(self, id: str):
         if self.forceview is None:

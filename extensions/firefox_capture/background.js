@@ -9,14 +9,15 @@ function connectSSE() {
     eventSource.close();
   }
 
-  try {
+  try {//失败后一直会重试下去。保证了桌面软件重启后还能连上
       console.log("DarkEye: Connecting to SSE server at " + SSE_URL);
       eventSource = new EventSource(SSE_URL);
 
       eventSource.onopen = () => {
         console.log("DarkEye: Connected to SSE server");
       };
-
+      
+      //有新消息的时候会触发这个事件
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -27,13 +28,13 @@ function connectSSE() {
         }
       };
 
+      //错误的时候会触发这个事件
       eventSource.onerror = (err) => {
-        // EventSource error handling is tricky, often it just closes
         console.error("DarkEye: SSE Error", err);
         eventSource.close();
-        // Reconnect after 5 seconds
         setTimeout(connectSSE, 5000);
       };
+
   } catch (e) {
       console.error("DarkEye: Failed to create EventSource", e);
       setTimeout(connectSSE, 5000);
@@ -65,6 +66,7 @@ function convertFanzaForAvdanyuwiki(serial_number) {
 const pendingCrawlers = new Map();
 /** 桌面 navigate 写入：tabId -> { actress_id?, source? } */
 const tabNavigateContext = new Map();
+
 let crawlerWindowId = null; // 专用爬虫窗口 ID
 let crawlerWindowPromise = null; // 创建中的窗口 Promise，避免多任务同时开多个窗口
 
@@ -101,7 +103,7 @@ function postCoverFetchResult(request_id, ok, error, content_base64) {
 }
 
 function fetchCoverImageForDesktop(imageUrl, request_id) {
-  const minBytes = 5 * 1024;
+  const minBytes = 5 * 1024;//小于5kb的图片认为是下载失败
   fetch(imageUrl, { credentials: "omit", cache: "no-store" })
     .then((r) => {
       if (!r.ok) {

@@ -187,6 +187,8 @@ async def send_navigate(command: NavigateCommand):
     """
     logger.info(f"Broadcasting navigate command: {command}")
     dead_clients = []
+
+    #组装消息
     message = {
         "type": "navigate",
         "url": command.url,
@@ -194,6 +196,7 @@ async def send_navigate(command: NavigateCommand):
     }
     if command.context is not None:
         message["context"] = command.context
+
     event_data = f"data: {json.dumps(message)}\n\n"
 
     for client in sse_clients:
