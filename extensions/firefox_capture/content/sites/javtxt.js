@@ -46,6 +46,12 @@
         }
     }
 
+    function attachMergeRequestId(payload) {
+        const mid = sessionStorage.getItem("darkeye_merge_request_id");
+        if (mid) payload.merge_request_id = mid;
+        return payload;
+    }
+
     function sendTopActressesResult(ok, names, errorMsg) {
         browser.runtime.sendMessage({
             command: "send_crawler_result",
@@ -170,24 +176,28 @@
 
         sessionStorage.setItem("darkeye_auto_parse", "false");
         console.log("DarkEye javtxt:", data);
-        browser.runtime.sendMessage({
-            command: "send_crawler_result",
-            id: sessionStorage.getItem("id"),
-            web: "javtxt",
-            result: true,
-            data: data,
-        });
+        browser.runtime.sendMessage(
+            attachMergeRequestId({
+                command: "send_crawler_result",
+                id: sessionStorage.getItem("id"),
+                web: "javtxt",
+                result: true,
+                data: data,
+            })
+        );
     }
 
     function failCrawl() {
         sessionStorage.setItem("darkeye_auto_parse", "false");
-        browser.runtime.sendMessage({
-            command: "send_crawler_result",
-            id: sessionStorage.getItem("id"),
-            web: "javtxt",
-            result: false,
-            data: {},
-        });
+        browser.runtime.sendMessage(
+            attachMergeRequestId({
+                command: "send_crawler_result",
+                id: sessionStorage.getItem("id"),
+                web: "javtxt",
+                result: false,
+                data: {},
+            })
+        );
     }
 
     function search_javtxt() {
@@ -245,6 +255,14 @@
         if (message.command === "javtxt-dvdid") {
             sessionStorage.setItem("darkeye_auto_parse", "true");
             sessionStorage.setItem("id", message.serial);
+            if (message.mergeRequestId) {
+                sessionStorage.setItem(
+                    "darkeye_merge_request_id",
+                    message.mergeRequestId
+                );
+            } else {
+                sessionStorage.removeItem("darkeye_merge_request_id");
+            }
             search_javtxt();
         }
     });

@@ -2,11 +2,22 @@
 (function() {
   if (!window.location.href.includes("javlibrary.com")) return;
 
+  function attachMergeRequestId(payload) {
+    const mid = sessionStorage.getItem("darkeye_merge_request_id");
+    if (mid) payload.merge_request_id = mid;
+    return payload;
+  }
+
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.command === "javlibrary-dvdid"){
         console.log("DarkEye: JavLibrary 开始爬虫任务...");
         sessionStorage.setItem('darkeye_auto_parse', 'true')
         sessionStorage.setItem('id', message.serial)
+        if (message.mergeRequestId) {
+          sessionStorage.setItem("darkeye_merge_request_id", message.mergeRequestId);
+        } else {
+          sessionStorage.removeItem("darkeye_merge_request_id");
+        }
         if (!search_javlibrary()){
             //这里回传失败的信息
         }
@@ -24,13 +35,13 @@
             }
             console.log("该番号javlib没有搜索结果");
             sessionStorage.setItem('darkeye_auto_parse', 'false')
-            browser.runtime.sendMessage({
+            browser.runtime.sendMessage(attachMergeRequestId({
                 command: "send_crawler_result",
                 id: sessionStorage.getItem('id'),
                 web:'javlib',
                 result: false,
                 data:{}
-            });
+            }));
             return false;
         }
         console.log("搜索结果个数: " + videos.length);
@@ -115,13 +126,13 @@
         console.log(data);
         if (data) {
             console.debug("发送数据");
-            browser.runtime.sendMessage({
+            browser.runtime.sendMessage(attachMergeRequestId({
                 command: "send_crawler_result",
                 id: sessionStorage.getItem('id'),
                 web:'javlib',
                 result: true,
                 data:data
-            });
+            }));
         }
     }
   }

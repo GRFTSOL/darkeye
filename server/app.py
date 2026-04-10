@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 import base64
-import json, sqlite3, asyncio, logging
+import json, sqlite3, asyncio, logging, uuid
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
@@ -21,6 +21,11 @@ app = FastAPI(title="DarkEye Internal Server")
 
 # SSE 客户端列表
 sse_clients: List[asyncio.Queue] = []
+
+# GET /api/v1/work/{serial} 同步等待：request_id -> Future（插件 POST work-merge-result 完成）
+WORK_MERGE_TIMEOUT_SEC = 120.0
+_work_merge_lock = asyncio.Lock()
+_work_merge_futures: Dict[str, asyncio.Future] = {}
 
 # 配置 CORS
 app.add_middleware(
@@ -312,6 +317,127 @@ async def receive_crawler_result(data: Dict[str, Any]):
     except Exception as e:
         logger.error(f"Error processing capture data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class WorkMergeResultBody(BaseModel):
+    """Firefox 插件四站合并完成后回传，解除 GET /api/v1/work/{serial} 的挂起。"""
+
+    request_id: str
+    ok: bool
+    merged: Optional[Dict[str, Any]] = None
+    per_site: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    serial_number: Optional[str] = None
+
+
+@app.get("/api/v1/work/{serial_number}")
+async def get_work_merge(serial_number: str):
+    """
+    同步聚合四站（javlib / javdb / javtxt / avdanyuwiki）：经 SSE 通知插件并行爬取，
+    等待插件 POST /api/v1/work-merge-result；不触发 bridge 爬虫信号。
+    """
+    sn = serial_number.strip()
+    if not sn:
+        raise HTTPException(status_code=400, detail="serial_number required")
+    if len(sse_clients) == 0:
+        logger.info("work_merge: reject serial=%s reason=no_sse_clients", sn)
+        raise HTTPException(
+            status_code=503,
+            detail="no browser extension connected (SSE)",
+        )
+
+    request_id = str(uuid.uuid4())
+    fut: asyncio.Future = asyncio.get_running_loop().create_future()
+    async with _work_merge_lock:
+        _work_merge_futures[request_id] = fut
+
+    n_sse = len(sse_clients)
+    logger.info(
+        "work_merge: wait start serial=%s request_id=%s sse_listeners=%s timeout_s=%s",
+        sn,
+        request_id,
+        n_sse,
+        WORK_MERGE_TIMEOUT_SEC,
+    )
+
+    message = {
+        "type": "work_merge_fetch",
+        "request_id": request_id,
+        "serial_number": sn,
+    }
+    event_data = f"data: {json.dumps(message)}\n\n"
+    dead_clients: List[asyncio.Queue] = []
+    for client in sse_clients:
+        try:
+            await client.put(event_data)
+        except Exception:
+            dead_clients.append(client)
+    for dead in dead_clients:
+        if dead in sse_clients:
+            sse_clients.remove(dead)
+
+    logger.info(
+        "work_merge: sse_broadcast serial=%s request_id=%s pushed_to=%s dead_removed=%s",
+        sn,
+        request_id,
+        n_sse,
+        len(dead_clients),
+    )
+
+    try:
+        payload = await asyncio.wait_for(fut, timeout=WORK_MERGE_TIMEOUT_SEC)
+        ok = payload.get("ok") if isinstance(payload, dict) else None
+        err = payload.get("error") if isinstance(payload, dict) else None
+        logger.info(
+            "work_merge: done serial=%s request_id=%s ok=%s error=%s",
+            sn,
+            request_id,
+            ok,
+            err,
+        )
+        return payload
+    except asyncio.TimeoutError:
+        logger.warning(
+            "work_merge: timeout serial=%s request_id=%s after_s=%s",
+            sn,
+            request_id,
+            WORK_MERGE_TIMEOUT_SEC,
+        )
+        raise HTTPException(
+            status_code=504,
+            detail="work merge timed out waiting for browser extension",
+        )
+    finally:
+        async with _work_merge_lock:
+            _work_merge_futures.pop(request_id, None)
+        logger.debug("work_merge: future slot cleared request_id=%s", request_id)
+
+
+@app.post("/api/v1/work-merge-result")
+async def receive_work_merge_result(body: WorkMergeResultBody):
+    """插件合并完成后调用；与 crawler-result 分流，不发射 bridge 爬虫信号。"""
+    rid = (body.request_id or "").strip()
+    if not rid:
+        raise HTTPException(status_code=400, detail="request_id required")
+
+    async with _work_merge_lock:
+        fut = _work_merge_futures.get(rid)
+    if fut is None:
+        return {"status": "ignored", "reason": "unknown_or_finished_request"}
+    if fut.done():
+        return {"status": "ignored", "reason": "already_completed"}
+
+    sn = (body.serial_number or "").strip()
+    out: Dict[str, Any] = {
+        "ok": body.ok,
+        "serial_number": sn,
+        "data": body.merged,
+        "per_site": body.per_site or {},
+    }
+    if body.error:
+        out["error"] = body.error
+    fut.set_result(out)
+    return {"status": "success"}
 
 
 class CoverImageFetchRequest(BaseModel):

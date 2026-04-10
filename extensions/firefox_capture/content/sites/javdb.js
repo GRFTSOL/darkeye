@@ -13,10 +13,21 @@
             .toUpperCase();
     }
 
+    function attachMergeRequestId(payload) {
+      const mid = sessionStorage.getItem("darkeye_merge_request_id");
+      if (mid) payload.merge_request_id = mid;
+      return payload;
+    }
+
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.command === "javdb-dvdid"){
           sessionStorage.setItem('darkeye_auto_parse', 'true')
           sessionStorage.setItem('id', message.serial)
+          if (message.mergeRequestId) {
+            sessionStorage.setItem("darkeye_merge_request_id", message.mergeRequestId);
+          } else {
+            sessionStorage.removeItem("darkeye_merge_request_id");
+          }
           if (!search_javdb()){
               //这里回传失败的信息
           }
@@ -34,13 +45,13 @@
             }
             console.log("该番号javdb没有搜索结果");
             sessionStorage.setItem('darkeye_auto_parse', 'false')
-            browser.runtime.sendMessage({
+            browser.runtime.sendMessage(attachMergeRequestId({
                 command: "send_crawler_result",
                 id: sessionStorage.getItem('id'),
                 web:'javdb',
                 result: false,
                 data:{}
-            });
+            }));
             return false;
         }
         console.log("搜索结果个数: " + videos.length);
@@ -192,13 +203,13 @@
           console.log(data);
           if (data) {
               console.debug("发送数据");
-              browser.runtime.sendMessage({
+              browser.runtime.sendMessage(attachMergeRequestId({
                   command: "send_crawler_result",
                   id: sessionStorage.getItem('id'),
                   web:'javdb',
                   result: true,
                   data:data
-              });
+              }));
           }
       }
     }

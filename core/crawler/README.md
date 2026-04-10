@@ -55,11 +55,11 @@ fanza上下架的作品，在其他的新的网站上也是没有作品的，比
 大概是这样的接口
 
 ```
-GET /v1/work/{serial_number}
+GET api/v1/work/{serial_number}
 ```
 
 ```
-GET /v1/actress/{actress_jp_name}
+GET api/v1/actress/{actress_jp_name}
 ```
 
 然后里面全都是文本，包括标签也是文本，图片都是地址或者地址列表，后面需要时下载

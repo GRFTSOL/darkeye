@@ -64,6 +64,61 @@ function convertFanzaForAvdanyuwiki(serial_number) {
 }
 
 const pendingCrawlers = new Map();
+/** work_merge_fetch：request_id -> { serial, perSite, tabIds, mergeRequestId, ... } */
+const workMergeJobs = new Map();
+/** 合并层需要的四站键（merge_work.js 与 merge_service 一致） */
+const WORK_MERGE_SITES_ALL = ["javlib", "javdb", "javtxt", "avdanyuwiki"];
+
+/** 以下前缀只开 javdb + javtxt + avdanyuwiki（不开 javlib） */
+const MERGE_PREFIX_THREE_NO_JAVLIB = [
+  "LUXU",
+  "SIRO",
+  "GANA",
+  "MIUM",
+  "ARA",
+  "MAAN",
+  "NAMA",
+  "HON",
+  "DCV",
+  "NTK",
+  "AKO",
+  "LADY",
+  "SUKE",
+  "AHSHIRO",
+  "POW"
+];
+
+/**
+ * 去掉 `-`、`_` 后若整串为纯数字（0-9），视为仅适合 javdb 检索的形态。
+ */
+function isDigitsOnlyAfterStripHyphens(serial) {
+  const compact = String(serial).trim().replace(/[-_]/g, "");
+  return compact.length > 0 && /^\d+$/.test(compact);
+}
+
+/**
+ * 按番号前缀决定要开的爬虫标签（未匹配的番号默认四站全开）。
+ * 例：FC2/HEYZO 只 javdb；纯数字只 javdb；MERGE_PREFIX_THREE_NO_JAVLIB 只三站（不开 javlib）。
+ */
+function resolveMergeSitesForSerial(serial) {
+  const raw = String(serial).trim();
+  if (!raw) return WORK_MERGE_SITES_ALL.slice();
+  const u = raw.toUpperCase();
+  if (u.startsWith("FC2") || u.startsWith("HEYZO")) {
+    return ["javdb"];
+  }
+  if (isDigitsOnlyAfterStripHyphens(raw)) {
+    return ["javdb"];
+  }
+  if (MERGE_PREFIX_THREE_NO_JAVLIB.some((p) => u.startsWith(p))) {
+    return ["javdb", "javtxt", "avdanyuwiki"];
+  }
+  return WORK_MERGE_SITES_ALL.slice();
+}
+
+/** 单站超过此时长无结果则视为放弃该站，用空对象参与合并（与服务端 GET 120s 总超时配合） */
+const WORK_MERGE_PER_SITE_MS = 30000;
+
 /** 桌面 navigate 写入：tabId -> { actress_id?, source? } */
 const tabNavigateContext = new Map();
 
@@ -128,6 +183,192 @@ function fetchCoverImageForDesktop(imageUrl, request_id) {
     });
 }
 
+function postWorkMergeResult(payload) {
+  return fetch(`${SERVER_URL}/api/v1/work-merge-result`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+    .then((r) => r.json())
+    .catch((err) => {
+      console.error("DarkEye: work-merge-result failed", err);
+      throw err;
+    });
+}
+
+function clearWorkMergeTimer(job) {
+  if (job && job.mergeTimeoutId != null) {
+    clearTimeout(job.mergeTimeoutId);
+    job.mergeTimeoutId = null;
+  }
+}
+
+function finishWorkMergeJob(requestId, ok, merged, serial, error) {
+  const job = workMergeJobs.get(requestId);
+  if (job) clearWorkMergeTimer(job);
+  const tabIds = job && job.tabIds ? job.tabIds.slice() : [];
+  workMergeJobs.delete(requestId);
+  postWorkMergeResult({
+    request_id: requestId,
+    ok,
+    merged: merged || null,
+    per_site: {},
+    error: error || null,
+    serial_number: serial || "",
+  })
+    .then(() => {
+      tabIds.forEach((tid) => {
+        if (tid !== undefined) {
+          browser.tabs.remove(tid).catch(() => {});
+        }
+      });
+    })
+    .catch(() => {});
+}
+
+function runWorkMergeAndFinish(requestId) {
+  const job = workMergeJobs.get(requestId);
+  if (!job || job.finalized) return;
+  job.finalized = true;
+  clearWorkMergeTimer(job);
+
+  let merged = null;
+  let ok = true;
+  let errMsg = null;
+  try {
+    for (const k of WORK_MERGE_SITES_ALL) {
+      if (!Object.prototype.hasOwnProperty.call(job.perSite, k)) {
+        job.perSite[k] = {};
+      }
+    }
+    let snapshot = {};
+    try {
+      snapshot = JSON.parse(JSON.stringify(job.perSite));
+    } catch (e) {
+      snapshot = Object.assign({}, job.perSite);
+    }
+    merged = mergeCrawlResultsNoTranslate(snapshot, job.serial);
+  } catch (e) {
+    ok = false;
+    errMsg = String(e);
+    console.error("DarkEye: mergeCrawlResultsNoTranslate", e);
+  }
+  finishWorkMergeJob(requestId, ok, merged, job.serial, errMsg);
+}
+
+function onWorkMergeSiteResult(requestId, web, data) {
+  const job = workMergeJobs.get(requestId);
+  if (!job || job.finalized) return;
+  job.perSite[web] = data && typeof data === "object" ? data : {};
+  const sites = job.sites || WORK_MERGE_SITES_ALL;
+  const n = sites.filter((k) =>
+    Object.prototype.hasOwnProperty.call(job.perSite, k)
+  ).length;
+  if (n < sites.length) return;
+  runWorkMergeAndFinish(requestId);
+}
+
+function onWorkMergePerSiteTimeout(requestId) {
+  const job = workMergeJobs.get(requestId);
+  if (!job || job.finalized) return;
+  console.warn(
+    "DarkEye: work_merge 单站 " +
+      WORK_MERGE_PER_SITE_MS / 1000 +
+      "s 内未返回的源将按空对象合并 request_id=" +
+      requestId
+  );
+  runWorkMergeAndFinish(requestId);
+}
+
+function startWorkMergeFetch(requestId, serial) {
+  const sites = resolveMergeSitesForSerial(serial);
+  workMergeJobs.set(requestId, {
+    serial: String(serial),
+    sites,
+    perSite: {},
+    tabIds: [],
+    mergeRequestId: requestId,
+    mergeTimeoutId: null,
+    finalized: false,
+  });
+  console.log("DarkEye: work_merge 启用站点", sites.join(","), "serial=", serial);
+  const urls = {
+    javlib:
+      "https://www.javlibrary.com/cn/vl_searchbyid.php?keyword=" +
+      String(serial),
+    javdb: "https://javdb.com/search?q=" + String(serial),
+    javtxt:
+      "https://javtxt.com/search?type=id&q=" +
+      encodeURIComponent(String(serial)),
+    avdanyuwiki:
+      "https://avdanyuwiki.com/?s=" +
+      encodeURIComponent(convertFanzaForAvdanyuwiki(String(serial))),
+  };
+
+  const addPendingInNewWindowMerge = (url, type) => {
+    const mergeRequestId = requestId;
+    const serial_number = serial;
+    const addTab = (windowId) => {
+      return browser.tabs
+        .create({ windowId, url, active: false })
+        .then((tab) => {
+          if (tab && tab.id !== undefined) {
+            pendingCrawlers.set(tab.id, {
+              type,
+              serial: serial_number,
+              context: {},
+              mergeRequestId,
+            });
+            const job = workMergeJobs.get(mergeRequestId);
+            if (job) job.tabIds.push(tab.id);
+          }
+          return maybeNotifyCrawlerBacklog();
+        })
+        .catch((err) => {
+          console.error("DarkEye: 爬虫窗口可能已被关闭，重新创建", err);
+          crawlerWindowId = null;
+          crawlerWindowPromise = null;
+          addPendingInNewWindowMerge(url, type);
+        });
+    };
+
+    if (crawlerWindowId !== null) {
+      addTab(crawlerWindowId);
+      return;
+    }
+    if (crawlerWindowPromise === null) {
+      const crawlerHomeUrl = "https://www.baidu.com";
+      crawlerWindowPromise = browser.windows
+        .create({
+          url: crawlerHomeUrl,
+          type: "normal",
+          focused: false,
+          state: "minimized",
+        })
+        .then((win) => {
+          crawlerWindowId = win.id;
+          return win.id;
+        })
+        .catch((err) => {
+          console.error("DarkEye: 创建爬虫窗口失败", err);
+          crawlerWindowPromise = null;
+          throw err;
+        });
+    }
+    crawlerWindowPromise.then((windowId) => addTab(windowId));
+  };
+
+  sites.forEach((w) => addPendingInNewWindowMerge(urls[w], w));
+
+  const j = workMergeJobs.get(requestId);
+  if (j) {
+    j.mergeTimeoutId = setTimeout(
+      () => onWorkMergePerSiteTimeout(requestId),
+      WORK_MERGE_PER_SITE_MS
+    );
+  }
+}
+
 function maybeNotifyCrawlerBacklog() {
   if (crawlerWindowId === null) {
     return Promise.resolve();
@@ -180,6 +421,14 @@ function handleCommand(data) {//处理服务器发送来的命令
                 });
             }
         });
+    }
+  }
+  if (data.type === "work_merge_fetch") {
+    const requestId = data.request_id;
+    const serial = data.serial_number;
+    if (requestId && serial != null && serial !== "") {
+      console.log("DarkEye: work_merge_fetch", requestId, serial);
+      startWorkMergeFetch(String(requestId), serial);
     }
   }
   if (data.type==="crawler"){
@@ -300,22 +549,30 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     
     // 根据任务类型分发不同的指令，并透传 serial
     if (task.type === "javlib") {
-        browser.tabs.sendMessage(tabId, { command: "javlibrary-dvdid", serial: task.serial });
+        const msg = { command: "javlibrary-dvdid", serial: task.serial };
+        if (task.mergeRequestId) msg.mergeRequestId = task.mergeRequestId;
+        browser.tabs.sendMessage(tabId, msg);
         console.log("javlib爬虫开始:" + tabId);
     } else if (task.type === "javdb") {
-       browser.tabs.sendMessage(tabId, { command: "javdb-dvdid", serial: task.serial });
+        const msg = { command: "javdb-dvdid", serial: task.serial };
+        if (task.mergeRequestId) msg.mergeRequestId = task.mergeRequestId;
+        browser.tabs.sendMessage(tabId, msg);
         console.log("javdb爬虫开始:" + tabId);
     } else if(task.type === "fanza"){
       browser.tabs.sendMessage(tabId, { command: "fanza-dvdid", serial: task.serial });
       console.log("fanza爬虫开始:" + tabId);
     } else if (task.type === "javtxt") {
-      browser.tabs.sendMessage(tabId, { command: "javtxt-dvdid", serial: task.serial });
+        const msg = { command: "javtxt-dvdid", serial: task.serial };
+        if (task.mergeRequestId) msg.mergeRequestId = task.mergeRequestId;
+        browser.tabs.sendMessage(tabId, msg);
       console.log("javtxt爬虫开始:" + tabId);
     } else if (task.type === "javtxt-top-actresses") {
       browser.tabs.sendMessage(tabId, { command: "javtxt-parse-top-actresses" });
       console.log("javtxt top-actresses:" + tabId);
     } else if (task.type === "avdanyuwiki") {
-      browser.tabs.sendMessage(tabId, { command: "avdanyuwiki-dvdid", serial: task.serial });
+        const msg = { command: "avdanyuwiki-dvdid", serial: task.serial };
+        if (task.mergeRequestId) msg.mergeRequestId = task.mergeRequestId;
+        browser.tabs.sendMessage(tabId, msg);
       console.log("avdanyuwiki爬虫开始:" + tabId);
     } else if (task.type === "minnano") {
       browser.tabs.sendMessage(tabId, {
@@ -439,6 +696,21 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {//这�
         return true;
     }
     if (message.command === "send_crawler_result") {
+        if (message.merge_request_id && message.web) {
+            const rid = message.merge_request_id;
+            const web = message.web;
+            if (WORK_MERGE_SITES_ALL.indexOf(web) >= 0) {
+                const job = workMergeJobs.get(rid);
+                if (
+                    job &&
+                    job.sites &&
+                    job.sites.indexOf(web) >= 0
+                ) {
+                    onWorkMergeSiteResult(rid, web, message.data || {});
+                }
+                return false;
+            }
+        }
         console.log("发送爬虫的结果到本地服务器", message);
         // Send to local server
         fetch(`${SERVER_URL}/api/v1/crawler-result`, {
