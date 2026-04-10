@@ -2,11 +2,14 @@
 
 """这个图片需要日本ip才能爬，其他的都行，而且日本ip可以访问"""
 
+import logging
 import re
+import threading
+
 import requests
 from bs4 import BeautifulSoup
+
 from utils.utils import convert_fanza
-import logging
 
 
 def search_work(serial_number: str) -> BeautifulSoup | None:
@@ -223,3 +226,43 @@ def SearchInfoDanyukiwi(serial_number) -> dict:
     }
     logging.info(f"解析avdanyuwiki结束")
     return data
+
+
+# --- 浏览器插件爬取（与 javlib / javdb 同模式）；上方 HTTP 逻辑保留供脚本或无插件环境使用 ---
+
+
+def jump_to_avdanyuwiki(serial_number: str) -> dict:
+    """由 Firefox 插件在页面内解析（同步阻塞），结果字段与 ``SearchInfoDanyukiwi`` 一致。"""
+
+    from core.crawler.jump import send_crawler_request
+    from server.bridge import bridge
+    from utils.utils import serial_number_equal
+
+    event = threading.Event()
+    result_container: dict = {"data": {}}
+
+    def temp_callback(data: dict) -> None:
+        if not serial_number_equal(data.get("id", ""), serial_number):
+            return
+        mapped = dict(data)
+        if mapped.get("director") == "さもあり":
+            mapped["director"] = "SamoAri"
+        result_container["data"] = mapped
+        event.set()
+
+    bridge.avdanyuwikiFinished.connect(temp_callback)
+    try:
+        send_crawler_request("avdanyuwiki", serial_number)
+        if not event.wait(timeout=30):
+            logging.info("Error: avdanyuwiki crawl timeout for %s", serial_number)
+            return {}
+        return result_container["data"]
+    finally:
+        try:
+            bridge.avdanyuwikiFinished.disconnect(temp_callback)
+        except Exception as e:
+            logging.debug(
+                "jump_to_avdanyuwiki: 断开临时回调失败（可能未连接）: %s",
+                e,
+                exc_info=True,
+            )
