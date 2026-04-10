@@ -551,7 +551,9 @@ class ViewModel(QObject):
         else:
             if aid_int is not None and self.actress_id != aid_int:
                 self.msg.show_warning(
-                    "提示", "采集上下文与当前编辑女优不一致，已忽略。"
+                    "提示",
+                    "采集上下文与当前编辑女优不一致，已忽略。",
+                    top_level=True,
                 )
                 return
 
@@ -569,14 +571,17 @@ class ViewModel(QObject):
                 self.msg.show_warning(
                     "minnano 更新失败",
                     hints.get(str(err), str(err)),
+                    top_level=True,
                 )
                 return
             raw = body.get("data")
             if not raw:
-                self.msg.show_warning("minnano 更新失败", "未收到数据。")
+                self.msg.show_warning(
+                    "minnano 更新失败", "未收到数据。", top_level=True
+                )
                 return
             self.load(self.actress_id)
-            self.msg.show_info("爬虫更新", "已从 minnano 写入数据库。")
+            self.msg.show_info("爬虫更新", "已从 minnano 写入数据库。", top_level=True)
             return
 
         data = body.get("data") or {}
@@ -656,7 +661,11 @@ class ViewModel(QObject):
             except Exception as e:
                 logging.warning("下载 minnano 头像失败: %s", e)
 
-        self.msg.show_info("采集完成", "已从 minnano 填入表单，请核对后点击提交。")
+        self.msg.show_info(
+            "采集完成",
+            "已从 minnano 填入表单，请核对后点击提交。",
+            top_level=True,
+        )
 
     @Slot(bool)
     def on_result(self, result: bool, actressName: str):  # Qsignal回传信息

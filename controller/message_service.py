@@ -72,10 +72,17 @@ def _bring_parent_to_attention(parent) -> None:
 
 class IMessageService(ABC):
     @abstractmethod
-    def show_info(self, title, message): ...
+    def show_info(self, title, message, *, top_level: bool = False): ...
 
     @abstractmethod
-    def show_warning(self, title, message, *, attention_grabbing: bool = False): ...
+    def show_warning(
+        self,
+        title,
+        message,
+        *,
+        attention_grabbing: bool = False,
+        top_level: bool = False,
+    ): ...
 
     @abstractmethod
     def show_critical(self, title, message): ...
@@ -103,20 +110,60 @@ class MessageBoxService(IMessageService):
     def _apply_tokens_to_box(self, box: QMessageBox) -> None:
         box.setStyleSheet(_messagebox_qss_from_tokens(self._tokens()))
 
-    def show_info(self, title, message):
+    def show_info(self, title, message, *, top_level: bool = False):
+        """top_level：先唤起本地顶层主窗口，再以主窗口为父显示提示（适合浏览器插件回传后）。"""
+        if top_level:
+            win = self.parent.window() if self.parent else None
+            if win is not None:
+                _bring_parent_to_attention(win)
+                box_parent = win
+                QApplication.processEvents()
+            else:
+                box_parent = None
+        else:
+            box_parent = self.parent
         box = QMessageBox(
-            QMessageBox.Information, title, message, QMessageBox.Ok, self.parent
+            QMessageBox.Information,
+            title,
+            message,
+            QMessageBox.Ok,
+            box_parent,
         )
+        if top_level:
+            box.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
         self._apply_tokens_to_box(box)
         box.exec()
 
-    def show_warning(self, title, message, *, attention_grabbing: bool = False):
-        if attention_grabbing:
+    def show_warning(
+        self,
+        title,
+        message,
+        *,
+        attention_grabbing: bool = False,
+        top_level: bool = False,
+    ):
+        grab = attention_grabbing or top_level
+        if top_level:
+            win = self.parent.window() if self.parent else None
+            if win is not None:
+                _bring_parent_to_attention(win)
+                box_parent = win
+                QApplication.processEvents()
+            else:
+                box_parent = None
+        elif attention_grabbing:
             _bring_parent_to_attention(self.parent)
+            box_parent = self.parent
+        else:
+            box_parent = self.parent
         box = QMessageBox(
-            QMessageBox.Warning, title, message, QMessageBox.Ok, self.parent
+            QMessageBox.Warning,
+            title,
+            message,
+            QMessageBox.Ok,
+            box_parent,
         )
-        if attention_grabbing:
+        if grab:
             box.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
         self._apply_tokens_to_box(box)
         box.exec()
