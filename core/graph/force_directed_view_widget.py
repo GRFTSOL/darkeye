@@ -140,8 +140,9 @@ class ForceDirectedViewWidget(QWidget):
         self.panel.removeEdgeRequested.connect(self._on_removeEdgeRequested)
 
         self.panel.graphModeChanged.connect(self._switch_graph)
-
-
+        self.page_favorite_toggle.toggled.connect(
+            self._on_page_favorite_toggle_toggled
+        )
 
         # 与面板内 deferred 几何同步配合：此处直接更新，避免再叠一层 singleShot 晚一帧
         self.panel.contentSizeChanged.connect(self._update_panel_geometry)
@@ -395,11 +396,18 @@ class ForceDirectedViewWidget(QWidget):
     def set_page_graph_filter_toggle_visible(self, visible: bool) -> None:
         """控制右下角图过滤切换是否可见（默认仅在 ForceDirectPage 开启）。"""
         show_toggle = bool(visible)
-        self.page_favorite_toggle.setVisible(show_toggle)
+
         if not show_toggle and self.page_favorite_toggle.isChecked():
             self.page_favorite_toggle.setChecked(False)
-            self._switch_graph("all")
+        self.page_favorite_toggle.setVisible(show_toggle)
         self._update_panel_geometry()
+
+    @Slot(bool)
+    def _on_page_favorite_toggle_toggled(self, checked: bool) -> None:
+        """右下角「仅显示收藏作品图」与 session 过滤器同步。"""
+        if not self.page_favorite_toggle.isVisible():
+            return
+        self._switch_graph("favorite" if checked else "all")
 
     def _on_nodeColorGroupChanged(self, group: str, color: QColor) -> None:
         """面板修改某类节点颜色后，更新覆盖并实时推送到 view。"""
