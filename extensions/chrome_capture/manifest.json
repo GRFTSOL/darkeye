@@ -83,7 +83,8 @@
       ],
       "js": [
         "content/sites/minnano-scrape.js",
-        "content/sites/minnano.js"
+        "content/sites/minnano.js",
+        "content/sites/minnano-auto.js"
       ]
     },
     {

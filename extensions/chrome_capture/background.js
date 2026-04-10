@@ -230,6 +230,7 @@ function handleCommand(data) {
   if (data.type === "crawler") {
     const web = data.web;
     const serial_number = data.serial_number;
+    const crawlerContext = data.context || {};
     // 爬虫统一在专用窗口后台打开，不影响当前浏览窗口
     const addPendingInNewWindow = (url, type) => {
       const addTab = (windowId) => {
@@ -237,7 +238,11 @@ function handleCommand(data) {
           .create({ windowId, url, active: false })
           .then((tab) => {
             if (tab && tab.id !== undefined) {
-              pendingCrawlers.set(tab.id, { type, serial: serial_number });
+              pendingCrawlers.set(tab.id, {
+                type,
+                serial: serial_number,
+                context: crawlerContext,
+              });
             }
             return maybeNotifyCrawlerBacklog();
           })
@@ -285,6 +290,20 @@ function handleCommand(data) {
       const url =
         "https://avdanyuwiki.com/?s=" + encodeURIComponent(q);
       addPendingInNewWindow(url, "avdanyuwiki");
+    }
+    if (web === "minnano") {
+      const ctx = crawlerContext || {};
+      const mid = (ctx.minnano_url && String(ctx.minnano_url).trim()) || "";
+      let url;
+      if (mid) {
+        url = "https://www.minnano-av.com/actress" + mid + ".html";
+      } else {
+        url =
+          "https://www.minnano-av.com/search_result.php?search_scope=actress&search_word=" +
+          encodeURIComponent(String(serial_number)) +
+          "&search=+Go+";
+      }
+      addPendingInNewWindow(url, "minnano");
     }
   }
   if (data.type === "fetch_cover_image") {
@@ -340,6 +359,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         serial: task.serial,
       });
       console.log("avdanyuwiki爬虫开始:" + tabId);
+    } else if (task.type === "minnano") {
+      chrome.tabs.sendMessage(tabId, {
+        command: "minnano-actress-auto",
+        jpName: task.serial,
+        context: Object.assign({}, task.context || {}, { persist: true }),
+      });
+      console.log("minnano爬虫开始:" + tabId);
     }
 
     // 注意：如果我们采用 Content Script 自动接力模式，这里可能不需要删除，每次刷新时判断有无任务，有就处理，直接任务全部结束
