@@ -430,13 +430,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.command === "capture_minnano_actress") {
     const tabId = sender.tab && sender.tab.id;
-    const context =
+    const tabCtx =
       tabId !== undefined ? tabNavigateContext.get(tabId) || {} : {};
+    const msgCtx = message.context || {};
+    const context = Object.assign({}, tabCtx, msgCtx);
     const payload = {
       context,
-      data: message.data,
       url: sender.tab && sender.tab.url ? sender.tab.url : "",
     };
+    if (message.error) {
+      payload.error = message.error;
+    } else {
+      payload.data = message.data;
+    }
     fetch(`${SERVER_URL}/api/v1/minnano-actress-capture`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -446,6 +452,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((data) => {
         console.log("DarkEye: minnano actress capture sent", data);
         sendResponse({ ok: true, data });
+        if (
+          context.persist &&
+          !message.error &&
+          tabId !== undefined
+        ) {
+          setTimeout(() => {
+            chrome.tabs.remove(tabId);
+          }, 10000);
+        }
       })
       .catch((error) => {
         console.error("DarkEye: Failed to send minnano capture", error);

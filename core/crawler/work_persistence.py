@@ -25,6 +25,18 @@ from core.schema.model import CrawledWorkData
 from utils.utils import text2tag_id_list
 
 
+def _dispatch_minnano_actress_update_via_browser(actress_id: int, jp_name: str) -> bool:
+    """通知浏览器插件拉取 minnano；成功表示本地服务已转发且至少有一个 SSE 客户端。"""
+    from core.crawler.jump import send_minnano_actress_crawler_request
+    from core.database.query import exist_minnao_id
+
+    mid = exist_minnao_id(actress_id)
+    ok, count = send_minnano_actress_crawler_request(
+        jp_name, actress_id, mid, silent=True
+    )
+    return bool(ok and count > 0)
+
+
 class DataUpdate:
     """把爬虫结果写入库或推给 GUI；封面通过 SequentialDownloader 在主线程链路上触发。"""
 
@@ -119,10 +131,9 @@ class DataUpdate:
                         from PySide6.QtCore import QThreadPool
 
                         from core.crawler.worker import Worker, wire_worker_finished
-                        from core.crawler.minnanoav import SearchSingleActressInfo
 
                         worker = Worker(
-                            lambda aid=id, nm=actress: SearchSingleActressInfo(aid, nm)
+                            _dispatch_minnano_actress_update_via_browser, id, actress
                         )
                         wire_worker_finished(
                             worker,

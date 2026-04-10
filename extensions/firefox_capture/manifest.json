@@ -24,7 +24,7 @@
     { "matches": ["*://javtxt.com/*", "*://www.javtxt.com/*"], "js": ["content/sites/javtxt.js"] },
     { "matches": ["*://avdanyuwiki.com/*", "*://www.avdanyuwiki.com/*"], "js": ["content/sites/avdanyuwiki.js"] },
     { "matches": ["*://*.dmm.co.jp/*"], "js": ["content/sites/fanza.js"] },
-    { "matches": ["*://www.minnano-av.com/*"], "js": ["content/sites/minnano-scrape.js", "content/sites/minnano.js"] },
+    { "matches": ["*://www.minnano-av.com/*"], "js": ["content/sites/minnano-scrape.js", "content/sites/minnano.js", "content/sites/minnano-auto.js"] },
     { "matches": ["*://javdb.com/*", "*://www.javdb.com/*", "*://www.javlibrary.com/*", "*://javtxt.com/*", "*://www.javtxt.com/*"], "js": ["content/sites/sniffer.js"], "css": ["content/style.css"] }
   ],
   "browser_specific_settings": {

@@ -112,7 +112,8 @@ async def check_existence(request: CheckExistenceRequest):
 async def receive_minnano_actress_capture(body: Dict[str, Any]):
     """
     接收插件在女优详情页采集的完整字段，经 bridge 回填编辑界面。这个是给浏览器插件用的
-    body: { "context": { "actress_id"? }, "data": { 日文名, ... }, "url"? }
+    body: { "context": { "actress_id"? , "persist"? }, "data": { 日文名, ... }?,
+          "url"?, "error"? } — 仅 error + context 时表示自动更新失败（如多条搜索结果）
     """
     try:
         logger.info("Received minnano actress capture from extension")
@@ -211,6 +212,7 @@ async def send_navigate(command: NavigateCommand):
 class CrawlerRequest(BaseModel):
     web: str
     serial_number: str
+    context: Optional[Dict[str, Any]] = None
 
 
 class CrawlerBacklogWarningBody(BaseModel):
@@ -245,9 +247,15 @@ async def start_crawler(data: CrawlerRequest):
     """
     发送爬虫指令给插件，指定要爬取的网站和番号
     """
-    logger.info(f"广播爬虫指令: {data.web} {data.serial_number}")
+    logger.info(f"广播爬虫指令: {data.web} {data.serial_number} {data.context!r}")
     dead_clients = []
-    message = {"type": "crawler", "web": data.web, "serial_number": data.serial_number}
+    message: Dict[str, Any] = {
+        "type": "crawler",
+        "web": data.web,
+        "serial_number": data.serial_number,
+    }
+    if data.context is not None:
+        message["context"] = data.context
     event_data = f"data: {json.dumps(message)}\n\n"
 
     for client in sse_clients:

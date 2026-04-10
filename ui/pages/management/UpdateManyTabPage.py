@@ -182,9 +182,7 @@ class UpdateManyTabPage(LazyWidget):
                 f"覆盖翻译中 {done}/{total} · {elapsed:.1f}s"
             )
         else:
-            self.btn_force_translate_cn.setText(
-                f"覆盖翻译中 0/0 · {elapsed:.1f}s"
-            )
+            self.btn_force_translate_cn.setText(f"覆盖翻译中 0/0 · {elapsed:.1f}s")
 
     @Slot()
     def task_normalize_cover_filenames(self):
@@ -209,11 +207,11 @@ class UpdateManyTabPage(LazyWidget):
     @Slot()
     def search_actress_info(self):
         # 开始后台线程
-        from core.crawler.minnanoav import actress_need_update, SearchActressInfo
+        from core.crawler.minnanoav import actress_need_update, SearchActressInfo_js
         from core.crawler.worker import Worker, wire_worker_finished
 
         if actress_need_update():
-            worker = Worker(SearchActressInfo)  # 传一个函数名进去
+            worker = Worker(SearchActressInfo_js)
             wire_worker_finished(worker, self.on_result)
             QThreadPool.globalInstance().start(worker)
             self.msg.show_info("开始更新", "开始更新，可能需要一段时间")

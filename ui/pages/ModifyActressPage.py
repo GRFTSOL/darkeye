@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QSizePolicy,
 )
-from PySide6.QtCore import Qt, QObject, Signal, Property, Slot, QThreadPool
+from PySide6.QtCore import Qt, QObject, Signal, Property, Slot
 
 import copy
 import json
@@ -487,20 +487,34 @@ class ViewModel(QObject):
 
     @Slot()
     def clawer_update(self):
-        """爬虫更新单个女优的数据，是直接更新，而不是写界面后提交"""
-        from core.crawler.minnanoav import SearchSingleActressInfo
-        from core.crawler.worker import Worker, wire_worker_finished
+        """通过 Firefox 插件打开 minnano，回传后由 apply_minnano_capture 写库。
 
-        # taskmanager=TaskManager.instance()
-        # task=taskmanager.add_task("爬虫更新单个女优数据")
+        自动爬取成功且数据已 POST 到本机后，扩展约 10s 关闭该爬虫标签（与番号爬虫一致）。
+        """
+        from core.crawler.jump import send_minnano_actress_crawler_request
+
+        jp = self.actress_name[0]["jp"]
         logging.info(self.actress_id)
-        logging.info(self.actress_name[0]["jp"])
-        worker = Worker(
-            lambda: SearchSingleActressInfo(self.actress_id, self.actress_name[0]["jp"])
-        )  # 传一个函数名进去，注意这里
-        nm = self.actress_name[0]["jp"]
-        wire_worker_finished(worker, lambda r, n=nm: self.on_result(r, n))
-        QThreadPool.globalInstance().start(worker)
+        logging.info(jp)
+        ok, count = send_minnano_actress_crawler_request(
+            jp, self.actress_id, self.get_minnano_id()
+        )
+        if not ok:
+            self.msg.show_warning(
+                "爬虫更新",
+                "无法连接本地服务，请确认 DarkEye 已启动。",
+            )
+            return
+        if count <= 0:
+            self.msg.show_warning(
+                "爬虫更新",
+                "未连接浏览器插件：请打开 Firefox 并启用 DarkEye 扩展。",
+            )
+            return
+        self.msg.show_info(
+            "爬虫更新",
+            "已通知 Firefox 在后台打开 minnano，完成后将自动写入数据库。",
+        )
 
     def update_minnano_id(self, value):
         """将女优的minnano_id直接写入数据库"""
@@ -511,28 +525,59 @@ class ViewModel(QObject):
 
     @Slot(dict)
     def apply_minnano_capture(self, body: dict):
-        """插件采集的女优详情 JSON 仅回填界面；不写库，用户确认后点「提交修改」再持久化（含 minnano id）。"""
+        """插件采集：手动模式仅回填表单；persist 模式由插件自动任务写库。"""
         import copy
         from datetime import datetime
         from pathlib import Path
 
         from config import TEMP_PATH
-        from core.crawler.download import download_image
+        from core.crawler.download import download_image_js
 
         if not body or self.actress_id is None:
             return
         ctx = body.get("context") or {}
+        persist = bool(ctx.get("persist"))
         aid = ctx.get("actress_id")
+        aid_int = None
         if aid is not None:
             try:
                 aid_int = int(aid)
             except (TypeError, ValueError):
                 aid_int = None
+
+        if persist:
+            if aid_int is not None and self.actress_id != aid_int:
+                return
+        else:
             if aid_int is not None and self.actress_id != aid_int:
                 self.msg.show_warning(
                     "提示", "采集上下文与当前编辑女优不一致，已忽略。"
                 )
                 return
+
+        if persist:
+            err = body.get("error")
+            if err:
+                hints = {
+                    "multiple_search_results": (
+                        "minnano 搜索到多名女优，请填写 minnano id 后重试或使用手动跳转。"
+                    ),
+                    "minnano_auto_no_match": "未在 minnano 找到匹配条目。",
+                    "minnano_auto_unexpected_page": "页面状态异常，无法自动采集。",
+                    "minnano_scrape_unavailable": "页面脚本未就绪，请刷新后重试。",
+                }
+                self.msg.show_warning(
+                    "minnano 更新失败",
+                    hints.get(str(err), str(err)),
+                )
+                return
+            raw = body.get("data")
+            if not raw:
+                self.msg.show_warning("minnano 更新失败", "未收到数据。")
+                return
+            self.load(self.actress_id)
+            self.msg.show_info("爬虫更新", "已从 minnano 写入数据库。")
+            return
 
         data = body.get("data") or {}
         mid = data.get("minnano_actress_id")
@@ -605,7 +650,7 @@ class ViewModel(QObject):
                 TEMP_PATH.mkdir(parents=True, exist_ok=True)
                 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
                 dest = Path(TEMP_PATH) / f"minnano_{self.actress_id}_{ts}.jpg"
-                ok, _ = download_image(url_img, str(dest))
+                ok, _ = download_image_js(url_img, str(dest))
                 if ok:
                     self.set_image_urlA(str(dest.resolve()))
             except Exception as e:
