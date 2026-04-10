@@ -1111,7 +1111,7 @@ class AddWorkTabPage3(LazyWidget):
 
         self.coverdroplabel = CoverDropWidget(aspect_ratio=0.7)
 
-        self.label_serial_umber = Label("番       号：")
+        self.label_serial_umber = Label("番      号：")
         self.input_serial_number = CompleterLineEdit(
             lambda: submit_db_raw(get_serial_number).result()
         )
@@ -1121,7 +1121,7 @@ class AddWorkTabPage3(LazyWidget):
         self.label_time = Label("发布日期：")
         self.input_time = LineEdit()
         self.input_time.setPlaceholderText("YYYY-MM-DD")
-        self.label_director = Label("导       演：")
+        self.label_director = Label("导      演：")
         self.input_director = CompleterLineEdit(
             lambda: submit_db_raw(get_unique_director).result()
         )
@@ -1159,13 +1159,13 @@ class AddWorkTabPage3(LazyWidget):
         jp_story_label_layout.addWidget(self.label_jp_story)
         jp_story_label_layout.addWidget(self.btn_trans_story)
 
-        self.label_maker = Label("片       商：")
+        self.label_maker = Label("片      商：")
         self.input_maker = MakerSelector(submit_db_raw(get_maker_name).result())
 
-        self.label_label = Label("厂       牌：")
+        self.label_label = Label("厂      牌：")
         self.input_label = LabelSelector(submit_db_raw(get_label_name).result())
 
-        self.label_series = Label("系       列：")
+        self.label_series = Label("系      列：")
         self.input_series = SeriesSelector(submit_db_raw(get_series_name).result())
 
         self.actressselector = ActressSelector()
