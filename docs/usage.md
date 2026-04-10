@@ -318,3 +318,58 @@ https://raw.githubusercontent.com/de4321/darkeye/refs/heads/main/scripts/jvideo2
   },
 ```
 
+强烈建议把这个例子加上可以更好的帮你定位大图，老用户需要手动添加。
+```
+  {
+    "name": "fanza大图封面",
+    "url": "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{serial}/{serial}pl.jpg",
+    "serial_transform": "fanza",
+    "description": "fanza大图封面可能链接"
+  },
+```
+
+
+## LLM翻译的使用
+当选择LLM翻译时，爬虫会自动抛弃中文标题与故事，根据日文标题与故事自动翻译，而且不会降级成Google，失败就是空的，这一点后面补充就行了。
+
+### 外购API
+这个有钱就可以现在是兼容OpenAi的
+
+### 本地搭建（推荐）
+
+以本地有张5060(8G)为例。
+使用llama.cpp或者ollama
+
+下载
+
+https://huggingface.co/SakuraLLM/Sakura-7B-Qwen2.5-v1.0-GGUF/tree/main
+
+下载q4量化的gguf文件，或者其他的LLM大模型，现在更强可以下载更大的。小的下载更好的
+
+#### llama.cpp
+
+运行参数
+
+在powershell中，定位到编译好的llama-server.exe的位置，修改下面`E:\LLM\sakura-7b-qwen2.5-v1.0-iq4xs.gguf`这个具体模型的位置，然后运行
+```
+llama-server.exe --host 0.0.0.0 --port 8080 --model E:\LLM\sakura-7b-qwen2.5-v1.0-iq4xs.gguf -c 2048  -n 512 --gpu-layers 99 --batch-size 512 --ubatch-size 256 --threads 6 --cache-type-k q8_0  --cache-type-v q8_0  --no-mmap --mlock --flash-attn 'on' 
+```
+
+按照入下设置
+
+BaseURL输入
+```
+http://127.0.0.1:8080/v1
+```
+模型的名字一般就是本地那个gguf的名字
+或者可以在浏览器输入`http://127.0.0.1:8080/v1/models`查看模型的名字
+
+![](assets/LLM设置.jpg)
+
+其中本地运行时没密码，随便输入一个，然后测试一下翻译的好坏。
+
+在`管理`->`批量操作`->`一键翻译标题/简介`或者`覆盖翻译标题/简介`
+
+
+
+
