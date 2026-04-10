@@ -285,6 +285,10 @@ function handleCommand(data) {
         encodeURIComponent(String(serial_number));
       addPendingInNewWindow(url, "javtxt");
     }
+    if (web === "javtxt-top-actresses") {
+      const url = "https://javtxt.com/top-actresses";
+      addPendingInNewWindow(url, "javtxt-top-actresses");
+    }
     if (web === "avdanyuwiki") {
       const q = convertFanzaForAvdanyuwiki(String(serial_number));
       const url =
@@ -353,6 +357,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         serial: task.serial,
       });
       console.log("javtxt爬虫开始:" + tabId);
+    } else if (task.type === "javtxt-top-actresses") {
+      chrome.tabs.sendMessage(tabId, {
+        command: "javtxt-parse-top-actresses",
+      });
+      console.log("javtxt top-actresses:" + tabId);
     } else if (task.type === "avdanyuwiki") {
       chrome.tabs.sendMessage(tabId, {
         command: "avdanyuwiki-dvdid",

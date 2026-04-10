@@ -188,7 +188,7 @@ async def send_navigate(command: NavigateCommand):
     logger.info(f"Broadcasting navigate command: {command}")
     dead_clients = []
 
-    #组装消息
+    # 组装消息
     message = {
         "type": "navigate",
         "url": command.url,
@@ -290,12 +290,24 @@ async def receive_crawler_result(data: Dict[str, Any]):
             bridge.javdbFinished.emit(data.get("data", {}))
         elif web == "javtxt":
             bridge.javtxtFinished.emit(data.get("data", {}))
+        elif web == "javtxt-top-actresses":
+            inner = data.get("data") or {}
+            names = inner.get("names")
+            if not isinstance(names, list):
+                names = []
+            bridge.javtxtTopActressesFinished.emit(
+                {
+                    "ok": bool(data.get("results")),
+                    "names": names,
+                    "error": inner.get("error"),
+                }
+            )
         elif web == "avdanyuwiki":
             bridge.avdanyuwikiFinished.emit(data.get("data", {}))
         elif web == "fanza":
             pass
         else:
-            print("非法消息")
+            logger.warning("未识别的 crawler-result web: %s", web)
         return {"status": "success", "message": "Data received"}
     except Exception as e:
         logger.error(f"Error processing capture data: {e}")

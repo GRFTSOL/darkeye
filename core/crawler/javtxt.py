@@ -267,46 +267,66 @@ def fetch_javtxt_movie_info(serial_number: str) -> dict:
     return scrape_javtxt_movie_details(url)
 
 
-def top_actresses():
-    """获得javtxt的最受欢迎女优"""
-    url = "https://javtxt.com/top-actresses"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    }
-
-    response = fetch_url(url=url, headers=headers, timeout=10)
-    if not response:
-        logging.warning("-----请求失败-----")
-        return False
-
-    result: list[str] = []
-    if response.status_code == 200:  # 判断请求成功
-        logging.info("-----请求成功-----")
-        soup = BeautifulSoup(response.text, "html.parser")
-        actress_links = soup.find_all("p", class_="actress-name")
-        for actress in actress_links:
-            result.append(actress.text)
-    else:
-        logging.info("-----请求失败-----")
-        logging.info(response.status_code)
-        return False
-
-    # 下面是写入
-    logging.info(f"获取到热门女优{result}")
+def apply_javtxt_top_actress_names(names: list[str]) -> bool:
+    """将 javtxt 热门女优名列表写入数据库（仅处理前 50 条）。"""
+    from core.database.insert import InsertNewActress
     from core.database.query import exist_actress
+    from controller.global_signal_bus import global_signals
 
-    for actress in result[:50]:  # 只取前50个
+    logging.info("获取到热门女优 %s", names[:50])
+    for actress in names[:50]:
         actress = actress.replace("卜", "ト")
         if not exist_actress(actress):
-            from core.database.insert import InsertNewActress
-
             if InsertNewActress(actress, actress):
-                logging.info(f"添加热门女优{actress}")
-
-            from controller.global_signal_bus import global_signals
-
+                logging.info("添加热门女优%s", actress)
             global_signals.actressDataChanged.emit()
         else:
-            logging.info(f"热门女优{actress}已存在")
+            logging.info("热门女优%s已存在", actress)
     return True
+
+
+def top_actresses() -> bool:
+    """由浏览器插件打开 javtxt 热门页并解析 DOM，再写库。"""
+    event = threading.Event()
+    result_holder: dict = {"ok": False}
+
+    def on_done(payload: object) -> None:
+        if not isinstance(payload, dict):
+            event.set()
+            return
+        ok = bool(payload.get("ok"))
+        names = payload.get("names")
+        if not isinstance(names, list):
+            names = []
+        err = payload.get("error")
+        if ok and not names:
+            logging.warning("javtxt 热门女优：解析成功但未得到任何名称")
+            ok = False
+        result_holder["ok"] = ok
+        if ok and names:
+            apply_javtxt_top_actress_names(names)
+        elif not ok:
+            logging.warning(
+                "javtxt 热门女优插件失败: %s",
+                err if err else "unknown",
+            )
+        event.set()
+
+    bridge.javtxtTopActressesFinished.connect(on_done)
+    try:
+        if not send_crawler_request("javtxt-top-actresses", ""):
+            logging.error("发送热门女优爬虫指令失败（插件未连接或无 SSE 客户端）")
+            return False
+        if not event.wait(timeout=90):
+            logging.error("javtxt 热门女优解析超时")
+            return False
+        return bool(result_holder.get("ok"))
+    finally:
+        try:
+            bridge.javtxtTopActressesFinished.disconnect(on_done)
+        except Exception as e:
+            logging.debug(
+                "top_actresses: 断开 javtxtTopActressesFinished 失败: %s",
+                e,
+                exc_info=True,
+            )

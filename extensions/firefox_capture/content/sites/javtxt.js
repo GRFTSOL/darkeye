@@ -37,6 +37,44 @@
         return /\/v\/[^/]+\/?$/i.test(href || "");
     }
 
+    function isTopActressesPageUrl(href) {
+        try {
+            const u = new URL(href, window.location.origin);
+            return /top-actresses/i.test(u.pathname || "");
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function sendTopActressesResult(ok, names, errorMsg) {
+        browser.runtime.sendMessage({
+            command: "send_crawler_result",
+            id: "",
+            web: "javtxt-top-actresses",
+            result: ok,
+            data: ok
+                ? { names: names || [] }
+                : { names: [], error: errorMsg || "parse failed" },
+        });
+    }
+
+    function parseTopActresses() {
+        if (isCloudflarePage()) {
+            console.log("DarkEye: javtxt top-actresses 遇到 Cloudflare");
+            sendTopActressesResult(false, [], "Cloudflare");
+            return;
+        }
+        const els = document.querySelectorAll("p.actress-name");
+        const names = [];
+        els.forEach((el) => {
+            const t = (el.textContent || "").trim();
+            if (t) {
+                names.push(t);
+            }
+        });
+        sendTopActressesResult(true, names.slice(0, 50), undefined);
+    }
+
     function absoluteUrl(maybeRelative) {
         if (!maybeRelative) return "";
         try {
@@ -200,6 +238,10 @@
     }
 
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.command === "javtxt-parse-top-actresses") {
+            parseTopActresses();
+            return;
+        }
         if (message.command === "javtxt-dvdid") {
             sessionStorage.setItem("darkeye_auto_parse", "true");
             sessionStorage.setItem("id", message.serial);
@@ -210,7 +252,7 @@
     if (sessionStorage.getItem("darkeye_auto_parse") === "true") {
         sessionStorage.removeItem("darkeye_auto_parse");
         const href = window.location.href;
-        if (!isSearchPageUrl(href)) {
+        if (!isSearchPageUrl(href) && !isTopActressesPageUrl(href)) {
             setTimeout(() => {
                 console.log("DarkEye: javtxt 检测到自动跳转任务，开始解析...");
                 if (isDetailPageUrl(href)) {
