@@ -317,13 +317,13 @@ Remove-Item -Path ".\dist\main.dist\numpy\_core\_multiarray_tests.pyd" -Force
 Remove-Item -Path ".\dist\main.dist\matplotlib\_qhull.pyd" -Force 
 Remove-Item -Path ".\dist\main.dist\matplotlib\_tri.pyd" -Force 
 
-Remove-Item -Path ".\dist\main.dist\PySide6\plugins\platforms\qdirect2d.dll" -Force 
-Remove-Item -Path ".\dist\main.dist\PySide6\plugins\platforms\qminimal.dll" -Force 
-Remove-Item -Path ".\dist\main.dist\PySide6\plugins\platforms\qoffscreen.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\PySide6\qt-plugins\platforms\qdirect2d.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\PySide6\qt-plugins\platforms\qminimal.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\PySide6\qt-plugins\platforms\qoffscreen.dll" -Force 
 
-Remove-Item -Path ".\dist\main.dist\PySide6\plugins\tls\qcertonlybackend.dll" -Force 
-Remove-Item -Path ".\dist\main.dist\PySide6\plugins\tls\qopensslbackend.dll" -Force 
-Remove-Item -Path ".\dist\main.dist\PySide6\plugins\tls\qschannelbackend.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\PySide6\qt-plugins\tls\qcertonlybackend.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\PySide6\qt-plugins\tls\qopensslbackend.dll" -Force 
+Remove-Item -Path ".\dist\main.dist\PySide6\qt-plugins\tls\qschannelbackend.dll" -Force 
 
 
 # 打包 tar.zst、更新 update/latest.json（与手动执行 scripts/pack..py 相同）
