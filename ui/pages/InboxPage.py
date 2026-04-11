@@ -18,8 +18,7 @@ from darkeye_ui.components import Label, TokenListView
 
 _WORKFLOW_LABELS: dict[CrawlWorkflowState, str] = {
     CrawlWorkflowState.QUEUED: "排队",
-    CrawlWorkflowState.CRAWLING: "源站爬取",
-    CrawlWorkflowState.MERGING: "合并",
+    CrawlWorkflowState.CRAWLING: "插件拉取",
     CrawlWorkflowState.PERSISTING: "入库",
 }
 

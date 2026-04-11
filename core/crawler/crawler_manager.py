@@ -1,19 +1,22 @@
-import json
 import logging
 import random
+import threading
 from collections import deque
 from typing import Dict, Optional
+from urllib.parse import quote
 
-from PySide6.QtCore import QObject, QThread, QThreadPool, QTimer, Qt, Signal, Slot
+import requests
+from PySide6.QtCore import QObject, QThreadPool, QTimer, Qt, Signal, Slot
 
 from controller.global_signal_bus import global_signals
-from core.crawler.worker import Worker
-from core.crawler.crawler_relays import ResultRelay
 from core.crawler.crawler_task import CrawlerTask, CrawlWorkflowState
 from core.crawler.cover_download import SequentialDownloader
-from core.crawler.merge_service import merge_crawl_results
+from core.crawler.merge_service import crawled_work_from_extension_payload
 from core.crawler.work_persistence import DataUpdate
-from utils.utils import timeit
+
+# 与 server.app WORK_MERGE_TIMEOUT_SEC + 余量一致（manual_tests 使用 130s）
+_WORK_API_BASE = "http://127.0.0.1:56789"
+_WORK_API_TIMEOUT_SEC = 130.0
 
 # 兼容旧 import：其他模块可能 from crawler_manager import DataUpdate / CrawlerTask 等
 __all__ = [
@@ -24,6 +27,14 @@ __all__ = [
     "SequentialDownloader",
     "get_manager",
 ]
+
+
+class _WorkApiSignals(QObject):
+    """后台线程完成 GET /api/v1/work 后向主线程投递结果。"""
+
+    finished = Signal(
+        str, object, object
+    )  # serial, payload dict | None, err str | None
 
 
 class CrawlerManager2(QObject):
@@ -40,21 +51,20 @@ class CrawlerManager2(QObject):
         if not hasattr(self, "_initialized"):
             self._initialized = True
             self.tasks: Dict[str, CrawlerTask] = {}
-            # 源抓取 ResultRelay：(source, serial)；下载 DownloadRelay：id(Worker)
-            self._source_relays: Dict[tuple[str, str], QObject] = {}
             self._download_relays: Dict[int, QObject] = {}
 
             self._unfinished_serials: set[str] = set()
             self._persist_key_unfinished = "Inbox/UnfinishedSerials"
 
             self._crawl_terminated: bool = False
+            self._work_fetch_busy: bool = False
 
-            self._crawl_pool = QThreadPool(self)
-            self._crawl_pool.setObjectName("CrawlerSourcePool")
-            self._crawl_pool.setMaxThreadCount(max(5, QThread.idealThreadCount()))
-            self._merge_pool = QThreadPool(self)
-            self._merge_pool.setObjectName("CrawlerMergePool")
-            self._merge_pool.setMaxThreadCount(2)
+            self._work_api_signals = _WorkApiSignals(self)
+            self._work_api_signals.finished.connect(
+                self._on_work_api_finished,
+                Qt.ConnectionType.QueuedConnection,
+            )
+
             self._download_pool = QThreadPool(self)
             self._download_pool.setObjectName("CoverDownloadPool")
             self._download_pool.setMaxThreadCount(4)
@@ -94,7 +104,7 @@ class CrawlerManager2(QObject):
         return task.workflow_state if task else None
 
     def request_cancel_running(self, serial: str) -> bool:
-        """标记运行中任务在源全部返回后跳过合并与入库（不中断已提交 Worker）。"""
+        """标记运行中任务在请求返回后跳过入库（不中断已发出的 HTTP）。"""
         serial = self._norm_serial(serial)
         task = self.tasks.get(serial)
         if not task or task.serial != serial:
@@ -212,25 +222,6 @@ class CrawlerManager2(QObject):
             return ""
         return str(serial).strip()
 
-    _DEFAULT_CRAWL_SOURCES: tuple[str, ...] = (
-        "javlib",
-        "javdb",
-        "javtxt",
-        "avdanyuwiki",
-    )
-
-    def _crawl_sources_for_serial(self, serial_number: str) -> tuple[str, ...]:
-        """按番号形态选择数据源（须与 pending_sources / dispatch 一致）。"""
-        s = self._norm_serial(serial_number)
-        if not s:
-            return ("javdb",)
-        u = s.upper()
-        if u.startswith("FC2") or u.startswith("HEYZO"):
-            return ("javdb",)
-        if s.replace("-", "").isdigit():
-            return ("javdb",)
-        return self._DEFAULT_CRAWL_SOURCES
-
     def _load_unfinished_from_ini(self) -> list[str]:
         from config import settings
 
@@ -301,156 +292,146 @@ class CrawlerManager2(QObject):
         if not self.request_queue:
             logging.info("队列为空，调度器停止")
             return
+        if self._work_fetch_busy:
+            self._schedule_next(1000)
+            return
 
         import time
 
         self.last_schedule_time = time.time() * 1000
 
         serial, withGUI, selected_fields = self.request_queue.popleft()
-        self._execute_crawl(serial, withGUI, selected_fields)
+        self._execute_work_api_fetch(serial, withGUI, selected_fields)
 
+    def _work_api_url(self, serial: str) -> str:
+        return f"{_WORK_API_BASE}/api/v1/work/{quote(serial, safe='')}"
+
+    def _execute_work_api_fetch(
+        self,
+        serial_number: str,
+        withGUI: bool = False,
+        selected_fields: set[str] | None = None,
+    ) -> None:
+        serial_number = self._norm_serial(serial_number)
+        if not serial_number:
+            self._after_work_api_cycle()
+            return
+
+        self._work_fetch_busy = True
+        task = CrawlerTask(serial_number, withGUI, selected_fields)
+        self.tasks[serial_number] = task
+
+        url = self._work_api_url(serial_number)
+        sig = self._work_api_signals
+
+        def run() -> None:
+            try:
+                r = requests.get(url, timeout=_WORK_API_TIMEOUT_SEC)
+                if r.status_code != 200:
+                    tail = (r.text or "")[:400]
+                    sig.finished.emit(
+                        serial_number,
+                        None,
+                        f"HTTP {r.status_code} {tail}",
+                    )
+                    return
+                try:
+                    body = r.json()
+                except Exception as e:
+                    sig.finished.emit(serial_number, None, f"invalid JSON: {e}")
+                    return
+                if not isinstance(body, dict):
+                    sig.finished.emit(serial_number, None, "response is not an object")
+                    return
+                sig.finished.emit(serial_number, body, None)
+            except Exception as e:
+                sig.finished.emit(serial_number, None, str(e))
+
+        threading.Thread(target=run, daemon=True).start()
+
+    @Slot(str, object, object)
+    def _on_work_api_finished(
+        self, serial: str, payload: object, err: Optional[str]
+    ) -> None:
+        self._work_fetch_busy = False
+        serial = self._norm_serial(serial)
+        if not serial:
+            self._after_work_api_cycle()
+            return
+
+        task = self.tasks.get(serial)
+        if task and task.cancel_requested:
+            if serial in self.tasks:
+                del self.tasks[serial]
+            logging.info("任务 %s 已取消，跳过入库", serial)
+            self._after_work_api_cycle()
+            return
+
+        if err:
+            logging.error("work API 失败 serial=%s: %s", serial, err)
+            if serial in self.tasks:
+                del self.tasks[serial]
+            self._after_work_api_cycle()
+            return
+
+        if not isinstance(payload, dict):
+            logging.error("work API 无效 payload serial=%s", serial)
+            if serial in self.tasks:
+                del self.tasks[serial]
+            self._after_work_api_cycle()
+            return
+
+        if not payload.get("ok"):
+            logging.warning(
+                "work API ok=false serial=%s error=%s",
+                serial,
+                payload.get("error"),
+            )
+            if serial in self.tasks:
+                del self.tasks[serial]
+            self._after_work_api_cycle()
+            return
+
+        data = payload.get("data")
+        if not isinstance(data, dict) or not data:
+            logging.warning("work API 缺少 data serial=%s", serial)
+            if serial in self.tasks:
+                del self.tasks[serial]
+            self._after_work_api_cycle()
+            return
+
+        task = self.tasks.get(serial)
+        if not task or task.cancel_requested:
+            if serial in self.tasks:
+                del self.tasks[serial]
+            self._after_work_api_cycle()
+            return
+
+        try:
+            merged = crawled_work_from_extension_payload(data)
+        except Exception as e:
+            logging.error("解析 extension data 失败 serial=%s: %s", serial, e)
+            if serial in self.tasks:
+                del self.tasks[serial]
+            self._after_work_api_cycle()
+            return
+
+        task.workflow_state = CrawlWorkflowState.PERSISTING
+        DataUpdate(
+            merged,
+            self,
+            withGUI=task.withGUI,
+            selected_fields=task.selected_fields,
+        )
+        self._after_work_api_cycle()
+
+    def _after_work_api_cycle(self) -> None:
+        if getattr(self, "_crawl_terminated", False):
+            return
         if self.request_queue:
             self._schedule_next()
         else:
             logging.info("队列已空，停止后续调度")
-
-    def _execute_crawl(
-        self, serial_number, withGUI=False, selected_fields: set[str] | None = None
-    ):
-        sources = self._crawl_sources_for_serial(serial_number)
-        task = CrawlerTask(serial_number, sources, withGUI, selected_fields)
-        self.tasks[serial_number] = task
-
-        for src in sources:
-            self._dispatch_request(src, serial_number)
-
-    def _dispatch_request(self, source, serial):
-        if source == "javlib":
-            from core.crawler.javlib import jump_to_javlib
-
-            worker = Worker(lambda: jump_to_javlib(serial))
-            relay = ResultRelay(self, "javlib", serial)
-            self._source_relays[("javlib", serial)] = relay
-            worker.signals.setParent(relay)
-            worker.signals.finished.connect(
-                relay.handle, Qt.ConnectionType.QueuedConnection
-            )
-            self._crawl_pool.start(worker)
-        elif source == "fanza":
-            pass
-        elif source == "javdb":
-            from core.crawler.javdb import jump_to_javdb
-
-            worker = Worker(lambda: jump_to_javdb(serial))
-            relay = ResultRelay(self, "javdb", serial)
-            self._source_relays[("javdb", serial)] = relay
-            worker.signals.setParent(relay)
-            worker.signals.finished.connect(
-                relay.handle, Qt.ConnectionType.QueuedConnection
-            )
-            self._crawl_pool.start(worker)
-            print(f"已发送javdb请求，serial:{serial}")
-        elif source == "javtxt":
-            from core.crawler.javtxt import jump_to_javtxt
-
-            worker = Worker(lambda: jump_to_javtxt(serial))
-            relay = ResultRelay(self, "javtxt", serial)
-            self._source_relays[("javtxt", serial)] = relay
-            worker.signals.setParent(relay)
-            worker.signals.finished.connect(
-                relay.handle, Qt.ConnectionType.QueuedConnection
-            )
-            self._crawl_pool.start(worker)
-        elif source == "avdanyuwiki":
-            from core.crawler.avdanyuwiki import jump_to_avdanyuwiki
-
-            worker = Worker(lambda: jump_to_avdanyuwiki(serial))
-            relay = ResultRelay(self, "avdanyuwiki", serial)
-            self._source_relays[("avdanyuwiki", serial)] = relay
-            worker.signals.setParent(relay)
-            worker.signals.finished.connect(
-                relay.handle, Qt.ConnectionType.QueuedConnection
-            )
-            self._crawl_pool.start(worker)
-
-    @timeit
-    @Slot(str, str, dict)
-    def on_result_received(self, source, serial, data):
-        key = (source, serial)
-        task = self.tasks.get(serial)
-        if not task:
-            logging.error("未找到任务 %s", serial)
-            if key in self._source_relays:
-                del self._source_relays[key]
-            return
-
-        result_dict = data if isinstance(data, dict) else {}
-        task.results[source] = result_dict
-        task.pending_sources.discard(source)
-        logging.info(
-            "已接收 %s 的结果 (serial=%s), 剩余待处理: %s\n%s",
-            source,
-            serial,
-            task.pending_sources,
-            json.dumps(result_dict, ensure_ascii=False, indent=2, default=str),
-        )
-        if key in self._source_relays:
-            del self._source_relays[key]
-
-        if not task.pending_sources:
-            task.workflow_state = CrawlWorkflowState.MERGING
-            if task.cancel_requested:
-                if serial in self.tasks:
-                    del self.tasks[serial]
-                return
-            worker = Worker(lambda: (serial, self._do_merge_only(serial)))
-            worker.signals.setParent(self)
-            worker.signals.finished.connect(
-                self._on_merge_worker_finished,
-                Qt.ConnectionType.QueuedConnection,
-            )
-            self._merge_pool.start(worker)
-
-    def _do_merge_only(self, serial: str):
-        task = self.tasks.get(serial)
-        if not task or task.cancel_requested:
-            return None
-        return merge_crawl_results(task.results, task.serial)
-
-    @Slot(object)
-    def _on_merge_worker_finished(self, result):
-        try:
-            if result is None:
-                return
-            if isinstance(result, tuple) and len(result) == 2:
-                serial, final_data = result
-            else:
-                final_data = result
-                serial = (
-                    getattr(final_data, "serial_number", None) if final_data else None
-                )
-            if not serial:
-                return
-            if not final_data:
-                if serial in self.tasks:
-                    del self.tasks[serial]
-                return
-            task = self.tasks.get(serial)
-            if not task or task.cancel_requested:
-                if serial in self.tasks:
-                    del self.tasks[serial]
-                return
-            task.workflow_state = CrawlWorkflowState.PERSISTING
-            DataUpdate(
-                final_data,
-                self,
-                withGUI=task.withGUI,
-                selected_fields=task.selected_fields,
-            )
-        finally:
-            snd = self.sender()
-            if snd is not None:
-                snd.deleteLater()
 
 
 _crawler_manager2: Optional["CrawlerManager2"] = None

@@ -395,6 +395,19 @@ async def get_work_merge(serial_number: str):
             ok,
             err,
         )
+        try:
+            logger.info(
+                "work_merge: response payload serial=%s request_id=%s\n%s",
+                sn,
+                request_id,
+                json.dumps(payload, ensure_ascii=False, indent=2, default=str),
+            )
+        except Exception as e:
+            logger.warning(
+                "work_merge: could not serialize payload for log serial=%s: %s",
+                sn,
+                e,
+            )
         return payload
     except asyncio.TimeoutError:
         logger.warning(

@@ -1,10 +1,12 @@
 import json
 import logging
+import traceback
 from pathlib import Path
 from datetime import datetime
 
 from PySide6.QtCore import QObject
 
+from config import get_translation_engine
 from controller.global_signal_bus import global_signals
 from core.database.db_queue import submit_db_raw
 from core.database.insert import (
@@ -22,7 +24,7 @@ from core.database.query import (
 )
 from core.database.update import update_work_byhand_
 from core.schema.model import CrawledWorkData
-from utils.utils import text2tag_id_list
+from utils.utils import text2tag_id_list, translate_text_sync
 
 
 def _dispatch_minnano_actress_update_via_browser(actress_id: int, jp_name: str) -> bool:
@@ -35,6 +37,27 @@ def _dispatch_minnano_actress_update_via_browser(actress_id: int, jp_name: str) 
         jp_name, actress_id, mid, silent=True
     )
     return bool(ok and count > 0)
+
+
+def apply_title_story_translation(work: CrawledWorkData) -> None:
+    """按引擎与空中文条件补全 ``cn_title`` / ``cn_story``（与旧多源合并后翻译规则一致）。"""
+    try:
+        engine = get_translation_engine()
+        force_translate = engine == "llm"
+        if (work.jp_title or "").strip() != "" and (
+            force_translate or not (work.cn_title or "").strip()
+        ):
+            work.cn_title = translate_text_sync(work.jp_title, fallback="empty")
+        if (work.jp_story or "").strip() != "" and (
+            force_translate or not (work.cn_story or "").strip()
+        ):
+            work.cn_story = translate_text_sync(work.jp_story, fallback="empty")
+    except Exception as e:
+        logging.warning(
+            "DataUpdate 标题/简介翻译失败，使用原文: %s\n%s",
+            e,
+            traceback.format_exc(),
+        )
 
 
 class DataUpdate:
@@ -54,6 +77,7 @@ class DataUpdate:
             set(selected_fields) if selected_fields else None
         )
         self.work_id = None
+        apply_title_story_translation(self.work)
         if withGUI:
             submit_db_raw(lambda: self._prepare_entities_and_relations_db()).result()
             global_signals.guiUpdate.emit(
