@@ -1479,6 +1479,7 @@ Firefox 插件已加载（上一节的步骤）
   },
 </code></pre>
 <h2 id="llm">LLM翻译的使用<a class="headerlink" href="#llm" title="Permanent link">&para;</a></h2>
+<p>当选择LLM翻译时，爬虫会自动抛弃中文标题与故事，根据日文标题与故事自动翻译，而且不会降级成Google，失败就是空的，这一点后面补充就行了。</p>
 <h3 id="api">外购API<a class="headerlink" href="#api" title="Permanent link">&para;</a></h3>
 <p>这个有钱就可以现在是兼容OpenAi的</p>
 <h3 id="_14">本地搭建（推荐）<a class="headerlink" href="#_14" title="Permanent link">&para;</a></h3>
@@ -1489,7 +1490,7 @@ Firefox 插件已加载（上一节的步骤）
 <p>下载q4量化的gguf文件，或者其他的LLM大模型，现在更强可以下载更大的。小的下载更好的</p>
 <h4 id="llamacpp">llama.cpp<a class="headerlink" href="#llamacpp" title="Permanent link">&para;</a></h4>
 <p>运行参数</p>
-<p>在powershell中，定位到编译好的llama-server.exe的位置</p>
+<p>在powershell中，定位到编译好的llama-server.exe的位置，修改下面<code>E:\LLM\sakura-7b-qwen2.5-v1.0-iq4xs.gguf</code>这个具体模型的位置，然后运行</p>
 <pre><code>llama-server.exe --host 0.0.0.0 --port 8080 --model E:\LLM\sakura-7b-qwen2.5-v1.0-iq4xs.gguf -c 2048  -n 512 --gpu-layers 99 --batch-size 512 --ubatch-size 256 --threads 6 --cache-type-k q8_0  --cache-type-v q8_0  --no-mmap --mlock --flash-attn 'on' 
 </code></pre>
 <p>按照入下设置</p>
@@ -1500,6 +1501,7 @@ Firefox 插件已加载（上一节的步骤）
 或者可以在浏览器输入<code>http://127.0.0.1:8080/v1/models</code>查看模型的名字</p>
 <p><img alt="" src="../assets/LLM%E8%AE%BE%E7%BD%AE.jpg" /></p>
 <p>其中本地运行时没密码，随便输入一个，然后测试一下翻译的好坏。</p>
+<p>在<code>管理</code>-&gt;<code>批量操作</code>-&gt;<code>一键翻译标题/简介</code>或者<code>覆盖翻译标题/简介</code></p>
 
 
 
