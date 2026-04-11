@@ -125,6 +125,63 @@ def fetch_actress_minnano_via_api(
     return body
 
 
+def fetch_top_actresses_via_api(
+    *,
+    timeout: float = DEFAULT_ACTRESS_FETCH_TIMEOUT_SEC,
+    base_url: str = DEFAULT_LOCAL_SERVER,
+) -> dict[str, Any]:
+    """同步 GET ``/api/v1/top-actresses``，依赖 Firefox 扩展 SSE + javtxt 页解析。
+
+    返回服务端 JSON（``ok``、``names``、可选 ``error``）；HTTP/网络失败时 ``ok`` 为 False。
+    """
+    import requests
+
+    url = f"{base_url.rstrip('/')}/api/v1/top-actresses"
+    try:
+        r = requests.get(url, timeout=timeout)
+    except OSError as e:
+        logging.error("fetch_top_actresses_via_api 请求失败: %s", e)
+        return {
+            "ok": False,
+            "names": [],
+            "error": str(e),
+        }
+
+    try:
+        body = r.json()
+    except Exception:
+        body = {}
+
+    if r.status_code != 200:
+        detail: str
+        if isinstance(body, dict):
+            raw = body.get("detail")
+            if isinstance(raw, str):
+                detail = raw
+            elif isinstance(raw, list):
+                detail = str(raw)
+            else:
+                detail = (
+                    str(raw) if raw is not None else (r.text or f"HTTP {r.status_code}")
+                )
+        else:
+            detail = r.text or f"HTTP {r.status_code}"
+        return {
+            "ok": False,
+            "names": [],
+            "error": detail,
+            "http_status": r.status_code,
+        }
+
+    if not isinstance(body, dict):
+        return {
+            "ok": False,
+            "names": [],
+            "error": "invalid_response_json",
+        }
+    return body
+
+
 def send_crawler_request(web: str, serial_number: str):
     """发送爬取指令到本地服务器，由本地服务器经 SSE 指挥浏览器插件。
 

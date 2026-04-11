@@ -52,8 +52,12 @@
         return payload;
     }
 
-    function sendTopActressesResult(ok, names, errorMsg) {
-        browser.runtime.sendMessage({
+    function sendTopActressesResult(ok, names, errorMsg, requestId) {
+        const rid =
+            requestId != null && String(requestId).trim() !== ""
+                ? String(requestId).trim()
+                : "";
+        const payload = {
             command: "send_crawler_result",
             id: "",
             web: "javtxt-top-actresses",
@@ -61,13 +65,17 @@
             data: ok
                 ? { names: names || [] }
                 : { names: [], error: errorMsg || "parse failed" },
-        });
+        };
+        if (rid) {
+            payload.request_id = rid;
+        }
+        browser.runtime.sendMessage(payload);
     }
 
-    function parseTopActresses() {
+    function parseTopActresses(requestId) {
         if (isCloudflarePage()) {
             console.log("DarkEye: javtxt top-actresses 遇到 Cloudflare");
-            sendTopActressesResult(false, [], "Cloudflare");
+            sendTopActressesResult(false, [], "Cloudflare", requestId);
             return;
         }
         const els = document.querySelectorAll("p.actress-name");
@@ -78,7 +86,7 @@
                 names.push(t);
             }
         });
-        sendTopActressesResult(true, names.slice(0, 50), undefined);
+        sendTopActressesResult(true, names.slice(0, 50), undefined, requestId);
     }
 
     function absoluteUrl(maybeRelative) {
@@ -249,7 +257,13 @@
 
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.command === "javtxt-parse-top-actresses") {
-            parseTopActresses();
+            const rid =
+                message.request_id != null &&
+                message.request_id !== undefined &&
+                String(message.request_id).trim() !== ""
+                    ? String(message.request_id).trim()
+                    : undefined;
+            parseTopActresses(rid);
             return;
         }
         if (message.command === "javtxt-dvdid") {

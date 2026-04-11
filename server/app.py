@@ -32,6 +32,10 @@ _actress_fetch_lock = asyncio.Lock()
 _actress_fetch_futures: Dict[str, asyncio.Future] = {}
 _actress_fetch_names: Dict[str, str] = {}
 
+# GET /api/v1/top-actresses 同步等待（插件 POST top-actresses-result）
+_top_actresses_lock = asyncio.Lock()
+_top_actresses_futures: Dict[str, asyncio.Future] = {}
+
 # 配置 CORS
 app.add_middleware(
     CORSMiddleware,
@@ -595,6 +599,127 @@ async def receive_actress_fetch_result(body: ActressFetchResultBody):
         "ok": body.ok,
         "actress_jp_name": an,
         "data": body.data,
+    }
+    if body.error:
+        out["error"] = body.error
+    fut.set_result(out)
+    return {"status": "success"}
+
+
+class TopActressesResultBody(BaseModel):
+    """Firefox 插件 javtxt 热门女优页解析完成后回传，解除 GET /api/v1/top-actresses 的挂起。"""
+
+    request_id: str
+    ok: bool
+    names: Optional[List[str]] = None
+    error: Optional[str] = None
+
+
+@app.get("/api/v1/top-actresses")
+async def get_top_actresses():
+    """
+    同步拉取 javtxt 热门女优名列表：经 SSE 通知插件打开 top-actresses 并解析，
+    等待 POST /api/v1/top-actresses-result；不触发 bridge、不写库。
+    """
+    if len(sse_clients) == 0:
+        logger.info("top_actresses: reject reason=no_sse_clients")
+        raise HTTPException(
+            status_code=503,
+            detail="no browser extension connected (SSE)",
+        )
+
+    request_id = str(uuid.uuid4())
+    fut: asyncio.Future = asyncio.get_running_loop().create_future()
+    async with _top_actresses_lock:
+        _top_actresses_futures[request_id] = fut
+
+    n_sse = len(sse_clients)
+    logger.info(
+        "top_actresses: wait start request_id=%s sse_listeners=%s timeout_s=%s",
+        request_id,
+        n_sse,
+        WORK_MERGE_TIMEOUT_SEC,
+    )
+
+    message: Dict[str, Any] = {
+        "type": "javtxt_top_actresses_fetch",
+        "request_id": request_id,
+    }
+    event_data = f"data: {json.dumps(message)}\n\n"
+    dead_clients: List[asyncio.Queue] = []
+    for client in sse_clients:
+        try:
+            await client.put(event_data)
+        except Exception:
+            dead_clients.append(client)
+    for dead in dead_clients:
+        if dead in sse_clients:
+            sse_clients.remove(dead)
+
+    logger.info(
+        "top_actresses: sse_broadcast request_id=%s pushed_to=%s dead_removed=%s",
+        request_id,
+        n_sse,
+        len(dead_clients),
+    )
+
+    try:
+        payload = await asyncio.wait_for(fut, timeout=WORK_MERGE_TIMEOUT_SEC)
+        ok = payload.get("ok") if isinstance(payload, dict) else None
+        err = payload.get("error") if isinstance(payload, dict) else None
+        logger.info(
+            "top_actresses: done request_id=%s ok=%s error=%s",
+            request_id,
+            ok,
+            err,
+        )
+        try:
+            logger.info(
+                "top_actresses: response payload request_id=%s\n%s",
+                request_id,
+                json.dumps(payload, ensure_ascii=False, indent=2, default=str),
+            )
+        except Exception as e:
+            logger.warning(
+                "top_actresses: could not serialize payload for log: %s",
+                e,
+            )
+        return payload
+    except asyncio.TimeoutError:
+        logger.warning(
+            "top_actresses: timeout request_id=%s after_s=%s",
+            request_id,
+            WORK_MERGE_TIMEOUT_SEC,
+        )
+        raise HTTPException(
+            status_code=504,
+            detail="top actresses fetch timed out waiting for browser extension",
+        )
+    finally:
+        async with _top_actresses_lock:
+            _top_actresses_futures.pop(request_id, None)
+        logger.debug("top_actresses: future slot cleared request_id=%s", request_id)
+
+
+@app.post("/api/v1/top-actresses-result")
+async def receive_top_actresses_result(body: TopActressesResultBody):
+    """插件 javtxt 热门页解析完成后调用；不发射 bridge 信号。"""
+    rid = (body.request_id or "").strip()
+    if not rid:
+        raise HTTPException(status_code=400, detail="request_id required")
+
+    async with _top_actresses_lock:
+        fut = _top_actresses_futures.get(rid)
+    if fut is None:
+        return {"status": "ignored", "reason": "unknown_or_finished_request"}
+    if fut.done():
+        return {"status": "ignored", "reason": "already_completed"}
+
+    raw_names = body.names if isinstance(body.names, list) else []
+    names = [str(x) for x in raw_names if x is not None]
+    out: Dict[str, Any] = {
+        "ok": body.ok,
+        "names": names,
     }
     if body.error:
         out["error"] = body.error

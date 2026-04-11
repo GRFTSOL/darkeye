@@ -476,6 +476,65 @@ function startMinnanoActressHttpFetch(requestId, actressJpName, minnanoUrlFragme
   console.log("DarkEye: minnano_actress_fetch", requestId, jp);
 }
 
+/**
+ * HTTP GET /api/v1/top-actresses：打开 javtxt 热门页，回传走 /api/v1/top-actresses-result。
+ */
+function startJavtxtTopActressesHttpFetch(requestId) {
+  const rid = String(requestId || "").trim();
+  if (!rid) return;
+  const url = "https://javtxt.com/top-actresses";
+  const addPendingInNewWindow = (openUrl, type) => {
+    const addTab = (windowId) => {
+      return browser.tabs
+        .create({ windowId, url: openUrl, active: false })
+        .then((tab) => {
+          if (tab && tab.id !== undefined) {
+            pendingCrawlers.set(tab.id, {
+              type,
+              serial: "",
+              context: {},
+              apiRequestId: rid,
+            });
+          }
+          return maybeNotifyCrawlerBacklog();
+        })
+        .catch((err) => {
+          console.error("DarkEye: 爬虫窗口可能已被关闭，重新创建", err);
+          crawlerWindowId = null;
+          crawlerWindowPromise = null;
+          addPendingInNewWindow(openUrl, type);
+        });
+    };
+
+    if (crawlerWindowId !== null) {
+      addTab(crawlerWindowId);
+      return;
+    }
+    if (crawlerWindowPromise === null) {
+      const crawlerHomeUrl = "https://www.baidu.com";
+      crawlerWindowPromise = browser.windows
+        .create({
+          url: crawlerHomeUrl,
+          type: "normal",
+          focused: false,
+          state: "minimized",
+        })
+        .then((win) => {
+          crawlerWindowId = win.id;
+          return win.id;
+        })
+        .catch((err) => {
+          console.error("DarkEye: 创建爬虫窗口失败", err);
+          crawlerWindowPromise = null;
+          throw err;
+        });
+    }
+    crawlerWindowPromise.then((windowId) => addTab(windowId));
+  };
+  addPendingInNewWindow(url, "javtxt-top-actresses");
+  console.log("DarkEye: javtxt_top_actresses_fetch", rid);
+}
+
 function handleCommand(data) {//处理服务器发送来的命令
   if (data.type === "navigate") {
     const url = data.url;
@@ -516,6 +575,16 @@ function handleCommand(data) {//处理服务器发送来的命令
         : "";
     if (requestId && name != null && String(name).trim() !== "") {
       startMinnanoActressHttpFetch(String(requestId), String(name), minnanoUrl);
+    }
+  }
+  if (data.type === "javtxt_top_actresses_fetch") {
+    const requestId = data.request_id;
+    if (
+      requestId != null &&
+      requestId !== undefined &&
+      String(requestId).trim() !== ""
+    ) {
+      startJavtxtTopActressesHttpFetch(String(requestId));
     }
   }
   if (data.type==="crawler"){
@@ -707,7 +776,11 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         browser.tabs.sendMessage(tabId, msg);
       console.log("javtxt爬虫开始:" + tabId);
     } else if (task.type === "javtxt-top-actresses") {
-      browser.tabs.sendMessage(tabId, { command: "javtxt-parse-top-actresses" });
+      const msg = { command: "javtxt-parse-top-actresses" };
+      if (task.apiRequestId) {
+        msg.request_id = task.apiRequestId;
+      }
+      browser.tabs.sendMessage(tabId, msg);
       console.log("javtxt top-actresses:" + tabId);
     } else if (task.type === "avdanyuwiki") {
         const msg = { command: "avdanyuwiki-dvdid", serial: task.serial };
@@ -889,19 +962,43 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {//这�
                 return false;
             }
         }
+        const topApiRid =
+            message.web === "javtxt-top-actresses" && message.request_id
+                ? String(message.request_id).trim()
+                : "";
         console.log("发送爬虫的结果到本地服务器", message);
-        // Send to local server
-        fetch(`${SERVER_URL}/api/v1/crawler-result`, {
+        const inner = message.data || {};
+        const names = Array.isArray(inner.names) ? inner.names : [];
+        const topPayload =
+            topApiRid !== ""
+                ? {
+                      request_id: topApiRid,
+                      ok: !!message.result,
+                      names: names,
+                  }
+                : null;
+        if (topPayload && inner.error) {
+            topPayload.error = String(inner.error);
+        }
+        const postUrl =
+            topApiRid !== ""
+                ? `${SERVER_URL}/api/v1/top-actresses-result`
+                : `${SERVER_URL}/api/v1/crawler-result`;
+        const postBody =
+            topApiRid !== ""
+                ? JSON.stringify(topPayload)
+                : JSON.stringify({
+                      results: message.result,
+                      id: message.id,
+                      web: message.web,
+                      data: message.data,
+                  });
+        fetch(postUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                results: message.result,
-                id: message.id,
-                web: message.web,
-                data: message.data
-            })
+            body: postBody,
         })
         .then(response => response.json())
         .then(data => {
