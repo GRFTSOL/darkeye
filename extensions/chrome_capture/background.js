@@ -320,6 +320,51 @@ function handleCommand(data) {
   }
 }
 
+/**
+ * minnano：complete 有时早于 content script 注册 onMessage，导致 sendMessage 丢包。
+ * 使用有限次重试（间隔递增）。
+ */
+function sendMinnanoActressAutoMessage(tabId, msg, serial) {
+  const maxAttempts = 6;
+  function trySend(attemptNum) {
+    chrome.tabs
+      .sendMessage(tabId, msg)
+      .then(() => {
+        console.log(
+          "DarkEye: minnano sendMessage ok tabId=",
+          tabId,
+          "jp=",
+          serial,
+          "attempt=",
+          attemptNum
+        );
+      })
+      .catch((err) => {
+        if (attemptNum < maxAttempts) {
+          const wait = 100 * attemptNum;
+          console.warn(
+            "DarkEye: minnano sendMessage failed; retry",
+            attemptNum + 1,
+            "in",
+            wait,
+            "ms",
+            err
+          );
+          setTimeout(() => trySend(attemptNum + 1), wait);
+        } else {
+          console.error(
+            "DarkEye: minnano sendMessage FAILED after",
+            maxAttempts,
+            "attempts tabId=",
+            tabId,
+            err
+          );
+        }
+      });
+  }
+  trySend(1);
+}
+
 // 监听页面加载完成，启动对应爬虫 content script
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (
@@ -331,6 +376,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
   if (changeInfo.status === "complete" && pendingCrawlers.has(tabId)) {
     const task = pendingCrawlers.get(tabId);
+    if (task.type === "minnano") {
+      console.log(
+        "DarkEye: minnano tab complete tabId=",
+        tabId,
+        "url=",
+        tab && tab.url
+      );
+    }
 
     // 根据任务类型分发不同的指令，并透传 serial
     if (task.type === "javlib") {
@@ -369,11 +422,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       });
       console.log("avdanyuwiki爬虫开始:" + tabId);
     } else if (task.type === "minnano") {
-      chrome.tabs.sendMessage(tabId, {
+      const msg = {
         command: "minnano-actress-auto",
         jpName: task.serial,
-        context: Object.assign({}, task.context || {}, { persist: true }),
-      });
+        context: Object.assign({ persist: true }, task.context || {}),
+      };
+      sendMinnanoActressAutoMessage(tabId, msg, task.serial);
       console.log("minnano爬虫开始:" + tabId);
     }
 

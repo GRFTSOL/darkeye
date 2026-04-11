@@ -27,6 +27,11 @@ WORK_MERGE_TIMEOUT_SEC = 120.0
 _work_merge_lock = asyncio.Lock()
 _work_merge_futures: Dict[str, asyncio.Future] = {}
 
+# GET /api/v1/actress/{name}同步等待（插件 POST actress-fetch-result）
+_actress_fetch_lock = asyncio.Lock()
+_actress_fetch_futures: Dict[str, asyncio.Future] = {}
+_actress_fetch_names: Dict[str, str] = {}
+
 # 配置 CORS
 app.add_middleware(
     CORSMiddleware,
@@ -446,6 +451,141 @@ async def receive_work_merge_result(body: WorkMergeResultBody):
         "serial_number": sn,
         "data": body.merged,
         "per_site": body.per_site or {},
+    }
+    if body.error:
+        out["error"] = body.error
+    fut.set_result(out)
+    return {"status": "success"}
+
+
+class ActressFetchResultBody(BaseModel):
+    """Firefox 插件 minnano 女优页采集完成后回传，解除 GET /api/v1/actress/{name} 的挂起。"""
+
+    request_id: str
+    ok: bool
+    data: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    actress_jp_name: Optional[str] = None
+
+
+@app.get("/api/v1/actress/{actress_jp_name}")
+async def get_actress_minnano(actress_jp_name: str):
+    """
+    同步拉取 minnano 女优信息：经 SSE 通知插件打开搜索/详情并采集，
+    等待 POST /api/v1/actress-fetch-result；不触发 bridge、不写库。
+    """
+    jp = actress_jp_name.strip()
+    if not jp:
+        raise HTTPException(status_code=400, detail="actress_jp_name required")
+    if len(sse_clients) == 0:
+        logger.info("actress_fetch: reject jp=%s reason=no_sse_clients", jp)
+        raise HTTPException(
+            status_code=503,
+            detail="no browser extension connected (SSE)",
+        )
+
+    request_id = str(uuid.uuid4())
+    fut: asyncio.Future = asyncio.get_running_loop().create_future()
+    async with _actress_fetch_lock:
+        _actress_fetch_futures[request_id] = fut
+        _actress_fetch_names[request_id] = jp
+
+    n_sse = len(sse_clients)
+    logger.info(
+        "actress_fetch: wait start jp=%s request_id=%s sse_listeners=%s timeout_s=%s",
+        jp,
+        request_id,
+        n_sse,
+        WORK_MERGE_TIMEOUT_SEC,
+    )
+
+    message = {
+        "type": "minnano_actress_fetch",
+        "request_id": request_id,
+        "actress_jp_name": jp,
+    }
+    event_data = f"data: {json.dumps(message)}\n\n"
+    dead_clients: List[asyncio.Queue] = []
+    for client in sse_clients:
+        try:
+            await client.put(event_data)
+        except Exception:
+            dead_clients.append(client)
+    for dead in dead_clients:
+        if dead in sse_clients:
+            sse_clients.remove(dead)
+
+    logger.info(
+        "actress_fetch: sse_broadcast jp=%s request_id=%s pushed_to=%s dead_removed=%s",
+        jp,
+        request_id,
+        n_sse,
+        len(dead_clients),
+    )
+
+    try:
+        payload = await asyncio.wait_for(fut, timeout=WORK_MERGE_TIMEOUT_SEC)
+        ok = payload.get("ok") if isinstance(payload, dict) else None
+        err = payload.get("error") if isinstance(payload, dict) else None
+        logger.info(
+            "actress_fetch: done jp=%s request_id=%s ok=%s error=%s",
+            jp,
+            request_id,
+            ok,
+            err,
+        )
+        try:
+            logger.info(
+                "actress_fetch: response payload jp=%s request_id=%s\n%s",
+                jp,
+                request_id,
+                json.dumps(payload, ensure_ascii=False, indent=2, default=str),
+            )
+        except Exception as e:
+            logger.warning(
+                "actress_fetch: could not serialize payload for log jp=%s: %s",
+                jp,
+                e,
+            )
+        return payload
+    except asyncio.TimeoutError:
+        logger.warning(
+            "actress_fetch: timeout jp=%s request_id=%s after_s=%s",
+            jp,
+            request_id,
+            WORK_MERGE_TIMEOUT_SEC,
+        )
+        raise HTTPException(
+            status_code=504,
+            detail="actress fetch timed out waiting for browser extension",
+        )
+    finally:
+        async with _actress_fetch_lock:
+            _actress_fetch_futures.pop(request_id, None)
+            _actress_fetch_names.pop(request_id, None)
+        logger.debug("actress_fetch: future slot cleared request_id=%s", request_id)
+
+
+@app.post("/api/v1/actress-fetch-result")
+async def receive_actress_fetch_result(body: ActressFetchResultBody):
+    """插件 minnano 采集完成后调用；不发射 bridge 信号。"""
+    rid = (body.request_id or "").strip()
+    if not rid:
+        raise HTTPException(status_code=400, detail="request_id required")
+
+    async with _actress_fetch_lock:
+        fut = _actress_fetch_futures.get(rid)
+        name_fallback = _actress_fetch_names.get(rid, "")
+    if fut is None:
+        return {"status": "ignored", "reason": "unknown_or_finished_request"}
+    if fut.done():
+        return {"status": "ignored", "reason": "already_completed"}
+
+    an = (body.actress_jp_name or "").strip() or name_fallback
+    out: Dict[str, Any] = {
+        "ok": body.ok,
+        "actress_jp_name": an,
+        "data": body.data,
     }
     if body.error:
         out["error"] = body.error

@@ -2,6 +2,8 @@
 (function (global) {
   "use strict";
 
+  const SCRAPE_LOG = "DarkEye: minnano-scrape";
+
   function isSearchResultsPage(doc) {
     const headline = doc.querySelector(".headline");
     if (!headline) return false;
@@ -52,7 +54,23 @@
     return null;
   }
 
+  /** 去掉半角 () 与全角 （） 括号及其中的文字（可多次出现） */
+  function stripParentheticals(text) {
+    let s = String(text || "").trim();
+    let prev;
+    do {
+      prev = s;
+      s = s.replace(/\([^()]*\)/g, "").replace(/（[^（）]*）/g, "").trim();
+    } while (s !== prev);
+    return s;
+  }
+
   function scrapeActressPage(doc) {
+    console.log(SCRAPE_LOG, "scrapeActressPage start", {
+      href: doc.location ? doc.location.href : "",
+      pathname: doc.location ? doc.location.pathname : "",
+    });
+
     let minnano_actress_id = "";
     const og = doc.querySelector('meta[property="og:url"]');
     if (og && og.getAttribute("content")) {
@@ -81,7 +99,7 @@
       if (h1) {
         const first = h1.childNodes[0];
         if (first && first.nodeType === Node.TEXT_NODE) {
-          jp_name = (first.textContent || "").trim();
+          jp_name = stripParentheticals(first.textContent || "");
         }
         const span = h1.querySelector("span");
         if (span) {
@@ -130,6 +148,13 @@
       }
     }
 
+    let birthplace = "";
+    const birthplaceLabel = findLabelSpan(doc, "出身地");
+    if (birthplaceLabel) {
+      const p = findNextTagAfter(birthplaceLabel, "p");
+      if (p) birthplace = (p.textContent || "").replace(/\s+/g, " ").trim();
+    }
+
     let height = 0;
     let bust = 0;
     let cup = "";
@@ -169,11 +194,12 @@
       }
     }
 
-    return {
+    const out = {
       日文名: String(jp_name || ""),
       假名: String(kana || ""),
       英文名: String(romaji || ""),
       出生日期: String(birth_date || ""),
+      出身地: String(birthplace || ""),
       身高: height,
       罩杯: String(cup || ""),
       胸围: bust,
@@ -184,6 +210,15 @@
       minnano_actress_id: String(minnano_actress_id || ""),
       alias_chain: alias_chain,
     };
+
+    console.log(SCRAPE_LOG, "scrapeActressPage end", {
+      日文名: out["日文名"] || "(empty)",
+      minnano_actress_id: out.minnano_actress_id || "(empty)",
+      has_main_section: !!doc.getElementById("main-section"),
+      alias_count: alias_chain.length,
+    });
+
+    return out;
   }
 
   global.DarkEyeMinnanoScrape = {
