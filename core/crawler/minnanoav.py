@@ -41,6 +41,68 @@ def actress_need_update() -> bool:
     else:
         return True
 
+
+def persist_actress_if_minnano_api_ok(actress_id: int, payload: dict) -> bool:
+    """``fetch_actress_minnano_via_api`` 返回体：成功且含 ``data`` 时写入数据库。"""
+    if not payload.get("ok") or not payload.get("data"):
+        return False
+    raw = payload.get("data")
+    if not isinstance(raw, dict):
+        return False
+    try:
+        data = normalize_minnano_extension_payload(dict(raw))
+        persist_minnano_scrape_to_db(actress_id, data)
+    except Exception:
+        logging.exception("persist_actress_if_minnano_api_ok actress_id=%s", actress_id)
+        return False
+    return True
+
+
+def fetch_actress_minnano_for_edit_worker(
+    jp: str,
+    actress_id: int,
+    minnano_url_fragment: str | None,
+) -> tuple[str, dict]:
+    """供 QThreadPool：仅 GET 女优 API，不写库。
+
+    成功返回 ``("data", payload)``，否则 ``("error", payload)``。
+    """
+    from core.crawler.jump import fetch_actress_minnano_via_api
+
+    _ = actress_id  # 保留签名与调用方一致，便于与 persist 版 worker 互换
+    mid = (minnano_url_fragment or "").strip() or None
+    payload = fetch_actress_minnano_via_api(jp, minnano_url=mid)
+    if not payload.get("ok"):
+        return ("error", payload)
+    if not payload.get("data"):
+        merged = dict(payload) if isinstance(payload, dict) else {}
+        merged.setdefault("error", "no_data")
+        return ("error", merged)
+    return ("data", payload)
+
+
+def fetch_and_persist_actress_minnano_worker(
+    jp: str,
+    actress_id: int,
+    minnano_url_fragment: str | None,
+) -> tuple[str, dict]:
+    """供 QThreadPool：GET 女优 API + DB 队列写库。返回 ``(kind, payload)``。"""
+    from core.crawler.jump import fetch_actress_minnano_via_api
+    from core.database.db_queue import submit_db_raw
+
+    mid = (minnano_url_fragment or "").strip() or None
+    payload = fetch_actress_minnano_via_api(jp, minnano_url=mid)
+    if not payload.get("ok"):
+        return ("error", payload)
+
+    def _do() -> bool:
+        return persist_actress_if_minnano_api_ok(actress_id, payload)
+
+    if submit_db_raw(_do).result():
+        return ("success", payload)
+    return ("persist_failed", payload)
+
+
 def normalize_minnano_extension_payload(data: dict) -> dict:
     """插件 JSON 与 persist 写库共用的数值字段规范化。"""
     out = dict(data)
@@ -52,44 +114,14 @@ def normalize_minnano_extension_payload(data: dict) -> dict:
                 out[key] = 0
     return out
 
-def handle_minnano_persist_capture_from_extension(body: dict) -> None:
-    """主窗口统一处理：persist 回传写库；失败仅 debug，不打断批量静默."""
-    if not body:
-        return
-    ctx = body.get("context") or {}
-    if not ctx.get("persist"):
-        return
-    if body.get("error"):
-        logging.debug(
-            "minnano persist capture error actress_id=%s err=%s",
-            ctx.get("actress_id"),
-            body.get("error"),
-        )
-        return
-    raw = body.get("data")
-    if not raw:
-        return
-    aid = ctx.get("actress_id")
-    if aid is None:
-        return
-    try:
-        actress_id = int(aid)
-    except (TypeError, ValueError):
-        logging.debug("minnano persist: invalid actress_id %r", aid)
-        return
-    try:
-        data = normalize_minnano_extension_payload(dict(raw))
-        persist_minnano_scrape_to_db(actress_id, data)
-    except Exception:
-        logging.exception("persist minnano from extension (global)")
-        return
-    from controller.global_signal_bus import global_signals
 
-    global_signals.actressDataChanged.emit()
+def SearchActressInfo_js():
+    """批量：need_update 女优逐条 GET /api/v1/actress/ 同步拉取并写库。
 
-def SearchActressInfo_js() -> str:
-    """需更新的女优逐条静默下发浏览器插件；落库依赖插件 persist 回传."""
-    from core.crawler.jump import send_minnano_actress_crawler_request
+    返回提示字符串，或 ``(msg, any_persisted)`` 元组。
+    """
+    from core.crawler.jump import fetch_actress_minnano_via_api
+    from core.database.db_queue import submit_db_raw
     from core.database.query import exist_minnao_id
 
     conn = sqlite3.connect(DATABASE)
@@ -110,14 +142,41 @@ def SearchActressInfo_js() -> str:
     if not tuple_list or all(not item for item in tuple_list):
         return "无需要更新数据的女优"
     total_rows = len(result)
+    ok_count = 0
     for i, row in enumerate(result):
         name = row["jp_name"]
         actress_id = row["actress_id"]
-        minnano_url = exist_minnao_id(actress_id)
-        send_minnano_actress_crawler_request(name, actress_id, minnano_url, silent=True)
+        raw_mid = exist_minnao_id(actress_id)
+        mid = (
+            str(raw_mid).strip()
+            if raw_mid is not None and str(raw_mid).strip()
+            else None
+        )
+        payload = fetch_actress_minnano_via_api(name, minnano_url=mid)
+        if not payload.get("ok"):
+            logging.debug(
+                "SearchActressInfo_js: actress_id=%s err=%s",
+                actress_id,
+                payload.get("error"),
+            )
+        else:
+
+            def _do(aid=actress_id, pl=payload):
+                return persist_actress_if_minnano_api_ok(aid, pl)
+
+            try:
+                if submit_db_raw(_do).result():
+                    ok_count += 1
+            except Exception:
+                logging.exception(
+                    "SearchActressInfo_js persist actress_id=%s", actress_id
+                )
         if i != total_rows - 1:
             time.sleep(random.uniform(5, 10))
-    return f"已向浏览器下发 {total_rows} 项 minnano 更新任务"
+    return (
+        f"已处理 {total_rows} 条 minnano 同步，写库成功 {ok_count} 条。",
+        ok_count > 0,
+    )
 
 
 def _local_actress_avatar_file_is_valid(path: str) -> bool:
@@ -180,13 +239,10 @@ def download_update_profile(id, data: dict):
 
 
 def persist_minnano_scrape_to_db(actress_id: int, new_data: dict) -> None:
-    """将 minnano 解析结果写入数据库（与 SearchSingleActressInfo 成功分支一致）。
-    这个就是直接写入数据库
-    """
+    """将 minnano 解析结果写入数据库（批量同步 / 内部持久化用）。"""
     from core.database.insert import InsertAliasNameReplace
 
     update_db_actress(actress_id, new_data)
     InsertAliasNameReplace(actress_id, new_data["alias_chain"])
     download_update_profile(actress_id, new_data)
     update_actress_minnano_id(actress_id, new_data["minnano_actress_id"])
-

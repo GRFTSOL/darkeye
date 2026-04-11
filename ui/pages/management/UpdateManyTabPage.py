@@ -236,5 +236,13 @@ class UpdateManyTabPage(LazyWidget):
             self.msg.show_info("提示", "没有要更新的女优")
 
     @Slot(object)
-    def on_result(self, result: str):  # Qsignal回传信息
-        self.msg.show_info("提示", result)
+    def on_result(self, result):  # Qsignal回传信息
+        from controller.global_signal_bus import global_signals
+
+        if isinstance(result, tuple) and len(result) == 2:
+            msg, changed = result[0], result[1]
+            if changed:
+                global_signals.actressDataChanged.emit()
+            self.msg.show_info("提示", str(msg))
+            return
+        self.msg.show_info("提示", str(result))

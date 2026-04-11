@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -469,12 +469,19 @@ class ActressFetchResultBody(BaseModel):
 
 
 @app.get("/api/v1/actress/{actress_jp_name}")
-async def get_actress_minnano(actress_jp_name: str):
+async def get_actress_minnano(
+    actress_jp_name: str,
+    minnano_url: Optional[str] = Query(
+        None,
+        description="缓存的 minnano 详情 id（数字片段），非空则直达 actress{id}.html",
+    ),
+):
     """
     同步拉取 minnano 女优信息：经 SSE 通知插件打开搜索/详情并采集，
     等待 POST /api/v1/actress-fetch-result；不触发 bridge、不写库。
     """
     jp = actress_jp_name.strip()
+    mid = (minnano_url or "").strip()
     if not jp:
         raise HTTPException(status_code=400, detail="actress_jp_name required")
     if len(sse_clients) == 0:
@@ -499,11 +506,13 @@ async def get_actress_minnano(actress_jp_name: str):
         WORK_MERGE_TIMEOUT_SEC,
     )
 
-    message = {
+    message: Dict[str, Any] = {
         "type": "minnano_actress_fetch",
         "request_id": request_id,
         "actress_jp_name": jp,
     }
+    if mid:
+        message["minnano_url"] = mid
     event_data = f"data: {json.dumps(message)}\n\n"
     dead_clients: List[asyncio.Queue] = []
     for client in sse_clients:

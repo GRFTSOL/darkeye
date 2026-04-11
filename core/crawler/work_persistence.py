@@ -28,15 +28,14 @@ from utils.utils import text2tag_id_list, translate_text_sync
 
 
 def _dispatch_minnano_actress_update_via_browser(actress_id: int, jp_name: str) -> bool:
-    """通知浏览器插件拉取 minnano；成功表示本地服务已转发且至少有一个 SSE 客户端。"""
-    from core.crawler.jump import send_minnano_actress_crawler_request
+    """GET /api/v1/actress/ 同步拉取 minnano 并写库；成功表示数据已持久化。"""
+    from core.crawler.minnanoav import fetch_and_persist_actress_minnano_worker
     from core.database.query import exist_minnao_id
 
-    mid = exist_minnao_id(actress_id)
-    ok, count = send_minnano_actress_crawler_request(
-        jp_name, actress_id, mid, silent=True
-    )
-    return bool(ok and count > 0)
+    raw_mid = exist_minnao_id(actress_id)
+    mid = str(raw_mid).strip() if raw_mid is not None and str(raw_mid).strip() else None
+    kind, _payload = fetch_and_persist_actress_minnano_worker(jp_name, actress_id, mid)
+    return kind == "success"
 
 
 def apply_title_story_translation(work: CrawledWorkData) -> None:

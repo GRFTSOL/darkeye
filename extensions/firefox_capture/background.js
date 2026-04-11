@@ -401,21 +401,30 @@ function maybeNotifyCrawlerBacklog() {
 }
 
 /**
- * HTTP GET /api/v1/actress/{jp}：专用 minnano 搜索标签，context 带 actress_http_request_id，
- * 回传走 /api/v1/actress-fetch-result（persist: false）。
+ * HTTP GET /api/v1/actress/{jp}：与 startcrawler minnano 一致，可有 minnano_url 直达详情；
+ * context 带 actress_http_request_id，回传走 /api/v1/actress-fetch-result（persist: false）。
  */
-function startMinnanoActressHttpFetch(requestId, actressJpName) {
+function startMinnanoActressHttpFetch(requestId, actressJpName, minnanoUrlFragment) {
   const jp = String(actressJpName || "").trim();
   if (!jp) return;
-  const url =
-    "https://www.minnano-av.com/search_result.php?search_scope=actress&search_word=" +
-    encodeURIComponent(jp) +
-    "&search=+Go+";
+  const mid = String(minnanoUrlFragment || "").trim();
+  let url;
+  if (mid) {
+    url = "https://www.minnano-av.com/actress" + mid + ".html";
+  } else {
+    url =
+      "https://www.minnano-av.com/search_result.php?search_scope=actress&search_word=" +
+      encodeURIComponent(jp) +
+      "&search=+Go+";
+  }
   const httpCtx = {
     actress_http_request_id: String(requestId),
     persist: false,
     actress_jp_name: jp,
   };
+  if (mid) {
+    httpCtx.minnano_url = mid;
+  }
   const addPendingInNewWindow = (openUrl, type) => {
     const addTab = (windowId) => {
       return browser.tabs
@@ -501,8 +510,12 @@ function handleCommand(data) {//处理服务器发送来的命令
   if (data.type === "minnano_actress_fetch") {
     const requestId = data.request_id;
     const name = data.actress_jp_name;
+    const minnanoUrl =
+      data.minnano_url != null && data.minnano_url !== undefined
+        ? String(data.minnano_url)
+        : "";
     if (requestId && name != null && String(name).trim() !== "") {
-      startMinnanoActressHttpFetch(String(requestId), String(name));
+      startMinnanoActressHttpFetch(String(requestId), String(name), minnanoUrl);
     }
   }
   if (data.type==="crawler"){
