@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import json
 import logging
+import weakref
 from pathlib import Path
-from sre_parse import POSSESSIVE_REPEAT
 from time import perf_counter
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Property, Qt, QObject, QUrl, Signal, Slot, QTimer
+from PySide6.QtCore import QRunnable, QThreadPool, QSize
 from PySide6.QtGui import QCursor, QColor
-from PySide6.QtGui import QResizeEvent
+from PySide6.QtGui import QResizeEvent, QImage
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -28,6 +29,7 @@ from config import (
     MESHES_PATH,
     MAPS_PATH,
     HDR_PATH,
+    TEMP_PATH,
     WORKCOVER_PATH,
 )
 from controller.message_service import MessageBoxService
@@ -62,6 +64,67 @@ def cover_url_to_texture_url(image_url: str | None) -> str:
         if full_path.exists():
             return path_to_file_url(full_path)
     return path_to_file_url(MAPS_PATH / "0.png")
+
+
+# 大图在主线程解码会明显掉帧；超过此字节数的封面在后台缩放后再给 Quick3D 加载。
+DVD_TEXTURE_ASYNC_MIN_BYTES = 320_000
+# 缩略图最长边；足够铺满 DVD 模型在屏幕上的采样，过大则浪费解码与显存。
+DVD_TEXTURE_MAX_EDGE = 2048
+
+
+def _dvd_thumb_cache_dir() -> Path:
+    d = TEMP_PATH / "dvd_3d_tex"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _dvd_thumb_cache_path(work_id: int, src_path: Path) -> Path:
+    st = src_path.stat()
+    name = f"{work_id}_{int(st.st_mtime_ns)}_{st.st_size}.jpg"
+    return _dvd_thumb_cache_dir() / name
+
+
+class DvdCoverThumbRunnable(QRunnable):
+    """在后台线程解码、缩放封面，避免 Quick3D 在主线程加载大图时卡顿。"""
+
+    def __init__(self, shelf_ref, work_id: int, src_path: Path, dst_path: Path) -> None:
+        super().__init__()
+        self._shelf_ref = shelf_ref
+        self._work_id = work_id
+        self._src_path = src_path
+        self._dst_path = dst_path
+
+    def run(self) -> None:
+        shelf = self._shelf_ref()
+        if shelf is None:
+            return
+        fallback = path_to_file_url(self._src_path)
+        try:
+            img = QImage(str(self._src_path))
+            if img.isNull():
+                shelf._dvdThumbReady.emit(self._work_id, fallback)
+                return
+            w, h = img.width(), img.height()
+            m = max(w, h)
+            if m > DVD_TEXTURE_MAX_EDGE:
+                img = img.scaled(
+                    QSize(DVD_TEXTURE_MAX_EDGE, DVD_TEXTURE_MAX_EDGE),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            self._dst_path.parent.mkdir(parents=True, exist_ok=True)
+            if not img.save(str(self._dst_path), "JPEG", 88):
+                shelf._dvdThumbReady.emit(self._work_id, fallback)
+                return
+            shelf._dvdThumbReady.emit(
+                self._work_id,
+                path_to_file_url(self._dst_path.resolve()),
+            )
+        except OSError as e:
+            logging.warning(
+                "DVD 封面缩略图 IO失败 work_id=%s: %s", self._work_id, e
+            )
+            shelf._dvdThumbReady.emit(self._work_id, fallback)
 
 
 VISIBLE_MARGIN = 30  # 相机 x 对应 DVD 位置前后各 30 本为可见范围
@@ -520,15 +583,19 @@ class DvdShelfView(QWidget):
     一次性接受完成的work_id列表，只是在渲染上是按可见窗口加载，现在是ID预加载加窗口虚拟化
     """
 
+    _dvdThumbReady = Signal(int, str)
+
     def __init__(self, parent: QWidget | None = None, min_height: int = 600) -> None:
         super().__init__(parent)
         self._work_ids: list[int] = []
         self._load_start = -1
         self._load_end = -2
         self._texture_cache: dict[int, str] = {}
+        self._thumb_inflight: set[int] = set()
         self._dvd_dir = Path(__file__).resolve().parent.parent.parent / "core" / "dvd"
 
         self._bridge = DvdBridge(self)
+        self._dvdThumbReady.connect(self._on_dvd_thumb_ready)
         self._camera_target_x = 0.0
         self._camera_velocity_x = 0.0
         self._last_camera_animation_ts = perf_counter()
@@ -1057,14 +1124,8 @@ class DvdShelfView(QWidget):
 
         texture_urls: list[str] = []
         for wid in visible_ids:
-            cached_url = self._texture_cache.get(wid)
-            if cached_url:
-                texture_urls.append(cached_url)
-                continue
             img_url = (works_by_id.get(wid) or {}).get("image_url")
-            tex_url = cover_url_to_texture_url(img_url)
-            self._texture_cache[wid] = tex_url
-            texture_urls.append(tex_url)
+            texture_urls.append(self._texture_url_for_work(wid, img_url))
 
         shelf_length = (N - 1) * DVD_SPACING if N > 1 else 0.0
         self._update_qml(len(texture_urls), texture_urls, load_start, shelf_length)
@@ -1086,6 +1147,68 @@ class DvdShelfView(QWidget):
         ctx.setContextProperty("dvdCount", dvd_count)
         ctx.setContextProperty("dvdVisibleStart", visible_start)
         ctx.setContextProperty("dvdShelfLength", shelf_length)
+
+    def _texture_url_for_work(self, wid: int, image_url: str | None) -> str:
+        """返回 Quick3D 使用的贴图 URL；大图走后台缩略图，避免主线程解码掉帧。"""
+        cached = self._texture_cache.get(wid)
+        if cached is not None:
+            return cached
+        if not image_url:
+            u = path_to_file_url(MAPS_PATH / "0.png")
+            self._texture_cache[wid] = u
+            return u
+        full_path = WORKCOVER_PATH / image_url
+        if not full_path.exists():
+            u = path_to_file_url(MAPS_PATH / "0.png")
+            self._texture_cache[wid] = u
+            return u
+        thumb = _dvd_thumb_cache_path(wid, full_path)
+        if thumb.exists():
+            u = path_to_file_url(thumb)
+            self._texture_cache[wid] = u
+            return u
+        try:
+            file_size = full_path.stat().st_size
+        except OSError:
+            file_size = 0
+        if 0 < file_size <= DVD_TEXTURE_ASYNC_MIN_BYTES:
+            u = path_to_file_url(full_path)
+            self._texture_cache[wid] = u
+            return u
+        placeholder = path_to_file_url(MAPS_PATH / "0.png")
+        if wid in self._thumb_inflight:
+            return placeholder
+        self._thumb_inflight.add(wid)
+        QThreadPool.globalInstance().start(
+            DvdCoverThumbRunnable(weakref.ref(self), wid, full_path, thumb)
+        )
+        return placeholder
+
+    def _on_dvd_thumb_ready(self, work_id: int, url: str) -> None:
+        self._thumb_inflight.discard(work_id)
+        self._texture_cache[work_id] = url
+        if self._load_start < 0 or self._load_end < self._load_start:
+            return
+        span = self._work_ids[self._load_start : self._load_end + 1]
+        if work_id not in span:
+            return
+        self._rebuild_visible_texture_props()
+
+    def _rebuild_visible_texture_props(self) -> None:
+        if self._load_start < 0 or self._load_end < self._load_start:
+            return
+        visible_ids = self._work_ids[self._load_start : self._load_end + 1]
+        works_data = get_works_for_dvd(visible_ids)
+        works_by_id = {
+            int(d.get("work_id")): d for d in works_data if d.get("work_id") is not None
+        }
+        texture_urls: list[str] = []
+        for wid in visible_ids:
+            img_url = (works_by_id.get(wid) or {}).get("image_url")
+            texture_urls.append(self._texture_url_for_work(wid, img_url))
+        n = len(self._work_ids)
+        shelf_length = (n - 1) * DVD_SPACING if n > 1 else 0.0
+        self._update_qml(len(texture_urls), texture_urls, self._load_start, shelf_length)
 
     def _root_scene_object(self) -> QObject | None:
         return self._quick_widget.rootObject()
