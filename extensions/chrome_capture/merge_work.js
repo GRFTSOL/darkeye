@@ -147,7 +147,7 @@
   }
 
   /** 与 avdanyuwiki 发行日相差超过此天数则丢弃该站合并输入（javlib/javdb/javtxt） */
-  const RELEASE_DATE_TOLERANCE_DAYS = 20;
+  const RELEASE_DATE_TOLERANCE_DAYS = 60;
 
   /**
    * 解析为 UTC 日历日；无法解析为单一 YYYY-MM-DD 形态则返回 null。

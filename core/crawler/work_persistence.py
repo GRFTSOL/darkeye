@@ -1,13 +1,15 @@
 import json
 import logging
 import traceback
+from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime
 
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QObject, QThreadPool
 
 from config import get_translation_engine
 from controller.global_signal_bus import global_signals
+from core.crawler.worker import Worker, wire_worker_finished
 from core.database.db_queue import submit_db_raw
 from core.database.insert import (
     InsertNewWork,
@@ -22,6 +24,7 @@ from core.database.query import (
     get_tagid_by_keyword,
     get_workid_by_serialnumber,
 )
+from core.database.query.work_completeness import read_work_completeness_flags
 from core.database.update import update_work_byhand_
 from core.schema.model import CrawledWorkData
 from utils.utils import text2tag_id_list, translate_text_sync
@@ -59,60 +62,225 @@ def apply_title_story_translation(work: CrawledWorkData) -> None:
         )
 
 
-class DataUpdate:
-    """把爬虫结果写入库或推给 GUI；封面通过 SequentialDownloader 在主线程链路上触发。"""
+def _want_field(selected_fields: set[str] | None, field: str) -> bool:
+    return selected_fields is None or field in selected_fields
 
-    def __init__(
-        self,
-        data: CrawledWorkData,
-        manager: QObject = None,
-        withGUI: bool = False,
-        selected_fields: set[str] | None = None,
-    ):
-        self.work = data
-        self.manager = manager
-        self.withGUI = withGUI
-        self.selected_fields: set[str] | None = (
-            set(selected_fields) if selected_fields else None
+
+@dataclass
+class _PersistJobResult:
+    """后台持久化完成后的摘要；主线程据此发信号并起封面下载。"""
+
+    with_gui: bool
+    work: CrawledWorkData
+    selected_fields: set[str] | None
+    gui_payload: dict | None = None
+    completeness_flags: dict | None = None
+    work_id: int | None = None
+
+
+def _run_persistence_job(
+    work: CrawledWorkData,
+    withGUI: bool,
+    selected_fields: set[str] | None,
+) -> _PersistJobResult:
+    """翻译 + 数据库写入；在线程池线程中执行（可安全使用 ``submit_db_raw().result()``）。"""
+    apply_title_story_translation(work)
+    sf = set(selected_fields) if selected_fields else None
+    du = DataUpdate.__new__(DataUpdate)
+    du.work = work
+    du.manager = None
+    du.withGUI = withGUI
+    du.selected_fields = sf
+    du.work_id = None
+    if withGUI:
+        submit_db_raw(lambda: du._prepare_entities_and_relations_db()).result()
+        gui_payload = {
+            "serial_number": du.work.serial_number,
+            "director": du.work.director,
+            "release_date": du.work.release_date,
+            "runtime": du.work.runtime,
+            "cn_title": du.work.cn_title,
+            "jp_title": du.work.jp_title,
+            "cn_story": du.work.cn_story,
+            "jp_story": du.work.jp_story,
+            "tag_id_list": du.tag_id_list,
+            "actress_list": du.actress_ids,
+            "actor_list": du.actor_ids,
+            "maker": du.maker_id,
+            "label": du.label_id,
+            "series": du.series_id,
+            "fanart": du.work.fanart_url_list,
+        }
+        return _PersistJobResult(
+            with_gui=True,
+            work=work,
+            selected_fields=sf,
+            gui_payload=gui_payload,
+            work_id=du.work_id,
         )
-        self.work_id = None
-        apply_title_story_translation(self.work)
-        if withGUI:
-            submit_db_raw(lambda: self._prepare_entities_and_relations_db()).result()
-            global_signals.guiUpdate.emit(
-                {
-                    "serial_number": self.work.serial_number,
-                    "director": self.work.director,
-                    "release_date": self.work.release_date,
-                    "runtime": self.work.runtime,
-                    "cn_title": self.work.cn_title,
-                    "jp_title": self.work.jp_title,
-                    "cn_story": self.work.cn_story,
-                    "jp_story": self.work.jp_story,
-                    "tag_id_list": self.tag_id_list,
-                    "actress_list": self.actress_ids,
-                    "actor_list": self.actor_ids,
-                    "maker": self.maker_id,
-                    "label": self.label_id,
-                    "series": self.series_id,
-                    "fanart": self.work.fanart_url_list,
-                }
-            )
-        else:
-            submit_db_raw(lambda: self._prepare_and_insert_work_non_gui()).result()
-            # self._prepare_and_insert_work_non_gui()
-        self._schedule_cover_download()
+    flags = submit_db_raw(lambda: du._prepare_and_insert_work_non_gui()).result()
+    return _PersistJobResult(
+        with_gui=False,
+        work=work,
+        selected_fields=sf,
+        completeness_flags=flags if isinstance(flags, dict) else None,
+        work_id=du.work_id,
+    )
 
-    def __del__(self):
-        logging.info("DataUpdate 实例已成功销毁，内存已释放")
+
+def _apply_persist_result_on_main(manager: QObject | None, result: object) -> None:
+    if not isinstance(result, _PersistJobResult):
+        logging.error("作品持久化后台任务失败或返回异常")
+        return
+    if result.with_gui:
+        if result.gui_payload is not None:
+            global_signals.guiUpdate.emit(result.gui_payload)
+    else:
+        serial_norm = (result.work.serial_number or "").strip()
+        if serial_norm and isinstance(result.completeness_flags, dict):
+            global_signals.workCrawlCompleteness.emit(
+                serial_norm, result.completeness_flags
+            )
+    schedule_cover_download(
+        manager,
+        result.work,
+        result.with_gui,
+        result.selected_fields,
+        result.work_id,
+    )
+
+
+def schedule_data_update(
+    manager: QObject | None,
+    work: CrawledWorkData,
+    withGUI: bool,
+    selected_fields: set[str] | None = None,
+) -> None:
+    """将翻译与入库整段投递到持久化线程池；主线程仅收信号并启动封面下载。"""
+    pool = getattr(manager, "_persist_pool", None)
+    if pool is None:
+        pool = QThreadPool.globalInstance()
+    worker = Worker(_run_persistence_job, work, withGUI, selected_fields)
+    wire_worker_finished(
+        worker, lambda r, m=manager: _apply_persist_result_on_main(m, r)
+    )
+    pool.start(worker)
+
+
+def _cover_download_finished(
+    success: bool,
+    temp_path: str,
+    image_filename: str,
+    work_id: int | None,
+    work: CrawledWorkData,
+    withGUI: bool,
+    selected_fields: set[str] | None,
+) -> None:
+    if success:
+        if withGUI:
+            global_signals.downloadSuccess.emit(temp_path)
+        else:
+            insert_cover_async(
+                temp_path, image_filename, work_id, work.serial_number, selected_fields
+            )
+
+
+def schedule_cover_download(
+    manager: QObject | None,
+    work: CrawledWorkData,
+    withGUI: bool,
+    selected_fields: set[str] | None,
+    work_id: int | None,
+) -> None:
+    """在需要封面且存在 ``manager`` 时启动顺序封面下载。
+
+    由主线程在持久化后台跑完后调用（须能安全创建 ``SequentialDownloader``）。
+    在临时目录生成唯一文件名，用 ``work.cover_url_list`` 依次尝试下载；
+    完成后走 ``_cover_download_finished``：GUI 发 ``downloadSuccess``，
+    非 GUI 则 ``insert_cover_async`` 落盘并更新库。
+
+    Args:
+        manager: 爬虫管理器（提供下载线程池与 relay 线程归属）；缺省则无法起任务。
+        work: 含番号与封面 URL 列表。
+        withGUI: 是否走界面预览分支（与 ``SequentialDownloader`` 行为一致）。
+        selected_fields: 为 ``None`` 表示全字段；否则仅当含 ``cover`` 时才下载。
+        work_id: 非 GUI 入库后的作品 id，供封面写入后更新 completeness。
+    """
+    from config import TEMP_PATH
+
+    image_filename = work.serial_number.strip().upper() + ".jpg"
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    dst_name = f"image_{timestamp}.jpg"
+    TEMP_PATH.mkdir(parents=True, exist_ok=True)
+    temp_path = Path(TEMP_PATH) / dst_name
+
+    if manager and _want_field(selected_fields, "cover"):
+        from core.crawler.sequential_download import SequentialDownloader
+
+        task_id = work.serial_number
+        total_steps = len(work.cover_url_list or [])
+        pool = getattr(manager, "_download_pool", None)
+        downloader = SequentialDownloader(
+            manager,
+            withGUI,
+            task_id=task_id,
+            total=total_steps,
+            thread_pool=pool,
+        )
+        downloader.finished.connect(
+            lambda s, r, wf=work_id, w=work, wg=withGUI, sf=selected_fields: _cover_download_finished(
+                s, r, image_filename, wf, w, wg, sf
+            )
+        )
+        downloader.start(work.cover_url_list, temp_path, image_filename)
+    elif _want_field(selected_fields, "cover"):
+        logging.error("DataUpdate missing manager, cannot start downloader")
+
+
+def insert_cover_async(
+    temp_path: str,
+    image_filename: str,
+    work_id: int | None,
+    serial_number: str,
+    selected_fields: set[str] | None,
+) -> None:
+    """封面落盘与库更新入队；完成后再发 completeness（不阻塞调用线程）。"""
+    from core.database.insert import rename_save_image
+
+    def _go():
+        rename_save_image(temp_path, image_filename, "cover")
+        if work_id is not None and _want_field(selected_fields, "cover"):
+            update_work_byhand_(work_id, image_url=image_filename)
+        if work_id is not None:
+            return read_work_completeness_flags(work_id)
+        return None
+
+    def _on_db_done(fut):
+        try:
+            flags = fut.result()
+        except Exception as e:
+            logging.error("insert_cover_async 数据库回调失败: %s", e)
+            return
+        serial_norm = (serial_number or "").strip()
+        if serial_norm and isinstance(flags, dict):
+            global_signals.workCrawlCompleteness.emit(serial_norm, flags)
+
+    fut = submit_db_raw(_go)
+    fut.add_done_callback(_on_db_done)
+
+
+class DataUpdate:
+    """把爬虫结果写入库或推给 GUI；须通过 ``schedule_data_update`` 调度，勿直接构造。"""
 
     def _want(self, field: str) -> bool:
-        return self.selected_fields is None or field in self.selected_fields
+        return _want_field(self.selected_fields, field)
 
     def _prepare_and_insert_work_non_gui(self):
         """无 GUI 时：实体解析 + 作品行写入，单次入队。"""
         self._prepare_entities_and_relations_db()
         self._insert2db()
+        return read_work_completeness_flags(self.work_id)
 
     def _prepare_entities_and_relations_db(self):
         """标签/演员/片商等解析与插入；仅在数据库队列线程内调用。"""
@@ -151,10 +319,6 @@ class DataUpdate:
                         self.actress_ids.append(id)
                         global_signals.actressDataChanged.emit()
                         # 自动调用爬虫去更新女优
-                        from PySide6.QtCore import QThreadPool
-
-                        from core.crawler.worker import Worker, wire_worker_finished
-
                         worker = Worker(
                             _dispatch_minnano_actress_update_via_browser, id, actress
                         )
@@ -248,45 +412,6 @@ class DataUpdate:
             if items:
                 self.fanart_json = json.dumps(items, ensure_ascii=False)
 
-    def _schedule_cover_download(self):
-        from config import TEMP_PATH
-
-        image_filename = (
-            self.work.serial_number.strip().upper() + ".jpg"
-        )  # 这个图片就番号.jpg就行了
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        dst_name = f"image_{timestamp}.jpg"
-        TEMP_PATH.mkdir(parents=True, exist_ok=True)
-        temp_path = Path(TEMP_PATH) / dst_name
-
-        if self.manager and self._want("cover"):
-            from core.crawler.sequential_download import SequentialDownloader
-
-            task_id = self.work.serial_number
-            total_steps = len(self.work.cover_url_list or [])
-            pool = getattr(self.manager, "_download_pool", None)
-            downloader = SequentialDownloader(
-                self.manager,
-                self.withGUI,
-                task_id=task_id,
-                total=total_steps,
-                thread_pool=pool,
-            )
-            downloader.finished.connect(
-                lambda s, r: self._on_download_finished(s, r, image_filename)
-            )
-            downloader.start(self.work.cover_url_list, temp_path, image_filename)
-        elif self._want("cover"):
-            logging.error("DataUpdate missing manager, cannot start downloader")
-
-    def _on_download_finished(self, success, temp_path, image_filename):
-        if success:
-            if self.withGUI:
-                global_signals.downloadSuccess.emit(temp_path)
-            else:
-                self.insert_cover(temp_path, image_filename)
-
     def _insert2db(self):
         self.work_id = get_workid_by_serialnumber(self.work.serial_number)
         if self.work_id is None:
@@ -326,13 +451,3 @@ class DataUpdate:
             add_tag2work(self.work_id, tag_ids=self.tag_id_list)
 
         global_signals.workDataChanged.emit()
-
-    def insert_cover(self, temp_path, image_filename):
-        from core.database.insert import rename_save_image
-
-        def _go():
-            rename_save_image(temp_path, image_filename, "cover")
-            if self.work_id is not None and self._want("cover"):
-                update_work_byhand_(self.work_id, image_url=image_filename)
-
-        submit_db_raw(_go).result()

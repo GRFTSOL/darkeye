@@ -500,8 +500,9 @@ QComboBox#DesignComboBox QAbstractItemView {
     selection-background-color: {{color_primary}};
 }
 
-/* ----- TokenListView (objectName=DesignListView) ----- */
-QListView#DesignListView {
+/* ----- TokenListView (objectName=DesignListView) / TokenListWidget (objectName=DesignListWidget) ----- */
+QListView#DesignListView,
+QListWidget#DesignListWidget {
     background-color: {{color_bg}};
     color: {{color_text}};
     border: {{border_width}} solid {{color_border}};
@@ -512,7 +513,8 @@ QListView#DesignListView {
     selection-background-color: {{color_primary}};
 }
 
-QListView#DesignListView:focus {
+QListView#DesignListView:focus,
+QListWidget#DesignListWidget:focus {
     border: {{border_width}} solid {{color_border_focus}};
     background-color: {{color_bg_input}};
 }
@@ -522,17 +524,27 @@ QListView#DesignListView::item {
     color: {{color_text}};
 }
 
-QListView#DesignListView::item:selected {
+/* 嵌入 QWidget 的行（如 Inbox 已完成列）：减小纵向 padding，避免裁切灯条与文字 */
+QListWidget#DesignListWidget::item {
+    padding: 4px 8px;
+    min-height: 36px;
+    color: {{color_text}};
+}
+
+QListView#DesignListView::item:selected,
+QListWidget#DesignListWidget::item:selected {
     background-color: {{color_primary}};
     color: {{color_text_inverse}};
 }
 
-QListView#DesignListView::item:hover:!selected {
+QListView#DesignListView::item:hover:!selected,
+QListWidget#DesignListWidget::item:hover:!selected {
     background-color: {{color_bg_input}};
     color: {{color_text}};
 }
 
-QListView#DesignListView:disabled {
+QListView#DesignListView:disabled,
+QListWidget#DesignListWidget:disabled {
     background-color: {{color_bg_input}};
     color: {{color_text_disabled}};
     border-color: {{color_border}};

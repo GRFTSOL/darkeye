@@ -37,6 +37,7 @@ from .token_group_box import TokenGroupBox
 from .token_key_sequence_edit import TokenKeySequenceEdit
 from .token_link_card import TokenLinkCard
 from .token_list_view import TokenListView
+from .token_list_widget import TokenListWidget
 from .token_progress_bar import IndeterminateProgressBar, ProgressBar, TokenProgressBar
 from .token_radio_button import TokenRadioButton
 from .token_spin_box import TokenSpinBox
@@ -98,6 +99,7 @@ __all__ = [
     "TokenKeySequenceEdit",
     "TokenLinkCard",
     "TokenListView",
+    "TokenListWidget",
     "TokenModalDialog",
     "TokenProgressBar",
     "TokenRadioButton",

@@ -11,7 +11,7 @@ from PySide6.QtCore import QObject, QThreadPool, QTimer, Qt, Signal, Slot
 from controller.global_signal_bus import global_signals
 from core.crawler.crawler_task import CrawlerTask, CrawlWorkflowState
 from core.crawler.sequential_download import SequentialDownloader
-from core.crawler.work_persistence import DataUpdate
+from core.crawler.work_persistence import schedule_data_update
 from core.schema.model import CrawledWorkData
 
 # 与 server.app WORK_MERGE_TIMEOUT_SEC + 余量一致（manual_tests 使用 130s）
@@ -110,6 +110,10 @@ class CrawlerManager2(QObject):
             self._download_pool = QThreadPool(self)
             self._download_pool.setObjectName("CoverDownloadPool")
             self._download_pool.setMaxThreadCount(4)
+
+            self._persist_pool = QThreadPool(self)
+            self._persist_pool.setObjectName("WorkPersistPool")
+            self._persist_pool.setMaxThreadCount(2)
 
             self.request_queue = deque()
             self.schedule_timer = QTimer(self)
@@ -219,7 +223,7 @@ class CrawlerManager2(QObject):
     def terminate_crawl(self, *, clear_queue: bool = True):
         """停止调度定时器并标记终止态；可选清空待爬队列并从未完成集合中移除被丢弃番号。
 
-        已在执行的 HTTP / ``DataUpdate`` 不会被强行中断。
+        已在执行的 HTTP / 持久化后台任务不会被强行中断。
         """
         self._crawl_terminated = True
 
@@ -437,7 +441,7 @@ class CrawlerManager2(QObject):
     def _on_work_api_finished(
         self, serial: str, payload: object, err: Optional[str]
     ) -> None:
-        """处理 work API 响应：错误/取消则清理任务；成功则解析为 ``CrawledWorkData`` 并 ``DataUpdate``。"""
+        """处理 work API 响应：错误/取消则清理任务；成功则解析并 ``schedule_data_update``。"""
         self._work_fetch_busy = False
         serial = self._norm_serial(serial)
         if not serial:
@@ -502,9 +506,9 @@ class CrawlerManager2(QObject):
             return
 
         task.workflow_state = CrawlWorkflowState.PERSISTING
-        DataUpdate(
-            merged,
+        schedule_data_update(
             self,
+            merged,
             withGUI=task.withGUI,
             selected_fields=task.selected_fields,
         )
