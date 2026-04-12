@@ -11,7 +11,7 @@ from pathlib import Path
 
 from config import TEMP_PATH, resource_path
 from controller.global_signal_bus import global_signals
-from core.crawler.download import download_image_with_retry
+from core.crawler.download import download_image_js
 from core.database.insert import (
     InsertNewActor,
     InsertNewActress,
@@ -188,8 +188,12 @@ def _prepare_local_image_path(src: str) -> str | None:
         TEMP_PATH.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         dest = TEMP_PATH / f"nfo_img_{ts}.jpg"
-        ok, _ = download_image_with_retry(s, str(dest), retries=1)
-        return str(dest.resolve()) if ok else None
+        ok, last_msg = download_image_js(s, str(dest))
+        if ok:
+            return str(dest.resolve())
+        if last_msg:
+            logging.debug("NFO 远程图片下载失败：%s", last_msg[:200])
+        return None
     p = Path(s)
     return str(p.resolve()) if p.is_file() else None
 
@@ -240,19 +244,19 @@ def _resolve_cast_from_nfo(
         name = (entry.name or "").strip()
         if not name:
             continue
-        aid = exist_actress(name)#先匹配女优，
+        aid = exist_actress(name)  # 先匹配女优，
         if aid is not None:
             if aid not in seen_a:
                 seen_a.add(aid)
                 actress_ids.append(aid)
             continue
-        oid = exist_actor(name)#再匹配男优
+        oid = exist_actor(name)  # 再匹配男优
         if oid is not None:
             if oid not in seen_o:
                 seen_o.add(oid)
                 actor_ids.append(oid)
             continue
-        if name in male_names: #男优在actors_cn_jp_export.json中，则新建男优
+        if name in male_names:  # 男优在actors_cn_jp_export.json中，则新建男优
             if InsertNewActor(name, name):
                 actor_added = True
             oid = exist_actor(name)
@@ -260,7 +264,7 @@ def _resolve_cast_from_nfo(
                 seen_o.add(oid)
                 actor_ids.append(oid)
         else:
-            if InsertNewActress(name, name):#其他的全是女优
+            if InsertNewActress(name, name):  # 其他的全是女优
                 actress_added = True
             aid = exist_actress(name)
             if aid is not None and aid not in seen_a:

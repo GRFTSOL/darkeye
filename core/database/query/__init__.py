@@ -12,6 +12,11 @@
 - private: 私有库（自慰/做爱/晨勃记录、按年/按天统计等）
 """
 
+from .work_completeness import (
+    WORK_COMPLETENESS_KEYS,
+    WORK_COMPLETENESS_LABELS_ZH,
+    read_work_completeness_flags,
+)
 from .work import (
     get_all_work_id,
     get_work_ids_with_cover,
@@ -104,6 +109,10 @@ from .private import (
 )
 
 __all__ = [
+    # work completeness
+    "WORK_COMPLETENESS_KEYS",
+    "WORK_COMPLETENESS_LABELS_ZH",
+    "read_work_completeness_flags",
     # work
     "get_all_work_id",
     "get_work_ids_with_cover",

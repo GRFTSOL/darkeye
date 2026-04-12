@@ -7,8 +7,6 @@
     return;
   }
 
-  const rt = chrome.runtime;
-
   function init() {
     if (!document.body) {
       window.addEventListener("DOMContentLoaded", init);
@@ -48,7 +46,7 @@
       btn.style.background = "#1d4ed8";
       btn.style.color = "#fff";
       btn.style.borderColor = "#1e40af";
-      const p = rt.sendMessage({
+      const p = chrome.runtime.sendMessage({
         command: "capture_minnano_actress",
         data: fresh,
       });

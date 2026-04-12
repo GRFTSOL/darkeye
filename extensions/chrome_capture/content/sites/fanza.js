@@ -1,9 +1,8 @@
 // Fanza 站点：搜索、解析、年龄确认
 (function() {
-  const api = chrome || browser;
   if (!window.location.href.includes("dmm.co.jp")) return;
 
-  api.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.command === "fanza-dvdid"){
         sessionStorage.setItem('darkeye_fanza_parse', 'true');
         if (message.serial) {

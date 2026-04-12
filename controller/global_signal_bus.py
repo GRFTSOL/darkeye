@@ -37,6 +37,8 @@ class GlobalSignalBus(QObject):
     downloadTaskProgress = Signal(str, int, int, str)
     # success: 是否成功完成，msg: 收尾提示（错误原因或完成说明）
     downloadTaskFinished = Signal(str, bool, str)
+    # 爬取入库后按库内状态刷新 15 维完整度；object 为 dict[str, bool]（key 同 WORK_COMPLETENESS_KEYS）
+    workCrawlCompleteness = Signal(str, object)
 
 
 global_signals = GlobalSignalBus()

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, Set
 
 
 class CrawlWorkflowState(str, Enum):
@@ -9,21 +8,17 @@ class CrawlWorkflowState(str, Enum):
 
     QUEUED = "queued"
     CRAWLING = "crawling"
-    MERGING = "merging"
     PERSISTING = "persisting"
 
 
 class CrawlerTask:
     def __init__(
         self,
-        serial_number,
-        sources=("javlib", "javdb", "fanza", "javtxt", "avdanyuwiki"),
-        withGUI=False,
+        serial_number: str,
+        withGUI: bool = False,
         selected_fields: set[str] | None = None,
     ):
         self.serial: str = serial_number
-        self.pending_sources: set[str] = set(sources)
-        self.results: Dict[str, dict] = {}
         self.withGUI = withGUI
         self.selected_fields: set[str] | None = (
             set(selected_fields) if selected_fields else None

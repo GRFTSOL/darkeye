@@ -4,22 +4,24 @@ import logging
 from dataclasses import dataclass
 from typing import Dict
 
-from PySide6.QtCore import Qt, Slot, QTimer, QStringListModel
+from PySide6.QtCore import QSize, Qt, Slot, QTimer, QStringListModel
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QAbstractItemView,
+    QListWidgetItem,
+    QMessageBox,
 )
 
 from controller.global_signal_bus import global_signals
 from core.crawler.crawler_task import CrawlWorkflowState
-from darkeye_ui.components import Label, TokenListView
+from darkeye_ui.components import Button, Label, TokenListView, TokenListWidget
+from ui.widgets.work_completeness_leds import WorkCompletenessLedStrip
 
 _WORKFLOW_LABELS: dict[CrawlWorkflowState, str] = {
     CrawlWorkflowState.QUEUED: "排队",
-    CrawlWorkflowState.CRAWLING: "源站爬取",
-    CrawlWorkflowState.MERGING: "合并",
+    CrawlWorkflowState.CRAWLING: "API 请求",
     CrawlWorkflowState.PERSISTING: "入库",
 }
 
@@ -36,6 +38,8 @@ class DownloadTaskState:
     in_queue: bool = False
     crawling: bool = False
     workflow: CrawlWorkflowState | None = None
+    # 库内 15 维完整度；None 表示尚未收到 workCrawlCompleteness
+    completeness: dict[str, bool] | None = None
 
 
 class InboxPage(QWidget):
@@ -54,6 +58,7 @@ class InboxPage(QWidget):
         self._running_serials: list[str] = []
         self._finished_serials: list[str] = []
         self._models_dirty: bool = False
+        self._last_finished_fingerprint: tuple | None = None
 
         self._init_ui()
         self._connect_signals()
@@ -68,6 +73,27 @@ class InboxPage(QWidget):
         self._scheduler_label = Label("调度：—")
         header_layout.addWidget(self._scheduler_label)
         header_layout.addStretch(1)
+
+        self._btn_resume_queue = Button("开始队列", variant="primary")
+        self._btn_resume_queue.setToolTip(
+            "恢复调度：按待爬队列继续处理尚未开始的番号（与启动时恢复的暂停态对应）。"
+        )
+        self._btn_pause_queue = Button("暂停队列")
+        self._btn_pause_queue.setToolTip(
+            "暂停调度：不再从队列弹出新的番号；待爬列表保留。"
+            "已在请求或入库、封面下载中的任务会继续跑完。"
+        )
+        self._btn_clear_queue = Button("清除全部队列")
+        self._btn_clear_queue.setToolTip(
+            "清空待爬队列并进入暂停态；不会中断已在进行的请求或下载。"
+        )
+        self._btn_resume_queue.clicked.connect(self._on_resume_queue_clicked)
+        self._btn_pause_queue.clicked.connect(self._on_pause_queue_clicked)
+        self._btn_clear_queue.clicked.connect(self._on_clear_queue_clicked)
+        header_layout.addWidget(self._btn_resume_queue)
+        header_layout.addWidget(self._btn_pause_queue)
+        header_layout.addWidget(self._btn_clear_queue)
+
         root_layout.addLayout(header_layout)
 
         columns_layout = QHBoxLayout()
@@ -104,11 +130,11 @@ class InboxPage(QWidget):
         finished_layout.setSpacing(8)
         self.finished_label = Label("已完成 (0)")
         finished_layout.addWidget(self.finished_label)
-        self._finished_model = QStringListModel(self)
-        self.finished_list = TokenListView(self)
-        self.finished_list.setModel(self._finished_model)
+        self.finished_list = TokenListWidget(self)
         self.finished_list.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
-        self.finished_list.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.finished_list.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
         finished_layout.addWidget(self.finished_list)
         columns_layout.addLayout(finished_layout, 1)
 
@@ -116,7 +142,8 @@ class InboxPage(QWidget):
 
         hint_label = Label(
             "左：request_queue；中：active 任务（含工作流阶段与封面下载）；右："
-            "downloadTaskFinished 收尾状态。"
+            "downloadTaskFinished 收尾状态；绿/红灯为入库后库内 15 项完整度（封面在落盘"
+            "后可能二次刷新）。"
         )
         hint_label.setWordWrap(True)
         hint_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
@@ -126,12 +153,74 @@ class InboxPage(QWidget):
         global_signals.downloadTaskStarted.connect(self._on_task_started)
         global_signals.downloadTaskProgress.connect(self._on_task_progress)
         global_signals.downloadTaskFinished.connect(self._on_task_finished)
+        global_signals.workCrawlCompleteness.connect(self._on_work_crawl_completeness)
 
     def _init_poll_timer(self) -> None:
         self._poll_timer = QTimer(self)
         self._poll_timer.setInterval(1000)
         self._poll_timer.timeout.connect(self._poll_crawler_snapshot)
         self._poll_timer.start()
+
+    def _crawler_manager_or_none(self):
+        try:
+            from core.crawler.crawler_manager import get_manager
+
+            return get_manager()
+        except Exception:
+            logging.warning(
+                "InboxPage: 无法获取 CrawlerManager（可能尚未初始化）",
+                exc_info=True,
+            )
+            return None
+
+    @Slot()
+    def _on_resume_queue_clicked(self) -> None:
+        mgr = self._crawler_manager_or_none()
+        if mgr is None:
+            return
+        try:
+            mgr.resume_crawl()
+        except Exception:
+            logging.exception("InboxPage: resume_crawl 失败")
+            return
+        self._poll_crawler_snapshot()
+
+    @Slot()
+    def _on_pause_queue_clicked(self) -> None:
+        mgr = self._crawler_manager_or_none()
+        if mgr is None:
+            return
+        try:
+            mgr.terminate_crawl(clear_queue=False)
+        except Exception:
+            logging.exception("InboxPage: terminate_crawl(pause) 失败")
+            return
+        self._poll_crawler_snapshot()
+
+    @Slot()
+    def _on_clear_queue_clicked(self) -> None:
+        mgr = self._crawler_manager_or_none()
+        if mgr is None:
+            return
+        q_len = len(mgr.request_queue)
+        if q_len == 0:
+            return
+        reply = QMessageBox.question(
+            self,
+            "清除全部队列",
+            f"确定清空待爬队列中的 {q_len} 个番号吗？\n"
+            "已在进行中的任务不会被中断；清空后调度将暂停。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            mgr.terminate_crawl(clear_queue=True)
+        except Exception:
+            logging.exception("InboxPage: terminate_crawl(clear) 失败")
+            return
+        self._poll_crawler_snapshot()
 
     @Slot(str, int)
     def _on_task_started(self, serial: str, total: int) -> None:
@@ -234,6 +323,20 @@ class InboxPage(QWidget):
         self._sync_models_if_needed()
         self._refresh_counters()
 
+    @Slot(str, object)
+    def _on_work_crawl_completeness(self, serial: str, flags: object) -> None:
+        s = str(serial or "").strip()
+        if not s or not isinstance(flags, dict):
+            return
+        state = self._tasks.get(s)
+        if state is None:
+            state = DownloadTaskState(serial=s)
+            self._tasks[s] = state
+        state.completeness = dict(flags)
+        self._models_dirty = True
+        self._sync_models_if_needed()
+        self._refresh_counters()
+
     @Slot(str, bool, str)
     def _on_task_finished(self, serial: str, success: bool, msg: str) -> None:
         state = self._tasks.get(serial)
@@ -295,12 +398,6 @@ class InboxPage(QWidget):
 
         display_serial = state.serial or "未知任务"
 
-        if serial in self._finished_serials:
-            suffix = "✅" if state.success else "❌"
-            if not state.success and state.status_text:
-                return f"{display_serial} {suffix} · {state.status_text}"
-            return f"{display_serial} {suffix}"
-
         if serial in self._running_serials:
             sub = self._running_subtitle(state)
             return f"{display_serial} · {sub}" if sub else display_serial
@@ -314,10 +411,74 @@ class InboxPage(QWidget):
         self._running_model.setStringList(
             [self._display_text_for_serial(s) for s in self._running_serials]
         )
-        self._finished_model.setStringList(
-            [self._display_text_for_serial(s) for s in self._finished_serials]
-        )
+        self._sync_finished_list()
         self._models_dirty = False
+
+    def _finished_list_fingerprint(self) -> tuple:
+        parts: list[tuple] = []
+        for serial in self._finished_serials:
+            state = self._tasks.get(serial)
+            if not state:
+                continue
+            c = state.completeness
+            c_key = None if c is None else tuple(sorted(c.items()))
+            parts.append((serial, state.success, state.status_text, c_key))
+        return tuple(parts)
+
+    def _sync_finished_list(self) -> None:
+        fp = self._finished_list_fingerprint()
+        if fp == self._last_finished_fingerprint:
+            return
+        self._last_finished_fingerprint = fp
+
+        sb = self.finished_list.verticalScrollBar()
+        old_val = sb.value()
+        old_max = sb.maximum()
+        # 接近底部时刷新后仍保持在底部（列表变长时）
+        stick_bottom = old_max > 0 and (old_val >= old_max - 4)
+
+        self.finished_list.clear()
+        for serial in self._finished_serials:
+            state = self._tasks.get(serial)
+            if not state:
+                continue
+            item = QListWidgetItem()
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(6, 4, 6, 4)
+            row_layout.setSpacing(10)
+            title_text = state.serial or "未知任务"
+            title = Label(title_text)
+            title.setWordWrap(False)
+            if not state.success and state.status_text:
+                tip = state.status_text
+                title.setToolTip(tip)
+                row.setToolTip(tip)
+            strip = WorkCompletenessLedStrip(state.completeness, row)
+            row_layout.addWidget(title, 1)
+            row_layout.addWidget(strip, 0)
+            self.finished_list.addItem(item)
+            self.finished_list.setItemWidget(item, row)
+            row.updateGeometry()
+            sh = row.sizeHint()
+            mh = row.minimumSizeHint()
+            # QSS 中 DesignListWidget::item 上下 padding 共 8px，且 min-height 36px，行高取较大者
+            pad_v = 8
+            h = max(sh.height() + pad_v, mh.height() + pad_v, 36)
+            w = max(sh.width(), mh.width(), 1)
+            item.setSizeHint(QSize(w, h))
+
+        def _restore_scroll() -> None:
+            sb2 = self.finished_list.verticalScrollBar()
+            mx = sb2.maximum()
+            if mx <= 0:
+                return
+            if stick_bottom:
+                sb2.setValue(mx)
+            else:
+                sb2.setValue(min(old_val, mx))
+
+        QTimer.singleShot(0, _restore_scroll)
 
     def _sync_models_if_needed(self) -> None:
         if self._models_dirty:
