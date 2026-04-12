@@ -18,7 +18,6 @@
     "default_popup": "popup/popup.html"
   },
   "content_scripts": [
-    { "matches": ["*://javdb.com/*", "*://www.javdb.com/*", "*://www.javlibrary.com/*"], "js": ["content/popup_capture.js"] },
     { "matches": ["*://javdb.com/*", "*://www.javdb.com/*"], "js": ["content/sites/javdb.js"] },
     { "matches": ["*://www.javlibrary.com/*"], "js": ["content/sites/javlibrary.js"] },
     { "matches": ["*://javtxt.com/*", "*://www.javtxt.com/*"], "js": ["content/sites/javtxt.js"] },

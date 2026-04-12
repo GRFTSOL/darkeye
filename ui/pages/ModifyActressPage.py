@@ -128,7 +128,6 @@ class ViewModel(QObject):
 
         bridge = ServerBridge()
 
-        bridge.actressIdReceived.connect(self.set_minnano_id)
         bridge.minnanoActressCaptureReceived.connect(self.apply_minnano_capture)
 
     def set_state(self, key: str, value: bool) -> None:
@@ -589,7 +588,7 @@ class ViewModel(QObject):
 
     @Slot(dict)
     def apply_minnano_capture(self, body: dict):
-        """插件 minnano 页「采集」：将数据回填当前编辑表单（需用户提交后写库）。"""
+        """插件 minnano 页「采集」：回填表单并关闭「需要更新」（仍须提交后写库）。"""
         import copy
         from datetime import datetime
         from pathlib import Path
@@ -601,7 +600,7 @@ class ViewModel(QObject):
             return
         ctx = body.get("context") or {}
         if ctx.get("persist"):
-            # 桌面已不再通过 startcrawler 下发 persist；旧扩展回传忽略
+            # 旧 persist 路径回传忽略（当前女优采集走 HTTP + actress-fetch-result）
             return
         aid = ctx.get("actress_id")
         aid_int = None
@@ -695,6 +694,8 @@ class ViewModel(QObject):
                     self.set_image_urlA(str(dest.resolve()))
             except Exception as e:
                 logging.warning("下载 minnano 头像失败: %s", e)
+
+        self.set_need_update(False)
 
         if not body.get("_silent_completion"):
             self.msg.show_info(

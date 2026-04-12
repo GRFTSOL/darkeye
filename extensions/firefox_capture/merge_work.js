@@ -124,7 +124,6 @@
     if (m) {
       for (const sub of FANZA_PL_SKIP_MAKER_SUBSTR) {
         if (!sub) continue;
-        if (m.includes(sub)) return true;
         if (m.includes(sub.toLowerCase())) return true;
       }
     }
@@ -220,6 +219,17 @@
       }
     }
     return base;
+  }
+
+  /** 取第一个非空数组；避免 `[] || fallback` 在 JS 中空数组为真值导致不回退。 */
+  function firstNonEmptyArray(...candidates) {
+    for (let i = 0; i < candidates.length; i++) {
+      const a = candidates[i];
+      if (Array.isArray(a) && a.length > 0) {
+        return a;
+      }
+    }
+    return [];
   }
 
   /**
@@ -335,7 +345,10 @@
       javdbResult.title ||
       "";
 
-    const fanartList = javlibResult.fanart || javdbResult.fanart || [];
+    const fanartList = firstNonEmptyArray(
+      javlibResult.fanart,
+      javdbResult.fanart
+    );
 
     let runtimeVal = 0;
     try {
@@ -367,5 +380,7 @@
 
   const g = typeof globalThis !== "undefined" ? globalThis : this;
   g.mergeCrawlResultsNoTranslate = mergeCrawlResultsNoTranslate;
+  /** 与 ``utils.serial_number.convert_fanza`` 一致；供 background 拼 avdanyuwiki 搜索串。 */
+  g.convertFanzaForAvdanyuwiki = convertFanza;
 })();
 

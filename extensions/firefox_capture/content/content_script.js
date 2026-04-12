@@ -1,5 +1,4 @@
 // 已按站点拆分，见：
-// - content/popup_capture.js     (JavDB/JavLibrary 弹窗采集)
 // - content/sites/javlibrary.js   (JavLibrary 爬虫)
 // - content/sites/fanza.js       (Fanza 爬虫)
 // - content/sites/minnano.js      (Minnano actress 悬浮球)

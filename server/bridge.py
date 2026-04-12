@@ -9,17 +9,8 @@ class ServerBridge(QObject):
     """
 
     # 定义信号，传递字典类型的数据
-    captureReceived = Signal(dict)
-    actressIdReceived = Signal(int)
     minnanoActressCaptureReceived = Signal(dict)
     captureOneReceived = Signal(str)
-    javlibFinished = Signal(dict)
-    fanzaFinished = Signal(dict)
-    javdbFinished = Signal(dict)
-    javtxtFinished = Signal(dict)
-    # 插件解析 javtxt 热门女优页：{ "ok": bool, "names": list[str], "error": str|None }
-    javtxtTopActressesFinished = Signal(object)
-    avdanyuwikiFinished = Signal(dict)
     crawlerBacklogWarning = Signal(int, str)
     # 浏览器插件拉取 DMM 封面完成：request_id, 临时文件绝对路径或 None, 错误说明（成功为空串）
     coverBrowserFetchResult = Signal(str, object, str)

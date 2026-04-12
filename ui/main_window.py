@@ -265,7 +265,6 @@ class MainWindow(QMainWindow):
         """信号连接"""
         from server.bridge import bridge
 
-        bridge.captureReceived.connect(self.handle_capture_data)
         bridge.crawlerBacklogWarning.connect(self._on_crawler_backlog_warning)
 
     def closeEvent(self, event) -> None:
@@ -361,29 +360,3 @@ class MainWindow(QMainWindow):
             "适时关闭失效标签或者过反爬验证",
             attention_grabbing=True,
         )
-
-    @Slot(dict)
-    def handle_capture_data(self, data: dict) -> None:
-        """
-        处理来自插件的抓取数据
-        """
-        logging.info(f"Main thread received capture data: {data.get('url')}")
-        self.myStatusBar.showMessage(
-            f"收到抓取数据: {data.get('title', 'Unknown')}", 5000
-        )
-
-        content_str = data.get("content", "")
-
-        # 解析番号数组，去除空白并过滤空字符串
-        serial_numbers = [s.strip() for s in content_str.split(",") if s.strip()]
-
-        logging.info(
-            f"收到抓取数据,标题: {data.get('title')}\nURL: {data.get('url')}\n番号列表({len(serial_numbers)}个): {serial_numbers}"
-        )
-
-        if serial_numbers:
-            from ui.dialogs.AddQuickWork import AddQuickWork
-
-            dialog = AddQuickWork()
-            dialog.load_serials(serial_numbers)
-            dialog.exec()

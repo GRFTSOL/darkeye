@@ -1,37 +1,6 @@
 // background.js for Chrome (Manifest V3; SSE 在 offscreen，经 sse_command 转发)
 const SERVER_URL = "http://localhost:56789";
 
-/** 与 ``utils.serial_number.convert_fanza`` 一致，供 avdanyuwiki 首跳搜索串。 */
-function convertFanzaForAvdanyuwiki(serial_number) {
-  let converted_code = String(serial_number).toLowerCase().replace(/-/g, "00");
-  const halfCoverPrefixes = ["start", "stars", "star", "sdde", "kmhrs"];
-  const fullCoverPrefixes = [
-    "namh",
-    "dldss",
-    "fns",
-    "fsdss",
-    "boko",
-    "sdam",
-    "hawa",
-    "moon",
-    "mogi",
-    "nhdtb",
-  ];
-  if (halfCoverPrefixes.some((p) => converted_code.startsWith(p))) {
-    converted_code = "1" + converted_code;
-  }
-  if (fullCoverPrefixes.some((p) => converted_code.startsWith(p))) {
-    converted_code = "1" + converted_code;
-  }
-  if (converted_code.startsWith("knmb")) {
-    converted_code = "h_491" + converted_code;
-  }
-  if (converted_code.startsWith("isrd")) {
-    converted_code = "24" + converted_code;
-  }
-  return converted_code;
-}
-
 const pendingCrawlers = new Map();
 /** 桌面 navigate 写入：tabId -> { actress_id?, source? } */
 const tabNavigateContext = new Map();
@@ -227,89 +196,6 @@ function handleCommand(data) {
       });
     }
   }
-  if (data.type === "crawler") {
-    const web = data.web;
-    const serial_number = data.serial_number;
-    const crawlerContext = data.context || {};
-    // 爬虫统一在专用窗口后台打开，不影响当前浏览窗口
-    const addPendingInNewWindow = (url, type) => {
-      const addTab = (windowId) => {
-        return chrome.tabs
-          .create({ windowId, url, active: false })
-          .then((tab) => {
-            if (tab && tab.id !== undefined) {
-              pendingCrawlers.set(tab.id, {
-                type,
-                serial: serial_number,
-                context: crawlerContext,
-              });
-            }
-            return maybeNotifyCrawlerBacklog();
-          })
-          .catch(async (err) => {
-            console.error("DarkEye: 爬虫窗口可能已被关闭，重新创建", err);
-            await clearCrawlerWindowPersistence();
-            backlogWarningArmed = true;
-            addPendingInNewWindow(url, type);
-          });
-      };
-
-      ensureCrawlerWindowId()
-        .then((windowId) => addTab(windowId))
-        .catch((err) => {
-          console.error("DarkEye: 获取/创建爬虫窗口失败", err);
-        });
-    };
-    if (web === "javlib") {
-      // 开始执行对javlibrary的爬虫,第一步就是跳转
-      const url =
-        "https://www.javlibrary.com/cn/vl_searchbyid.php?keyword=" +
-        String(serial_number);
-      addPendingInNewWindow(url, "javlib");
-    }
-    if (web === "javdb") {
-      // 开始执行对javdb的爬虫,第一步就是跳转
-      const url = "https://javdb.com/search?q=" + String(serial_number);
-      addPendingInNewWindow(url, "javdb");
-    }
-    if (web === "fanza") {
-      // 开始执行对fanza的爬虫,第一步就是跳转
-      const url =
-        "https://www.dmm.co.jp/mono/-/search/=/searchstr=" +
-        String(serial_number);
-      addPendingInNewWindow(url, "fanza");
-    }
-    if (web === "javtxt") {
-      const url =
-        "https://javtxt.com/search?type=id&q=" +
-        encodeURIComponent(String(serial_number));
-      addPendingInNewWindow(url, "javtxt");
-    }
-    if (web === "javtxt-top-actresses") {
-      const url = "https://javtxt.com/top-actresses";
-      addPendingInNewWindow(url, "javtxt-top-actresses");
-    }
-    if (web === "avdanyuwiki") {
-      const q = convertFanzaForAvdanyuwiki(String(serial_number));
-      const url =
-        "https://avdanyuwiki.com/?s=" + encodeURIComponent(q);
-      addPendingInNewWindow(url, "avdanyuwiki");
-    }
-    if (web === "minnano") {
-      const ctx = crawlerContext || {};
-      const mid = (ctx.minnano_url && String(ctx.minnano_url).trim()) || "";
-      let url;
-      if (mid) {
-        url = "https://www.minnano-av.com/actress" + mid + ".html";
-      } else {
-        url =
-          "https://www.minnano-av.com/search_result.php?search_scope=actress&search_word=" +
-          encodeURIComponent(String(serial_number)) +
-          "&search=+Go+";
-      }
-      addPendingInNewWindow(url, "minnano");
-    }
-  }
   if (data.type === "fetch_cover_image") {
     const imageUrl = data.url;
     const request_id = data.request_id;
@@ -482,20 +368,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Async response
   }
 
-  if (message.command === "capture_item") {
-    // 现在这个代码没有被调用，这个是用于批量抓取的
-    fetch(`${SERVER_URL}/api/v1/capture`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(message.payload),
-    })
-      .then((res) => res.json())
-      .then((data) => sendResponse(data))
-      .catch((err) => sendResponse({ error: err.message }));
-
-    return true; // Async response
-  }
-
   if (message.command === "capture_one") {
     // 接受插件发来的单个id,然后发到本地，触发爬虫
     fetch(`${SERVER_URL}/api/v1/capture/one`, {
@@ -559,25 +431,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.command === "send_crawler_result") {
-    console.log("发送爬虫的结果到本地服务器", message);
-    // Send to local server
-    fetch(`${SERVER_URL}/api/v1/crawler-result`, {
+    const topRid =
+      message.web === "javtxt-top-actresses" && message.request_id
+        ? String(message.request_id).trim()
+        : "";
+    console.log("DarkEye: send_crawler_result", message);
+    if (topRid === "") {
+      console.warn(
+        "DarkEye: Chrome 扩展未实现 work 合并；且无 top-actresses request_id，跳过上传 web=",
+        message.web
+      );
+      return;
+    }
+    const inner = message.data || {};
+    const names = Array.isArray(inner.names) ? inner.names : [];
+    const body = {
+      request_id: topRid,
+      ok: !!message.result,
+      names,
+    };
+    if (inner.error) {
+      body.error = String(inner.error);
+    }
+    fetch(`${SERVER_URL}/api/v1/top-actresses-result`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        results: message.result,
-        id: message.id,
-        web: message.web,
-        data: message.data,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     })
       .then((response) => response.json())
       .then((data) => {
-        console.log("DarkEye: ID sent to server", data);
-        // Close the tab after successful send
-
+        console.log("DarkEye: top-actresses-result ok", data);
         if (sender.tab && sender.tab.id) {
           setTimeout(() => {
             chrome.tabs.remove(sender.tab.id);
@@ -585,7 +468,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       })
       .catch((error) => {
-        console.error("DarkEye: Failed to send data", error);
+        console.error("DarkEye: top-actresses-result failed", error);
       });
   }
 });

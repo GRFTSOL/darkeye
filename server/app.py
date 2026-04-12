@@ -50,14 +50,6 @@ class CheckExistenceRequest(BaseModel):
     items: List[str]
 
 
-class CaptureData(BaseModel):
-    url: str
-    title: Optional[str] = None
-    content: Optional[str] = None
-    # 允许接收任意额外字段
-    extra: Optional[Dict[str, Any]] = None
-
-
 class NavigateCommand(BaseModel):
     url: str
     target: str = "new_tab"  # new_tab 或 current_tab
@@ -138,44 +130,6 @@ async def receive_minnano_actress_capture(body: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/v1/actressid")
-async def receive_actressid(data: Dict[str, Any]):
-    """
-    接收来自插件的抓取 actressid 数据
-    """
-    try:
-        logger.info(f"Received capture data from: {data.get('url', 'unknown')}")
-        # 发射信号，将数据传递给主线程
-        raw_id = data.get("id", -1)
-        try:
-            id = int(raw_id)
-        except (ValueError, TypeError):
-            logger.warning(f"Invalid ID format: {raw_id}")
-            id = -1
-
-        logger.info(f"actressid:{id}")
-        bridge.actressIdReceived.emit(id)
-        return {"status": "success", "message": "Data received"}
-    except Exception as e:
-        logger.error(f"Error processing capture data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/v1/capture")
-async def receive_capture(data: Dict[str, Any]):
-    """
-    接收来自插件的抓取数据，只有普通的页面抓取数据，不包含ID抓取，这个是
-    """
-    try:
-        logger.info(f"Received capture data from: {data.get('url', 'unknown')}")
-        # 发射信号，将数据传递给主线程
-        bridge.captureReceived.emit(data)
-        return {"status": "success", "message": "Data received"}
-    except Exception as e:
-        logger.error(f"Error processing capture data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @app.post("/api/v1/capture/one")
 async def captureone(data: Dict[str, Any]):
     """
@@ -226,12 +180,6 @@ async def send_navigate(command: NavigateCommand):
     return {"status": "success", "count": len(sse_clients)}
 
 
-class CrawlerRequest(BaseModel):
-    web: str
-    serial_number: str
-    context: Optional[Dict[str, Any]] = None
-
-
 class CrawlerBacklogWarningBody(BaseModel):
     count: int
     browser: str = "firefox"
@@ -256,75 +204,6 @@ async def crawler_backlog_warning(body: CrawlerBacklogWarningBody):
         return {"status": "success", "message": "notified"}
     except Exception as e:
         logger.error("crawler_backlog_warning: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/v1/startcrawler")
-async def start_crawler(data: CrawlerRequest):
-    """
-    发送爬虫指令给插件，指定要爬取的网站和番号
-    """
-    logger.info(f"广播爬虫指令: {data.web} {data.serial_number} {data.context!r}")
-    dead_clients = []
-    message: Dict[str, Any] = {
-        "type": "crawler",
-        "web": data.web,
-        "serial_number": data.serial_number,
-    }
-    if data.context is not None:
-        message["context"] = data.context
-    event_data = f"data: {json.dumps(message)}\n\n"
-
-    for client in sse_clients:
-        try:
-            await client.put(event_data)
-        except Exception:
-            dead_clients.append(client)
-
-    for dead in dead_clients:
-        if dead in sse_clients:
-            sse_clients.remove(dead)
-
-    return {"status": "success", "count": len(sse_clients)}
-
-
-@app.post("/api/v1/crawler-result")
-async def receive_crawler_result(data: Dict[str, Any]):
-    """
-    接收来自插件的抓取的爬虫数据并分流
-    """
-    try:
-        logger.info(f"收到插件的抓取的爬虫数据")
-        # 发射信号，将数据传递给主线程
-        web = data.get("web", "")  # 根据爬取的网站分流
-        if web == "javlib":
-            # logging.info(f"收到的javlib数据为{data.get('data',{})}")
-            bridge.javlibFinished.emit(data.get("data", {}))
-        elif web == "javdb":
-            bridge.javdbFinished.emit(data.get("data", {}))
-        elif web == "javtxt":
-            bridge.javtxtFinished.emit(data.get("data", {}))
-        elif web == "javtxt-top-actresses":
-            inner = data.get("data") or {}
-            names = inner.get("names")
-            if not isinstance(names, list):
-                names = []
-            bridge.javtxtTopActressesFinished.emit(
-                {
-                    "ok": bool(data.get("results")),
-                    "names": names,
-                    "error": inner.get("error"),
-                }
-            )
-        elif web == "avdanyuwiki":
-            bridge.avdanyuwikiFinished.emit(data.get("data", {}))
-        elif web == "fanza":
-            pass
-        else:
-            logger.warning("未识别的 crawler-result web: %s", web)
-        return {"status": "success", "message": "Data received"}
-    except Exception as e:
-        logger.error(f"Error processing capture data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -437,7 +316,7 @@ async def get_work_merge(serial_number: str):
 
 @app.post("/api/v1/work-merge-result")
 async def receive_work_merge_result(body: WorkMergeResultBody):
-    """插件合并完成后调用；与 crawler-result 分流，不发射 bridge 爬虫信号。"""
+    """插件合并完成后调用；结束 GET /api/v1/work/{serial_number} 的同步等待。"""
     rid = (body.request_id or "").strip()
     if not rid:
         raise HTTPException(status_code=400, detail="request_id required")
