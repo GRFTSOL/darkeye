@@ -1,7 +1,64 @@
-// background.js for Chrome (Manifest V3; SSE 在 offscreen，经 sse_command 转发)
+// background.js for Chrome (Manifest V3; merge_work 经 importScripts；SSE 在 offscreen，经 sse_command转发)
+importScripts("merge_work.js");
+
 const SERVER_URL = "http://localhost:56789";
 
 const pendingCrawlers = new Map();
+/** work_merge_fetch：request_id -> { serial, perSite, tabIds, mergeRequestId, ... } */
+const workMergeJobs = new Map();
+/** 合并层需要的四站键（merge_work.js 与 merge_service 一致） */
+const WORK_MERGE_SITES_ALL = ["javlib", "javdb", "javtxt", "avdanyuwiki"];
+
+/** 以下前缀只开 javdb + javtxt + avdanyuwiki（不开 javlib） */
+const MERGE_PREFIX_THREE_NO_JAVLIB = [
+  "LUXU",
+  "SIRO",
+  "GANA",
+  "MIUM",
+  "ARA",
+  "MAAN",
+  "NAMA",
+  "HON",
+  "DCV",
+  "NTK",
+  "AKO",
+  "LADY",
+  "SUKE",
+  "AHSHIRO",
+  "POW",
+];
+
+/**
+ * 去掉 `-`、`_` 后若整串为纯数字（0-9），视为仅适合 javdb 检索的形态。
+ */
+function isDigitsOnlyAfterStripHyphens(serial) {
+  const compact = String(serial).trim().replace(/[-_]/g, "");
+  return compact.length > 0 && /^\d+$/.test(compact);
+}
+
+/**
+ * 按番号前缀决定要开的爬虫标签（未匹配的番号默认四站全开）。
+ * 例：FC2/HEYZO 只 javdb；纯数字只 javdb；MERGE_PREFIX_THREE_NO_JAVLIB 只三站（不开 javlib）。
+ */
+function resolveMergeSitesForSerial(serial) {
+  const raw = String(serial).trim();
+  if (!raw) return WORK_MERGE_SITES_ALL.slice();
+  const u = raw.toUpperCase();
+  if (u.startsWith("FC2") || u.startsWith("HEYZO")) {
+    return ["javdb"];
+  }
+  if (isDigitsOnlyAfterStripHyphens(raw)) {
+    return ["javdb"];
+  }
+  if (MERGE_PREFIX_THREE_NO_JAVLIB.some((p) => u.startsWith(p))) {
+    return ["javdb", "javtxt", "avdanyuwiki"];
+  }
+  return WORK_MERGE_SITES_ALL.slice();
+}
+
+/** 单站超过此时长无结果则视为放弃该站，用空对象参与合并（与服务端 GET 120s 总超时配合） */
+const WORK_MERGE_PER_SITE_MS = 30000;
+
 /** 桌面 navigate 写入：tabId -> { actress_id?, source? } */
 const tabNavigateContext = new Map();
 /** session 中持久化，避免 MV3 service worker 休眠后丢失 ID */
@@ -116,7 +173,7 @@ function postCoverFetchResult(request_id, ok, error, content_base64) {
 }
 
 function fetchCoverImageForDesktop(imageUrl, request_id) {
-  const minBytes = 5 * 1024;
+  const minBytes = 5 * 1024; // 小于5kb的图片认为是下载失败
   fetch(imageUrl, { credentials: "omit", cache: "no-store" })
     .then((r) => {
       if (!r.ok) {
@@ -139,6 +196,168 @@ function fetchCoverImageForDesktop(imageUrl, request_id) {
       console.error("DarkEye: fetchCoverImageForDesktop", e);
       postCoverFetchResult(request_id, false, String(e), null);
     });
+}
+
+function postWorkMergeResult(payload) {
+  return fetch(`${SERVER_URL}/api/v1/work-merge-result`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+    .then((r) => r.json())
+    .catch((err) => {
+      console.error("DarkEye: work-merge-result failed", err);
+      throw err;
+    });
+}
+
+function clearWorkMergeTimer(job) {
+  if (job && job.mergeTimeoutId != null) {
+    clearTimeout(job.mergeTimeoutId);
+    job.mergeTimeoutId = null;
+  }
+}
+
+function finishWorkMergeJob(requestId, ok, merged, serial, error) {
+  const job = workMergeJobs.get(requestId);
+  if (job) clearWorkMergeTimer(job);
+  const tabIds = job && job.tabIds ? job.tabIds.slice() : [];
+  workMergeJobs.delete(requestId);
+  postWorkMergeResult({
+    request_id: requestId,
+    ok,
+    merged: merged || null,
+    per_site: {},
+    error: error || null,
+    serial_number: serial || "",
+  })
+    .then(() => {
+      tabIds.forEach((tid) => {
+        if (tid !== undefined) {
+          chrome.tabs.remove(tid).catch(() => {});
+        }
+      });
+    })
+    .catch(() => {});
+}
+
+function runWorkMergeAndFinish(requestId) {
+  const job = workMergeJobs.get(requestId);
+  if (!job || job.finalized) return;
+  job.finalized = true;
+  clearWorkMergeTimer(job);
+
+  let merged = null;
+  let ok = true;
+  let errMsg = null;
+  try {
+    for (const k of WORK_MERGE_SITES_ALL) {
+      if (!Object.prototype.hasOwnProperty.call(job.perSite, k)) {
+        job.perSite[k] = {};
+      }
+    }
+    let snapshot = {};
+    try {
+      snapshot = JSON.parse(JSON.stringify(job.perSite));
+    } catch (e) {
+      snapshot = Object.assign({}, job.perSite);
+    }
+    merged = mergeCrawlResultsNoTranslate(snapshot, job.serial);
+    console.log(
+      "DarkEye: work_merge merged",
+      "request_id=" + requestId,
+      "serial=" + (job.serial || ""),
+      merged
+    );
+  } catch (e) {
+    ok = false;
+    errMsg = String(e);
+    console.error("DarkEye: mergeCrawlResultsNoTranslate", e);
+  }
+  finishWorkMergeJob(requestId, ok, merged, job.serial, errMsg);
+}
+
+function onWorkMergeSiteResult(requestId, web, data) {
+  const job = workMergeJobs.get(requestId);
+  if (!job || job.finalized) return;
+  job.perSite[web] = data && typeof data === "object" ? data : {};
+  console.log(
+    "DarkEye: work_merge crawler raw",
+    web,
+    "request_id=" + requestId,
+    "serial=" + (job.serial || ""),
+    job.perSite[web]
+  );
+  const sites = job.sites || WORK_MERGE_SITES_ALL;
+  const n = sites.filter((k) =>
+    Object.prototype.hasOwnProperty.call(job.perSite, k)
+  ).length;
+  if (n < sites.length) return;
+  runWorkMergeAndFinish(requestId);
+}
+
+function onWorkMergePerSiteTimeout(requestId) {
+  const job = workMergeJobs.get(requestId);
+  if (!job || job.finalized) return;
+  console.warn(
+    "DarkEye: work_merge 单站 " +
+      WORK_MERGE_PER_SITE_MS / 1000 +
+      "s 内未返回的源将按空对象合并 request_id=" +
+      requestId
+  );
+  runWorkMergeAndFinish(requestId);
+}
+
+function startWorkMergeFetch(requestId, serial) {
+  const sites = resolveMergeSitesForSerial(serial);
+  workMergeJobs.set(requestId, {
+    serial: String(serial),
+    sites,
+    perSite: {},
+    tabIds: [],
+    mergeRequestId: requestId,
+    mergeTimeoutId: null,
+    finalized: false,
+  });
+  console.log("DarkEye: work_merge 启用站点", sites.join(","), "serial=", serial);
+  const urls = {
+    javlib:
+      "https://www.javlibrary.com/cn/vl_searchbyid.php?keyword=" +
+      String(serial),
+    javdb: "https://javdb.com/search?q=" + String(serial),
+    javtxt:
+      "https://javtxt.com/search?type=id&q=" +
+      encodeURIComponent(String(serial)),
+    avdanyuwiki:
+      "https://avdanyuwiki.com/?s=" +
+      encodeURIComponent(
+        globalThis.convertFanzaForAvdanyuwiki(String(serial))
+      ),
+  };
+
+  sites.forEach((w) => {
+    addTabInCrawlerWindow(
+      urls[w],
+      {
+        type: w,
+        serial: String(serial),
+        context: {},
+        mergeRequestId: requestId,
+      },
+      (tabId) => {
+        const job = workMergeJobs.get(requestId);
+        if (job) job.tabIds.push(tabId);
+      }
+    );
+  });
+
+  const j = workMergeJobs.get(requestId);
+  if (j) {
+    j.mergeTimeoutId = setTimeout(
+      () => onWorkMergePerSiteTimeout(requestId),
+      WORK_MERGE_PER_SITE_MS
+    );
+  }
 }
 
 function maybeNotifyCrawlerBacklog() {
@@ -172,6 +391,86 @@ function maybeNotifyCrawlerBacklog() {
     });
 }
 
+/**
+ * 在专用爬虫窗口中打开后台标签；加载完成后由 tabs.onUpdated 消费 pendingCrawlers。
+ * @param {string} url
+ * @param {{ type: string, serial?: string, context?: object, mergeRequestId?: string, apiRequestId?: string }} pendingPayload
+ * @param {(tabId: number) => void} [onTabCreated]
+ */
+function addTabInCrawlerWindow(url, pendingPayload, onTabCreated) {
+  ensureCrawlerWindowId()
+    .then((windowId) =>
+      chrome.tabs.create({ windowId, url, active: false }).then((tab) => {
+        if (tab && tab.id !== undefined) {
+          pendingCrawlers.set(tab.id, pendingPayload);
+          if (onTabCreated) {
+            onTabCreated(tab.id);
+          }
+        }
+        return maybeNotifyCrawlerBacklog();
+      })
+    )
+    .catch((err) => {
+      console.error("DarkEye: 爬虫窗口可能已被关闭，重新创建", err);
+      clearCrawlerWindowPersistence().then(() => {
+        addTabInCrawlerWindow(url, pendingPayload, onTabCreated);
+      });
+    });
+}
+
+/**
+ * HTTP GET /api/v1/actress/{jp}：服务端经 SSE 下发 minnano_actress_fetch；可有 minnano_url 直达详情。
+ * context 带 actress_http_request_id，回传走 /api/v1/actress-fetch-result（persist: false）。
+ */
+function startMinnanoActressHttpFetch(
+  requestId,
+  actressJpName,
+  minnanoUrlFragment
+) {
+  const jp = String(actressJpName || "").trim();
+  if (!jp) return;
+  const mid = String(minnanoUrlFragment || "").trim();
+  let url;
+  if (mid) {
+    url = "https://www.minnano-av.com/actress" + mid + ".html";
+  } else {
+    url =
+      "https://www.minnano-av.com/search_result.php?search_scope=actress&search_word=" +
+      encodeURIComponent(jp) +
+      "&search=+Go+";
+  }
+  const httpCtx = {
+    actress_http_request_id: String(requestId),
+    persist: false,
+    actress_jp_name: jp,
+  };
+  if (mid) {
+    httpCtx.minnano_url = mid;
+  }
+  addTabInCrawlerWindow(url, {
+    type: "minnano",
+    serial: jp,
+    context: httpCtx,
+  });
+  console.log("DarkEye: minnano_actress_fetch", requestId, jp);
+}
+
+/**
+ * HTTP GET /api/v1/top-actresses：打开 javtxt 热门页，回传走 /api/v1/top-actresses-result。
+ */
+function startJavtxtTopActressesHttpFetch(requestId) {
+  const rid = String(requestId || "").trim();
+  if (!rid) return;
+  const url = "https://javtxt.com/top-actresses";
+  addTabInCrawlerWindow(url, {
+    type: "javtxt-top-actresses",
+    serial: "",
+    context: {},
+    apiRequestId: rid,
+  });
+  console.log("DarkEye: javtxt_top_actresses_fetch", rid);
+}
+
 function handleCommand(data) {
   // 处理服务器发送来的命令
   if (data.type === "navigate") {
@@ -194,6 +493,39 @@ function handleCommand(data) {
           });
         }
       });
+    }
+  }
+  if (data.type === "work_merge_fetch") {
+    const requestId = data.request_id;
+    const serial = data.serial_number;
+    if (requestId && serial != null && serial !== "") {
+      console.log("DarkEye: work_merge_fetch", requestId, serial);
+      startWorkMergeFetch(String(requestId), serial);
+    }
+  }
+  if (data.type === "minnano_actress_fetch") {
+    const requestId = data.request_id;
+    const name = data.actress_jp_name;
+    const minnanoUrl =
+      data.minnano_url != null && data.minnano_url !== undefined
+        ? String(data.minnano_url)
+        : "";
+    if (requestId && name != null && String(name).trim() !== "") {
+      startMinnanoActressHttpFetch(
+        String(requestId),
+        String(name),
+        minnanoUrl
+      );
+    }
+  }
+  if (data.type === "javtxt_top_actresses_fetch") {
+    const requestId = data.request_id;
+    if (
+      requestId != null &&
+      requestId !== undefined &&
+      String(requestId).trim() !== ""
+    ) {
+      startJavtxtTopActressesHttpFetch(String(requestId));
     }
   }
   if (data.type === "fetch_cover_image") {
@@ -262,50 +594,33 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
   if (changeInfo.status === "complete" && pendingCrawlers.has(tabId)) {
     const task = pendingCrawlers.get(tabId);
-    if (task.type === "minnano") {
-      console.log(
-        "DarkEye: minnano tab complete tabId=",
-        tabId,
-        "url=",
-        tab && tab.url
-      );
-    }
-
     // 根据任务类型分发不同的指令，并透传 serial
     if (task.type === "javlib") {
-      chrome.tabs.sendMessage(tabId, {
-        command: "javlibrary-dvdid",
-        serial: task.serial,
-      });
+      const msg = { command: "javlibrary-dvdid", serial: task.serial };
+      if (task.mergeRequestId) msg.mergeRequestId = task.mergeRequestId;
+      chrome.tabs.sendMessage(tabId, msg);
       console.log("javlib爬虫开始:" + tabId);
     } else if (task.type === "javdb") {
-      chrome.tabs.sendMessage(tabId, {
-        command: "javdb-dvdid",
-        serial: task.serial,
-      });
+      const msg = { command: "javdb-dvdid", serial: task.serial };
+      if (task.mergeRequestId) msg.mergeRequestId = task.mergeRequestId;
+      chrome.tabs.sendMessage(tabId, msg);
       console.log("javdb爬虫开始:" + tabId);
-    } else if (task.type === "fanza") {
-      chrome.tabs.sendMessage(tabId, {
-        command: "fanza-dvdid",
-        serial: task.serial,
-      });
-      console.log("fanza爬虫开始:" + tabId);
     } else if (task.type === "javtxt") {
-      chrome.tabs.sendMessage(tabId, {
-        command: "javtxt-dvdid",
-        serial: task.serial,
-      });
+      const msg = { command: "javtxt-dvdid", serial: task.serial };
+      if (task.mergeRequestId) msg.mergeRequestId = task.mergeRequestId;
+      chrome.tabs.sendMessage(tabId, msg);
       console.log("javtxt爬虫开始:" + tabId);
     } else if (task.type === "javtxt-top-actresses") {
-      chrome.tabs.sendMessage(tabId, {
-        command: "javtxt-parse-top-actresses",
-      });
+      const msg = { command: "javtxt-parse-top-actresses" };
+      if (task.apiRequestId) {
+        msg.request_id = task.apiRequestId;
+      }
+      chrome.tabs.sendMessage(tabId, msg);
       console.log("javtxt top-actresses:" + tabId);
     } else if (task.type === "avdanyuwiki") {
-      chrome.tabs.sendMessage(tabId, {
-        command: "avdanyuwiki-dvdid",
-        serial: task.serial,
-      });
+      const msg = { command: "avdanyuwiki-dvdid", serial: task.serial };
+      if (task.mergeRequestId) msg.mergeRequestId = task.mergeRequestId;
+      chrome.tabs.sendMessage(tabId, msg);
       console.log("avdanyuwiki爬虫开始:" + tabId);
     } else if (task.type === "minnano") {
       const msg = {
@@ -395,6 +710,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       tabId !== undefined ? tabNavigateContext.get(tabId) || {} : {};
     const msgCtx = message.context || {};
     const context = Object.assign({}, tabCtx, msgCtx);
+    const httpRid = context.actress_http_request_id;
+    if (httpRid) {
+      const syncBody = {
+        request_id: String(httpRid),
+        ok: !message.error,
+        actress_jp_name: context.actress_jp_name || null,
+        data: message.error ? null : message.data,
+        error: message.error || null,
+      };
+      fetch(`${SERVER_URL}/api/v1/actress-fetch-result`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(syncBody),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log("DarkEye: actress-fetch-result sent", data);
+          sendResponse({ ok: true, data });
+          // GET /api/v1/actress/... 同步查询：回传成功后关闭女优标签
+          if (sender.tab && sender.tab.id !== undefined) {
+            const tid = sender.tab.id;
+            setTimeout(() => {
+              chrome.tabs.remove(tid).catch(() => {});
+            }, 3000);
+          }
+        })
+        .catch((error) => {
+          console.error("DarkEye: Failed to send actress-fetch-result", error);
+          sendResponse({ ok: false, error: String(error) });
+        });
+      return true;
+    }
     const payload = {
       context,
       url: sender.tab && sender.tab.url ? sender.tab.url : "",
@@ -413,13 +765,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((data) => {
         console.log("DarkEye: minnano actress capture sent", data);
         sendResponse({ ok: true, data });
+        // 桌面「单个女优」自动爬取（persist）：回传成功后与 send_crawler_result 一致，延迟关标签
+        const mergedCtx = Object.assign({}, tabCtx, msgCtx);
         if (
-          context.persist &&
+          mergedCtx.persist &&
           !message.error &&
-          tabId !== undefined
+          sender.tab &&
+          sender.tab.id !== undefined
         ) {
+          const tid = sender.tab.id;
           setTimeout(() => {
-            chrome.tabs.remove(tabId);
+            chrome.tabs.remove(tid);
           }, 10000);
         }
       })
@@ -430,33 +786,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // send_crawler_result：① merge_request_id + 四站 → work_merge；② 热门女优带 request_id → top-actresses-result；③ 其余不再 POST（已无对应接口）。
   if (message.command === "send_crawler_result") {
-    const topRid =
+    if (message.merge_request_id && message.web) {
+      const rid = message.merge_request_id;
+      const web = message.web;
+      if (WORK_MERGE_SITES_ALL.indexOf(web) >= 0) {
+        const job = workMergeJobs.get(rid);
+        if (job && job.sites && job.sites.indexOf(web) >= 0) {
+          onWorkMergeSiteResult(rid, web, message.data || {});
+        }
+        return false;
+      }
+    }
+    const topApiRid =
       message.web === "javtxt-top-actresses" && message.request_id
         ? String(message.request_id).trim()
         : "";
     console.log("DarkEye: send_crawler_result", message);
-    if (topRid === "") {
+    if (topApiRid === "") {
       console.warn(
-        "DarkEye: Chrome 扩展未实现 work 合并；且无 top-actresses request_id，跳过上传 web=",
+        "DarkEye: 跳过上传（非 work 合并路径且无 top-actresses request_id） web=",
         message.web
       );
-      return;
+      return false;
     }
     const inner = message.data || {};
     const names = Array.isArray(inner.names) ? inner.names : [];
-    const body = {
-      request_id: topRid,
+    const topPayload = {
+      request_id: topApiRid,
       ok: !!message.result,
-      names,
+      names: names,
     };
     if (inner.error) {
-      body.error = String(inner.error);
+      topPayload.error = String(inner.error);
     }
     fetch(`${SERVER_URL}/api/v1/top-actresses-result`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(topPayload),
     })
       .then((response) => response.json())
       .then((data) => {

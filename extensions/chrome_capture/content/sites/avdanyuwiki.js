@@ -138,7 +138,7 @@
     }
 
     let label = "";
-    m = text.match(/レーベル：(.+)/);
+    m = text.match(/\u30EC\u30FC\u30D9\u30EB：(.+)/);
     if (m) {
       label = m[1].trim();
     }
@@ -180,15 +180,21 @@
     };
   }
 
+  function attachMergeRequestId(payload) {
+    const mid = sessionStorage.getItem("darkeye_merge_request_id");
+    if (mid) payload.merge_request_id = mid;
+    return payload;
+  }
+
   function sendResult(ok, data) {
     sessionStorage.setItem("darkeye_auto_parse", "false");
-    const payload = {
+    const payload = attachMergeRequestId({
       command: "send_crawler_result",
       id: sessionStorage.getItem("id"),
       web: "avdanyuwiki",
       result: ok,
       data: data || {},
-    };
+    });
     console.log("DarkEye avdanyuwiki:", payload);
     api.runtime.sendMessage(payload);
   }
@@ -238,6 +244,14 @@
     if (message.command === "avdanyuwiki-dvdid") {
       sessionStorage.setItem("darkeye_auto_parse", "true");
       sessionStorage.setItem("id", message.serial);
+      if (message.mergeRequestId) {
+        sessionStorage.setItem(
+          "darkeye_merge_request_id",
+          message.mergeRequestId
+        );
+      } else {
+        sessionStorage.removeItem("darkeye_merge_request_id");
+      }
       sessionStorage.removeItem("darkeye_avdan_phase");
       tryAvdanyuwikiSearch();
     }

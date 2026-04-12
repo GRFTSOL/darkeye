@@ -25,7 +25,9 @@
   function isSearchPageUrl(href) {
     try {
       const u = new URL(href, window.location.origin);
-      return u.searchParams.get("type") === "id" && u.searchParams.has("q");
+      return (
+        u.searchParams.get("type") === "id" && u.searchParams.has("q")
+      );
     } catch (e) {
       return false;
     }
@@ -44,8 +46,18 @@
     }
   }
 
-  function sendTopActressesResult(ok, names, errorMsg) {
-    api.runtime.sendMessage({
+  function attachMergeRequestId(payload) {
+    const mid = sessionStorage.getItem("darkeye_merge_request_id");
+    if (mid) payload.merge_request_id = mid;
+    return payload;
+  }
+
+  function sendTopActressesResult(ok, names, errorMsg, requestId) {
+    const rid =
+      requestId != null && String(requestId).trim() !== ""
+        ? String(requestId).trim()
+        : "";
+    const payload = {
       command: "send_crawler_result",
       id: "",
       web: "javtxt-top-actresses",
@@ -53,13 +65,17 @@
       data: ok
         ? { names: names || [] }
         : { names: [], error: errorMsg || "parse failed" },
-    });
+    };
+    if (rid) {
+      payload.request_id = rid;
+    }
+    api.runtime.sendMessage(payload);
   }
 
-  function parseTopActresses() {
+  function parseTopActresses(requestId) {
     if (isCloudflarePage()) {
       console.log("DarkEye: javtxt top-actresses 遇到 Cloudflare");
-      sendTopActressesResult(false, [], "Cloudflare");
+      sendTopActressesResult(false, [], "Cloudflare", requestId);
       return;
     }
     const els = document.querySelectorAll("p.actress-name");
@@ -70,7 +86,7 @@
         names.push(t);
       }
     });
-    sendTopActressesResult(true, names.slice(0, 50), undefined);
+    sendTopActressesResult(true, names.slice(0, 50), undefined, requestId);
   }
 
   function absoluteUrl(maybeRelative) {
@@ -167,24 +183,28 @@
 
     sessionStorage.setItem("darkeye_auto_parse", "false");
     console.log("DarkEye javtxt:", data);
-    api.runtime.sendMessage({
-      command: "send_crawler_result",
-      id: sessionStorage.getItem("id"),
-      web: "javtxt",
-      result: true,
-      data: data,
-    });
+    api.runtime.sendMessage(
+      attachMergeRequestId({
+        command: "send_crawler_result",
+        id: sessionStorage.getItem("id"),
+        web: "javtxt",
+        result: true,
+        data: data,
+      })
+    );
   }
 
   function failCrawl() {
     sessionStorage.setItem("darkeye_auto_parse", "false");
-    api.runtime.sendMessage({
-      command: "send_crawler_result",
-      id: sessionStorage.getItem("id"),
-      web: "javtxt",
-      result: false,
-      data: {},
-    });
+    api.runtime.sendMessage(
+      attachMergeRequestId({
+        command: "send_crawler_result",
+        id: sessionStorage.getItem("id"),
+        web: "javtxt",
+        result: false,
+        data: {},
+      })
+    );
   }
 
   function search_javtxt() {
@@ -236,12 +256,26 @@
 
   api.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.command === "javtxt-parse-top-actresses") {
-      parseTopActresses();
+      const rid =
+        message.request_id != null &&
+        message.request_id !== undefined &&
+        String(message.request_id).trim() !== ""
+          ? String(message.request_id).trim()
+          : undefined;
+      parseTopActresses(rid);
       return;
     }
     if (message.command === "javtxt-dvdid") {
       sessionStorage.setItem("darkeye_auto_parse", "true");
       sessionStorage.setItem("id", message.serial);
+      if (message.mergeRequestId) {
+        sessionStorage.setItem(
+          "darkeye_merge_request_id",
+          message.mergeRequestId
+        );
+      } else {
+        sessionStorage.removeItem("darkeye_merge_request_id");
+      }
       search_javtxt();
     }
   });

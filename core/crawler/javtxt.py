@@ -5,13 +5,6 @@ from core.crawler.jump import fetch_top_actresses_via_api
 """需要非日本ip才能爬"""
 
 
-def fetch_javtxt_movie_info_via_js(serial_number: str) -> dict:
-    """
-    由浏览器插件在页面内爬取（同步阻塞）。
-    """
-    pass
-
-
 def apply_javtxt_top_actress_names(names: list[str]) -> bool:
     """将 javtxt 热门女优名列表写入数据库（仅处理前 50 条）。"""
     from core.database.insert import InsertNewActress
