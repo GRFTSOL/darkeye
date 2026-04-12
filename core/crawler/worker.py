@@ -1,5 +1,4 @@
 import logging
-import threading
 import traceback
 from collections.abc import Callable
 
@@ -42,13 +41,16 @@ class Worker(QRunnable):
     def run(self):
         try:
             thread_name = getattr(self.func, "__name__", "<lambda>")
-            current_qt_thread = QThread.currentThread()
-            current_qt_thread.setObjectName(str(thread_name))
+            qt_thread = QThread.currentThread()
+            if not qt_thread.objectName():
+                qt_thread.setObjectName(str(thread_name))
             logging.info(
-                f"Worker 开始: {thread_name} (线程 {threading.current_thread().name})"
+                "Worker 开始: %s (Qt 线程 %s)",
+                thread_name,
+                qt_thread.objectName(),
             )
             self.result = self.func(*self.args, **self.kwargs)
-            logging.info(f"Worker 完成: {thread_name}，即将 emit")
+            logging.info("Worker 完成: %s，即将 emit", thread_name)
             self.signals.finished.emit(self.result)
         except Exception as e:
             logging.error(f"Worker 异常: {e}\n{traceback.format_exc()}")

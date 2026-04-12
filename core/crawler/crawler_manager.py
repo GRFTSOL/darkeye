@@ -1,17 +1,17 @@
 import logging
 import random
-import threading
 from collections import deque
 from typing import Any, Dict, Optional
 from urllib.parse import quote
 
 import requests
-from PySide6.QtCore import QObject, QThreadPool, QTimer, Qt, Signal, Slot
+from PySide6.QtCore import QObject, QThreadPool, QTimer, Qt, Slot
 
 from controller.global_signal_bus import global_signals
 from core.crawler.crawler_task import CrawlerTask, CrawlWorkflowState
 from core.crawler.sequential_download import SequentialDownloader
 from core.crawler.work_persistence import schedule_data_update
+from core.crawler.worker import Worker, wire_worker_finished
 from core.schema.model import CrawledWorkData
 
 # 与 server.app WORK_MERGE_TIMEOUT_SEC + 余量一致（manual_tests 使用 130s）
@@ -68,14 +68,6 @@ def crawled_work_from_extension_payload(data: dict[str, Any]) -> CrawledWorkData
     )
 
 
-class _WorkApiSignals(QObject):
-    """后台线程完成 GET /api/v1/work 后向主线程投递结果。"""
-
-    finished = Signal(
-        str, object, object
-    )  # serial, payload dict | None, err str | None
-
-
 class CrawlerManager2(QObject):
     """番号爬虫调度：队列、本地 work API 拉取、封面下载与未完成状态持久化。"""
 
@@ -100,12 +92,7 @@ class CrawlerManager2(QObject):
 
             self._crawl_terminated: bool = False
             self._work_fetch_busy: bool = False
-
-            self._work_api_signals = _WorkApiSignals(self)
-            self._work_api_signals.finished.connect(
-                self._on_work_api_finished,
-                Qt.ConnectionType.QueuedConnection,
-            )
+            self._current_work_api_serial: str | None = None
 
             self._download_pool = QThreadPool(self)
             self._download_pool.setObjectName("CoverDownloadPool")
@@ -114,6 +101,10 @@ class CrawlerManager2(QObject):
             self._persist_pool = QThreadPool(self)
             self._persist_pool.setObjectName("WorkPersistPool")
             self._persist_pool.setMaxThreadCount(2)
+
+            self._work_fetch_pool = QThreadPool(self)
+            self._work_fetch_pool.setObjectName("WorkApiFetchPool")
+            self._work_fetch_pool.setMaxThreadCount(1)
 
             self.request_queue = deque()
             self.schedule_timer = QTimer(self)
@@ -395,7 +386,7 @@ class CrawlerManager2(QObject):
         withGUI: bool = False,
         selected_fields: set[str] | None = None,
     ) -> None:
-        """在后台线程请求 work API，结果经 ``_WorkApiSignals.finished`` 回主线程。
+        """在 ``_work_fetch_pool`` 中请求 work API，结果经 ``Worker`` 队列回主线程。
 
         主线程侧置 ``_work_fetch_busy`` 并登记 ``CrawlerTask``；空番号直接走收尾。
         """
@@ -405,37 +396,65 @@ class CrawlerManager2(QObject):
             return
 
         self._work_fetch_busy = True
+        self._current_work_api_serial = serial_number
         task = CrawlerTask(serial_number, withGUI, selected_fields)
         self.tasks[serial_number] = task
 
         url = self._work_api_url(serial_number)
-        sig = self._work_api_signals
 
-        def run() -> None:
-            """子线程：GET work API，成功则 ``finished.emit(serial, body, None)``，否则带错误串。"""
+        def fetch_sync() -> tuple[str, object | None, str | None]:
+            """在线程池线程中同步 GET work API，返回 ``(serial, body|None, err|None)``。"""
             try:
                 r = requests.get(url, timeout=_WORK_API_TIMEOUT_SEC)
                 if r.status_code != 200:
                     tail = (r.text or "")[:400]
-                    sig.finished.emit(
+                    return (
                         serial_number,
                         None,
                         f"HTTP {r.status_code} {tail}",
                     )
-                    return
                 try:
                     body = r.json()
                 except Exception as e:
-                    sig.finished.emit(serial_number, None, f"invalid JSON: {e}")
-                    return
+                    return (serial_number, None, f"invalid JSON: {e}")
                 if not isinstance(body, dict):
-                    sig.finished.emit(serial_number, None, "response is not an object")
-                    return
-                sig.finished.emit(serial_number, body, None)
+                    return (serial_number, None, "response is not an object")
+                return (serial_number, body, None)
             except Exception as e:
-                sig.finished.emit(serial_number, None, str(e))
+                return (serial_number, None, str(e))
 
-        threading.Thread(target=run, daemon=True).start()
+        worker = Worker(fetch_sync)
+        wire_worker_finished(
+            worker,
+            lambda r, mgr=self: mgr._on_work_api_worker_done(r),
+        )
+        self._work_fetch_pool.start(worker)
+
+    def _on_work_api_worker_done(self, result: object) -> None:
+        """``Worker`` 完成：将 ``(serial, body|None, err|None)`` 交给 ``_on_work_api_finished``。"""
+        if result is None:
+            logging.error(
+                "work API 后台任务异常退出（无返回） serial=%s",
+                self._current_work_api_serial,
+            )
+            self._work_fetch_busy = False
+            sn = self._current_work_api_serial
+            self._current_work_api_serial = None
+            if sn and sn in self.tasks:
+                del self.tasks[sn]
+            self._after_work_api_cycle()
+            return
+        if not isinstance(result, tuple) or len(result) != 3:
+            logging.error("work API 后台任务返回异常: %s", result)
+            self._work_fetch_busy = False
+            sn = self._current_work_api_serial
+            self._current_work_api_serial = None
+            if sn and sn in self.tasks:
+                del self.tasks[sn]
+            self._after_work_api_cycle()
+            return
+        serial, payload, err = result
+        self._on_work_api_finished(serial, payload, err)
 
     @Slot(str, object, object)
     def _on_work_api_finished(
@@ -443,6 +462,7 @@ class CrawlerManager2(QObject):
     ) -> None:
         """处理 work API 响应：错误/取消则清理任务；成功则解析并 ``schedule_data_update``。"""
         self._work_fetch_busy = False
+        self._current_work_api_serial = None
         serial = self._norm_serial(serial)
         if not serial:
             self._after_work_api_cycle()
