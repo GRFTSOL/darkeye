@@ -161,6 +161,7 @@ def _handle_local_package_update(msg_svc: MessageBoxService, parent: QWidget) ->
         "覆盖安装说明",
         "本地安装将无视版本号，直接覆盖安装目录下的文件。只能升级不能降级。跨最小版本可随意升降，中版本，大版本只能升级。"
         "覆盖安装时仅保留目录下的 data 文件夹内数据，"
+        "请去github上下载最新的软件包.zip文件，然后选择这个文件进行覆盖安装。"
         "其余文件将被新版本覆盖。\n\n确定继续？",
     ):
         return False

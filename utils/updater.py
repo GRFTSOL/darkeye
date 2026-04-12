@@ -2,13 +2,23 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 from typing import Optional
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from config import get_latest_json_url
 
 DEFAULT_LATEST_JSON_URL = get_latest_json_url()
+
+# Cloudflare 等常对自定义/脚本类 UA 单独处置；与 core/crawler/download.py 一致使用常见
+# 桌面 Chrome 串，末尾保留 DarkEye 便于自建日志区分。
+DEFAULT_UPDATE_CHECK_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/122.0.0.0 Safari/537.36 DarkEye-Updater/1.0"
+)
 
 
 @dataclass(frozen=True)
@@ -59,17 +69,39 @@ def check_for_updates(
     latest_json_url: str = DEFAULT_LATEST_JSON_URL,
     *,
     urlopen_timeout_seconds: int = 8,
-    user_agent: str = "DarkEye-Updater/1.0",
+    urlopen_max_attempts: int = 3,
+    user_agent: str = DEFAULT_UPDATE_CHECK_USER_AGENT,
     log_latest_json: bool = False,
 ) -> UpdateCheckResult:
     """
     检查远端 latest.json，返回更新判断结果（不做实际下载安装）。
+
+    对短暂断连（如 Connection reset）会做有限次重试；HTTP 4xx/5xx 不重试。
     """
     result_title = "更新检查结果"
+    attempts = max(1, int(urlopen_max_attempts))
     try:
-        req = Request(latest_json_url, headers={"User-Agent": user_agent})
-        with urlopen(req, timeout=urlopen_timeout_seconds) as resp:
-            raw = resp.read()
+        raw: bytes | None = None
+        for attempt in range(attempts):
+            try:
+                req = Request(
+                    latest_json_url,
+                    headers={
+                        "User-Agent": user_agent,
+                        "Accept": "application/json, text/plain, */*",
+                    },
+                )
+                with urlopen(req, timeout=urlopen_timeout_seconds) as resp:
+                    raw = resp.read()
+                break
+            except HTTPError:
+                raise
+            except (URLError, TimeoutError):
+                if attempt + 1 >= attempts:
+                    raise
+                # 指数退避，减轻对端与本地网络瞬时故障的影响
+                time.sleep(0.35 * (2**attempt))
+        assert raw is not None
 
         data = json.loads(raw.decode("utf-8", errors="replace"))
 
