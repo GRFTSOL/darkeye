@@ -84,7 +84,7 @@ class UpdateManyTabPage(LazyWidget):
 
     @Slot()
     def task_search_actress(self):
-        from core.crawler.javtxt import top_actresses
+        from core.crawler.top_actresses import top_actresses
         from core.crawler.worker import Worker, wire_worker_finished
 
         worker = Worker(top_actresses)
@@ -224,7 +224,7 @@ class UpdateManyTabPage(LazyWidget):
     @Slot()
     def search_actress_info(self):
         # 开始后台线程
-        from core.crawler.minnanoav import actress_need_update, SearchActressInfo_js
+        from core.crawler.actress import actress_need_update, SearchActressInfo_js
         from core.crawler.worker import Worker, wire_worker_finished
 
         if actress_need_update():

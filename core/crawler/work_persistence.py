@@ -29,7 +29,7 @@ from utils.utils import text2tag_id_list, translate_text_sync
 
 def _dispatch_minnano_actress_update_via_browser(actress_id: int, jp_name: str) -> bool:
     """GET /api/v1/actress/ 同步拉取 minnano 并写库；成功表示数据已持久化。"""
-    from core.crawler.minnanoav import fetch_and_persist_actress_minnano_worker
+    from core.crawler.actress import fetch_and_persist_actress_minnano_worker
     from core.database.query import exist_minnao_id
 
     raw_mid = exist_minnao_id(actress_id)
@@ -261,7 +261,7 @@ class DataUpdate:
         temp_path = Path(TEMP_PATH) / dst_name
 
         if self.manager and self._want("cover"):
-            from core.crawler.cover_download import SequentialDownloader
+            from core.crawler.sequential_download import SequentialDownloader
 
             task_id = self.work.serial_number
             total_steps = len(self.work.cover_url_list or [])

@@ -1,4 +1,4 @@
-// 与 core/crawler/minnanoav.py analyse() 对齐的 DOM 抽取（纯函数，依赖 document）
+// 与 core/crawler/actress.py 插件回传字段对齐的 DOM 抽取（纯函数，依赖 document）
 (function (global) {
   "use strict";
 

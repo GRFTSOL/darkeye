@@ -44,7 +44,7 @@ function connectSSE() {
 const pendingCrawlers = new Map();
 /** work_merge_fetch：request_id -> { serial, perSite, tabIds, mergeRequestId, ... } */
 const workMergeJobs = new Map();
-/** 合并层需要的四站键（merge_work.js 与 merge_service 一致） */
+/** 合并层需要的四站键（merge_work.js 与 tests/support/merge_crawl_legacy 单测思路一致） */
 const WORK_MERGE_SITES_ALL = ["javlib", "javdb", "javtxt", "avdanyuwiki"];
 
 /** 以下前缀只开 javdb + javtxt + avdanyuwiki（不开 javlib） */

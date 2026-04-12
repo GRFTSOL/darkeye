@@ -489,7 +489,7 @@ class ViewModel(QObject):
         """GET /api/v1/actress/ 拉取 minnano，仅填入 MVVM；核对后点提交再写库。"""
         from PySide6.QtCore import QThreadPool
 
-        from core.crawler.minnanoav import fetch_actress_minnano_for_edit_worker
+        from core.crawler.actress import fetch_actress_minnano_for_edit_worker
         from core.crawler.worker import Worker, wire_worker_finished
 
         jp = self.actress_name[0]["jp"]
@@ -505,7 +505,7 @@ class ViewModel(QObject):
         QThreadPool.globalInstance().start(worker)
         self.msg.show_info(
             "爬虫更新",
-            "正在通过 Firefox 拉取 minnano，请稍候…",
+            "正在通过 浏览器插件 拉取 minnano 女优数据，请稍候…",
         )
 
     @Slot(object)

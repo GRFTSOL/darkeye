@@ -1,4 +1,4 @@
-"""多源爬取结果合并（旧桌面路径）；生产环境已改为插件合并 + ``merge_service.crawled_work_from_extension_payload``。
+"""多源爬取结果合并（旧桌面路径）；生产环境已改为插件合并 + ``crawler_manager.crawled_work_from_extension_payload``。
 
 仅保留供单元测试回归，与 ``extensions/firefox_capture/merge_work.js`` 字段对齐思路一致。
 """

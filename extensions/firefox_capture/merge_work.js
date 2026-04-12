@@ -1,5 +1,5 @@
 /**
- * 与 core/crawler/merge_service.merge_crawl_results 对齐（不含翻译）。
+ * 与 tests/support/merge_crawl_legacy.merge_crawl_results 对齐（不含翻译）。
  * 供 background.js 在四站结果集齐后调用。
  */
 (function () {
@@ -28,7 +28,7 @@
   const FANZA_PL_MIN_RELEASE_YEAR = 2018;
 
   /**
-   * 与 resources/config/exclude_genre.json 中 exclude_genre 同步（merge_service.exclude_genre_set）。
+   * 与 resources/config/exclude_genre.json 中 exclude_genre 同步（merge_crawl_legacy.exclude_genre_set）。
    */
   const EXCLUDE_GENRE = new Set([
     "AV女优",
@@ -73,7 +73,7 @@
     "MGSだけのおまけ映像付き",
   ]);
 
-  /** 与 merge_service._fanza_pl_serial_head：有横杠取横杠前；否则取连续 isalpha 前缀 */
+  /** 与 merge_crawl_legacy._fanza_pl_serial_head：有横杠取横杠前；否则取连续 isalpha 前缀 */
   function fanzaPlSerialHead(serial) {
     const s = String(serial).trim().toUpperCase();
     if (!s) return "";
@@ -118,7 +118,7 @@
     return convertedCode;
   }
 
-  /** 与 merge_service._skip_fanza_pl_priority_cover：sub in m（m 为小写 maker） */
+  /** 与 merge_crawl_legacy._skip_fanza_pl_priority_cover：sub in m（m 为小写 maker） */
   function skipFanzaPlPriorityCover(maker, canonicalSerial) {
     const m = (maker || "").trim().toLowerCase();
     if (m) {

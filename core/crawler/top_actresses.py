@@ -1,11 +1,14 @@
+"""javtxt热门女优列表同步；数据经本地 /api/v1/top-actresses 与扩展解析。
+
+需要非日本 IP 才能访问 javtxt 目标站。
+"""
+
 import logging
 
 from core.crawler.jump import fetch_top_actresses_via_api
 
-"""需要非日本ip才能爬"""
 
-
-def apply_javtxt_top_actress_names(names: list[str]) -> bool:
+def persist_top_actress_names(names: list[str]) -> bool:
     """将 javtxt 热门女优名列表写入数据库（仅处理前 50 条）。"""
     from core.database.insert import InsertNewActress
     from core.database.query import exist_actress
@@ -41,7 +44,7 @@ def top_actresses() -> bool:
         logging.warning("javtxt 热门女优：解析成功但未得到任何名称")
         ok = False
     if ok and names:
-        apply_javtxt_top_actress_names(names)
+        persist_top_actress_names(names)
         return True
     logging.warning(
         "javtxt 热门女优失败: %s",

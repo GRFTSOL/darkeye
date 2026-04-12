@@ -1,79 +1,12 @@
-"""merge_service.crawled_work_from_extension_payload；多源合并见 ``tests/support/merge_crawl_legacy``。"""
+"""crawler_manager.crawled_work_from_extension_payload；多源合并见 ``tests/support/merge_crawl_legacy``。"""
 
-import importlib
-import importlib.util
 import json
-import os
-import sys
-import types
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+from core.crawler.crawler_manager import crawled_work_from_extension_payload
 from tests.support.merge_crawl_legacy import exclude_genre_set, merge_crawl_results
-
-_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(_ROOT))
-
-_MERGE_SERVICE_MODULE = "core.crawler.merge_service"
-
-
-def _get_merge_service():
-    """加载 merge_service；必要时绕过 ``core/__init__``（避免拖入 Qt / 数据库）。"""
-    if _MERGE_SERVICE_MODULE in sys.modules:
-        return sys.modules[_MERGE_SERVICE_MODULE]
-
-    core_mod = sys.modules.get("core")
-    real_core = core_mod is not None and getattr(core_mod, "__file__", None)
-    if real_core:
-        return importlib.import_module(_MERGE_SERVICE_MODULE)
-
-    utils_pkg = sys.modules.setdefault("utils", types.ModuleType("utils"))
-    utils_pkg.__path__ = [str(_ROOT / "utils")]
-    if "utils.utils" not in sys.modules:
-        uu = types.ModuleType("utils.utils")
-        uu.translate_text_sync = lambda text, fallback="": text
-        sys.modules["utils.utils"] = uu
-
-    cfg = sys.modules.setdefault("config", types.ModuleType("config"))
-    if not hasattr(cfg, "resource_path"):
-
-        def resource_path(relative_path):
-            return str(_ROOT / relative_path)
-
-        cfg.resource_path = resource_path
-    if not hasattr(cfg, "get_translation_engine"):
-        cfg.get_translation_engine = lambda: ""
-
-    core_pkg = types.ModuleType("core")
-    core_pkg.__path__ = [str(_ROOT / "core")]
-    sys.modules["core"] = core_pkg
-    sys.modules["core.schema"] = types.ModuleType("core.schema")
-
-    mspec = importlib.util.spec_from_file_location(
-        "core.schema.model",
-        _ROOT / "core" / "schema" / "model.py",
-    )
-    model_mod = importlib.util.module_from_spec(mspec)
-    sys.modules["core.schema.model"] = model_mod
-    mspec.loader.exec_module(model_mod)
-
-    cr_pkg = types.ModuleType("core.crawler")
-    cr_pkg.__path__ = [str(_ROOT / "core" / "crawler")]
-    sys.modules["core.crawler"] = cr_pkg
-
-    msspec = importlib.util.spec_from_file_location(
-        _MERGE_SERVICE_MODULE,
-        _ROOT / "core" / "crawler" / "merge_service.py",
-    )
-    ms = importlib.util.module_from_spec(msspec)
-    sys.modules[_MERGE_SERVICE_MODULE] = ms
-    msspec.loader.exec_module(ms)
-    return ms
-
-
-merge_service = _get_merge_service()
 
 
 @pytest.fixture(autouse=True)
@@ -338,7 +271,7 @@ def test_crawled_work_from_extension_payload_maps_fields():
         "cover_url_list": ["https://c.jpg"],
         "fanart_url_list": ["https://f.jpg"],
     }
-    out = merge_service.crawled_work_from_extension_payload(payload)
+    out = crawled_work_from_extension_payload(payload)
     assert out.serial_number == "ABC-001"
     assert out.runtime == 99
     assert out.jp_title == "日"
