@@ -1,4 +1,5 @@
 import logging
+import threading
 from collections import defaultdict
 from itertools import combinations
 from typing import Optional
@@ -97,6 +98,11 @@ class GraphManager(QObject):
         self.G = None
         self._initialized = False
         self._initializing = False
+
+        # 增量更新：后台单工作者 + 合并短时间内的多次调度
+        self._incremental_schedule_lock = threading.Lock()
+        self._incremental_worker_alive = False
+        self._incremental_update_pending = False
 
         # 连接内部信号到处理函数（在主线程中执行）
         self._connectSignalsRequested.connect(self._connect_signals_handler)
@@ -504,10 +510,45 @@ class GraphManager(QObject):
         """
         增量更新：按 ``update_time`` 最新的一条作品同步引用边、女优-作品边；
         再按同一条「全局最新」记录同步系列边（软删去边 / 否则重建该系列）。
+
+        实际计算在后台守护线程执行，避免阻塞 UI；``graphDiffSignal`` 仍可从工作线程
+        发出，由 Qt 排队投递到主线程槽。
         """
         if not self._initialized:
             self.initialize()
             return
+
+        start_worker = False
+        with self._incremental_schedule_lock:
+            if self._incremental_worker_alive:
+                self._incremental_update_pending = True
+                return
+            self._incremental_worker_alive = True
+            start_worker = True
+
+        if start_worker:
+            threading.Thread(
+                target=self._incremental_update_worker,
+                daemon=True,
+            ).start()
+
+    def _incremental_update_worker(self) -> None:
+        """串行执行增量更新；若调度期间又有新请求则再跑一轮。"""
+        try:
+            while True:
+                self._update_recent_changes_impl()
+                with self._incremental_schedule_lock:
+                    if not self._incremental_update_pending:
+                        self._incremental_worker_alive = False
+                        return
+                    self._incremental_update_pending = False
+        except Exception:
+            logging.exception("GraphManager 后台增量更新失败")
+            with self._incremental_schedule_lock:
+                self._incremental_worker_alive = False
+
+    def _update_recent_changes_impl(self) -> None:
+        """在后台线程中执行 ``update_recent_changes`` 的具体逻辑。"""
         logging.info(f"更新图关系")
         # 处理软删除的作品的节点和边
         self.prune_soft_deleted_work_nodes(emit_diff=True)
