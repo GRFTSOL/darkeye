@@ -37,6 +37,58 @@
         return /\/v\/[^/]+\/?$/i.test(href || "");
     }
 
+    function isTopActressesPageUrl(href) {
+        try {
+            const u = new URL(href, window.location.origin);
+            return /top-actresses/i.test(u.pathname || "");
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function attachMergeRequestId(payload) {
+        const mid = sessionStorage.getItem("darkeye_merge_request_id");
+        if (mid) payload.merge_request_id = mid;
+        return payload;
+    }
+
+    function sendTopActressesResult(ok, names, errorMsg, requestId) {
+        const rid =
+            requestId != null && String(requestId).trim() !== ""
+                ? String(requestId).trim()
+                : "";
+        const payload = {
+            command: "send_crawler_result",
+            id: "",
+            web: "javtxt-top-actresses",
+            result: ok,
+            data: ok
+                ? { names: names || [] }
+                : { names: [], error: errorMsg || "parse failed" },
+        };
+        if (rid) {
+            payload.request_id = rid;
+        }
+        browser.runtime.sendMessage(payload);
+    }
+
+    function parseTopActresses(requestId) {
+        if (isCloudflarePage()) {
+            console.log("DarkEye: javtxt top-actresses 遇到 Cloudflare");
+            sendTopActressesResult(false, [], "Cloudflare", requestId);
+            return;
+        }
+        const els = document.querySelectorAll("p.actress-name");
+        const names = [];
+        els.forEach((el) => {
+            const t = (el.textContent || "").trim();
+            if (t) {
+                names.push(t);
+            }
+        });
+        sendTopActressesResult(true, names.slice(0, 50), undefined, requestId);
+    }
+
     function absoluteUrl(maybeRelative) {
         if (!maybeRelative) return "";
         try {
@@ -132,24 +184,28 @@
 
         sessionStorage.setItem("darkeye_auto_parse", "false");
         console.log("DarkEye javtxt:", data);
-        browser.runtime.sendMessage({
-            command: "send_crawler_result",
-            id: sessionStorage.getItem("id"),
-            web: "javtxt",
-            result: true,
-            data: data,
-        });
+        browser.runtime.sendMessage(
+            attachMergeRequestId({
+                command: "send_crawler_result",
+                id: sessionStorage.getItem("id"),
+                web: "javtxt",
+                result: true,
+                data: data,
+            })
+        );
     }
 
     function failCrawl() {
         sessionStorage.setItem("darkeye_auto_parse", "false");
-        browser.runtime.sendMessage({
-            command: "send_crawler_result",
-            id: sessionStorage.getItem("id"),
-            web: "javtxt",
-            result: false,
-            data: {},
-        });
+        browser.runtime.sendMessage(
+            attachMergeRequestId({
+                command: "send_crawler_result",
+                id: sessionStorage.getItem("id"),
+                web: "javtxt",
+                result: false,
+                data: {},
+            })
+        );
     }
 
     function search_javtxt() {
@@ -200,9 +256,27 @@
     }
 
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.command === "javtxt-parse-top-actresses") {
+            const rid =
+                message.request_id != null &&
+                message.request_id !== undefined &&
+                String(message.request_id).trim() !== ""
+                    ? String(message.request_id).trim()
+                    : undefined;
+            parseTopActresses(rid);
+            return;
+        }
         if (message.command === "javtxt-dvdid") {
             sessionStorage.setItem("darkeye_auto_parse", "true");
             sessionStorage.setItem("id", message.serial);
+            if (message.mergeRequestId) {
+                sessionStorage.setItem(
+                    "darkeye_merge_request_id",
+                    message.mergeRequestId
+                );
+            } else {
+                sessionStorage.removeItem("darkeye_merge_request_id");
+            }
             search_javtxt();
         }
     });
@@ -210,7 +284,7 @@
     if (sessionStorage.getItem("darkeye_auto_parse") === "true") {
         sessionStorage.removeItem("darkeye_auto_parse");
         const href = window.location.href;
-        if (!isSearchPageUrl(href)) {
+        if (!isSearchPageUrl(href) && !isTopActressesPageUrl(href)) {
             setTimeout(() => {
                 console.log("DarkEye: javtxt 检测到自动跳转任务，开始解析...");
                 if (isDetailPageUrl(href)) {

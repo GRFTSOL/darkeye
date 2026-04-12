@@ -2,7 +2,6 @@ from PySide6.QtWidgets import QVBoxLayout, QWidget
 from PySide6.QtCore import Slot, QThreadPool, QTimer
 import logging
 
-from core.crawler.javtxt import top_actresses
 from darkeye_ui import LazyWidget
 from darkeye_ui.components.button import Button
 
@@ -25,7 +24,9 @@ class UpdateManyTabPage(LazyWidget):
         self._force_translate_timer.timeout.connect(self._on_force_progress_tick)
 
         self.btn_search_actress = Button("更新热门女优")
-        self.btn_search_actress.setToolTip("更新javatext热门女优前50")
+        self.btn_search_actress.setToolTip(
+            "由 Firefox 插件打开 javtxt 热门页并解析前 50 名写入库"
+        )
 
         self.btn_update_needactress = Button("更新标记需要更新的女优数据")
         self.btn_update_needactress.setToolTip(
@@ -83,10 +84,26 @@ class UpdateManyTabPage(LazyWidget):
 
     @Slot()
     def task_search_actress(self):
-        if top_actresses():
-            logging.info("更新完成")
+        from core.crawler.top_actresses import top_actresses
+        from core.crawler.worker import Worker, wire_worker_finished
+
+        worker = Worker(top_actresses)
+        wire_worker_finished(worker, self._on_top_actresses_finished)
+        QThreadPool.globalInstance().start(worker)
+        self.msg.show_info("开始", "已在浏览器打开 javtxt 热门页，请稍候…")
+
+    @Slot(object)
+    def _on_top_actresses_finished(self, result):
+        if result is None:
+            self.msg.show_info("错误", "更新失败，请查看日志")
+            return
+        if result:
+            self.msg.show_info("完成", "热门女优已更新")
         else:
-            logging.error("更新失败")
+            self.msg.show_info(
+                "失败",
+                "未能完成更新（请确认 Firefox 插件已连接、或查看日志）",
+            )
 
     @Slot()
     def task_update_maker_by_prefix(self):
@@ -207,7 +224,7 @@ class UpdateManyTabPage(LazyWidget):
     @Slot()
     def search_actress_info(self):
         # 开始后台线程
-        from core.crawler.minnanoav import actress_need_update, SearchActressInfo_js
+        from core.crawler.actress import actress_need_update, SearchActressInfo_js
         from core.crawler.worker import Worker, wire_worker_finished
 
         if actress_need_update():
@@ -219,5 +236,13 @@ class UpdateManyTabPage(LazyWidget):
             self.msg.show_info("提示", "没有要更新的女优")
 
     @Slot(object)
-    def on_result(self, result: str):  # Qsignal回传信息
-        self.msg.show_info("提示", result)
+    def on_result(self, result):  # Qsignal回传信息
+        from controller.global_signal_bus import global_signals
+
+        if isinstance(result, tuple) and len(result) == 2:
+            msg, changed = result[0], result[1]
+            if changed:
+                global_signals.actressDataChanged.emit()
+            self.msg.show_info("提示", str(msg))
+            return
+        self.msg.show_info("提示", str(result))

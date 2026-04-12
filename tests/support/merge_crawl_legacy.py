@@ -1,19 +1,21 @@
+"""多源爬取结果合并（旧桌面路径）；生产环境已改为插件合并 + ``crawler_manager.crawled_work_from_extension_payload``。
+
+仅保留供单元测试回归，与 ``extensions/firefox_capture/merge_work.js`` 字段对齐思路一致。
+"""
+
 from __future__ import annotations
 
 import json
 import logging
 import re
-import traceback
 from typing import Dict
 
-from config import get_translation_engine, resource_path
+from config import resource_path
 from core.schema.model import CrawledWorkData
 from utils.serial_number import convert_fanza
-from utils.utils import translate_text_sync
 
 _exclude_genre_cache: frozenset[str] | None = None
 
-# awsimgsrc ``...pl.jpg`` 对部分片商仅为半页或未对应，勿插到 cover 源首位。
 _FANZA_PL_SKIP_MAKER_SUBSTR: frozenset[str] = frozenset(
     (
         "sod",
@@ -21,10 +23,9 @@ _FANZA_PL_SKIP_MAKER_SUBSTR: frozenset[str] = frozenset(
         "ソフト・オン・デマンド",
         "SODクリエイト",
         "prestige",
-        "プレステージ"
+        "プレステージ",
     )
 )
-# 品番横杠前前缀（大写），多为 SOD 系；可按需扩充。
 _FANZA_PL_SKIP_SERIAL_PREFIXES: frozenset[str] = frozenset(
     (
         "START",
@@ -44,7 +45,6 @@ _FANZA_PL_SKIP_SERIAL_PREFIXES: frozenset[str] = frozenset(
 
 
 def _fanza_pl_serial_head(serial: str) -> str:
-    """品番前缀：有横杠取横杠前；否则取连续字母前缀（如 IPX836 -> IPX）。"""
     s = serial.strip().upper()
     if not s:
         return ""
@@ -57,7 +57,6 @@ def _fanza_pl_serial_head(serial: str) -> str:
 
 
 def _skip_fanza_pl_priority_cover(maker: str, canonical_serial: str) -> bool:
-    """是否跳过插入 FANZA awsimgsrc PL 封面（片商或番号前缀命中即跳过）。"""
     m = (maker or "").strip().lower()
     if m and any(sub in m for sub in _FANZA_PL_SKIP_MAKER_SUBSTR):
         return True
@@ -65,12 +64,10 @@ def _skip_fanza_pl_priority_cover(maker: str, canonical_serial: str) -> bool:
     return bool(head) and head in _FANZA_PL_SKIP_SERIAL_PREFIXES
 
 
-# awsimgsrc PL 对早年片常无对应或质量差；仅当解析到年份且 < 此值时不插 PL。
 _FANZA_PL_MIN_RELEASE_YEAR = 2018
 
 
 def _release_year_is_before(release_date: str, year: int) -> bool:
-    """若 ``release_date`` 中可解析出 19xx/20xx 年份且严格小于 ``year`` 则 True。"""
     s = (release_date or "").strip()
     if not s:
         return False
@@ -81,7 +78,6 @@ def _release_year_is_before(release_date: str, year: int) -> bool:
 
 
 def exclude_genre_set() -> frozenset[str]:
-    """从 resources/config/exclude_genre.json 读取需排除的 genre 名（带缓存）。"""
     global _exclude_genre_cache
     if _exclude_genre_cache is not None:
         return _exclude_genre_cache
@@ -100,7 +96,7 @@ def exclude_genre_set() -> frozenset[str]:
 def merge_crawl_results(
     results: Dict[str, dict], canonical_serial: str
 ) -> CrawledWorkData:
-    """合并各源结果为标准 CrawledWorkData（含同步翻译）。不依赖 CrawlerManager。"""
+    """合并各源结果为标准 CrawledWorkData。翻译在 ``DataUpdate`` 中统一处理。"""
     javlib_result = results.get("javlib") or {}
     javtxt_result = results.get("javtxt") or {}
     avdanyuwiki_result = results.get("avdanyuwiki") or {}
@@ -130,13 +126,6 @@ def merge_crawl_results(
         or javdb_result.get("actress")
         or []
     )
-    # 这里最好加一个屏蔽词
-
-    # 封面的列表
-    # 2023年以后大图会多。
-    # 可能的fanza大图封面https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/nsfs00401/nsfs00401pl.jpg
-    # 可能的fanza小图封面https://pics.dmm.co.jp/mono/movie/adult/ipx836/ipx836pl.jpg
-    # 这个除开蚊香社的，sod的，sod的大图的封面只有半页，这是个问题。
 
     def _urls(x):
         if x is None:
@@ -171,7 +160,6 @@ def merge_crawl_results(
     serial_lower = canonical_serial.lower()
     cover_list.append("https://fourhoi.com/" + serial_lower + "/cover-n.jpg")
 
-    # 最后的保底，这个是有水印的
     javdburl = javdb_result.get("cover") or ""
     if javdburl:
         cover_list.append(javdburl)
@@ -234,29 +222,6 @@ def merge_crawl_results(
         "cover_list": cover_list,
         "fanart_list": fanart_list,
     }
-
-    try:
-        engine = get_translation_engine()
-        force_translate = engine == "llm"
-
-        if work_merge["jp_title"] != "" and (
-            force_translate or work_merge["cn_title"] == ""
-        ):
-            work_merge["cn_title"] = translate_text_sync(
-                work_merge["jp_title"], fallback="empty"
-            )
-        if work_merge["jp_story"] != "" and (
-            force_translate or work_merge["cn_story"] == ""
-        ):
-            work_merge["cn_story"] = translate_text_sync(
-                work_merge["jp_story"], fallback="empty"
-            )
-    except Exception as e:
-        logging.warning(
-            "merge_crawl_results 翻译失败，使用原文: %s\n%s",
-            e,
-            traceback.format_exc(),
-        )
 
     logging.info("基本聚合结果: %s", work_merge)
 

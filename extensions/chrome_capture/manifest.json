@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DarkEye Capture",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "采集网页的信息到本地，手动采集，无批量操作，需要打开本地软件DarkEye与浏览器插件后才可使用。",
   "action": {
     "default_icon": "icons/logo.png",
@@ -9,12 +9,12 @@
     "default_popup": "popup/popup.html"
   },
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
   "permissions": [
     "activeTab",
     "tabs",
+    "webNavigation",
     "offscreen",
     "storage"
   ],
@@ -24,16 +24,6 @@
     "<all_urls>"
   ],
   "content_scripts": [
-    {
-      "matches": [
-        "*://javdb.com/*",
-        "*://www.javdb.com/*",
-        "*://www.javlibrary.com/*"
-      ],
-      "js": [
-        "content/popup_capture.js"
-      ]
-    },
     {
       "matches": [
         "*://javdb.com/*",
@@ -85,7 +75,8 @@
         "content/sites/minnano-scrape.js",
         "content/sites/minnano.js",
         "content/sites/minnano-auto.js"
-      ]
+      ],
+      "run_at": "document_end"
     },
     {
       "matches": [

@@ -10,7 +10,6 @@ class SequentialDownloader(QObject):
     """顺序尝试多个 URL 下载封面（每步一个 Worker）。"""
 
     finished = Signal(bool, str)
-    success = Signal(str)
 
     def __init__(
         self,

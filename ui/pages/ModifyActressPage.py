@@ -128,7 +128,6 @@ class ViewModel(QObject):
 
         bridge = ServerBridge()
 
-        bridge.actressIdReceived.connect(self.set_minnano_id)
         bridge.minnanoActressCaptureReceived.connect(self.apply_minnano_capture)
 
     def set_state(self, key: str, value: bool) -> None:
@@ -487,33 +486,97 @@ class ViewModel(QObject):
 
     @Slot()
     def clawer_update(self):
-        """通过 Firefox 插件打开 minnano，回传后由 apply_minnano_capture 写库。
+        """GET /api/v1/actress/ 拉取 minnano，仅填入 MVVM；核对后点提交再写库。"""
+        from PySide6.QtCore import QThreadPool
 
-        自动爬取成功且数据已 POST 到本机后，扩展约 10s 关闭该爬虫标签（与番号爬虫一致）。
-        """
-        from core.crawler.jump import send_minnano_actress_crawler_request
+        from core.crawler.actress import fetch_actress_minnano_for_edit_worker
+        from core.crawler.worker import Worker, wire_worker_finished
 
         jp = self.actress_name[0]["jp"]
         logging.info(self.actress_id)
         logging.info(jp)
-        ok, count = send_minnano_actress_crawler_request(
-            jp, self.actress_id, self.get_minnano_id()
+        worker = Worker(
+            fetch_actress_minnano_for_edit_worker,
+            jp,
+            self.actress_id,
+            self.get_minnano_id(),
         )
-        if not ok:
+        wire_worker_finished(worker, self._on_clawer_update_finished)
+        QThreadPool.globalInstance().start(worker)
+        self.msg.show_info(
+            "爬虫更新",
+            "正在通过 浏览器插件 拉取 minnano 女优数据，请稍候…",
+        )
+
+    @Slot(object)
+    def _on_clawer_update_finished(self, result):
+        if result is None:
             self.msg.show_warning(
                 "爬虫更新",
-                "无法连接本地服务，请确认 DarkEye 已启动。",
+                "处理失败，请查看日志。",
+                top_level=True,
             )
             return
-        if count <= 0:
+        kind, payload = result[0], result[1]
+        if kind == "data":
+            raw = payload.get("data") if isinstance(payload, dict) else None
+            if not isinstance(raw, dict):
+                self.msg.show_warning(
+                    "minnano 更新失败",
+                    "未收到有效数据。",
+                    top_level=True,
+                )
+                return
+            self.apply_minnano_capture(
+                {
+                    "context": {
+                        "persist": False,
+                        "actress_id": self.actress_id,
+                    },
+                    "data": raw,
+                    "_silent_completion": True,
+                }
+            )
+            return
+        err = ""
+        if isinstance(payload, dict):
+            err = str(payload.get("error") or "")
+        err_s = err
+        hints = {
+            "multiple_search_results": (
+                "minnano 搜索到多名女优，请填写 minnano id 后重试或使用手动跳转。"
+            ),
+            "minnano_auto_no_match": "未在 minnano 找到匹配条目。",
+            "minnano_auto_unexpected_page": "页面状态异常，无法自动采集。",
+            "minnano_scrape_unavailable": "页面脚本未就绪，请刷新后重试。",
+            "no_data": "未收到 minnano 数据，请重试或检查插件。",
+        }
+        low = err_s.lower()
+        if "no browser extension" in low or "503" in err_s:
             self.msg.show_warning(
                 "爬虫更新",
                 "未连接浏览器插件：请打开 Firefox 并启用 DarkEye 扩展。",
+                top_level=True,
             )
             return
-        self.msg.show_info(
-            "爬虫更新",
-            "已通知 Firefox 在后台打开 minnano，完成后将自动写入数据库。",
+        if "504" in err_s or "timed out" in low:
+            self.msg.show_warning(
+                "爬虫更新",
+                "等待插件响应超时，请重试。",
+                top_level=True,
+            )
+            return
+        if not err_s:
+            self.msg.show_warning(
+                "爬虫更新",
+                "无法连接本地服务，请确认 DarkEye 已启动。",
+                top_level=True,
+            )
+            return
+        self.msg.show_warning(
+            "minnano 更新失败",
+            hints.get(err_s, err_s),
+            top_level=True,
         )
 
     def update_minnano_id(self, value):
@@ -525,7 +588,7 @@ class ViewModel(QObject):
 
     @Slot(dict)
     def apply_minnano_capture(self, body: dict):
-        """插件采集：手动模式仅回填表单；persist 模式由插件自动任务写库。"""
+        """插件 minnano 页「采集」：回填表单并关闭「需要更新」（仍须提交后写库）。"""
         import copy
         from datetime import datetime
         from pathlib import Path
@@ -536,7 +599,9 @@ class ViewModel(QObject):
         if not body or self.actress_id is None:
             return
         ctx = body.get("context") or {}
-        persist = bool(ctx.get("persist"))
+        if ctx.get("persist"):
+            # 旧 persist 路径回传忽略（当前女优采集走 HTTP + actress-fetch-result）
+            return
         aid = ctx.get("actress_id")
         aid_int = None
         if aid is not None:
@@ -545,43 +610,12 @@ class ViewModel(QObject):
             except (TypeError, ValueError):
                 aid_int = None
 
-        if persist:
-            if aid_int is not None and self.actress_id != aid_int:
-                return
-        else:
-            if aid_int is not None and self.actress_id != aid_int:
-                self.msg.show_warning(
-                    "提示",
-                    "采集上下文与当前编辑女优不一致，已忽略。",
-                    top_level=True,
-                )
-                return
-
-        if persist:
-            err = body.get("error")
-            if err:
-                hints = {
-                    "multiple_search_results": (
-                        "minnano 搜索到多名女优，请填写 minnano id 后重试或使用手动跳转。"
-                    ),
-                    "minnano_auto_no_match": "未在 minnano 找到匹配条目。",
-                    "minnano_auto_unexpected_page": "页面状态异常，无法自动采集。",
-                    "minnano_scrape_unavailable": "页面脚本未就绪，请刷新后重试。",
-                }
-                self.msg.show_warning(
-                    "minnano 更新失败",
-                    hints.get(str(err), str(err)),
-                    top_level=True,
-                )
-                return
-            raw = body.get("data")
-            if not raw:
-                self.msg.show_warning(
-                    "minnano 更新失败", "未收到数据。", top_level=True
-                )
-                return
-            self.load(self.actress_id)
-            self.msg.show_info("爬虫更新", "已从 minnano 写入数据库。", top_level=True)
+        if aid_int is not None and self.actress_id != aid_int:
+            self.msg.show_warning(
+                "提示",
+                "采集上下文与当前编辑女优不一致，已忽略。",
+                top_level=True,
+            )
             return
 
         data = body.get("data") or {}
@@ -661,11 +695,14 @@ class ViewModel(QObject):
             except Exception as e:
                 logging.warning("下载 minnano 头像失败: %s", e)
 
-        self.msg.show_info(
-            "采集完成",
-            "已从 minnano 填入表单，请核对后点击提交。",
-            top_level=True,
-        )
+        self.set_need_update(False)
+
+        if not body.get("_silent_completion"):
+            self.msg.show_info(
+                "采集完成",
+                "已从 minnano 填入表单，请核对后点击提交。",
+                top_level=True,
+            )
 
     @Slot(bool)
     def on_result(self, result: bool, actressName: str):  # Qsignal回传信息
@@ -772,9 +809,10 @@ class ModifyActressPage(LazyWidget):
         self.input_debut_date = LineEdit()
         self.need_update = ToggleSwitch(width=40, height=20)
         self.btn_commit = Button("提交修改")
-        self.btn_claw_update = Button("爬虫直接更新")
+        self.btn_claw_update = Button("爬虫尝试更新(需手动提交)")
         # self.btn_printModel=QPushButton("打印数据")
-        self.btn_minnano = Button("跳转手动选择")
+        self.btn_minnano = Button("跳转手动选择(需手动提交)")
+        self.btn_minnano.setToolTip("这个是对于那些多女优的搜索结果的，需要自己确认")
         self.smallwidget = QWidget()  # 放一些小按钮
         self.smalllayout = QHBoxLayout(self.smallwidget)
         self.btn_delete = IconPushButton(icon_name="trash_2")

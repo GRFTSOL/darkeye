@@ -265,9 +265,10 @@ class MainWindow(QMainWindow):
         """信号连接"""
         from server.bridge import bridge
 
-        bridge.captureReceived.connect(self.handle_capture_data)
         bridge.crawlerBacklogWarning.connect(self._on_crawler_backlog_warning)
-        bridge.minnanoActressCaptureReceived.connect(self._on_minnano_persist_capture)
+        bridge.extensionCloudflareChallenge.connect(
+            self._on_extension_cloudflare_challenge
+        )
 
     def closeEvent(self, event) -> None:
         logging.info("--------------------程序关闭--------------------")
@@ -352,13 +353,6 @@ class MainWindow(QMainWindow):
         if route_name:
             self.router.push(route_name)
 
-    @Slot(int, str)
-    @Slot(dict)
-    def _on_minnano_persist_capture(self, body: dict) -> None:
-        from core.crawler.minnanoav import handle_minnano_persist_capture_from_extension
-
-        handle_minnano_persist_capture_from_extension(body)
-
     def _on_crawler_backlog_warning(self, count: int, browser: str) -> None:
         from controller.message_service import MessageBoxService
 
@@ -371,27 +365,25 @@ class MainWindow(QMainWindow):
         )
 
     @Slot(dict)
-    def handle_capture_data(self, data: dict) -> None:
-        """
-        处理来自插件的抓取数据
-        """
-        logging.info(f"Main thread received capture data: {data.get('url')}")
-        self.myStatusBar.showMessage(
-            f"收到抓取数据: {data.get('title', 'Unknown')}", 5000
+    def _on_extension_cloudflare_challenge(self, payload: dict) -> None:
+        from controller.message_service import MessageBoxService
+
+        site = (payload.get("site") or "").strip() or "网站"
+        serial = (payload.get("serial") or "").strip()
+        url = (payload.get("url") or "").strip()
+        lines = [
+            f"插件检测到 {site} 处于 Cloudflare / 人机验证页面。",
+            "请到专用爬虫窗口中对应的浏览器标签页手动完成验证。",
+        ]
+        if serial:
+            lines.append(f"番号：{serial}")
+        if url:
+            max_len = 200
+            short = url if len(url) <= max_len else url[: max_len - 3] + "..."
+            lines.append(f"页面：{short}")
+        msg = MessageBoxService(parent=self)
+        msg.show_warning(
+            "需要完成网站验证",
+            "\n".join(lines),
+            attention_grabbing=True,
         )
-
-        content_str = data.get("content", "")
-
-        # 解析番号数组，去除空白并过滤空字符串
-        serial_numbers = [s.strip() for s in content_str.split(",") if s.strip()]
-
-        logging.info(
-            f"收到抓取数据,标题: {data.get('title')}\nURL: {data.get('url')}\n番号列表({len(serial_numbers)}个): {serial_numbers}"
-        )
-
-        if serial_numbers:
-            from ui.dialogs.AddQuickWork import AddQuickWork
-
-            dialog = AddQuickWork()
-            dialog.load_serials(serial_numbers)
-            dialog.exec()

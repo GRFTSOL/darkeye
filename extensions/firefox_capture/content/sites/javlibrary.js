@@ -2,11 +2,56 @@
 (function() {
   if (!window.location.href.includes("javlibrary.com")) return;
 
+  const CF_NOTIFY_KEY = "darkeye_javlib_cf_desktop_notified";
+
+  function attachMergeRequestId(payload) {
+    const mid = sessionStorage.getItem("darkeye_merge_request_id");
+    if (mid) payload.merge_request_id = mid;
+    return payload;
+  }
+
+  function isJavlibraryCloudflarePage() {
+    const t = document.title || "";
+    if (t.includes("Just a moment") || t.includes("Attention Required")) {
+      return true;
+    }
+    if (document.querySelector("#challenge-running")) return true;
+    if (document.querySelector("#cf-wrapper")) return true;
+    if (document.querySelector(".cf-browser-verification")) return true;
+    if (document.querySelector("body.cf-error-details")) return true;
+    if (document.querySelector("#challenge-form")) return true;
+    return false;
+  }
+
+  function clearJavlibCfDesktopNotifyDedupe() {
+    sessionStorage.removeItem(CF_NOTIFY_KEY);
+  }
+
+  /** 本轮任务遇到 Cloudflare 时只通知桌面一次（不区分搜索页 / 详情页） */
+  function notifyCloudflareChallengeIfNeeded() {
+    if (sessionStorage.getItem(CF_NOTIFY_KEY) === "1") return;
+    sessionStorage.setItem(CF_NOTIFY_KEY, "1");
+    const payload = {
+      command: "notify-cloudflare-challenge",
+      site: "javlib",
+      serial: sessionStorage.getItem("id") || "",
+      merge_request_id:
+        sessionStorage.getItem("darkeye_merge_request_id") || "",
+    };
+    browser.runtime.sendMessage(attachMergeRequestId(payload)).catch(() => {});
+  }
+
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.command === "javlibrary-dvdid"){
         console.log("DarkEye: JavLibrary 开始爬虫任务...");
+        clearJavlibCfDesktopNotifyDedupe();
         sessionStorage.setItem('darkeye_auto_parse', 'true')
         sessionStorage.setItem('id', message.serial)
+        if (message.mergeRequestId) {
+          sessionStorage.setItem("darkeye_merge_request_id", message.mergeRequestId);
+        } else {
+          sessionStorage.removeItem("darkeye_merge_request_id");
+        }
         if (!search_javlibrary()){
             //这里回传失败的信息
         }
@@ -17,20 +62,21 @@
     if (window.location.href.startsWith("https://www.javlibrary.com/cn/vl_searchbyid.php?keyword=")){
         const videos = document.querySelectorAll('div.video');
         if (videos.length === 0) {
-            if (document.title.includes("Just a moment") || document.title.includes("Attention Required") || document.querySelector('#challenge-running')) {
+            if (isJavlibraryCloudflarePage()) {
                 console.log("DarkEye: 遇到 Cloudflare，暂不报错，等待自动重试...");
+                notifyCloudflareChallengeIfNeeded();
                 sessionStorage.setItem('darkeye_auto_parse', 'true');
                 return false;
             }
             console.log("该番号javlib没有搜索结果");
             sessionStorage.setItem('darkeye_auto_parse', 'false')
-            browser.runtime.sendMessage({
+            browser.runtime.sendMessage(attachMergeRequestId({
                 command: "send_crawler_result",
                 id: sessionStorage.getItem('id'),
                 web:'javlib',
                 result: false,
                 data:{}
-            });
+            }));
             return false;
         }
         console.log("搜索结果个数: " + videos.length);
@@ -62,6 +108,14 @@
 
   function parse_data_javlibrary(){
     if (window.location.href.includes("javlibrary.com")) {
+        if (isJavlibraryCloudflarePage()) {
+            console.log(
+                "DarkEye: JavLibrary 详情页 Cloudflare，等待手动验证后继续..."
+            );
+            notifyCloudflareChallengeIfNeeded();
+            sessionStorage.setItem("darkeye_auto_parse", "true");
+            return;
+        }
         const data = {};
         const dvdidElement = document.querySelector("#video_id .text");
         data.id = dvdidElement ? dvdidElement.textContent.trim() : "";
@@ -112,16 +166,17 @@
         }
 
         sessionStorage.setItem('darkeye_auto_parse', 'false');
+        clearJavlibCfDesktopNotifyDedupe();
         console.log(data);
         if (data) {
             console.debug("发送数据");
-            browser.runtime.sendMessage({
+            browser.runtime.sendMessage(attachMergeRequestId({
                 command: "send_crawler_result",
                 id: sessionStorage.getItem('id'),
                 web:'javlib',
                 result: true,
                 data:data
-            });
+            }));
         }
     }
   }
