@@ -12,6 +12,8 @@ class ServerBridge(QObject):
     minnanoActressCaptureReceived = Signal(dict)
     captureOneReceived = Signal(str)
     crawlerBacklogWarning = Signal(int, str)
+    # 插件检测到站点 Cloudflare 挑战页：site/phase/url/serial/merge_request_id 等
+    extensionCloudflareChallenge = Signal(dict)
     # 浏览器插件拉取 DMM 封面完成：request_id, 临时文件绝对路径或 None, 错误说明（成功为空串）
     coverBrowserFetchResult = Signal(str, object, str)
 

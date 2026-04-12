@@ -266,6 +266,9 @@ class MainWindow(QMainWindow):
         from server.bridge import bridge
 
         bridge.crawlerBacklogWarning.connect(self._on_crawler_backlog_warning)
+        bridge.extensionCloudflareChallenge.connect(
+            self._on_extension_cloudflare_challenge
+        )
 
     def closeEvent(self, event) -> None:
         logging.info("--------------------程序关闭--------------------")
@@ -358,5 +361,29 @@ class MainWindow(QMainWindow):
             "爬虫标签页积压",
             f"专用爬虫窗口中标签数已达 {count} 个，说明需要反爬验证了"
             "适时关闭失效标签或者过反爬验证",
+            attention_grabbing=True,
+        )
+
+    @Slot(dict)
+    def _on_extension_cloudflare_challenge(self, payload: dict) -> None:
+        from controller.message_service import MessageBoxService
+
+        site = (payload.get("site") or "").strip() or "网站"
+        serial = (payload.get("serial") or "").strip()
+        url = (payload.get("url") or "").strip()
+        lines = [
+            f"插件检测到 {site} 处于 Cloudflare / 人机验证页面。",
+            "请到专用爬虫窗口中对应的浏览器标签页手动完成验证。",
+        ]
+        if serial:
+            lines.append(f"番号：{serial}")
+        if url:
+            max_len = 200
+            short = url if len(url) <= max_len else url[: max_len - 3] + "..."
+            lines.append(f"页面：{short}")
+        msg = MessageBoxService(parent=self)
+        msg.show_warning(
+            "需要完成网站验证",
+            "\n".join(lines),
             attention_grabbing=True,
         )

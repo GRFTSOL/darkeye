@@ -207,6 +207,42 @@ async def crawler_backlog_warning(body: CrawlerBacklogWarningBody):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class CloudflareChallengeNotifyBody(BaseModel):
+    """Firefox 插件报告 JavDB 等站点处于 Cloudflare 挑战页，通知桌面弹窗。"""
+
+    site: Optional[str] = None
+    phase: Optional[str] = None
+    url: Optional[str] = None
+    serial: Optional[str] = None
+    merge_request_id: Optional[str] = None
+
+
+@app.post("/api/v1/cloudflare-challenge-notify")
+async def cloudflare_challenge_notify(body: CloudflareChallengeNotifyBody):
+    """
+    浏览器插件检测到 Cloudflare / 人机验证页时上报，主线程弹窗提示用户到爬虫窗口处理。
+    """
+    try:
+        payload = {
+            "site": (body.site or "").strip(),
+            "phase": (body.phase or "").strip(),
+            "url": (body.url or "").strip(),
+            "serial": (body.serial or "").strip(),
+            "merge_request_id": (body.merge_request_id or "").strip(),
+        }
+        logger.info(
+            "Cloudflare challenge notify: site=%s phase=%s serial=%s",
+            payload["site"],
+            payload["phase"],
+            payload["serial"],
+        )
+        bridge.extensionCloudflareChallenge.emit(payload)
+        return {"status": "success", "message": "notified"}
+    except Exception as e:
+        logger.error("cloudflare_challenge_notify: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class WorkMergeResultBody(BaseModel):
     """Firefox 插件四站合并完成后回传，解除 GET /api/v1/work/{serial} 的挂起。"""
 

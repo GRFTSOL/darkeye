@@ -1,6 +1,5 @@
 // 作品番号探测器：JavDB / JavLibrary / JavTxt 列表页「已收录 / + 采集」标签；详情页 video-detail 番号嗅探
 (function() {
-    const api = chrome || browser;
     const href = window.location.href;
     const isListSite = href.includes("javdb.com") || href.includes("javlibrary.com") || href.includes("javtxt.com");
 
@@ -89,7 +88,7 @@
             State.checkQueue.clear();
 
             try {
-                const response = await api.runtime.sendMessage({
+                const response = await chrome.runtime.sendMessage({
                     command: "check_existence",
                     items: ids
                 });
@@ -158,7 +157,7 @@
                         timestamp: Date.now()
                     }
                 };
-                const response = await api.runtime.sendMessage({
+                const response = await chrome.runtime.sendMessage({
                     command: "capture_one",
                     payload: payload
                 });
@@ -184,6 +183,7 @@
         }
     }
 
+    /** JavDB 列表页嗅探：探测 .item 内 .video-title strong 的番号 */
     class JavDBSniffer extends SiteSniffer {
         constructor() {
             super();
@@ -196,6 +196,7 @@
         }
     }
 
+    /** JavLibrary 列表页嗅探：探测 .video 内 .id 的番号 */
     class JavLibrarySniffer extends SiteSniffer {
         constructor() {
             super();
@@ -208,6 +209,7 @@
         }
     }
 
+    /** JavTxt 列表页嗅探：探测 a.work 内 .work-id 的番号 */
     class JavTxtSniffer extends SiteSniffer {
         constructor() {
             super();
@@ -333,9 +335,11 @@
             super();
             this.itemSelector = 'dl';
         }
+        
         getTagPosition() {
             return 'top-right';
         }
+
         extractId(element) {
             const dds = element.querySelectorAll('dd');
             for (const dd of dds) {

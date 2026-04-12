@@ -4,6 +4,142 @@ importScripts("merge_work.js");
 const SERVER_URL = "http://localhost:56789";
 
 const pendingCrawlers = new Map();
+
+/** 爬虫专用标签：主框架导航失败时自动 reload 的次数上限（不含首次打开） */
+const CRAWLER_TAB_MAX_AUTO_RELOAD = 1;
+
+/** tabId -> { attempts } */
+const tabCrawlerReloadState = new Map();
+/** 已安排 reload，避免 onErrorOccurred 与 complete 双触发重复计数 */
+const tabCrawlerReloadInFlight = new Set();
+
+function clearTabCrawlerReloadState(tabId) {
+  tabCrawlerReloadState.delete(tabId);
+  tabCrawlerReloadInFlight.delete(tabId);
+}
+
+function getTabCrawlerReloadState(tabId) {
+  let s = tabCrawlerReloadState.get(tabId);
+  if (!s) {
+    s = { attempts: 0 };
+    tabCrawlerReloadState.set(tabId, s);
+  }
+  return s;
+}
+
+/**
+ * webNavigation.onErrorOccurred 的 error：是否适合自动刷新（证书/用户取消等刷新无效）。
+ */
+function shouldAutoReloadForNavigationError(errorStr) {
+  const u = String(errorStr || "").toUpperCase();
+  if (!u) return true;
+  if (u.includes("CERT")) return false;
+  if (u.includes("SSL")) return false;
+  if (u.includes("SEC_ERROR")) return false;
+  if (u.includes("MOZILLA_PKIX")) return false;
+  if (u.includes("NS_ERROR_CERT")) return false;
+  if (u.includes("ABORTED")) return false;
+  if (u.includes("CANCELLED")) return false;
+  if (u.includes("CANCELED")) return false;
+  if (u.includes("BLOCKED_BY_CLIENT")) return false;
+  return true;
+}
+
+/** Chrome 内置错误页 / interstitial（complete 时 tab.url 可见；与 Firefox about:* 分类对齐） */
+function isChromiumInternalErrorPageUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  return (
+    url.startsWith("chrome-error://") ||
+    url.startsWith("chrome://network-error") ||
+    url.startsWith("chrome://interstitials/")
+  );
+}
+
+/**
+ * 证书/HSTS/一般 interstitial 不重试；典型网络错误页可试（次数仍受
+ * CRAWLER_TAB_MAX_AUTO_RELOAD 限制）。
+ */
+function chromiumErrorPageAllowsAutoReload(url) {
+  if (!url || typeof url !== "string") return false;
+  const u = url.toLowerCase();
+  if (u.startsWith("chrome://interstitials/ssl")) return false;
+  if (u.startsWith("chrome://interstitials/")) return false;
+  if (u.startsWith("chrome-error://chromewebdata")) return true;
+  if (u.startsWith("chrome://network-error")) return true;
+  return false;
+}
+
+function abandonPendingCrawlerTab(tabId, reason) {
+  if (!pendingCrawlers.has(tabId)) {
+    clearTabCrawlerReloadState(tabId);
+    return;
+  }
+  console.warn(
+    "DarkEye: 爬虫标签放弃 pending",
+    "tabId=",
+    tabId,
+    "reason=",
+    reason
+  );
+  pendingCrawlers.delete(tabId);
+  clearTabCrawlerReloadState(tabId);
+}
+
+function tryAutoReloadPendingCrawlerTab(tabId, errorOrUrl, kind) {
+  if (!pendingCrawlers.has(tabId)) return;
+  if (tabCrawlerReloadInFlight.has(tabId)) return;
+
+  const allow =
+    kind === "error-page-url"
+      ? chromiumErrorPageAllowsAutoReload(errorOrUrl)
+      : shouldAutoReloadForNavigationError(errorOrUrl);
+
+  if (!allow) {
+    abandonPendingCrawlerTab(
+      tabId,
+      "error-not-retryable:" + String(errorOrUrl).slice(0, 120)
+    );
+    return;
+  }
+
+  const st = getTabCrawlerReloadState(tabId);
+  st.attempts += 1;
+  if (st.attempts > CRAWLER_TAB_MAX_AUTO_RELOAD) {
+    abandonPendingCrawlerTab(
+      tabId,
+      "max-auto-reload:" + CRAWLER_TAB_MAX_AUTO_RELOAD
+    );
+    return;
+  }
+
+  tabCrawlerReloadInFlight.add(tabId);
+  const delayMs = 300 + st.attempts * 400;
+  console.warn(
+    "DarkEye: 爬虫标签导航失败将 reload",
+    "tabId=",
+    tabId,
+    "attempt=",
+    st.attempts,
+    "/",
+    CRAWLER_TAB_MAX_AUTO_RELOAD,
+    "kind=",
+    kind,
+    "detail=",
+    String(errorOrUrl).slice(0, 200)
+  );
+  setTimeout(() => {
+    chrome.tabs
+      .reload(tabId, { bypassCache: true })
+      .then(() => {
+        tabCrawlerReloadInFlight.delete(tabId);
+      })
+      .catch((err) => {
+        tabCrawlerReloadInFlight.delete(tabId);
+        console.error("DarkEye: crawler tab reload failed", tabId, err);
+      });
+  }, delayMs);
+}
+
 /** work_merge_fetch：request_id -> { serial, perSite, tabIds, mergeRequestId, ... } */
 const workMergeJobs = new Map();
 /** 合并层需要的四站键（merge_work.js 与 tests/support/merge_crawl_legacy 单测思路一致） */
@@ -58,6 +194,12 @@ function resolveMergeSitesForSerial(serial) {
 
 /** 单站超过此时长无结果则视为放弃该站，用空对象参与合并（与服务端 GET 120s 总超时配合） */
 const WORK_MERGE_PER_SITE_MS = 30000;
+
+/**
+ * 单站结果写入合并（onWorkMergeSiteResult）后，关闭该站爬虫标签的延迟（ms）。
+ * 0 表示 setTimeout(0)，在监听器返回后再关，避免与 sendMessage 尾逻辑打架。
+ */
+const WORK_MERGE_CLOSE_TAB_AFTER_SITE_MS = 5000;
 
 /** 桌面 navigate 写入：tabId -> { actress_id?, source? } */
 const tabNavigateContext = new Map();
@@ -218,10 +360,18 @@ function clearWorkMergeTimer(job) {
   }
 }
 
+/** work_merge：单站已并入 job.perSite 后关闭对应标签 */
+function scheduleCloseWorkMergeCrawlerTab(tabId) {
+  if (tabId === undefined || tabId === null) return;
+  const ms = WORK_MERGE_CLOSE_TAB_AFTER_SITE_MS;
+  setTimeout(() => {
+    chrome.tabs.remove(tabId).catch(() => {});
+  }, ms > 0 ? ms : 0);
+}
+
 function finishWorkMergeJob(requestId, ok, merged, serial, error) {
   const job = workMergeJobs.get(requestId);
   if (job) clearWorkMergeTimer(job);
-  const tabIds = job && job.tabIds ? job.tabIds.slice() : [];
   workMergeJobs.delete(requestId);
   postWorkMergeResult({
     request_id: requestId,
@@ -230,15 +380,7 @@ function finishWorkMergeJob(requestId, ok, merged, serial, error) {
     per_site: {},
     error: error || null,
     serial_number: serial || "",
-  })
-    .then(() => {
-      tabIds.forEach((tid) => {
-        if (tid !== undefined) {
-          chrome.tabs.remove(tid).catch(() => {});
-        }
-      });
-    })
-    .catch(() => {});
+  }).catch(() => {});
 }
 
 function runWorkMergeAndFinish(requestId) {
@@ -277,7 +419,7 @@ function runWorkMergeAndFinish(requestId) {
   finishWorkMergeJob(requestId, ok, merged, job.serial, errMsg);
 }
 
-function onWorkMergeSiteResult(requestId, web, data) {
+function onWorkMergeSiteResult(requestId, web, data, sourceTabId) {
   const job = workMergeJobs.get(requestId);
   if (!job || job.finalized) return;
   job.perSite[web] = data && typeof data === "object" ? data : {};
@@ -288,6 +430,7 @@ function onWorkMergeSiteResult(requestId, web, data) {
     "serial=" + (job.serial || ""),
     job.perSite[web]
   );
+  scheduleCloseWorkMergeCrawlerTab(sourceTabId);
   const sites = job.sites || WORK_MERGE_SITES_ALL;
   const n = sites.filter((k) =>
     Object.prototype.hasOwnProperty.call(job.perSite, k)
@@ -312,14 +455,14 @@ function startWorkMergeFetch(requestId, serial) {
   const sites = resolveMergeSitesForSerial(serial);
   workMergeJobs.set(requestId, {
     serial: String(serial),
-    sites,
-    perSite: {},
-    tabIds: [],
+    sites, // 计划参与的站点
+    perSite: {}, // 每个站点的结果
+    tabIds: [], // 参与的标签
     mergeRequestId: requestId,
-    mergeTimeoutId: null,
-    finalized: false,
+    mergeTimeoutId: null, // 超时时间
+    finalized: false, // 是否完成合并
   });
-  console.log("DarkEye: work_merge 启用站点", sites.join(","), "serial=", serial);
+  console.log("DarkEye: 爬虫任务启用站点", sites.join(","), "serial=", serial);
   const urls = {
     javlib:
       "https://www.javlibrary.com/cn/vl_searchbyid.php?keyword=" +
@@ -346,6 +489,7 @@ function startWorkMergeFetch(requestId, serial) {
       },
       (tabId) => {
         const job = workMergeJobs.get(requestId);
+        // 新开的 tab 成功后把 tabId 加入到 job 中
         if (job) job.tabIds.push(tabId);
       }
     );
@@ -400,7 +544,7 @@ function maybeNotifyCrawlerBacklog() {
 function addTabInCrawlerWindow(url, pendingPayload, onTabCreated) {
   ensureCrawlerWindowId()
     .then((windowId) =>
-      chrome.tabs.create({ windowId, url, active: false }).then((tab) => {
+      chrome.tabs.create({ windowId, url, active: true }).then((tab) => {
         if (tab && tab.id !== undefined) {
           pendingCrawlers.set(tab.id, pendingPayload);
           if (onTabCreated) {
@@ -499,7 +643,7 @@ function handleCommand(data) {
     const requestId = data.request_id;
     const serial = data.serial_number;
     if (requestId && serial != null && serial !== "") {
-      console.log("DarkEye: work_merge_fetch", requestId, serial);
+      console.log("DarkEye: 开始爬虫任务", requestId, serial);
       startWorkMergeFetch(String(requestId), serial);
     }
   }
@@ -583,6 +727,17 @@ function sendMinnanoActressAutoMessage(tabId, msg, serial) {
   trySend(1);
 }
 
+// 主框架导航失败：仅处理专用爬虫窗口内待下发的标签（pendingCrawlers）
+chrome.webNavigation.onErrorOccurred.addListener((details) => {
+  if (details.frameId !== 0) return;
+  if (!pendingCrawlers.has(details.tabId)) return;
+  tryAutoReloadPendingCrawlerTab(
+    details.tabId,
+    details.error || "",
+    "navigation-error"
+  );
+});
+
 // 监听页面加载完成，启动对应爬虫 content script
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (
@@ -593,6 +748,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     maybeNotifyCrawlerBacklog();
   }
   if (changeInfo.status === "complete" && pendingCrawlers.has(tabId)) {
+    const pageUrl = (tab && tab.url) || "";
+    if (isChromiumInternalErrorPageUrl(pageUrl)) {
+      tryAutoReloadPendingCrawlerTab(tabId, pageUrl, "error-page-url");
+      return;
+    }
+
     const task = pendingCrawlers.get(tabId);
     // 根据任务类型分发不同的指令，并透传 serial
     if (task.type === "javlib") {
@@ -635,6 +796,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // 注意：如果我们采用 Content Script 自动接力模式，这里可能不需要删除，每次刷新时判断有无任务，有就处理，直接任务全部结束
     // 为了防止多次触发，通常还是删除，依赖页面内的 sessionStorage 自动接力
     pendingCrawlers.delete(tabId);
+    clearTabCrawlerReloadState(tabId);
   }
 });
 
@@ -654,6 +816,7 @@ chrome.windows.onRemoved.addListener(async (removedId) => {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   tabNavigateContext.delete(tabId);
+  clearTabCrawlerReloadState(tabId);
   if (crawlerWindowId !== null) {
     maybeNotifyCrawlerBacklog();
   }
@@ -794,7 +957,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (WORK_MERGE_SITES_ALL.indexOf(web) >= 0) {
         const job = workMergeJobs.get(rid);
         if (job && job.sites && job.sites.indexOf(web) >= 0) {
-          onWorkMergeSiteResult(rid, web, message.data || {});
+          const srcTid =
+            sender.tab && sender.tab.id !== undefined
+              ? sender.tab.id
+              : undefined;
+          onWorkMergeSiteResult(rid, web, message.data || {}, srcTid);
         }
         return false;
       }

@@ -12,12 +12,11 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QListWidgetItem,
     QMessageBox,
-    QPushButton,
 )
 
 from controller.global_signal_bus import global_signals
 from core.crawler.crawler_task import CrawlWorkflowState
-from darkeye_ui.components import Label, TokenListView, TokenListWidget
+from darkeye_ui.components import Button, Label, TokenListView, TokenListWidget
 from ui.widgets.work_completeness_leds import WorkCompletenessLedStrip
 
 _WORKFLOW_LABELS: dict[CrawlWorkflowState, str] = {
@@ -59,6 +58,7 @@ class InboxPage(QWidget):
         self._running_serials: list[str] = []
         self._finished_serials: list[str] = []
         self._models_dirty: bool = False
+        self._last_finished_fingerprint: tuple | None = None
 
         self._init_ui()
         self._connect_signals()
@@ -74,16 +74,16 @@ class InboxPage(QWidget):
         header_layout.addWidget(self._scheduler_label)
         header_layout.addStretch(1)
 
-        self._btn_resume_queue = QPushButton("开始队列")
+        self._btn_resume_queue = Button("开始队列", variant="primary")
         self._btn_resume_queue.setToolTip(
             "恢复调度：按待爬队列继续处理尚未开始的番号（与启动时恢复的暂停态对应）。"
         )
-        self._btn_pause_queue = QPushButton("暂停队列")
+        self._btn_pause_queue = Button("暂停队列")
         self._btn_pause_queue.setToolTip(
             "暂停调度：不再从队列弹出新的番号；待爬列表保留。"
             "已在请求或入库、封面下载中的任务会继续跑完。"
         )
-        self._btn_clear_queue = QPushButton("清除全部队列")
+        self._btn_clear_queue = Button("清除全部队列")
         self._btn_clear_queue.setToolTip(
             "清空待爬队列并进入暂停态；不会中断已在进行的请求或下载。"
         )
@@ -414,7 +414,29 @@ class InboxPage(QWidget):
         self._sync_finished_list()
         self._models_dirty = False
 
+    def _finished_list_fingerprint(self) -> tuple:
+        parts: list[tuple] = []
+        for serial in self._finished_serials:
+            state = self._tasks.get(serial)
+            if not state:
+                continue
+            c = state.completeness
+            c_key = None if c is None else tuple(sorted(c.items()))
+            parts.append((serial, state.success, state.status_text, c_key))
+        return tuple(parts)
+
     def _sync_finished_list(self) -> None:
+        fp = self._finished_list_fingerprint()
+        if fp == self._last_finished_fingerprint:
+            return
+        self._last_finished_fingerprint = fp
+
+        sb = self.finished_list.verticalScrollBar()
+        old_val = sb.value()
+        old_max = sb.maximum()
+        # 接近底部时刷新后仍保持在底部（列表变长时）
+        stick_bottom = old_max > 0 and (old_val >= old_max - 4)
+
         self.finished_list.clear()
         for serial in self._finished_serials:
             state = self._tasks.get(serial)
@@ -445,6 +467,18 @@ class InboxPage(QWidget):
             h = max(sh.height() + pad_v, mh.height() + pad_v, 36)
             w = max(sh.width(), mh.width(), 1)
             item.setSizeHint(QSize(w, h))
+
+        def _restore_scroll() -> None:
+            sb2 = self.finished_list.verticalScrollBar()
+            mx = sb2.maximum()
+            if mx <= 0:
+                return
+            if stick_bottom:
+                sb2.setValue(mx)
+            else:
+                sb2.setValue(min(old_val, mx))
+
+        QTimer.singleShot(0, _restore_scroll)
 
     def _sync_models_if_needed(self) -> None:
         if self._models_dirty:

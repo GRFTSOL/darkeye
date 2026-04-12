@@ -6,6 +6,7 @@
   "permissions": [
     "activeTab",
     "tabs",
+    "webNavigation",
     "http://127.0.0.1/*",
     "http://localhost/*",
     "*://*.dmm.co.jp/*",
