@@ -349,22 +349,23 @@ def get_work_notes_rows() -> list[tuple]:
         return []
 
 
-def get_recent_work_notes_rows(limit: int) -> list[tuple]:
+def get_most_recent_work_notes_row() -> tuple | None:
+    """返回 ``update_time`` 最新的一条未软删作品：``(work_id, serial_number, notes)``。"""
     query = """
     SELECT work_id, serial_number, notes
     FROM work
     WHERE IFNULL(is_deleted, 0) = 0
     ORDER BY update_time DESC
-    LIMIT ?
+    LIMIT 1
     """
     try:
         with get_connection(DATABASE, True) as conn:
             cursor = conn.cursor()
-            cursor.execute(query, (limit,))
-            return cursor.fetchall()
+            cursor.execute(query)
+            return cursor.fetchone()
     except Exception as e:
-        logging.error(f"get_recent_work_story_rows查询时数据库错误: {e}")
-        return []
+        logging.error(f"get_most_recent_work_notes_row 查询时数据库错误: {e}")
+        return None
 
 
 def get_work_series_rows() -> list[tuple[int, int]]:
