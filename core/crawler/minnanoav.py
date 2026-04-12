@@ -36,10 +36,7 @@ def actress_need_update() -> bool:
 
     cursor.close()
     conn.close()
-    if not result or all(not item for item in result):
-        return False
-    else:
-        return True
+    return bool(result)
 
 
 def persist_actress_if_minnano_api_ok(actress_id: int, payload: dict) -> bool:
@@ -139,7 +136,7 @@ def SearchActressInfo_js():
     result = [
         {"actress_id": a, "jp_name": b, "need_update": c} for a, b, c in tuple_list
     ]
-    if not tuple_list or all(not item for item in tuple_list):
+    if not tuple_list:
         return "无需要更新数据的女优"
     total_rows = len(result)
     ok_count = 0

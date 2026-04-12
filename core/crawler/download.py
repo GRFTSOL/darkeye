@@ -1,17 +1,11 @@
 import logging
 import os
-import random
 import shutil
-import sqlite3
 import threading
-import time
 import uuid
 
 import requests
 
-from config import DATABASE
-from core.database.update import update_titlestory
-from .javtxt import fetch_javtxt_movie_info_via_js
 
 _LOCAL_COVER_FETCH_BASE = "http://127.0.0.1:56789"
 _COVER_FETCH_WAIT_S = 45.0
@@ -130,32 +124,3 @@ def _try_remove(path: str) -> None:
             os.remove(path)
     except OSError:
         pass
-
-
-def update_title_story_db():
-    """更新整个数据库中的story"""
-
-    query = f"""
-        SELECT serial_number
-        FROM work
-        WHERE jp_title is NULL
-        """
-    with sqlite3.connect(DATABASE) as conn:
-        # 返回所有需要更新的番号
-        cursor = conn.cursor()
-        cursor.execute(query)
-        rows = cursor.fetchall()
-        serial_number_list = [row[0] for row in rows]
-
-    for serial_number in serial_number_list:
-        print(serial_number)
-        data = fetch_javtxt_movie_info_via_js(serial_number)
-        if data is not None:
-            update_titlestory(
-                serial_number,
-                data["cn_title"],
-                data["jp_title"],
-                data["cn_story"],
-                data["jp_story"],
-            )
-        time.sleep(random.uniform(8, 15))

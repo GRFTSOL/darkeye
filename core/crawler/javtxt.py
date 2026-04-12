@@ -12,14 +12,17 @@ def apply_javtxt_top_actress_names(names: list[str]) -> bool:
     from controller.global_signal_bus import global_signals
 
     logging.info("获取到热门女优 %s", names[:50])
+    any_inserted = False
     for actress in names[:50]:
         actress = actress.replace("卜", "ト")
         if not exist_actress(actress):
             if InsertNewActress(actress, actress):
                 logging.info("添加热门女优%s", actress)
-            global_signals.actressDataChanged.emit()
+                any_inserted = True
         else:
             logging.info("热门女优%s已存在", actress)
+    if any_inserted:
+        global_signals.actressDataChanged.emit()
     return True
 
 

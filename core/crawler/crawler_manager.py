@@ -39,7 +39,6 @@ class _WorkApiSignals(QObject):
 
 class CrawlerManager2(QObject):
     _instance = None
-    taskFinished = Signal(str, dict)
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -211,9 +210,7 @@ class CrawlerManager2(QObject):
 
         if serial in self._unfinished_serials:
             self._unfinished_serials.discard(serial)
-            self._persist_unfinished_to_ini()
-        else:
-            self._persist_unfinished_to_ini()
+        self._persist_unfinished_to_ini()
 
         return removed_from_queue
 
@@ -239,7 +236,10 @@ class CrawlerManager2(QObject):
         return out
 
     def _persist_unfinished_to_ini(self) -> None:
-        return
+        from config import settings
+
+        serials = sorted(self._unfinished_serials)
+        settings.setValue(self._persist_key_unfinished, ",".join(serials))
 
     def _restore_unfinished_from_ini(self) -> None:
         serials = self._load_unfinished_from_ini()

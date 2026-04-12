@@ -24,30 +24,6 @@ def jump_avdanyuwiki(name):
     open("https://avdanyuwiki.com/?s=" + name)
 
 
-def send_navigate_request(url: str, context: dict | None = None):
-    import requests
-
-    try:
-        payload = {
-            "url": url,
-            "target": "new_tab",
-        }
-        if context is not None:
-            payload["context"] = context
-        # 发送导航指令到本地服务器
-        response = requests.post(
-            "http://localhost:56789/api/v1/navigate", json=payload, timeout=2
-        )
-
-        if response.status_code == 200:
-            return True
-        else:
-            return False
-    except Exception as e:
-        logging.error(f"发送到本地浏览器跳转指令失败: {e}")
-        return False
-
-
 def fetch_actress_minnano_via_api(
     jp_name: str,
     *,
