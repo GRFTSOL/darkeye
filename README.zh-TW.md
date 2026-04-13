@@ -1,10 +1,12 @@
 # DarkEye - 在暗黑界睜開一隻眼
 
 [![README · 简体中文](https://img.shields.io/badge/README%20%C2%B7%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-555555?style=for-the-badge)](README.md)
-[![README · 繁體中文（臺灣）](https://img.shields.io/badge/README%20%C2%B7%20%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87%EF%BC%88%E8%87%BA%E7%81%A3%EF%BC%89-2ea44f?style=for-the-badge)](README.zh-TW.md)
+[![README · 繁體中文](https://img.shields.io/badge/README%20%C2%B7%20%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87%EF%BC%88%E8%87%BA%E7%81%A3%EF%BC%89-2ea44f?style=for-the-badge)](README.zh-TW.md)
 [![README · 日本語](https://img.shields.io/badge/README%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-555555?style=for-the-badge)](README.ja.md)
 
->一款完全在本機、注重隱私的成人影片收藏與管理工具，支援瀏覽器外掛沉浸式採集與擬物化 DVD 陳列。基於 PySide6 / Qt Quick 3D、SQLite、本機 FastAPI 與瀏覽器擴充功能協同，並含 C++ 力導向圖加速；集採集、整理、分析與視覺化於一體。
+> 一款完全在本機、注重隱私的成人影片收藏與管理工具，支援瀏覽器外掛沉浸式採集與擬物化 DVD 陳列。基於 PySide6 / Qt Quick 3D、SQLite、本機 FastAPI 與瀏覽器擴充功能協同，並含 C++ 力導向圖加速；集採集、整理、分析與視覺化於一體。
+
+- **資料與連線**：預設資料在程式旁的 `data/`（資料庫、設定、封面與頭像等，可在設定中調整路徑）。不會向第三方上傳你的片庫；連線主要來自爬蟲與資源拉取，以及選用的更新檢查（GitHub Releases）、翻譯（Google 或你自備的 LLM API）等。
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue.svg)
 ![Framework](https://img.shields.io/badge/framework-PySide6%20(Qt6)-orange)
@@ -16,14 +18,14 @@
 ![GitHub all releases](https://img.shields.io/github/downloads/de4321/darkeye/total)
 
 [📖 線上文件](https://de4321.github.io/darkeye/)
-[🎥 影片介紹](https://www.bilibili.com/video/BV162AuzXEQe/?share_source=copy_web&vd_source=e470911706e2af5719ccc7bb4efe5ff1)
+[🎥 影片介紹](https://youtu.be/VCsw1D0ccgY?si=e9typx4kPnzaVFZq)
 [🌐 官網](https://de4321.github.io/darkeye-webpage/)
 [💬 Discord](https://discord.gg/3thnEguWUk)
 
 # 💡 快速開始
 ## 下載
 [![下載 Windows 版本](https://img.shields.io/badge/%20下載-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.2.3/DarkEye-v1.2.3.zip)
-下載程式，解壓,開啟exe即可使用。外掛隨著軟體附帶在目錄下面`extensions`資料夾內。可以不下載下面的選項。
+下載程式，解壓，開啟exe即可使用。外掛隨著軟體附帶在目錄下面`extensions`資料夾內。可以不下載下面的選項。
 
 [![下載Chrome/Edge外掛](https://img.shields.io/badge/%20下載-Chrome/Edge外掛%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.3/chrome_capture.zip)按照下面的外掛安裝，否則爬蟲收集功能將不可用。外掛選擇自己的瀏覽器，只下載對應的一個就行了。
 
@@ -40,19 +42,17 @@
 
 現在正常情況下在設定裡點選自動更新就行了，但是這個只更新了軟體的本體，外掛還是要手動去下載更新的。目前似乎找不到一種更好的更新外掛的方式，主要是這個外掛上架不了市場。
 
-版本遷移時注意`更新瀏覽器外掛`，由於爬蟲的特殊性，這個爬蟲很可能老失效。需要回報後由人工修改。
+版本遷移時注意`更新瀏覽器外掛`，由於爬蟲的特殊性，這個爬蟲很可能老失效。需要反饋然後人工修改。
 
 ## Jvedio遷移資料
-見文件
+👉 https://de4321.github.io/darkeye/usage/#jvedio
 
-https://de4321.github.io/darkeye/usage/#jvedio
+# 社群
 
-# Community
+有問題或想法？歡迎加入 Discord 社群交流：https://discord.gg/3thnEguWUk
 
-問題，想法？加入discord社群，現在社群沒什麼建設 https://discord.gg/3thnEguWUk
-
-- 新手支援
-“文件沒看懂可以來問，現在文件屬於沒有狀態”
+- 新手支持
+文件閱讀中若有疑問，歡迎提問；線上文件仍在持續完善中。
 
 - 提前知道進展
 “新功能、開發進展、預釋出版本會先在 Discord 討論”
@@ -115,7 +115,7 @@ https://de4321.github.io/darkeye/usage/#jvedio
 
 對女優資訊的爬取只爬頭像，生日，出道日，三維，身高罩杯，與曾用名，目前沒有曾用名的更新機制。會有一個問題，如果一開始用的日文名是曾用名，則會有問題。
 
-測試下來第一次爬蟲一定觸發javlib盾，然後基本上爬100次會遇到javdb的點選盾，互動點掉就行了。後續會研究機器點會怎麼樣。
+測試下來第一次爬蟲一定觸發javlib盾，然後基本上爬100次會遇到javdb的點選盾，互動點掉就行了。
 
 軟體不解決代理問題，目標網站能用瀏覽器開啟就是能爬。
 

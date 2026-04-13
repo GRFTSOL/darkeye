@@ -1,10 +1,12 @@
 # DarkEye - 在暗黑界睁开一只眼
 
 [![README · 简体中文](https://img.shields.io/badge/README%20%C2%B7%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-2ea44f?style=for-the-badge)](README.md)
-[![README · 繁體中文（臺灣）](https://img.shields.io/badge/README%20%C2%B7%20%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87%EF%BC%88%E8%87%BA%E7%81%A3%EF%BC%89-555555?style=for-the-badge)](README.zh-TW.md)
+[![README · 繁體中文](https://img.shields.io/badge/README%20%C2%B7%20%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87%EF%BC%88%E8%87%BA%E7%81%A3%EF%BC%89-555555?style=for-the-badge)](README.zh-TW.md)
 [![README · 日本語](https://img.shields.io/badge/README%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-555555?style=for-the-badge)](README.ja.md)
 
->> 一款完全本地、注重隐私的成人影片收藏与管理工具，支持浏览器插件沉浸式采集与拟物化 DVD 陈列。基于 PySide6 / Qt Quick 3D、SQLite、本地 FastAPI 与浏览器扩展协同，并含 C++ 力导向图加速；集采集、整理、分析与可视化于一体。
+> 一款完全本地、注重隐私的成人影片收藏与管理工具，支持浏览器插件沉浸式采集与拟物化 DVD 陈列。基于 PySide6 / Qt Quick 3D、SQLite、本地 FastAPI 与浏览器扩展协同，并含 C++ 力导向图加速；集采集、整理、分析与可视化于一体。
+
+- **数据与联网**：默认数据在程序旁的 `data/`（数据库、配置、封面与头像等，可在设置中改路径）。不会向第三方上传你的片库；联网主要来自爬虫与资源拉取，以及可选的更新检查（GitHub Releases）、翻译（Google 或你自配的 LLM API）等。
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue.svg)
 ![Framework](https://img.shields.io/badge/framework-PySide6%20(Qt6)-orange)
@@ -23,7 +25,7 @@
 # 💡 快速开始
 ## 下载
 [![下载 Windows 版本](https://img.shields.io/badge/%20下载-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.2.3/DarkEye-v1.2.3.zip)
-下载程序，解压,打开exe即可使用。插件随着软件附带在目录下面`extensions`文件夹内。可以不下载下面的选项。
+下载程序，解压，打开exe即可使用。插件随着软件附带在目录下面`extensions`文件夹内。可以不下载下面的选项。
 
 [![下载Chrome/Edge插件](https://img.shields.io/badge/%20下载-Chrome/Edge插件%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.3/chrome_capture.zip)按照下面的插件安装，否则爬虫收集功能将不可用。插件选择自己的浏览器，只下载对应的一个就行了。
 
@@ -43,16 +45,14 @@
 版本迁移时注意`更新浏览器插件`，由于爬虫的特殊性，这个爬虫很可能老失效。需要反馈然后人工修改。
 
 ## Jvedio迁移数据
-见文档
+👉 https://de4321.github.io/darkeye/usage/#jvedio
 
-https://de4321.github.io/darkeye/usage/#jvedio
+# 社群
 
-# Community
-
-问题，想法？加入discord社区，现在社区没什么建设 https://discord.gg/3thnEguWUk
+有问题或想法？欢迎加入 Discord 社群交流：https://discord.gg/3thnEguWUk
 
 - 新手支持
-“文档没看懂可以来问，现在文档属于没有状态”
+文档阅读中若有疑问，欢迎提问；在线文档仍在持续完善中。
 
 - 提前知道进展
 “新功能、开发进展、预发布版本会先在 Discord 讨论”
@@ -107,7 +107,7 @@ https://de4321.github.io/darkeye/usage/#jvedio
 ![多作品](docs/assets/mutiwork.jpg)
 ![编辑界面](docs/assets/edit.jpg)
 
-下面以javtxt为例展示爬虫插件，打开插件后，会与本地交互，可点击添加，自动启动爬虫爬取信息到本地，另外支持javlib与javdb。注意下面的这个中间的收藏与与收录在网站上是没有的，只有打开插件与本地软件后才会出现。
+下面以javtxt为例展示爬虫插件，打开插件后，会与本地交互，可点击添加，自动启动爬虫爬取信息到本地，另外支持javlib与javdb。注意下面的这个中间的收藏与收录在网站上是没有的，只有打开插件与本地软件后才会出现。
 ![javtxt网站为例](docs/assets/capture.JPG)
 
 ## 爬虫
@@ -115,7 +115,7 @@ https://de4321.github.io/darkeye/usage/#jvedio
 
 对女优信息的爬取只爬头像，生日，出道日，三维，身高罩杯，与曾用名，目前没有曾用名的更新机制。会有一个问题，如果一开始用的日文名是曾用名，则会有问题。
 
-测试下来第一次爬虫一定触发javlib盾，然后基本上爬100次会遇到javdb的点击盾，交互点掉就行了。后续会研究机器点会怎么样。
+测试下来第一次爬虫一定触发javlib盾，然后基本上爬100次会遇到javdb的点击盾，交互点掉就行了。
 
 软件不解决代理问题，目标网站能用浏览器打开就是能爬。
 
