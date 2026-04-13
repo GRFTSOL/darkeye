@@ -1,5 +1,10 @@
 # DarkEye - 在暗黑界睁开一只眼
->一个完全本地，隐私导向的暗黑影片收藏软件，专注沉浸式采集与拟物化收藏软件。使用PySide6，qtquick3D做GUI，sqlite数据存储，firefox爬虫，fastapi本地与浏览器插件交互，C++加速力导向图。集采集，收藏，分析于一体的软件。
+
+[![README · 简体中文](https://img.shields.io/badge/README%20%C2%B7%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-2ea44f?style=for-the-badge)](README.md)
+[![README · 繁體中文（臺灣）](https://img.shields.io/badge/README%20%C2%B7%20%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87%EF%BC%88%E8%87%BA%E7%81%A3%EF%BC%89-555555?style=for-the-badge)](README.zh-TW.md)
+[![README · 日本語](https://img.shields.io/badge/README%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-555555?style=for-the-badge)](README.ja.md)
+
+>> 一款完全本地、注重隐私的成人影片收藏与管理工具，支持浏览器插件沉浸式采集与拟物化 DVD 陈列。基于 PySide6 / Qt Quick 3D、SQLite、本地 FastAPI 与浏览器扩展协同，并含 C++ 力导向图加速；集采集、整理、分析与可视化于一体。
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue.svg)
 ![Framework](https://img.shields.io/badge/framework-PySide6%20(Qt6)-orange)
