@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "darkeye"
-version = "0.1.0"
+version = "1.2.3"
 description = "暗黑影片收藏软件，专注沉浸式采集与拟物化收藏"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "GPL3.0" }
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "pyside6==6.10.1",
@@ -23,7 +23,6 @@ dependencies = [
     "psutil",
     "matplotlib",
     "networkx",
-    "bs4",
     "requests",
     "googletrans",
     "wordcloud",

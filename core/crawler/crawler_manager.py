@@ -9,7 +9,7 @@ from PySide6.QtCore import QObject, QThreadPool, QTimer, Qt, Slot
 
 from controller.global_signal_bus import global_signals
 from core.crawler.crawler_task import CrawlerTask, CrawlWorkflowState
-from core.crawler.sequential_download import SequentialDownloader
+
 from core.crawler.work_persistence import schedule_data_update
 from core.crawler.worker import Worker, wire_worker_finished
 from core.schema.model import CrawledWorkData

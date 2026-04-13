@@ -3,9 +3,7 @@
 # 如何维护女优的名字是一个很麻烦的问题，现用名，曾用名，然后数据与网站上不一致如何更新？
 import random
 import time
-import re
-import requests
-from bs4 import BeautifulSoup
+
 import sqlite3
 import logging
 from config import DATABASE, ACTRESSIMAGES_PATH
