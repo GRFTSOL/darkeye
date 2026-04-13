@@ -16,7 +16,7 @@
 ![GitHub all releases](https://img.shields.io/github/downloads/de4321/darkeye/total)
 
 [📖 在线文档](https://de4321.github.io/darkeye/)
-[🎥 视频介绍](https://www.bilibili.com/video/BV162AuzXEQe/?share_source=copy_web&vd_source=e470911706e2af5719ccc7bb4efe5ff1)
+[🎥 视频介绍](https://youtu.be/VCsw1D0ccgY?si=e9typx4kPnzaVFZq)
 [🌐 官网](https://de4321.github.io/darkeye-webpage/)
 [💬 Discord](https://discord.gg/3thnEguWUk)
 
