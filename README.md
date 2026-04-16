@@ -66,7 +66,10 @@
 - [Jvedio](https://github.com/hitchao/Jvedio) 接入其数据库，将数据导出
 - [JavSP](https://github.com/Yuukiy/JavSP) 看看某些网站的爬虫逻辑
 - [JAV-JHS](https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs) 参考其javdb FC2 信息
-
+- [JAV_MovieManager](https://github.com/4evergaeul/JAV_MovieManager)
+- [stash](https://github.com/stashapp/stash)
+- [AMMDS](https://github.com/QYG2297248353/AMMDS-Docker)
+- [mdc-ng](https://github.com/mdc-ng/mdc-ng)
 
 # 🚀 开发方向
 - 1.0 基础工具的完善，包括力导向图探索影片之间的关系，收藏体验的增强
