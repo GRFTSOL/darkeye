@@ -176,11 +176,11 @@ def png_to_jpg_pillow(input_path, output_path=None, quality=95):
 
 
 _TRANSLATION_CACHE_MAXSIZE = 512
-_translation_cache: "OrderedDict[tuple[str, str, str, str], str]" = OrderedDict()
+_translation_cache: "OrderedDict[tuple[str, str, str, str, str], str]" = OrderedDict()
 _translation_cache_lock = threading.Lock()
 
 
-def _translation_cache_get(key: tuple[str, str, str, str]) -> str | None:
+def _translation_cache_get(key: tuple[str, str, str, str, str]) -> str | None:
     with _translation_cache_lock:
         value = _translation_cache.get(key)
         if value is None:
@@ -190,7 +190,7 @@ def _translation_cache_get(key: tuple[str, str, str, str]) -> str | None:
         return value
 
 
-def _translation_cache_set(key: tuple[str, str, str, str], value: str) -> None:
+def _translation_cache_set(key: tuple[str, str, str, str, str], value: str) -> None:
     with _translation_cache_lock:
         _translation_cache[key] = value
         _translation_cache.move_to_end(key)
@@ -206,6 +206,7 @@ async def translate_text(
     retries: int = 2,
     backoff_base_s: float = 0.6,
     fallback: str = "empty",  # "empty" or "source"
+    translation_variant: str = "default",
     use_cache: bool = True,
 ) -> str:
     """
@@ -225,6 +226,7 @@ async def translate_text(
             retries=runtime_cfg.retries,
             backoff_base_s=runtime_cfg.backoff_base_s,
             fallback=runtime_cfg.fallback,
+            translation_variant=runtime_cfg.translation_variant,
         )
     if retries is not None:
         runtime_cfg = runtime_cfg.__class__(
@@ -232,6 +234,7 @@ async def translate_text(
             retries=int(retries),
             backoff_base_s=runtime_cfg.backoff_base_s,
             fallback=runtime_cfg.fallback,
+            translation_variant=runtime_cfg.translation_variant,
         )
     if backoff_base_s is not None:
         runtime_cfg = runtime_cfg.__class__(
@@ -239,6 +242,7 @@ async def translate_text(
             retries=runtime_cfg.retries,
             backoff_base_s=float(backoff_base_s),
             fallback=runtime_cfg.fallback,
+            translation_variant=runtime_cfg.translation_variant,
         )
     if fallback is not None:
         runtime_cfg = runtime_cfg.__class__(
@@ -246,12 +250,22 @@ async def translate_text(
             retries=runtime_cfg.retries,
             backoff_base_s=runtime_cfg.backoff_base_s,
             fallback=fallback,
+            translation_variant=runtime_cfg.translation_variant,
+        )
+    if translation_variant is not None:
+        runtime_cfg = runtime_cfg.__class__(
+            timeout_s=runtime_cfg.timeout_s,
+            retries=runtime_cfg.retries,
+            backoff_base_s=runtime_cfg.backoff_base_s,
+            fallback=runtime_cfg.fallback,
+            translation_variant=str(translation_variant).strip() or "default",
         )
 
     engine, engine_cfg = get_translator_engine()
     cache_key = (
         engine_cfg.engine or "google",
         engine_cfg.model or "",
+        runtime_cfg.translation_variant,
         dest,
         src,
     )

@@ -125,6 +125,7 @@ class ViewModel(QObject):
         self._btn_state: dict[str, ButtonState] = {
             "commit": ButtonState.DISABLED,
         }
+        self._name_translate_busy: bool = False
 
         bridge = ServerBridge()
 
@@ -508,6 +509,155 @@ class ViewModel(QObject):
             "正在通过 浏览器插件 拉取 minnano 女优数据，请稍候…",
         )
 
+    @Slot()
+    def translate_missing_cn_from_jp(self):
+        """将名字表里“cn 为空且 jp 非空”的行翻译到中文列，仅更新 MVVM。"""
+        from PySide6.QtCore import QThreadPool
+
+        from core.crawler.worker import Worker, wire_worker_finished
+        from utils.utils import translate_text_sync
+
+        if self._name_translate_busy:
+            self.msg.show_info("翻译中", "中文名翻译任务正在执行，请稍候。")
+            return
+
+        names = copy.deepcopy(self.get_actress_name() or [])
+        target_indexes: list[int] = []
+        for idx, row in enumerate(names):
+            if not isinstance(row, dict):
+                continue
+            cn = (row.get("cn") or "").strip()
+            jp = (row.get("jp") or "").strip()
+            if not cn and jp:
+                target_indexes.append(idx)
+
+        if not target_indexes:
+            self.msg.show_info("翻译中文名", "没有可翻译的条目（仅翻译中文为空且日文不为空）。")
+            return
+
+        def _task():
+            result_names = copy.deepcopy(names)
+            filled = 0
+            for idx in target_indexes:
+                row = result_names[idx]
+                jp_text = (row.get("jp") or "").strip()
+                if not jp_text:
+                    continue
+                translated = translate_text_sync(
+                    jp_text,
+                    dest="zh-CN",
+                    fallback="empty",
+                    translation_variant="actress_name",
+                )
+                translated = (translated or "").strip()
+                if translated:
+                    row["cn"] = translated
+                    filled += 1
+            return {
+                "names": result_names,
+                "total": len(target_indexes),
+                "filled": filled,
+            }
+
+        self._name_translate_busy = True
+        worker = Worker(_task)
+        wire_worker_finished(worker, self._on_translate_missing_cn_finished)
+        QThreadPool.globalInstance().start(worker)
+        self.msg.show_info("翻译中文名", "正在补全空白中文名，请稍候…")
+
+    @Slot()
+    def translate_overwrite_cn_from_jp(self):
+        """将名字表里所有“jp 非空”行重新翻译并覆盖 cn，仅更新 MVVM。"""
+        from PySide6.QtCore import QThreadPool
+
+        from core.crawler.worker import Worker, wire_worker_finished
+        from utils.utils import translate_text_sync
+
+        if self._name_translate_busy:
+            self.msg.show_info("翻译中", "中文名翻译任务正在执行，请稍候。")
+            return
+
+        names = copy.deepcopy(self.get_actress_name() or [])
+        target_indexes: list[int] = []
+        for idx, row in enumerate(names):
+            if not isinstance(row, dict):
+                continue
+            jp = (row.get("jp") or "").strip()
+            if jp:
+                target_indexes.append(idx)
+
+        if not target_indexes:
+            self.msg.show_info("覆盖翻译中文名", "没有可翻译的条目（日文名为空）。")
+            return
+
+        def _task():
+            result_names = copy.deepcopy(names)
+            filled = 0
+            for idx in target_indexes:
+                row = result_names[idx]
+                jp_text = (row.get("jp") or "").strip()
+                if not jp_text:
+                    continue
+                translated = translate_text_sync(
+                    jp_text,
+                    dest="zh-CN",
+                    fallback="empty",
+                    translation_variant="actress_name",
+                )
+                translated = (translated or "").strip()
+                if translated:
+                    row["cn"] = translated
+                    filled += 1
+            return {
+                "names": result_names,
+                "total": len(target_indexes),
+                "filled": filled,
+            }
+
+        self._name_translate_busy = True
+        worker = Worker(_task)
+        wire_worker_finished(worker, self._on_translate_overwrite_cn_finished)
+        QThreadPool.globalInstance().start(worker)
+        self.msg.show_info("覆盖翻译中文名", "正在按日文名覆盖翻译中文名，请稍候…")
+
+    @Slot(object)
+    def _on_translate_overwrite_cn_finished(self, result):
+        self._name_translate_busy = False
+        if not isinstance(result, dict):
+            self.msg.show_warning("覆盖翻译中文名", "翻译任务失败，请查看日志。", top_level=True)
+            return
+
+        names = result.get("names")
+        if isinstance(names, list):
+            self.set_actress_name(names)
+
+        total = int(result.get("total") or 0)
+        filled = int(result.get("filled") or 0)
+        self.msg.show_info(
+            "覆盖翻译中文名",
+            f"翻译完成：共 {total} 条待翻译，成功覆盖 {filled} 条。",
+            top_level=True,
+        )
+
+    @Slot(object)
+    def _on_translate_missing_cn_finished(self, result):
+        self._name_translate_busy = False
+        if not isinstance(result, dict):
+            self.msg.show_warning("翻译中文名", "翻译任务失败，请查看日志。", top_level=True)
+            return
+
+        names = result.get("names")
+        if isinstance(names, list):
+            self.set_actress_name(names)
+
+        total = int(result.get("total") or 0)
+        filled = int(result.get("filled") or 0)
+        self.msg.show_info(
+            "翻译中文名",
+            f"翻译完成：共 {total} 条待翻译，成功填入 {filled} 条。",
+            top_level=True,
+        )
+
     @Slot(object)
     def _on_clawer_update_finished(self, result):
         if result is None:
@@ -810,6 +960,8 @@ class ModifyActressPage(LazyWidget):
         self.need_update = ToggleSwitch(width=40, height=20)
         self.btn_commit = Button("提交修改")
         self.btn_claw_update = Button("爬虫尝试更新(需手动提交)")
+        self.btn_translate_cn = Button("补全中文名(翻译)")
+        self.btn_translate_cn_overwrite = Button("覆盖翻译中文名")
         # self.btn_printModel=QPushButton("打印数据")
         self.btn_minnano = Button("跳转手动选择(需手动提交)")
         self.btn_minnano.setToolTip("这个是对于那些多女优的搜索结果的，需要自己确认")
@@ -850,6 +1002,8 @@ class ModifyActressPage(LazyWidget):
         actions_layout.setContentsMargins(0, 0, 0, 0)
         actions_layout.addWidget(self.btn_commit)
         actions_layout.addWidget(self.btn_claw_update)
+        actions_layout.addWidget(self.btn_translate_cn)
+        actions_layout.addWidget(self.btn_translate_cn_overwrite)
         actions_layout.addWidget(self.btn_minnano)
         actions_layout.addWidget(self.smallwidget)
 
@@ -896,6 +1050,10 @@ class ModifyActressPage(LazyWidget):
 
     def signal_connect(self):
         self.btn_claw_update.clicked.connect(self.vm.clawer_update)
+        self.btn_translate_cn.clicked.connect(self.vm.translate_missing_cn_from_jp)
+        self.btn_translate_cn_overwrite.clicked.connect(
+            self.vm.translate_overwrite_cn_from_jp
+        )
         # self.btn_printModel.clicked.connect(self.vm.print)
         self.btn_commit.clicked.connect(self.vm.submit)
         self.btn_minnano.clicked.connect(self.jump_minnano)

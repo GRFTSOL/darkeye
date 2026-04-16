@@ -10,6 +10,7 @@ class TranslationRuntimeConfig:
     retries: int = 2
     backoff_base_s: float = 0.6
     fallback: str = "empty"
+    translation_variant: str = "default"
 
 
 @dataclass(frozen=True)
