@@ -180,3 +180,116 @@ def test_full_row_all_true(completeness_db):
     f = read_work_completeness_flags(wid, database=str(completeness_db))
     for k in WORK_COMPLETENESS_KEYS:
         assert f[k] is True, k
+
+
+def test_sql_bits_match_python_flags(completeness_db):
+    conn = sqlite3.connect(str(completeness_db))
+    conn.execute(
+        """
+        INSERT INTO work (
+            serial_number, director, release_date, runtime,
+            cn_title, jp_title, cn_story, jp_story,
+            maker_id, label_id, series_id, image_url, fanart
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "BITS-1",
+            "D",
+            "2022-02-02",
+            95,
+            "中题",
+            "日题",
+            "",
+            "日简",
+            1,
+            0,
+            3,
+            "cover.jpg",
+            json.dumps([{"url": "https://x.example/f1.jpg"}]),
+        ),
+    )
+    wid = conn.execute(
+        "SELECT work_id FROM work WHERE serial_number = ?",
+        ("BITS-1",),
+    ).fetchone()[0]
+    conn.execute(
+        "INSERT INTO work_actress_relation (work_id, actress_id) VALUES (?, ?)",
+        (wid, 200),
+    )
+    conn.execute(
+        "INSERT INTO work_tag_relation (work_id, tag_id) VALUES (?, ?)",
+        (wid, 300),
+    )
+    conn.commit()
+
+    sql = """
+    WITH work_completeness_flags AS (
+    SELECT
+        w.work_id,
+        CASE WHEN TRIM(COALESCE(w.image_url, '')) <> '' THEN 1 ELSE 0 END AS f_cover,
+        CASE WHEN COALESCE(wa.actress_cnt, 0) > 0 THEN 1 ELSE 0 END AS f_actress,
+        CASE WHEN COALESCE(wo.actor_cnt, 0) > 0 THEN 1 ELSE 0 END AS f_actor,
+        CASE WHEN TRIM(COALESCE(w.director, '')) <> '' THEN 1 ELSE 0 END AS f_director,
+        CASE WHEN TRIM(COALESCE(w.release_date, '')) <> '' THEN 1 ELSE 0 END AS f_release_date,
+        CASE
+            WHEN CAST(COALESCE(NULLIF(TRIM(COALESCE(w.runtime, '')), ''), '0') AS INTEGER) > 0
+                THEN 1
+            ELSE 0
+        END AS f_runtime,
+        CASE WHEN COALESCE(wt.tag_cnt, 0) > 0 THEN 1 ELSE 0 END AS f_tag,
+        CASE WHEN TRIM(COALESCE(w.cn_title, '')) <> '' THEN 1 ELSE 0 END AS f_cn_title,
+        CASE WHEN TRIM(COALESCE(w.jp_title, '')) <> '' THEN 1 ELSE 0 END AS f_jp_title,
+        CASE WHEN TRIM(COALESCE(w.cn_story, '')) <> '' THEN 1 ELSE 0 END AS f_cn_story,
+        CASE WHEN TRIM(COALESCE(w.jp_story, '')) <> '' THEN 1 ELSE 0 END AS f_jp_story,
+        CASE WHEN COALESCE(w.maker_id, 0) > 0 THEN 1 ELSE 0 END AS f_maker,
+        CASE WHEN COALESCE(w.label_id, 0) > 0 THEN 1 ELSE 0 END AS f_label,
+        CASE WHEN COALESCE(w.series_id, 0) > 0 THEN 1 ELSE 0 END AS f_series,
+        CASE
+            WHEN json_valid(COALESCE(w.fanart, ''))
+                 AND json_type(w.fanart) = 'array'
+                 AND json_array_length(w.fanart) > 0
+                THEN 1
+            ELSE 0
+        END AS f_fanart
+    FROM work w
+    LEFT JOIN (
+        SELECT work_id, COUNT(1) AS actress_cnt
+        FROM work_actress_relation
+        GROUP BY work_id
+    ) wa ON wa.work_id = w.work_id
+    LEFT JOIN (
+        SELECT work_id, COUNT(1) AS actor_cnt
+        FROM work_actor_relation
+        GROUP BY work_id
+    ) wo ON wo.work_id = w.work_id
+    LEFT JOIN (
+        SELECT work_id, COUNT(1) AS tag_cnt
+        FROM work_tag_relation
+        GROUP BY work_id
+    ) wt ON wt.work_id = w.work_id
+    )
+    SELECT
+        CAST(f_cover AS TEXT)
+        || CAST(f_actress AS TEXT)
+        || CAST(f_actor AS TEXT)
+        || CAST(f_director AS TEXT)
+        || CAST(f_release_date AS TEXT)
+        || CAST(f_runtime AS TEXT)
+        || CAST(f_tag AS TEXT)
+        || CAST(f_cn_title AS TEXT)
+        || CAST(f_jp_title AS TEXT)
+        || CAST(f_cn_story AS TEXT)
+        || CAST(f_jp_story AS TEXT)
+        || CAST(f_maker AS TEXT)
+        || CAST(f_label AS TEXT)
+        || CAST(f_series AS TEXT)
+        || CAST(f_fanart AS TEXT) AS bits
+    FROM work_completeness_flags
+    WHERE work_id = ?
+    """
+    sql_bits = conn.execute(sql, (wid,)).fetchone()[0]
+    conn.close()
+
+    flags = read_work_completeness_flags(wid, database=str(completeness_db))
+    py_bits = "".join("1" if flags[k] else "0" for k in WORK_COMPLETENESS_KEYS)
+    assert sql_bits == py_bits

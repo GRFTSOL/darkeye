@@ -7,6 +7,8 @@ import logging
 from config import DATABASE, SQLPATH
 from ui.basic import ModelSearch
 from ui.base.SqliteQueryTableModel import SqliteQueryTableModel
+from ui.base.WorkCompletenessQueryTableModel import WorkCompletenessQueryTableModel
+from ui.widgets.work_completeness_leds import WorkCompletenessBitsDelegate
 from darkeye_ui import LazyWidget
 from darkeye_ui.components.token_table_view import TokenTableView
 from darkeye_ui.components.button import Button
@@ -16,8 +18,15 @@ from darkeye_ui.components.label import Label
 
 
 class SearchTable(LazyWidget):
+    _WORK_SUMMARY_SQL = "work_all_info.sql"
+    _COMPLETENESS_BITS_COL = "completeness_bits"
+    _COMPLETENESS_SCORE_COL = "completeness_score"
+
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._completeness_delegate = WorkCompletenessBitsDelegate(self)
+        self._completeness_col_idx = -1
+        self._completeness_score_col_idx = -1
 
     def _lazy_load(self):
         logging.info("----------汇总查询页面----------")
@@ -43,7 +52,10 @@ class SearchTable(LazyWidget):
             QMessageBox.critical(self, "错误", f"无法读取查询文件：\n{path}")
             return False
 
-        model = SqliteQueryTableModel(self.query_sql, DATABASE, self)
+        if rel_name == self._WORK_SUMMARY_SQL:
+            model = WorkCompletenessQueryTableModel(self.query_sql, DATABASE, parent=self)
+        else:
+            model = SqliteQueryTableModel(self.query_sql, DATABASE, self)
         if not model.refresh():
             QMessageBox.critical(self, "错误", "无法加载数据，请查看日志。")
             return False
@@ -51,7 +63,42 @@ class SearchTable(LazyWidget):
         self.model = model
         self.view.setModel(self.model)
         self.searchWidget.set_model_view(self.model, self.view)
+        self._apply_completeness_delegate(rel_name)
         return True
+
+    def _apply_completeness_delegate(self, rel_name: str) -> None:
+        self._clear_completeness_delegate()
+        headers = getattr(self.model, "_headers", [])
+        if rel_name != self._WORK_SUMMARY_SQL:
+            return
+
+        try:
+            bits_col = headers.index(self._COMPLETENESS_BITS_COL)
+            score_col = headers.index(self._COMPLETENESS_SCORE_COL)
+        except ValueError:
+            return
+
+        self._completeness_col_idx = bits_col
+        self._completeness_score_col_idx = score_col
+        self.view.setItemDelegateForColumn(bits_col, self._completeness_delegate)
+        self.view.hideColumn(score_col)
+        # 将完整度列放到第 3 列（视觉索引 2）：work_id, serial_number, completeness_bits
+        self.view.horizontalHeader().moveSection(
+            self.view.horizontalHeader().visualIndex(bits_col),
+            2,
+        )
+        self.view.resizeColumnToContents(bits_col)
+
+    def _clear_completeness_delegate(self) -> None:
+        if self._completeness_col_idx >= 0:
+            self.view.setItemDelegateForColumn(
+                self._completeness_col_idx,
+                self.view.itemDelegate(),
+            )
+        if self._completeness_score_col_idx >= 0:
+            self.view.showColumn(self._completeness_score_col_idx)
+        self._completeness_col_idx = -1
+        self._completeness_score_col_idx = -1
 
     @Slot()
     def _on_query_type_changed(self, _text: str):

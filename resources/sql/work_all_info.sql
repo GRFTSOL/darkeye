@@ -1,3 +1,6 @@
+-- 作品汇总查询。
+-- 注意：库内完整度（15 位 bit 串 + 分值）顺序需与
+-- core/database/query/work_completeness.py::WORK_COMPLETENESS_KEYS 保持一致。
 WITH actress_age_at_release AS (--计算每个女优发布作品的年龄
   SELECT
     w.work_id,
@@ -72,6 +75,51 @@ SELECT
     (SELECT cn_name FROM series WHERE series_id = w.series_id) AS series_name
 FROM 
     work w
+),
+work_completeness_flags AS (
+SELECT
+    w.work_id,
+    CASE WHEN TRIM(COALESCE(w.image_url, '')) <> '' THEN 1 ELSE 0 END AS f_cover,
+    CASE WHEN COALESCE(wa.actress_cnt, 0) > 0 THEN 1 ELSE 0 END AS f_actress,
+    CASE WHEN COALESCE(wo.actor_cnt, 0) > 0 THEN 1 ELSE 0 END AS f_actor,
+    CASE WHEN TRIM(COALESCE(w.director, '')) <> '' THEN 1 ELSE 0 END AS f_director,
+    CASE WHEN TRIM(COALESCE(w.release_date, '')) <> '' THEN 1 ELSE 0 END AS f_release_date,
+    CASE
+        WHEN CAST(COALESCE(NULLIF(TRIM(COALESCE(w.runtime, '')), ''), '0') AS INTEGER) > 0
+            THEN 1
+        ELSE 0
+    END AS f_runtime,
+    CASE WHEN COALESCE(wt.tag_cnt, 0) > 0 THEN 1 ELSE 0 END AS f_tag,
+    CASE WHEN TRIM(COALESCE(w.cn_title, '')) <> '' THEN 1 ELSE 0 END AS f_cn_title,
+    CASE WHEN TRIM(COALESCE(w.jp_title, '')) <> '' THEN 1 ELSE 0 END AS f_jp_title,
+    CASE WHEN TRIM(COALESCE(w.cn_story, '')) <> '' THEN 1 ELSE 0 END AS f_cn_story,
+    CASE WHEN TRIM(COALESCE(w.jp_story, '')) <> '' THEN 1 ELSE 0 END AS f_jp_story,
+    CASE WHEN COALESCE(w.maker_id, 0) > 0 THEN 1 ELSE 0 END AS f_maker,
+    CASE WHEN COALESCE(w.label_id, 0) > 0 THEN 1 ELSE 0 END AS f_label,
+    CASE WHEN COALESCE(w.series_id, 0) > 0 THEN 1 ELSE 0 END AS f_series,
+    CASE
+        WHEN json_valid(COALESCE(w.fanart, ''))
+             AND json_type(w.fanart) = 'array'
+             AND json_array_length(w.fanart) > 0
+            THEN 1
+        ELSE 0
+    END AS f_fanart
+FROM work w
+LEFT JOIN (
+    SELECT work_id, COUNT(1) AS actress_cnt
+    FROM work_actress_relation
+    GROUP BY work_id
+) wa ON wa.work_id = w.work_id
+LEFT JOIN (
+    SELECT work_id, COUNT(1) AS actor_cnt
+    FROM work_actor_relation
+    GROUP BY work_id
+) wo ON wo.work_id = w.work_id
+LEFT JOIN (
+    SELECT work_id, COUNT(1) AS tag_cnt
+    FROM work_tag_relation
+    GROUP BY work_id
+) wt ON wt.work_id = w.work_id
 )
 SELECT --水平计算表，然后统一合并
     w.work_id,
@@ -92,6 +140,29 @@ SELECT --水平计算表，然后统一合并
     w.jp_story,
     (SELECT maker_name FROM maker_label_series_list WHERE work_id=w.work_id) AS maker,
     (SELECT label_name FROM maker_label_series_list WHERE work_id=w.work_id) AS label,
-    (SELECT series_name FROM maker_label_series_list WHERE work_id=w.work_id) AS series
+    (SELECT series_name FROM maker_label_series_list WHERE work_id=w.work_id) AS series,
+    (
+        CAST(c.f_cover AS TEXT)
+        || CAST(c.f_actress AS TEXT)
+        || CAST(c.f_actor AS TEXT)
+        || CAST(c.f_director AS TEXT)
+        || CAST(c.f_release_date AS TEXT)
+        || CAST(c.f_runtime AS TEXT)
+        || CAST(c.f_tag AS TEXT)
+        || CAST(c.f_cn_title AS TEXT)
+        || CAST(c.f_jp_title AS TEXT)
+        || CAST(c.f_cn_story AS TEXT)
+        || CAST(c.f_jp_story AS TEXT)
+        || CAST(c.f_maker AS TEXT)
+        || CAST(c.f_label AS TEXT)
+        || CAST(c.f_series AS TEXT)
+        || CAST(c.f_fanart AS TEXT)
+    ) AS completeness_bits,
+    (
+        c.f_cover + c.f_actress + c.f_actor + c.f_director + c.f_release_date
+        + c.f_runtime + c.f_tag + c.f_cn_title + c.f_jp_title + c.f_cn_story
+        + c.f_jp_story + c.f_maker + c.f_label + c.f_series + c.f_fanart
+    ) AS completeness_score
 FROM 
-    work w;
+    work w
+LEFT JOIN work_completeness_flags c ON c.work_id = w.work_id;

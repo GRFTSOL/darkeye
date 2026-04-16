@@ -45,7 +45,7 @@ WORK_COMPLETENESS_LABELS_ZH: Final[tuple[str, ...]] = (
     "片商",
     "厂牌",
     "系列",
-    "多图",
+    "剧照",
 )
 
 _COMPLETENESS_ROW_SQL = """
