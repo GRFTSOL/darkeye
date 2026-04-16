@@ -7,7 +7,9 @@ import logging
 from typing import Any
 from urllib.parse import quote
 
-DEFAULT_LOCAL_SERVER = "http://127.0.0.1:56789"
+from config import DEFAULT_ACTRESS_API_BASE_URL, get_actress_api_base_url
+
+DEFAULT_LOCAL_SERVER = DEFAULT_ACTRESS_API_BASE_URL
 # 略大于 server WORK_MERGE_TIMEOUT_SEC，避免客户端先断连
 DEFAULT_ACTRESS_FETCH_TIMEOUT_SEC = 130.0
 
@@ -29,9 +31,9 @@ def fetch_actress_minnano_via_api(
     *,
     minnano_url: str | None = None,
     timeout: float = DEFAULT_ACTRESS_FETCH_TIMEOUT_SEC,
-    base_url: str = DEFAULT_LOCAL_SERVER,
+    base_url: str | None = None,
 ) -> dict[str, Any]:
-    """同步 GET ``/api/v1/actress/{jp}``，依赖 Firefox 扩展 SSE + minnano 采集。
+    """同步 GET ``{actress_api_prefix}/{jp}``，依赖 Firefox 扩展 SSE + minnano 采集。
 
     返回插件/服务端 JSON；失败时 ``ok`` 为 False，``error`` 为说明字符串。
     """
@@ -47,7 +49,8 @@ def fetch_actress_minnano_via_api(
         }
 
     path = quote(jp, safe="")
-    url = f"{base_url.rstrip('/')}/api/v1/actress/{path}"
+    resolved_base_url = (base_url or get_actress_api_base_url()).rstrip("/")
+    url = f"{resolved_base_url}/{path}"
     params = {}
     mid = (minnano_url or "").strip()
     if mid:

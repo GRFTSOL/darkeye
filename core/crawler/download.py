@@ -6,7 +6,6 @@ import uuid
 
 import requests
 
-
 _LOCAL_COVER_FETCH_BASE = "http://127.0.0.1:56789"
 _COVER_FETCH_WAIT_S = 45.0
 
