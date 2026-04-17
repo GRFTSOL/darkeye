@@ -17,18 +17,22 @@ class _NfoBatchImportWorker(QObject):
     progress = Signal(int, int, str)
     finished = Signal(int, int, int, object, bool)
 
-    def __init__(self, nfo_list: list[Path]):
+    def __init__(
+        self,
+        nfo_list: list[Path],
+        import_fn,
+        emit_after_fn,
+        log_prefix: str,
+    ):
         super().__init__()
         self._nfo_list = list(nfo_list)
         self._cancel = False
+        self._import_fn = import_fn
+        self._emit_after_fn = emit_after_fn
+        self._log_prefix = log_prefix
 
     @Slot()
     def run(self):
-        from core.importers import (
-            emit_after_nfo_batch_import,
-            import_work_from_movie_nfo,
-        )
-
         imported = skipped = failed = 0
         error_lines: list[str] = []
         total = len(self._nfo_list)
@@ -39,10 +43,10 @@ class _NfoBatchImportWorker(QObject):
                 stopped_early = True
                 break
             self.progress.emit(i + 1, total, nfo_path.name)
-            ok, message = import_work_from_movie_nfo(nfo_path, emit_ui_signals=False)
+            ok, message = self._import_fn(nfo_path, emit_ui_signals=False)
             if ok:
                 imported += 1
-                logging.info("NFO 导入成功：%s — %s", nfo_path, message)
+                logging.info("%s导入成功：%s — %s", self._log_prefix, nfo_path, message)
             elif "已在库中" in message:
                 skipped += 1
             else:
@@ -50,8 +54,8 @@ class _NfoBatchImportWorker(QObject):
                 if len(error_lines) < 8:
                     error_lines.append(f"{nfo_path.name}: {message}")
 
-        if imported > 0:
-            emit_after_nfo_batch_import()
+        if imported > 0 and self._emit_after_fn is not None:
+            self._emit_after_fn()
 
         self.finished.emit(imported, skipped, failed, error_lines, stopped_early)
 
@@ -78,7 +82,7 @@ class NfoSettingPage(QWidget):
             )
         )
 
-        self.btn_import_nfo_paths = Button("从视频路径扫描并导入 NFO")
+        self.btn_import_nfo_paths = Button("从视频路径扫描并导入 Jvedio NFO")
         self.btn_import_nfo_paths.setToolTip(
             "递归查找已配置路径下所有 .nfo，按 Kodi 电影格式导入作品；"
             "若 NFO 内番号已在库中则跳过。"
@@ -86,19 +90,45 @@ class NfoSettingPage(QWidget):
         self.btn_import_nfo_paths.clicked.connect(self.task_import_nfo_from_video_paths)
         layout.addWidget(self.btn_import_nfo_paths)
 
-        self.btn_import_nfo_folder = Button("从文件夹导入 NFO")
+        self.btn_import_nfo_folder = Button("从文件夹导入Jvedio NFO")
         self.btn_import_nfo_folder.setToolTip(
             "选择任意文件夹，递归查找其中所有 .nfo，导入方式与「视频路径」批量导入相同。"
         )
         self.btn_import_nfo_folder.clicked.connect(self.task_import_nfo_from_folder)
         layout.addWidget(self.btn_import_nfo_folder)
 
-        self.btn_import_nfo_file = Button("从 NFO 导入作品")
+        self.btn_import_nfo_file = Button("从Jvedio NFO 导入作品")
         self.btn_import_nfo_file.setToolTip(
-            "选择 Kodi 风格的 .nfo 文件导入一条作品（番号已存在则跳过）"
+            "选择 Jvedio导出器导出的 .nfo 文件导入一条作品（番号已存在则跳过）"
         )
         self.btn_import_nfo_file.clicked.connect(self.import_work_from_nfo_file)
         layout.addWidget(self.btn_import_nfo_file)
+
+        layout.addWidget(Label("以下为 MDCZ 风格 NFO 独立导入入口。"))
+
+        self.btn_import_mdcz_paths = Button("从视频路径扫描并导入 MDCZ NFO")
+        self.btn_import_mdcz_paths.setToolTip(
+            "递归查找已配置路径下所有 .nfo，按 MDCZ 规则导入作品；"
+            "若 NFO 内番号已在库中则跳过。"
+        )
+        self.btn_import_mdcz_paths.clicked.connect(
+            self.task_import_mdcz_nfo_from_video_paths
+        )
+        layout.addWidget(self.btn_import_mdcz_paths)
+
+        self.btn_import_mdcz_folder = Button("从文件夹导入 MDCZ NFO")
+        self.btn_import_mdcz_folder.setToolTip(
+            "选择任意文件夹，递归查找其中所有 .nfo，按 MDCZ 规则批量导入。"
+        )
+        self.btn_import_mdcz_folder.clicked.connect(self.task_import_mdcz_nfo_from_folder)
+        layout.addWidget(self.btn_import_mdcz_folder)
+
+        self.btn_import_mdcz_file = Button("从 MDCZ NFO 导入作品")
+        self.btn_import_mdcz_file.setToolTip(
+            "选择 MDCZ 风格的 .nfo 文件导入一条作品（番号已存在则跳过）"
+        )
+        self.btn_import_mdcz_file.clicked.connect(self.import_work_from_mdcz_nfo_file)
+        layout.addWidget(self.btn_import_mdcz_file)
 
         layout.addStretch(1)
 
@@ -121,13 +151,27 @@ class NfoSettingPage(QWidget):
         return t is not None and t.isRunning()
 
     def _batch_import_buttons(self) -> list[Button]:
-        return [self.btn_import_nfo_paths, self.btn_import_nfo_folder]
+        return [
+            self.btn_import_nfo_paths,
+            self.btn_import_nfo_folder,
+            self.btn_import_mdcz_paths,
+            self.btn_import_mdcz_folder,
+        ]
 
     def _set_batch_import_buttons_enabled(self, enabled: bool) -> None:
         for b in self._batch_import_buttons():
             b.setEnabled(enabled)
 
-    def _start_batch_nfo_import(self, nfo_list: list[Path], *, empty_hint: str) -> None:
+    def _start_batch_nfo_import(
+        self,
+        nfo_list: list[Path],
+        *,
+        empty_hint: str,
+        dialog_title: str,
+        import_fn,
+        emit_after_fn,
+        log_prefix: str,
+    ) -> None:
         """共用：在后台线程中导入已收集的 NFO 列表并显示进度。"""
         if self._nfo_import_busy():
             self.msg.show_info("提示", "批量导入正在进行中，请稍候。")
@@ -145,7 +189,7 @@ class NfoSettingPage(QWidget):
             total,
             self,
         )
-        dialog.setWindowTitle("批量导入 NFO")
+        dialog.setWindowTitle(dialog_title)
         dialog.setWindowModality(Qt.WindowModal)
         dialog.setMinimumDuration(0)
         dialog.setMinimumWidth(420)
@@ -154,7 +198,7 @@ class NfoSettingPage(QWidget):
         dialog.setValue(0)
         dialog.setLabelText(f"准备导入（共 {total} 个）…")
 
-        worker = _NfoBatchImportWorker(nfo_list)
+        worker = _NfoBatchImportWorker(nfo_list, import_fn, emit_after_fn, log_prefix)
         thread = QThread(self)
         worker.moveToThread(thread)
 
@@ -179,6 +223,8 @@ class NfoSettingPage(QWidget):
     @Slot()
     def task_import_nfo_from_video_paths(self):
         """在视频目录中查找 .nfo 并导入；番号已存在则由导入逻辑跳过。"""
+        from core.importers import emit_after_nfo_batch_import, import_work_from_movie_nfo
+
         roots = [Path(p).expanduser() for p in get_video_path()]
         roots = [r for r in roots if r.is_dir()]
         if not roots:
@@ -192,11 +238,17 @@ class NfoSettingPage(QWidget):
         self._start_batch_nfo_import(
             nfo_list,
             empty_hint="在已配置的视频路径下未发现 .nfo 文件。",
+            dialog_title="批量导入 NFO",
+            import_fn=import_work_from_movie_nfo,
+            emit_after_fn=emit_after_nfo_batch_import,
+            log_prefix="NFO ",
         )
 
     @Slot()
     def task_import_nfo_from_folder(self):
         """选择文件夹后递归扫描 .nfo 并批量导入。"""
+        from core.importers import emit_after_nfo_batch_import, import_work_from_movie_nfo
+
         folder = QFileDialog.getExistingDirectory(
             self,
             "选择包含 NFO 的文件夹",
@@ -214,6 +266,66 @@ class NfoSettingPage(QWidget):
         self._start_batch_nfo_import(
             nfo_list,
             empty_hint="所选文件夹下未发现 .nfo 文件。",
+            dialog_title="批量导入 NFO",
+            import_fn=import_work_from_movie_nfo,
+            emit_after_fn=emit_after_nfo_batch_import,
+            log_prefix="NFO ",
+        )
+
+    @Slot()
+    def task_import_mdcz_nfo_from_video_paths(self):
+        from core.importers import (
+            emit_after_mdcz_nfo_batch_import,
+            import_work_from_mdcz_movie_nfo,
+        )
+
+        roots = [Path(p).expanduser() for p in get_video_path()]
+        roots = [r for r in roots if r.is_dir()]
+        if not roots:
+            self.msg.show_info(
+                "提示",
+                "请先在「视频」设置中添加至少一个存在本地的视频文件夹路径。",
+            )
+            return
+
+        nfo_list = self._collect_nfo_files(roots)
+        self._start_batch_nfo_import(
+            nfo_list,
+            empty_hint="在已配置的视频路径下未发现 .nfo 文件。",
+            dialog_title="批量导入 MDCZ NFO",
+            import_fn=import_work_from_mdcz_movie_nfo,
+            emit_after_fn=emit_after_mdcz_nfo_batch_import,
+            log_prefix="MDCZ NFO ",
+        )
+
+    @Slot()
+    def task_import_mdcz_nfo_from_folder(self):
+        from core.importers import (
+            emit_after_mdcz_nfo_batch_import,
+            import_work_from_mdcz_movie_nfo,
+        )
+
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "选择包含 MDCZ NFO 的文件夹",
+            str(BASE_DIR),
+        )
+        if not folder:
+            return
+
+        root = Path(folder).expanduser().resolve()
+        if not root.is_dir():
+            self.msg.show_info("提示", "所选路径不是有效文件夹。")
+            return
+
+        nfo_list = self._collect_nfo_files([root])
+        self._start_batch_nfo_import(
+            nfo_list,
+            empty_hint="所选文件夹下未发现 .nfo 文件。",
+            dialog_title="批量导入 MDCZ NFO",
+            import_fn=import_work_from_mdcz_movie_nfo,
+            emit_after_fn=emit_after_mdcz_nfo_batch_import,
+            log_prefix="MDCZ NFO ",
         )
 
     @Slot(int, int, str)
@@ -260,9 +372,9 @@ class NfoSettingPage(QWidget):
         body = "\n".join(parts)
 
         if failed:
-            self.msg.show_warning("NFO 批量导入完成", body)
+            self.msg.show_warning("批量导入完成", body)
         else:
-            self.msg.show_info("NFO 批量导入完成", body)
+            self.msg.show_info("批量导入完成", body)
 
     @Slot()
     def _on_nfo_batch_thread_cleared(self):
@@ -283,6 +395,27 @@ class NfoSettingPage(QWidget):
             return
 
         ok, message = import_work_from_movie_nfo(Path(file_path))
+        if ok:
+            self.msg.show_info("导入成功", message)
+        elif "已在库中" in message:
+            self.msg.show_info("未导入", message)
+        else:
+            self.msg.show_warning("导入失败", message)
+
+    @Slot()
+    def import_work_from_mdcz_nfo_file(self):
+        from core.importers import import_work_from_mdcz_movie_nfo
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择 MDCZ NFO 文件",
+            str(BASE_DIR),
+            "NFO 文件 (*.nfo);;所有文件 (*.*)",
+        )
+        if not file_path:
+            return
+
+        ok, message = import_work_from_mdcz_movie_nfo(Path(file_path))
         if ok:
             self.msg.show_info("导入成功", message)
         elif "已在库中" in message:

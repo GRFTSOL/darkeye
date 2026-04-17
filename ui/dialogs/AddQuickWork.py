@@ -1,3 +1,9 @@
+import csv
+import json
+import logging
+from pathlib import Path
+import re
+from typing import TYPE_CHECKING
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -8,18 +14,201 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QWidget,
     QLabel,
+    QFrame,
+    QFileDialog,
 )
-from PySide6.QtCore import Qt, Slot
-import json
-import logging
-import re
+from PySide6.QtCore import Qt, Slot, Signal
+from PySide6.QtGui import QDragEnterEvent, QDragMoveEvent, QDropEvent
+
+from controller.app_context import get_theme_manager
 from controller.message_service import MessageBoxService
 
 from darkeye_ui.design.icon import get_builtin_icon
 from darkeye_ui.components.button import Button
+from darkeye_ui.components.label import Label
 from darkeye_ui.components.token_table_widget import TokenTableWidget
 from darkeye_ui.components.icon_push_button import IconPushButton
 from ui.widgets.CrawlerToolBox import CrawlerAutoPage
+from utils.serial_number import extract_serial_from_string
+from utils.utils import get_video_names_from_paths
+
+if TYPE_CHECKING:
+    from darkeye_ui.design.theme_manager import ThemeManager
+    from darkeye_ui.design.tokens import ThemeTokens
+
+
+VIDEO_EXTENSIONS = {
+    ".mp4",
+    ".avi",
+    ".mkv",
+    ".mov",
+    ".wmv",
+    ".flv",
+    ".rmvb",
+    ".ts",
+}
+
+
+def _normalize_csv_serial_value(value: str) -> str | None:
+    text = value.strip()
+    if not text:
+        return None
+
+    extracted = extract_serial_from_string(text)
+    if extracted:
+        return extracted
+    return text.upper()
+
+
+def _read_csv_first_column_serials(path: Path) -> list[str]:
+    if path.suffix.lower() != ".csv":
+        raise ValueError("仅支持导入 CSV 文件")
+
+    last_decode_error: UnicodeDecodeError | None = None
+    for encoding in ("utf-8-sig", "utf-8", "gbk"):
+        try:
+            serials: list[str] = []
+            with path.open("r", encoding=encoding, newline="") as csv_file:
+                reader = csv.reader(csv_file)
+                for row in reader:
+                    if not row:
+                        continue
+                    serial = _normalize_csv_serial_value(row[0])
+                    if serial:
+                        serials.append(serial)
+            return serials
+        except UnicodeDecodeError as exc:
+            last_decode_error = exc
+
+    if last_decode_error is not None:
+        raise last_decode_error
+    return []
+
+
+def _drop_zone_qss_from_tokens(t: "ThemeTokens") -> str:
+    return (
+        "#quickWorkVideoDropZone {"
+        f"border: {t.border_width} dashed {t.color_border};"
+        f"border-radius: {t.radius_md};"
+        f"background-color: {t.color_bg_input};"
+        "}"
+        "#quickWorkVideoDropZoneTitle {"
+        f"color: {t.color_text};"
+        f"font-family: {t.font_family_base};"
+        f"font-size: {t.font_size_base};"
+        "font-weight: 600;"
+        "}"
+        "#quickWorkVideoDropZoneHint {"
+        f"color: {t.color_text_placeholder};"
+        f"font-family: {t.font_family_base};"
+        f"font-size: {t.font_size_base};"
+        "}"
+    )
+
+
+class QuickWorkVideoDropZone(QFrame):
+    serialsDropped = Signal(list, list)
+
+    def __init__(
+        self,
+        theme_manager: "ThemeManager | None" = None,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(parent)
+        self._theme_manager = theme_manager
+        self.setAcceptDrops(True)
+        self.setMinimumHeight(132)
+        self.setFrameShape(QFrame.StyledPanel)
+        self.setFrameShadow(QFrame.Plain)
+        self.setObjectName("quickWorkVideoDropZone")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(6)
+
+        title = Label("拖入视频")
+        title.setAlignment(Qt.AlignCenter)
+        title.setObjectName("quickWorkVideoDropZoneTitle")
+        hint = Label("支持视频文件或文件夹\n根据文件名识别番号\n并追加到左侧列表")
+        hint.setAlignment(Qt.AlignCenter)
+        hint.setWordWrap(True)
+        hint.setObjectName("quickWorkVideoDropZoneHint")
+
+        layout.addStretch()
+        layout.addWidget(title)
+        layout.addWidget(hint)
+        layout.addStretch()
+
+        self._apply_token_styles()
+        if self._theme_manager is not None:
+            self._theme_manager.themeChanged.connect(self._apply_token_styles)
+
+    def _apply_token_styles(self) -> None:
+        if self._theme_manager is None:
+            self.setStyleSheet(
+                "#quickWorkVideoDropZone {"
+                "border: 2px dashed gray;"
+                "border-radius: 10px;"
+                "background: transparent;"
+                "}"
+                "#quickWorkVideoDropZoneTitle {"
+                "font-size: 16px;"
+                "font-weight: 600;"
+                "}"
+                "#quickWorkVideoDropZoneHint {"
+                "font-size: 13px;"
+                "color: gray;"
+                "}"
+            )
+            return
+
+        t = self._theme_manager.tokens()
+        self.setStyleSheet(_drop_zone_qss_from_tokens(t))
+
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dragMoveEvent(self, event: QDragMoveEvent) -> None:
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        if not event.mimeData().hasUrls():
+            return
+
+        serials: list[str] = []
+        failed_paths: list[str] = []
+
+        for url in event.mimeData().urls():
+            local_path = url.toLocalFile()
+            if not local_path:
+                continue
+
+            path = Path(local_path)
+            if path.is_dir():
+                folder_serials, no_serial = get_video_names_from_paths([path])
+                serials.extend(folder_serials)
+                failed_paths.extend(path_str for _, path_str in no_serial)
+                continue
+
+            if not path.is_file():
+                failed_paths.append(str(path))
+                continue
+
+            if path.suffix.lower() not in VIDEO_EXTENSIONS:
+                failed_paths.append(str(path))
+                continue
+
+            serial = extract_serial_from_string(path.stem)
+            if serial:
+                serials.append(serial)
+            else:
+                failed_paths.append(str(path))
+                logging.warning("无法提取番号: 名称=%s 路径=%s", path.stem, path)
+
+        event.acceptProposedAction()
+        self.serialsDropped.emit(serials, failed_paths)
 
 
 class AddQuickWork(QDialog):
@@ -49,6 +238,7 @@ class AddQuickWork(QDialog):
         self.btn_clean = Button("去后缀")
         self.btn_clean_prefix = Button("删前缀行")
         self.btn_sort = Button("排序")
+        self.btn_import_csv = Button("从 CSV 导入")
 
         self.btn_add.clicked.connect(self.add_row)
         self.btn_del.clicked.connect(self.delete_rows)
@@ -56,6 +246,7 @@ class AddQuickWork(QDialog):
         self.btn_clean.clicked.connect(self.clean_suffix)
         self.btn_clean_prefix.clicked.connect(self.clean_prefix)
         self.btn_sort.clicked.connect(self.sort_rows)
+        self.btn_import_csv.clicked.connect(self.import_csv)
 
         top_layout.addWidget(self.btn_add)
         top_layout.addWidget(self.btn_del)
@@ -63,6 +254,7 @@ class AddQuickWork(QDialog):
         top_layout.addWidget(self.btn_clean)
         top_layout.addWidget(self.btn_clean_prefix)
         top_layout.addWidget(self.btn_sort)
+        top_layout.addWidget(self.btn_import_csv)
 
         # 2. 中间列表区域
         self.table = TokenTableWidget()
@@ -73,6 +265,8 @@ class AddQuickWork(QDialog):
         )
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.drop_zone = QuickWorkVideoDropZone(theme_manager=get_theme_manager())
+        self.drop_zone.serialsDropped.connect(self.handle_dropped_serials)
 
         # 3. 底部提交按钮（漏斗筛选后为选择性补充）
         self.btn_commit = Button(self._BTN_COMMIT_FULL)
@@ -101,7 +295,7 @@ class AddQuickWork(QDialog):
         )
         self.crawler_auto_page.btn_get_crawler.clicked.connect(self.apply_funnel_filter)
 
-        crawler_hint = QLabel(
+        crawler_hint = Label(
             "未点漏斗就提交：对左侧番号全量爬取。如果左侧添加了已有的番号则会对现有的番号进行全量覆盖。\n"
             "勾选字段后点漏斗：只查全库，筛出的番号直接覆盖左侧（与原先左侧内容无关）；"
             "无匹配则清空左侧。再提交则逐条只爬各条仍空白的勾选字段。"
@@ -115,6 +309,8 @@ class AddQuickWork(QDialog):
         right_layout.addWidget(crawler_hint)
         right_layout.addWidget(self.crawler_auto_page)
         right_layout.addStretch()
+        right_layout.addWidget(self.drop_zone)
+
 
         main_layout = QHBoxLayout(self)
         main_layout.addWidget(left_panel, stretch=3)
@@ -252,39 +448,85 @@ class AddQuickWork(QDialog):
         """清空表格后按列表重建行（全选勾选）。漏斗/外部加载用来整体覆盖左侧。"""
         self.table.setRowCount(0)
         for serial in serial_list:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
+            self._append_serial_row(serial)
 
-            chk_item = QTableWidgetItem()
-            chk_item.setFlags(
-                Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
-            )
-            chk_item.setCheckState(Qt.Checked)
-            self.table.setItem(row, 0, chk_item)
-
-            text_item = QTableWidgetItem(serial)
-            self.table.setItem(row, 1, text_item)
-
-    def add_row(self):
-        """在表格末尾插入一个空行"""
+    def _append_serial_row(self, serial: str) -> None:
         row = self.table.rowCount()
         self.table.insertRow(row)
 
-        # 第一列：复选框
         chk_item = QTableWidgetItem()
-        chk_item.setFlags(
-            Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
-        )
+        chk_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
         chk_item.setCheckState(Qt.Checked)
         self.table.setItem(row, 0, chk_item)
 
-        # 第二列：文本输入
-        text_item = QTableWidgetItem("")
+        text_item = QTableWidgetItem(serial)
         self.table.setItem(row, 1, text_item)
 
+    def _append_serials_to_table(self, serials: list[str]) -> tuple[int, int]:
+        normalized_serials = [
+            str(serial).strip().upper() for serial in serials if str(serial).strip()
+        ]
+        unique_serials = list(dict.fromkeys(normalized_serials))
+        existing_serials = {
+            self.table.item(row, 1).text().strip().lower()
+            for row in range(self.table.rowCount())
+            if self.table.item(row, 1) is not None
+            and self.table.item(row, 1).text().strip()
+        }
+
+        added_count = 0
+        skipped_count = 0
+        for serial in unique_serials:
+            if serial.lower() in existing_serials:
+                skipped_count += 1
+                continue
+            self._append_serial_row(serial)
+            existing_serials.add(serial.lower())
+            added_count += 1
+        return added_count, skipped_count
+
+    @Slot(list, list)
+    def handle_dropped_serials(
+        self, serials: list[str], failed_paths: list[str]
+    ) -> None:
+        added_count, skipped_count = self._append_serials_to_table(serials)
+
+        if added_count == 0 and skipped_count == 0 and not failed_paths:
+            self.msg.show_info("提示", "未检测到可处理的拖入项目")
+            return
+
+        parts: list[str] = []
+        if added_count:
+            parts.append(f"已添加 {added_count} 条番号")
+        if skipped_count:
+            parts.append(f"跳过 {skipped_count} 条重复番号")
+        if failed_paths:
+            parts.append(f"{len(failed_paths)} 个文件未能识别番号")
+        if not parts:
+            parts.append("没有新增番号")
+
+        detail_lines: list[str] = []
+        if failed_paths:
+            preview = "\n".join(failed_paths[:5])
+            detail_lines.append(preview)
+            if len(failed_paths) > 5:
+                detail_lines.append("...")
+
+        message = "；".join(parts)
+        if detail_lines:
+            message = f"{message}\n\n未识别文件：\n" + "\n".join(detail_lines)
+        self.msg.show_info("拖入完成", message)
+
+    def add_row(self):
+        """在表格末尾插入一个空行"""
+        self._append_serial_row("")
+        row = self.table.rowCount() - 1
+        text_item = self.table.item(row, 1)
+
         # 自动聚焦到新行的文本列
-        self.table.editItem(text_item)
-        self.table.setCurrentItem(text_item)
+        if text_item is not None:
+            self.table.editItem(text_item)
+            self.table.setCurrentItem(text_item)
 
     def delete_rows(self):
         """删除选中的行（高亮行）"""
@@ -376,6 +618,50 @@ class AddQuickWork(QDialog):
             self.table.setItem(row, 0, chk_item)
             text_item = QTableWidgetItem(r["text"])
             self.table.setItem(row, 1, text_item)
+
+    @Slot()
+    def import_csv(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择 CSV 文件",
+            "",
+            "CSV (*.csv);;All Files (*.*)",
+        )
+        if not file_path:
+            return
+
+        path = Path(file_path)
+        if path.suffix.lower() != ".csv":
+            self.msg.show_warning("提示", "仅支持导入 CSV 文件")
+            return
+
+        try:
+            serials = _read_csv_first_column_serials(path)
+        except UnicodeDecodeError:
+            self.msg.show_warning(
+                "导入失败",
+                "CSV 编码无法识别，请将文件保存为 UTF-8 或 GBK 后重试。",
+            )
+            return
+        except OSError as exc:
+            logging.warning("读取 CSV 失败: %s", exc)
+            self.msg.show_warning("导入失败", f"无法读取文件：{exc}")
+            return
+        except ValueError as exc:
+            self.msg.show_warning("导入失败", str(exc))
+            return
+
+        added_count, skipped_count = self._append_serials_to_table(serials)
+        if added_count == 0 and skipped_count == 0:
+            self.msg.show_info("导入完成", "CSV 第一列中没有可导入的番号")
+            return
+
+        parts: list[str] = []
+        if added_count:
+            parts.append(f"已添加 {added_count} 条番号")
+        if skipped_count:
+            parts.append(f"跳过 {skipped_count} 条重复番号")
+        self.msg.show_info("导入完成", "；".join(parts))
 
     def load_serials(self, serial_list):
         """加载番号列表到表格中（外部调用时恢复为全量爬取）。"""

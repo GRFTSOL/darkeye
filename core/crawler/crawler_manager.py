@@ -7,6 +7,7 @@ from urllib.parse import quote
 import requests
 from PySide6.QtCore import QObject, QThreadPool, QTimer, Qt, Slot
 
+from config import get_work_api_base_url
 from controller.global_signal_bus import global_signals
 from core.crawler.crawler_task import CrawlerTask, CrawlWorkflowState
 
@@ -15,7 +16,6 @@ from core.crawler.worker import Worker, wire_worker_finished
 from core.schema.model import CrawledWorkData
 
 # 与 server.app WORK_MERGE_TIMEOUT_SEC + 余量一致（manual_tests 使用 130s）
-_WORK_API_BASE = "http://127.0.0.1:56789"
 _WORK_API_TIMEOUT_SEC = 130.0
 
 
@@ -377,8 +377,9 @@ class CrawlerManager2(QObject):
         self._execute_work_api_fetch(serial, withGUI, selected_fields)
 
     def _work_api_url(self, serial: str) -> str:
-        """本地服务 ``GET /api/v1/work/{serial}`` 的完整 URL（番号经 ``quote``）。"""
-        return f"{_WORK_API_BASE}/api/v1/work/{quote(serial, safe='')}"
+        """作品 API 前缀 + ``/{serial}`` 的完整 URL（番号经 ``quote``）。"""
+        base = get_work_api_base_url()
+        return f"{base.rstrip('/')}/{quote(serial, safe='')}"
 
     def _execute_work_api_fetch(
         self,

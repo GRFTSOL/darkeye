@@ -12,6 +12,9 @@ import logging
 APP_VERSION = "1.2.3"
 REQUIRED_PUBLIC_DB_VERSION = "2"  # 软件所需要的公共数据库版本
 REQUIRED_PRIVATE_DB_VERSION = "1.1"  # 软件所需要的私有数据库版本
+DEFAULT_CRAWLER_BRIDGE_BASE_URL = "http://127.0.0.1:56789"  # 爬虫服务器地址
+DEFAULT_WORK_API_BASE_URL = "http://127.0.0.1:56789/api/v1/work"
+DEFAULT_ACTRESS_API_BASE_URL = "http://127.0.0.1:56789/api/v1/actress"
 # ==========================================================
 
 
@@ -280,6 +283,69 @@ def get_last_auto_update_check_week() -> str:
 def set_last_auto_update_check_week(week_key: str) -> None:
     """记录本次自动检查更新的周"""
     settings.setValue("Update/LastAutoCheckWeek", week_key)
+    settings.sync()
+
+
+def get_crawler_bridge_base_url() -> str:
+    """读取爬虫桥接服务根地址，返回无尾斜杠的 URL。"""
+    value = settings.value(
+        "Crawler/BridgeBaseUrl",
+        DEFAULT_CRAWLER_BRIDGE_BASE_URL,
+        type=str,
+    )
+    normalized = (value or "").strip().rstrip("/")
+    return normalized or DEFAULT_CRAWLER_BRIDGE_BASE_URL
+
+
+def set_crawler_bridge_base_url(url: str) -> None:
+    """持久化爬虫桥接服务根地址；空值回退默认。"""
+    normalized = (url or "").strip().rstrip("/")
+    settings.setValue(
+        "Crawler/BridgeBaseUrl",
+        normalized or DEFAULT_CRAWLER_BRIDGE_BASE_URL,
+    )
+    settings.sync()
+
+
+def get_work_api_base_url() -> str:
+    """读取作品爬虫 API 根地址，返回无尾斜杠的 URL。"""
+    value = settings.value(
+        "Crawler/WorkApiBaseUrl",
+        DEFAULT_WORK_API_BASE_URL,
+        type=str,
+    )
+    normalized = (value or "").strip().rstrip("/")
+    return normalized or DEFAULT_WORK_API_BASE_URL
+
+
+def set_work_api_base_url(url: str) -> None:
+    """持久化作品爬虫 API 根地址；空值回退默认。"""
+    normalized = (url or "").strip().rstrip("/")
+    settings.setValue(
+        "Crawler/WorkApiBaseUrl",
+        normalized or DEFAULT_WORK_API_BASE_URL,
+    )
+    settings.sync()
+
+
+def get_actress_api_base_url() -> str:
+    """读取女优爬虫 API 根地址，返回无尾斜杠的 URL。"""
+    value = settings.value(
+        "Crawler/ActressApiBaseUrl",
+        DEFAULT_ACTRESS_API_BASE_URL,
+        type=str,
+    )
+    normalized = (value or "").strip().rstrip("/")
+    return normalized or DEFAULT_ACTRESS_API_BASE_URL
+
+
+def set_actress_api_base_url(url: str) -> None:
+    """持久化女优爬虫 API 根地址；空值回退默认。"""
+    normalized = (url or "").strip().rstrip("/")
+    settings.setValue(
+        "Crawler/ActressApiBaseUrl",
+        normalized or DEFAULT_ACTRESS_API_BASE_URL,
+    )
     settings.sync()
 
 
