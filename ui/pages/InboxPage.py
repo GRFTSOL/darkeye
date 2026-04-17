@@ -366,11 +366,20 @@ class InboxPage(QWidget):
         if not state:
             return
 
+        # 已完成项勿在轮询中反复移除再置顶，否则会按 dict 顺序打乱完成先后。
+        if state.finished:
+            if serial in self._pending_serials:
+                self._pending_serials.remove(serial)
+            if serial in self._running_serials:
+                self._running_serials.remove(serial)
+            if serial not in self._finished_serials:
+                self._finished_serials.insert(0, serial)
+            self._models_dirty = True
+            return
+
         self._remove_from_all_columns(serial)
 
-        if state.finished:
-            self._finished_serials.insert(0, serial)
-        elif state.crawling or state.started:
+        if state.crawling or state.started:
             self._running_serials.insert(0, serial)
         elif state.in_queue:
             self._pending_serials.insert(0, serial)

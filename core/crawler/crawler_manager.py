@@ -111,6 +111,8 @@ class CrawlerManager2(QObject):
             self.schedule_timer.setSingleShot(True)
             self.schedule_timer.timeout.connect(self._on_schedule_tick)
             self.last_schedule_time = 0
+            # 插队：后续若干次「上一任务结束 → 调度下一任务」跳过随机间隔（见 start_crawl prepend）
+            self._prepend_priority_ticks: int = 0
 
             from server.bridge import bridge
 
@@ -150,7 +152,12 @@ class CrawlerManager2(QObject):
         return True
 
     def start_crawl(
-        self, serial_numbers, withGUI=False, selected_fields: set[str] | None = None
+        self,
+        serial_numbers,
+        withGUI=False,
+        selected_fields: set[str] | None = None,
+        *,
+        prepend: bool = False,
     ):
         """将番号加入 ``request_queue``，并视情况启动调度定时器。
 
@@ -158,11 +165,19 @@ class CrawlerManager2(QObject):
         ``withGUI``、``selected_fields`` 原样写入队列元组，供后续拉取插件数据时使用；
         ``selected_fields`` 为 ``None`` 或省略表示全字段。
 
+        ``prepend=True`` 时将任务插到队首（同番号若已在队列中则先移除再插入，参数以本次为准）；
+        同一调用内番号去重保序；且忽略与上次调度之间的最小间隔，停止已安排的定时器并
+        ``_schedule_next(0)`` 尽快开爬；且在一次 work API 结束后调度下一项时同样不再等待
+        12–18s 随机间隔，直至本批插队番号全部跑完（与「距上一次爬取多久」无关）。
+        若当前仍有 work API 在途，由 ``_on_schedule_tick`` 短间隔重试，不强行打断。
+        插队只重排 ``request_queue``，不中断已在执行的 work API 拉取。
+
         若此前调用过 ``terminate_crawl``，会先 ``resume_crawl`` 再继续入队。
-        仅与入队前已有的 ``request_queue`` 去重；同一次调用里 ``serial_numbers``
-        若含重复番号仍可能重复入队（不含已在 ``tasks`` 中运行的番号）。
+        ``prepend=False`` 时仅与入队前已有的 ``request_queue`` 去重；同一次调用里
+        ``serial_numbers`` 若含重复番号仍可能重复入队（不含已在 ``tasks`` 中运行的番号）。
         每个新入队番号会加入 ``_unfinished_serials`` 并持久化到 ini（收件箱等可恢复）。
-        方法末尾若队列非空且调度器空闲，按最小间隔触发 ``_schedule_next``。
+        方法末尾：``prepend=True`` 且本次确有入队时立即调度；否则仅在调度定时器未激活时
+        按最小间隔触发 ``_schedule_next``。
         """
         # 终止状态下调度被关掉，先入队前需恢复，否则任务永远不会被弹出
         if getattr(self, "_crawl_terminated", False):
@@ -171,45 +186,85 @@ class CrawlerManager2(QObject):
         if isinstance(serial_numbers, str):
             serial_numbers = [serial_numbers]
 
-        # 只与「尚未开始爬」的排队项去重；正在 tasks 里的由其它路径处理
-        existing_serials = {item[0] for item in self.request_queue}
+        fields = set(selected_fields) if selected_fields else None
+        prepend_immediate_schedule = False
 
-        for serial_number in serial_numbers:
-            serial_number = self._norm_serial(serial_number)
-            if not serial_number:
-                continue
-            if serial_number in existing_serials:
-                logging.info("任务 %s 已在队列中，跳过重复添加", serial_number)
-                continue
-            # (番号, 是否 GUI, 字段子集或 None)
-            self.request_queue.append(
-                (
-                    serial_number,
-                    withGUI,
-                    set(selected_fields) if selected_fields else None,
+        if prepend:
+            seen_batch: set[str] = set()
+            batch: list[tuple[str, bool, set[str] | None]] = []
+            for serial_number in serial_numbers:
+                serial_number = self._norm_serial(serial_number)
+                if not serial_number or serial_number in seen_batch:
+                    continue
+                seen_batch.add(serial_number)
+                batch.append((serial_number, withGUI, fields))
+
+            if batch:
+                batch_serials = {t[0] for t in batch}
+                new_q = deque()
+                while self.request_queue:
+                    s, wg, sf = self.request_queue.popleft()
+                    if s in batch_serials:
+                        continue
+                    new_q.append((s, wg, sf))
+                self.request_queue = new_q
+
+                for item in reversed(batch):
+                    self.request_queue.appendleft(item)
+                    logging.info(
+                        "任务 %s 已插队入队，当前队列长度: %s",
+                        item[0],
+                        len(self.request_queue),
+                    )
+
+                for serial_number, _, _ in batch:
+                    self._unfinished_serials.add(serial_number)
+                self._persist_unfinished_to_ini()
+                # 链式无间隔：本批 n 个需 n-1 次「完成后立即调度」；若当前在爬则再多1 次（接在途任务后立刻开爬）
+                extra = 1 if self._work_fetch_busy else 0
+                self._prepend_priority_ticks = max(0, len(batch) - 1) + extra
+                prepend_immediate_schedule = True
+        else:
+            # 只与「尚未开始爬」的排队项去重；正在 tasks 里的由其它路径处理
+            existing_serials = {item[0] for item in self.request_queue}
+
+            for serial_number in serial_numbers:
+                serial_number = self._norm_serial(serial_number)
+                if not serial_number:
+                    continue
+                if serial_number in existing_serials:
+                    logging.info("任务 %s 已在队列中，跳过重复添加", serial_number)
+                    continue
+                # (番号, 是否 GUI, 字段子集或 None)
+                self.request_queue.append(
+                    (serial_number, withGUI, fields),
                 )
-            )
-            logging.info(
-                "任务 %s 已入队，当前队列长度: %s",
-                serial_number,
-                len(self.request_queue),
-            )
+                logging.info(
+                    "任务 %s 已入队，当前队列长度: %s",
+                    serial_number,
+                    len(self.request_queue),
+                )
 
-            self._unfinished_serials.add(serial_number)
-            self._persist_unfinished_to_ini()
+                self._unfinished_serials.add(serial_number)
+                self._persist_unfinished_to_ini()
 
-        if not self.schedule_timer.isActive() and self.request_queue:
-            import time
-
-            now = time.time() * 1000
-            elapsed = now - self.last_schedule_time
-            min_interval = 12000
-
-            if elapsed < min_interval:
-                delay = int(min_interval - elapsed)
-                self._schedule_next(delay)
-            else:
+        if self.request_queue:
+            if prepend_immediate_schedule:
+                if self.schedule_timer.isActive():
+                    self.schedule_timer.stop()
                 self._schedule_next(0)
+            elif not self.schedule_timer.isActive():
+                import time
+
+                now = time.time() * 1000
+                elapsed = now - self.last_schedule_time
+                min_interval = 12000
+
+                if elapsed < min_interval:
+                    delay = int(min_interval - elapsed)
+                    self._schedule_next(delay)
+                else:
+                    self._schedule_next(0)
 
     def terminate_crawl(self, *, clear_queue: bool = True):
         """停止调度定时器并标记终止态；可选清空待爬队列并从未完成集合中移除被丢弃番号。
@@ -232,6 +287,7 @@ class CrawlerManager2(QObject):
             if dropped_serials:
                 self._unfinished_serials.difference_update(dropped_serials)
                 self._persist_unfinished_to_ini()
+            self._prepend_priority_ticks = 0
         else:
             logging.info("爬虫调度器已终止：未清空队列（但也不会再调度）")
 
@@ -366,7 +422,8 @@ class CrawlerManager2(QObject):
             logging.info("队列为空，调度器停止")
             return
         if self._work_fetch_busy:
-            self._schedule_next(1000)
+            delay_busy = 0 if self._prepend_priority_ticks > 0 else 1000
+            self._schedule_next(delay_busy)
             return
 
         import time
@@ -540,7 +597,11 @@ class CrawlerManager2(QObject):
         if getattr(self, "_crawl_terminated", False):
             return
         if self.request_queue:
-            self._schedule_next()
+            if self._prepend_priority_ticks > 0:
+                self._prepend_priority_ticks -= 1
+                self._schedule_next(0)
+            else:
+                self._schedule_next()
         else:
             logging.info("队列已空，停止后续调度")
 

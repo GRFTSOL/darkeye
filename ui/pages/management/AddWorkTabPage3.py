@@ -1672,7 +1672,7 @@ class AddWorkTabPage3(LazyWidget):
         """用浏览器插件手动跳转javlibrary"""
         from core.crawler.crawler_manager import get_manager
 
-        get_manager().start_crawl(self.viewmodel.serial_number, True)
+        get_manager().start_crawl(self.viewmodel.serial_number, True, prepend=True)
 
     @Slot(object)
     def update_gui(self, data):
