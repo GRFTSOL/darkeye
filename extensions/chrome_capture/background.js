@@ -949,6 +949,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.command === "notify-cloudflare-challenge") {
+    const tabUrl =
+      sender.tab && sender.tab.url ? String(sender.tab.url) : "";
+    const body = {
+      url: tabUrl,
+      site: message.site != null ? String(message.site) : "",
+      phase: message.phase != null ? String(message.phase) : "",
+      serial: message.serial != null ? String(message.serial) : "",
+      merge_request_id:
+        message.merge_request_id != null
+          ? String(message.merge_request_id)
+          : "",
+    };
+    fetch(`${SERVER_URL}/api/v1/cloudflare-challenge-notify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).catch((err) => {
+      console.error("DarkEye: cloudflare-challenge-notify failed", err);
+    });
+    return false;
+  }
+
   // send_crawler_result：① merge_request_id + 四站 → work_merge；② 热门女优带 request_id → top-actresses-result；③ 其余不再 POST（已无对应接口）。
   if (message.command === "send_crawler_result") {
     if (message.merge_request_id && message.web) {
