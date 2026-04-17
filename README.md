@@ -6,7 +6,7 @@
 
 > 一款完全本地、注重隐私的成人影片收藏与管理工具，支持浏览器插件沉浸式采集与拟物化 DVD 陈列。基于 PySide6 / Qt Quick 3D、SQLite、本地 FastAPI 与浏览器扩展协同，并含 C++ 力导向图加速；集采集、整理、分析与可视化于一体。
 
-- **数据与联网**：默认数据在程序旁的 `data/`（数据库、配置、封面与头像等，可在设置中改路径）。不会向第三方上传你的片库；联网主要来自爬虫与资源拉取，以及可选的更新检查（GitHub Releases）、翻译（Google 或你自配的 LLM API）等。
+- **数据与联网**：默认数据在程序旁的 `data/`（数据库、配置、封面与头像等，可在设置中改路径）。不会向第三方上传你的片库；联网主要来自爬虫与资源拉取，以及可选的更新检查（Cloudflare R2）、翻译（Google 或你自配的 LLM API）等。
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue.svg)
 ![Framework](https://img.shields.io/badge/framework-PySide6%20(Qt6)-orange)
