@@ -27,7 +27,7 @@ $nuitkaArgs = @(
     "--show-memory",
     "--show-modules",
     #"--lto=yes",#开启lto优化,debug不开
-    "--jobs=10",#开10个线程，不让电脑卡死
+    "--jobs=30",#开10个线程，不让电脑卡死
     # 发布版关闭黑框；调试版保留控制台
     "--windows-console-mode=force",
     "--windows-icon-from-ico=resources/logo.ico",
@@ -38,6 +38,7 @@ $nuitkaArgs = @(
     # 对齐 main.spec 中的资源目录
     "--include-data-dir=resources/develop_resources/public=data/public",
     "--include-data-file=resources/develop_resources/crawler_nav_buttons.json=data/crawler_nav_buttons.json",
+    "--include-data-file=resources/develop_resources/actress_nav_buttons.json=data/actress_nav_buttons.json",
     "--include-data-file=DarkEyeUpdater.exe=DarkEyeUpdater.exe",
     # 其他资源目录
     "--include-data-dir=resources/icons=resources/icons",

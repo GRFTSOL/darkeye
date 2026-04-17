@@ -40,7 +40,7 @@ PACKAGE_URL_TEMPLATE = "http://yinruizhe.asia/DarkEye-v{version}.tar.zst"
 
 # 每次发版在此填写更新说明（会写入 latest.json 的 releaseNotes）
 RELEASE_NOTES = (
-    "添加LLM翻译可接API，详情见文档使用方法，然后可以下载大图了，包括其他各种更新详见github，现在浏览器插件放在extensions中，需要手动更新，可以不用去github上下载了"
+    "mdcz的nfo导入，爬虫的优化，包括其他各种更新详见github，现在浏览器插件放在extensions中，需要手动更新，可以不用去github上下载了"
 )
 
 

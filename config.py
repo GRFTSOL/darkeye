@@ -9,7 +9,7 @@ import logging
 
 
 # ==========================================================
-APP_VERSION = "1.2.3"
+APP_VERSION = "1.2.4"
 REQUIRED_PUBLIC_DB_VERSION = "2"  # 软件所需要的公共数据库版本
 REQUIRED_PRIVATE_DB_VERSION = "1.1"  # 软件所需要的私有数据库版本
 DEFAULT_CRAWLER_BRIDGE_BASE_URL = "http://127.0.0.1:56789"  # 爬虫服务器地址

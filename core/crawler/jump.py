@@ -7,9 +7,7 @@ import logging
 from typing import Any
 from urllib.parse import quote
 
-from config import DEFAULT_ACTRESS_API_BASE_URL, get_actress_api_base_url
-
-DEFAULT_LOCAL_SERVER = DEFAULT_ACTRESS_API_BASE_URL
+from config import get_actress_api_base_url, get_crawler_bridge_base_url
 # 略大于 server WORK_MERGE_TIMEOUT_SEC，避免客户端先断连
 DEFAULT_ACTRESS_FETCH_TIMEOUT_SEC = 130.0
 
@@ -107,15 +105,16 @@ def fetch_actress_minnano_via_api(
 def fetch_top_actresses_via_api(
     *,
     timeout: float = DEFAULT_ACTRESS_FETCH_TIMEOUT_SEC,
-    base_url: str = DEFAULT_LOCAL_SERVER,
+    base_url: str | None = None,
 ) -> dict[str, Any]:
-    """同步 GET ``/api/v1/top-actresses``，依赖 Firefox 扩展 SSE + javtxt 页解析。
+    """同步 GET ``/api/v1/top-actresses``，依赖浏览器扩展 SSE + javtxt 页解析。
 
     返回服务端 JSON（``ok``、``names``、可选 ``error``）；HTTP/网络失败时 ``ok`` 为 False。
     """
     import requests
 
-    url = f"{base_url.rstrip('/')}/api/v1/top-actresses"
+    resolved = (base_url or get_crawler_bridge_base_url()).rstrip("/")
+    url = f"{resolved}/api/v1/top-actresses"
     try:
         r = requests.get(url, timeout=timeout)
     except OSError as e:
