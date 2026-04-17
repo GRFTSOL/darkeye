@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QWidget,
     QSizePolicy,
+    QScrollArea,
 )
 from PySide6.QtCore import Qt, QObject, Signal, Property, Slot
 
@@ -13,7 +14,7 @@ import logging
 from enum import Enum
 from pathlib import Path
 
-from config import ACTRESSIMAGES_PATH
+from config import ACTRESSIMAGES_PATH, ACTRESS_NAV_BUTTONS_PATH
 from utils.utils import mse
 
 
@@ -25,6 +26,7 @@ from ui.myads.workspace_manager import WorkspaceManager, Placement, ContentConfi
 from ui.basic import MovableTableView
 from core.database.query import get_actress_allname, get_serial_number
 from ui.widgets import ActressAvatarDropWidget
+from ui.widgets.actress_nav_page import ActressNavPage
 from ui.widgets.text.WikiTextEdit import WikiTextEdit
 from server.bridge import ServerBridge
 
@@ -937,6 +939,18 @@ class ModifyActressPage(LazyWidget):
         )
         notes_vlayout.addWidget(self.input_notes, 1)
 
+        self.actress_nav_page = ActressNavPage(config_path=Path(ACTRESS_NAV_BUTTONS_PATH))
+        nav_scroll = QScrollArea()
+        nav_scroll.setWidget(self.actress_nav_page)
+        nav_scroll.setWidgetResizable(True)
+        nav_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        nav_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        self.nav_panel = QWidget()
+        nav_layout = QVBoxLayout(self.nav_panel)
+        nav_layout.setContentsMargins(0, 0, 0, 0)
+        nav_layout.addWidget(nav_scroll)
+
         self.moveable_name.tableView.setMinimumHeight(160)
         self.moveable_name.tableView.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
@@ -1017,6 +1031,9 @@ class ModifyActressPage(LazyWidget):
         pane_notes = self._workspace_manager.split(
             pane_right, Placement.Right, ratio=0.4
         )
+        pane_external_link = self._workspace_manager.split(
+            pane_notes, Placement.Top, ratio=0.42
+        )
         # root: 头像 | 下方（表单 | 操作）
         pane_lower = self._workspace_manager.split(root, Placement.Bottom, ratio=0.6)
 
@@ -1035,6 +1052,9 @@ class ModifyActressPage(LazyWidget):
         )
         self._workspace_manager.fill_pane(
             pane_right, make_config("名字表", name_container, closeable=False)
+        )
+        self._workspace_manager.fill_pane(
+            pane_external_link, make_config("外部链接", self.nav_panel, closeable=False)
         )
         self._workspace_manager.fill_pane(
             pane_notes, make_config("自由记录", self.notes_panel, closeable=False)
@@ -1062,6 +1082,10 @@ class ModifyActressPage(LazyWidget):
 
     def bind_model(self):
         """双向绑定"""
+        self.actress_nav_page.set_name_providers(
+            self._get_primary_jp_name,
+            self._get_primary_cn_name,
+        )
         # 实际上下面都会有循环绑定的问题，后面需要改
         self.input_height.valueChanged.connect(self.vm.set_height)
         self.vm.heightChanged.connect(self.input_height.setValue)
@@ -1194,6 +1218,18 @@ class ModifyActressPage(LazyWidget):
     def update(self, actress_id: int):
         """加载"""
         self.vm.load(actress_id)
+
+    def _get_primary_name_field(self, key: str) -> str:
+        names = self.vm.get_actress_name() or []
+        if not names or not isinstance(names[0], dict):
+            return ""
+        return str(names[0].get(key, "") or "").strip()
+
+    def _get_primary_jp_name(self) -> str:
+        return self._get_primary_name_field("jp")
+
+    def _get_primary_cn_name(self) -> str:
+        return self._get_primary_name_field("cn")
 
     @Slot()
     def jump_minnano(self):

@@ -4,7 +4,7 @@ import logging
 import sqlite3
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QSizePolicy, QVBoxLayout
+from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout
 
 from config import DATABASE
 from core.database.db_queue import submit_db_raw
@@ -59,7 +59,7 @@ class SingleActressPage(LazyWidget):
 
         self.single_actress_info = SingleActressInfo()
         self.single_actress_info.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+            QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred
         )
 
         self.works_timeline = ActressWorkTimeline()
@@ -69,7 +69,17 @@ class SingleActressPage(LazyWidget):
 
         mainlayout = QVBoxLayout(self)
         mainlayout.setContentsMargins(0, 0, 0, 0)
-        mainlayout.addWidget(self.single_actress_info, 0, Qt.AlignmentFlag.AlignTop)
+        info_row = QHBoxLayout()
+        info_row.setContentsMargins(0, 0, 0, 0)
+        info_row.setSpacing(0)
+        info_row.addStretch(1)
+        info_row.addWidget(
+            self.single_actress_info,
+            0,
+            Qt.AlignmentFlag.AlignTop,
+        )
+        info_row.addStretch(1)
+        mainlayout.addLayout(info_row)
         mainlayout.addWidget(self.works_timeline, 1)
 
     def update(self, actress_id):

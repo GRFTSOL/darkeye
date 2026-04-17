@@ -99,6 +99,9 @@ USER_SHORTCUT_PATH = resource_path("data/shortcuts.json")  # 用户快捷键列�
 CRAWLER_NAV_BUTTONS_PATH = resource_path(
     "data/crawler_nav_buttons.json"
 )  # 手动导航按钮配置
+ACTRESS_NAV_BUTTONS_PATH = resource_path(
+    "data/actress_nav_buttons.json"
+)  # 女优外部链接按钮配置
 ADD_WORK_WORKSPACE_LAYOUT_PATH = resource_path(
     "data/add_work_workspace_layout.json"
 )  # 添加作品页 myads 工作区布局（随 data 备份）
