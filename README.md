@@ -44,6 +44,13 @@
 
 版本迁移时注意`更新浏览器插件`，由于爬虫的特殊性，这个爬虫很可能老失效。需要反馈然后人工修改。
 
+## mdcz项目nfo导入
+
+现已经支持[mdcz](https://github.com/ShotHeadman/mdcz)这个项目刮削后的nfo导入。
+这个专门的刮削器更强。
+👉 https://de4321.github.io/darkeye/usage/#mdcz-nfo
+
+
 ## Jvedio迁移数据
 👉 https://de4321.github.io/darkeye/usage/#jvedio
 
@@ -93,7 +100,7 @@
 - [x] NFO数据导入(测试中)
 - [x] mdcz nfo数据导入
 - [x] Jvedio数据导出NFO(测试中)
-- [ ] NFO数据导出(形成共识后开发，发现各种实现都不一样)
+- [ ] NFO数据导出(形成共识后开发，发现各种实现都不一样，现在数据还缺少点数据)
 - [x] 自动检测下载更新
 - [x] LLM翻译+一键覆盖翻译
 

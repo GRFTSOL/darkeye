@@ -111,7 +111,13 @@ Firefox 插件已加载（上一节的步骤）
 输入标准的番号一定要大写，然后点击添加，爬虫会自动的去整理
 
 
-### 方式四：导入NFO文件（开发中）
+### 导入 mdcz nfo文件
+
+![](assets/mdcznfo导入.jpg)
+在设置的这个界面，可以现在视频地址上加入，然后扫描导入就行。
+
+
+### 导入jedio NFO文件
 
 标准NFO文件的格式参考 https://kodi.wiki/view/NFO_files/Templates 其中的movie
 
