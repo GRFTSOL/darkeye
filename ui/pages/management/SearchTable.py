@@ -7,8 +7,9 @@ import logging
 from config import DATABASE, SQLPATH
 from ui.basic import ModelSearch
 from ui.base.SqliteQueryTableModel import SqliteQueryTableModel
-from ui.base.WorkCompletenessQueryTableModel import WorkCompletenessQueryTableModel
+from ui.base.WorkCompletenessQueryTableModel import WorkSummaryQueryTableModel
 from ui.widgets.work_completeness_leds import WorkCompletenessBitsDelegate
+from ui.widgets.work_summary_edit_delegate import WorkSummaryEditDelegate
 from darkeye_ui import LazyWidget
 from darkeye_ui.components.token_table_view import TokenTableView
 from darkeye_ui.components.button import Button
@@ -25,6 +26,7 @@ class SearchTable(LazyWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._completeness_delegate = WorkCompletenessBitsDelegate(self)
+        self._edit_delegate = WorkSummaryEditDelegate(self)
         self._completeness_col_idx = -1
         self._completeness_score_col_idx = -1
 
@@ -53,7 +55,7 @@ class SearchTable(LazyWidget):
             return False
 
         if rel_name == self._WORK_SUMMARY_SQL:
-            model = WorkCompletenessQueryTableModel(self.query_sql, DATABASE, parent=self)
+            model = WorkSummaryQueryTableModel(self.query_sql, DATABASE, parent=self)
         else:
             model = SqliteQueryTableModel(self.query_sql, DATABASE, self)
         if not model.refresh():
@@ -73,28 +75,30 @@ class SearchTable(LazyWidget):
             return
 
         try:
-            bits_col = headers.index(self._COMPLETENESS_BITS_COL)
-            score_col = headers.index(self._COMPLETENESS_SCORE_COL)
+            bits_col_sql = headers.index(self._COMPLETENESS_BITS_COL)
+            score_col_sql = headers.index(self._COMPLETENESS_SCORE_COL)
         except ValueError:
             return
+
+        col_off = 1  # WorkSummaryQueryTableModel 左侧虚拟「编辑」列
+        bits_col = bits_col_sql + col_off
+        score_col = score_col_sql + col_off
 
         self._completeness_col_idx = bits_col
         self._completeness_score_col_idx = score_col
         self.view.setItemDelegateForColumn(bits_col, self._completeness_delegate)
         self.view.hideColumn(score_col)
-        # 将完整度列放到第 3 列（视觉索引 2）：work_id, serial_number, completeness_bits
-        self.view.horizontalHeader().moveSection(
-            self.view.horizontalHeader().visualIndex(bits_col),
-            2,
-        )
+        self.view.setItemDelegateForColumn(0, self._edit_delegate)
+        # 编辑、work_id、serial_number 之后为完整度：视觉索引 3
+        hdr = self.view.horizontalHeader()
+        hdr.moveSection(hdr.visualIndex(bits_col), 3)
         self.view.resizeColumnToContents(bits_col)
 
     def _clear_completeness_delegate(self) -> None:
+        default_del = self.view.itemDelegate()
+        self.view.setItemDelegateForColumn(0, default_del)
         if self._completeness_col_idx >= 0:
-            self.view.setItemDelegateForColumn(
-                self._completeness_col_idx,
-                self.view.itemDelegate(),
-            )
+            self.view.setItemDelegateForColumn(self._completeness_col_idx, default_del)
         if self._completeness_score_col_idx >= 0:
             self.view.showColumn(self._completeness_score_col_idx)
         self._completeness_col_idx = -1
@@ -149,7 +153,10 @@ class SearchTable(LazyWidget):
         if not self.model.refresh():
             QMessageBox.critical(self, "刷新错误", "刷新数据失败，请查看日志。")
             return
-        self.view.sortByColumn(1, Qt.SortOrder.AscendingOrder)
+        sort_serial_col = (
+            2 if isinstance(self.model, WorkSummaryQueryTableModel) else 1
+        )
+        self.view.sortByColumn(sort_serial_col, Qt.SortOrder.AscendingOrder)
         logging.info("数据已刷新")
 
     @Slot()
