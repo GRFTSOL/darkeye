@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QGridLayout, QWidget
 
 from config import ACTRESS_NAV_BUTTONS_PATH
 from darkeye_ui.components.button import Button
+from utils.reveal_in_file_manager import reveal_file_in_os_file_manager
 
 _TOKEN_PATTERN = re.compile(r"\{([^{}]+)\}")
 _SUPPORTED_TOKENS = {"jp_name", "cn_name"}
@@ -46,6 +47,19 @@ class ActressNavPage(QWidget):
             btn.setToolTip(description)
             layout.addWidget(btn, row, col)
             btn.clicked.connect(self._make_click_handler(cfg))
+
+        row = (len(self._button_configs) + columns - 1) // columns
+        btn_reveal_json = Button("定位 JSON 配置文件")
+        btn_reveal_json.setToolTip(
+            "在文件管理器中选中 actress_nav_buttons.json（Windows/macOS）；"
+            "其他系统则打开其所在文件夹"
+        )
+
+        def _reveal_nav_config() -> None:
+            reveal_file_in_os_file_manager(self._config_path)
+
+        btn_reveal_json.clicked.connect(_reveal_nav_config)
+        layout.addWidget(btn_reveal_json, row, 0, 1, 2)
 
     def _make_click_handler(self, cfg: dict):
         def _on_click():

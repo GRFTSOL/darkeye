@@ -1,15 +1,18 @@
+import json
+import logging
+from pathlib import Path
+from typing import Callable
+from webbrowser import open as open_browser
+
 from PySide6.QtWidgets import QGridLayout, QWidget
 from darkeye_ui.components.token_check_box import TokenCheckBox
 from darkeye_ui.components.icon_push_button import IconPushButton
 from darkeye_ui.components.button import Button
-import json
-import logging
-from webbrowser import open as open_browser
-from pathlib import Path
-from typing import Callable
 
 from config import CRAWLER_NAV_BUTTONS_PATH
+from utils.reveal_in_file_manager import reveal_file_in_os_file_manager
 from utils.utils import convert_fanza
+
 
 def _apply_serial_transform(serial: str, transform: str | None) -> str:
     """应用番号转换（如 fanza 格式、supjav 的 FC2 处理）。"""
@@ -56,6 +59,19 @@ class CrawlerManualNavPage(QWidget):
             btn.setToolTip(description)
             layout.addWidget(btn, row, col)
             btn.clicked.connect(self._make_click_handler(cfg))
+
+        row = (len(self._button_configs) + columns - 1) // columns
+        btn_reveal_json = Button("定位 JSON 配置文件")
+        btn_reveal_json.setToolTip(
+            "在文件管理器中选中 crawler_nav_buttons.json（Windows/macOS）；"
+            "其他系统则打开其所在文件夹"
+        )
+
+        def _reveal_nav_config() -> None:
+            reveal_file_in_os_file_manager(path)
+
+        btn_reveal_json.clicked.connect(_reveal_nav_config)
+        layout.addWidget(btn_reveal_json, row, 0, 1, 2)
 
     def _make_click_handler(self, cfg: dict):
         def _on_click():
