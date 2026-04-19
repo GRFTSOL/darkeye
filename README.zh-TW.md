@@ -68,24 +68,23 @@
 
 | **功能** | **說明** | **狀態** |
 | -------- | -------- | -------- |
-| **資料管理** | 影片、女優、男優、標籤的手動新增與增刪查改；部分爬蟲輔助 | ✅ |
-| **記錄** | 自慰、做愛、晨勃記錄的手動新增與增刪查改 | ✅ |
+| **數據管理** | 影片、女優、男優、標籤的手動新增與增刪查改；部分爬蟲輔助 | ✅ |
+| **私人資料記錄** | 自慰、做愛、晨勃記錄的手動新增與增刪查改 | ✅ |
 | **分析與圖表** | 分析圖表與資料展示（仍有部分未完成功能） | ✅ |
-| **擬物化 DVD** | 擬物化 DVD 陳列與收藏體驗 | ✅ |
-| **篩選** | 篩選作品頁面 | ✅ |
+| **擬物化 DVD 盒子陳列** | 擬物化 DVD 陳列與收藏體驗 | ✅ |
+| **篩選過濾展示** | 篩選作品頁面 | ✅ |
 | **瀏覽器擴充** | Chrome / Edge / Firefox 外掛沉浸式摘取；支援 javtxt、javlib、javdb 等互動式採集 | ✅ |
 | **多鏈路爬蟲** | javlib、avdanyuwiki、javtxt、javdb、minnano-av 等；正規片源爬取較有效，且易過盾 | ✅ |
-| **力導向圖** | 檢視關聯；約 1 萬節點下約 60 幀 | ✅ |
-| **本機影片** | 搜尋本機影片並進入爬蟲列表 | ✅ |
+| **關聯圖譜** | 檢視關聯；約 1 萬節點下約 60 幀 | ✅ |
+| **翻譯** | LLM 翻譯 + 一鍵覆蓋翻譯 | ✅ |
+| **mdcz NFO 匯入** | [mdcz](https://github.com/ShotHeadman/mdcz) 刮削 NFO 匯入 | ✅ |
+| **Jvedio NFO 匯入** | Jvedio 資料匯出 NFO（測試中） | ✅ |
+| **外鏈跳轉** | JSON 驅動外鏈跳轉外部網站，可自定義 | ✅ |
+| **本機影片連結** | 若本機已有影片，可將影片連結到資料庫 | ✅ |
 | **備份** | 備份系統，按私庫重建喜歡的番號 | ✅ |
-| **外鏈** | JSON 驅動外鏈跳轉，可自定義 | ✅ |
 | **主題** | 主題切換（3D 場景尚不完全跟隨明／暗） | ✅ |
 | **截圖** | 部分截圖能力；女優介面 `C` 鍵截圖 | ✅ |
-| **NFO 匯入** | NFO 資料匯入（測試中） | ✅ |
-| **mdcz NFO** | [mdcz](https://github.com/ShotHeadman/mdcz) 刮削 NFO 匯入 | ✅ |
-| **Jvedio NFO** | Jvedio 資料匯出 NFO（測試中） | ✅ |
 | **自動更新** | 自動檢測並下載更新 | ✅ |
-| **翻譯** | LLM 翻譯 + 一鍵覆蓋翻譯 | ✅ |
 
 ### 計劃與推進中
 
@@ -258,7 +257,7 @@
 <!-- Badge images -->
 
 [badge-readme-zh-CN]: https://img.shields.io/badge/README%20%C2%B7%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-555555?style=for-the-badge
-[badge-readme-zh-TW]: https://img.shields.io/badge/README%20%C2%B7%20%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87%EF%BC%88%E8%87%BA%E7%81%A3%EF%BC%89-2ea44f?style=for-the-badge
+[badge-readme-zh-TW]: https://img.shields.io/badge/README%20%C2%B7%20%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87-2ea44f?style=for-the-badge
 [badge-readme-ja]: https://img.shields.io/badge/README%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-555555?style=for-the-badge
 [badge-python]: https://img.shields.io/badge/Python-3.13-blue.svg
 [badge-framework]: https://img.shields.io/badge/framework-PySide6%20(Qt6)-orange

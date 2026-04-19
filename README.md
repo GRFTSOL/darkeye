@@ -4,7 +4,7 @@
   </a>
   <h1>DarkEye</h1>
   <p><strong>在暗黑界睁开一只眼</strong></p>
-  <p>一款完全本地、注重隐私的成人影片收藏与管理工具，支持浏览器插件沉浸式采集与拟物化 DVD 陈列。</p>
+  <p>一款完全本地、注重隐私的日本成人影片收藏与管理工具，支持浏览器插件沉浸式采集与拟物化 DVD 陈列。</p>
   <p>基于 PySide6 / Qt Quick 3D、SQLite、本地 FastAPI 与浏览器扩展协同，并含 C++ 力导向图加速；集采集、整理、分析与可视化于一体。</p>
   <br />
 
@@ -31,77 +31,23 @@
 </div>
 
 <p align="center">
-  <a href="#features">特性</a> •
-  <a href="#roadmap">开发方向</a> •
   <a href="#download">下载与插件</a> •
+  <a href="#features">特性</a> •
   <a href="#screenshots">界面预览</a> •
   <a href="#privacy">隐私与数据</a> •
   <a href="#migration">迁移与导入</a> •
   <a href="#crawler">爬虫说明</a> •
   <a href="#development">开发</a> •
-  <a href="#documentation">文档</a> •
   <a href="#community">社群</a> •
   <a href="#references">参考项目</a>
 </p>
 
 <div align="center">
   <a href="https://github.com/de4321/darkeye/releases" target="_blank">
-    <img src="./docs/assets/dvd.jpg" alt="DarkEye 拟物化 DVD 陈列" width="100%" />
+    <img src="./docs/assets/show.jpg" alt="DarkEye 拟物化 DVD 陈列" width="100%" />
   </a>
 </div>
 
----
-
-<a id="privacy"></a>
-
-## 隐私与数据
-
-- **数据与联网**：默认数据在程序旁的 `data/`（数据库、配置、封面与头像等，可在设置中改路径）。不会向第三方上传你的片库；联网主要来自爬虫与资源拉取，以及可选的更新检查（Cloudflare R2）、翻译（Google 或你自配的 LLM API）等。
-
----
-
-<a id="features"></a>
-
-## 特性
-
-### 已实现
-
-| **功能** | **说明** | **状态** |
-| -------- | -------- | -------- |
-| **资料管理** | 影片、女优、男优、标签的手动添加与增删查改；部分爬虫辅助 | ✅ |
-| **记录** | 撸管、做爱、晨勃记录的手动添加与增删查改 | ✅ |
-| **分析与图表** | 分析图表与数据展示（仍有部分未完成功能） | ✅ |
-| **拟物化 DVD** | 拟物化 DVD 陈列与收藏体验 | ✅ |
-| **筛选** | 筛选作品页面 | ✅ |
-| **浏览器扩展** | Chrome / Edge / Firefox 插件沉浸式摘取；支持 javtxt、javlib、javdb 等交互式采集 | ✅ |
-| **多链路爬虫** | javlib、avdanyuwiki、javtxt、javdb、minnano-av 等；正规片源爬取较有效，且易过盾 | ✅ |
-| **力导向图** | 查看关联；约 1 万节点下约 60 帧 | ✅ |
-| **本地视频** | 搜索本地视频并进入爬虫列表 | ✅ |
-| **备份** | 备份系统，按私库重建喜欢的番号 | ✅ |
-| **外链** | JSON 驱动外链跳转，可自定义 | ✅ |
-| **主题** | 主题切换（3D 场景尚不完全跟随时明/暗） | ✅ |
-| **截图** | 部分截图能力；女优界面 `C` 键截图 | ✅ |
-| **NFO 导入** | NFO 数据导入（测试中） | ✅ |
-| **mdcz NFO** | [mdcz](https://github.com/ShotHeadman/mdcz) 刮削 NFO 导入 | ✅ |
-| **Jvedio NFO** | Jvedio 数据导出 NFO（测试中） | ✅ |
-| **自动更新** | 自动检测并下载更新 | ✅ |
-| **翻译** | LLM 翻译 + 一键覆盖翻译 | ✅ |
-
-### 计划与推进中
-
-| **功能** | **说明** | **状态** |
-| -------- | -------- | -------- |
-| **NFO 导出** | 形成共识后开发；各工具实现不一，当前数据字段仍不齐 | 🔄 |
-
----
-
-<a id="roadmap"></a>
-
-## 开发方向
-
-- **1.0**：基础工具完善，含力导向图探索影片关系、收藏体验增强
-- **2.0**：UGC、分布式同步数据
-- **3.0**：机器学习推荐算法
 
 ---
 
@@ -138,6 +84,41 @@
 
 ---
 
+<a id="features"></a>
+
+## 特性
+
+### 已实现
+
+| **功能** | **说明** | **状态** |
+| -------- | -------- | -------- |
+| **数据管理** | 影片、女优、男优、标签的手动添加与增删查改；部分爬虫辅助 | ✅ |
+| **私有数据记录** | 撸管、做爱、晨勃记录的手动添加与增删查改 | ✅ |
+| **分析与图表** | 分析图表与数据展示（仍有部分未完成功能） | ✅ |
+| **拟物化DVD盒子陈列** | 拟物化 DVD 陈列与收藏体验 | ✅ |
+| **筛选过滤展示** | 筛选作品页面 | ✅ |
+| **浏览器扩展** | Chrome / Edge / Firefox 插件沉浸式摘取；支持 javtxt、javlib、javdb 等交互式采集 | ✅ |
+| **多链路爬虫** | javlib、avdanyuwiki、javtxt、javdb、minnano-av 等；正规片源爬取较有效，且易过盾 | ✅ |
+| **关联图谱** | 查看关联；约 1 万节点下约 60 帧 | ✅ |
+| **翻译** | LLM 翻译 + 一键覆盖翻译 | ✅ |
+| **mdcz NFO导入** | [mdcz](https://github.com/ShotHeadman/mdcz) 刮削 NFO 导入 | ✅ |
+| **Jvedio NFO导入** | Jvedio 数据导出 NFO（测试中） | ✅ |
+| **外链跳转** | JSON 驱动外链跳转外部网站，可自定义 | ✅ |
+| **本地视频链接** | 如果本地存在视频可将视频链接到数据库中 | ✅ |
+| **备份** | 备份系统，按私库重建喜欢的番号 | ✅ |
+| **主题** | 主题切换（3D 场景尚不完全跟随时明/暗） | ✅ |
+| **截图** | 部分截图能力；女优界面 `C` 键截图 | ✅ |
+| **自动更新** | 自动检测并下载更新 | ✅ |
+
+
+### 计划与推进中
+
+| **功能** | **说明** | **状态** |
+| -------- | -------- | -------- |
+| **NFO 导出** | 形成共识后开发；各工具实现不一，当前数据字段仍不齐 | 🔄 |
+
+---
+
 <a id="migration"></a>
 
 ## 迁移与导入
@@ -151,6 +132,15 @@
 ### Jvedio 迁移数据
 
 👉 [在线文档：Jvedio](https://de4321.github.io/darkeye/usage/#jvedio)
+
+---
+
+<a id="privacy"></a>
+
+## 隐私与数据
+
+- **数据与联网**：默认数据在程序旁的 `data/`（数据库、配置、封面与头像等，可在设置中改路径）。不会向第三方上传你的片库；联网主要来自爬虫与资源拉取，以及可选的更新检查（Cloudflare R2）、翻译（Google 或你自配的 LLM API）等。
+
 
 ---
 
@@ -210,14 +200,6 @@
 
 ---
 
-<a id="documentation"></a>
-
-## 文档
-
-👉 [完整在线文档](https://de4321.github.io/darkeye/)
-
----
-
 <a id="community"></a>
 
 ## 社群
@@ -258,7 +240,7 @@
 <!-- Badge images -->
 
 [badge-readme-zh-CN]: https://img.shields.io/badge/README%20%C2%B7%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-2ea44f?style=for-the-badge
-[badge-readme-zh-TW]: https://img.shields.io/badge/README%20%C2%B7%20%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87%EF%BC%88%E8%87%BA%E7%81%A3%EF%BC%89-555555?style=for-the-badge
+[badge-readme-zh-TW]: https://img.shields.io/badge/README%20%C2%B7%20%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87-555555?style=for-the-badge
 [badge-readme-ja]: https://img.shields.io/badge/README%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-555555?style=for-the-badge
 [badge-python]: https://img.shields.io/badge/Python-3.13-blue.svg
 [badge-framework]: https://img.shields.io/badge/framework-PySide6%20(Qt6)-orange
