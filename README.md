@@ -55,15 +55,22 @@
 ## 下载与使用
 
 <div align="center">
-[![下载 Windows 版本][badge-dl-app]][link-dl-app]
+  <a href="https://github.com/de4321/darkeye/releases/download/v1.2.4/DarkEye-v1.2.4.zip">
+    <img src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Windows-blue?style=for-the-badge&logo=windows" alt="下载 Windows 版本" />
+  </a>
 </div>
 
 下载程序并解压，运行 exe 即可；浏览器扩展随软件附带在 `extensions` 目录内,一般情况下无需额外下载插件。若需爬虫采集，请按下方文档安装**对应浏览器的一种**扩展。
 
 除非插件单独更新，一般**不需要**单独下载插件。
 <div align="center">
-[![下载 Chrome/Edge 插件][badge-dl-chrome]][link-dl-chrome]　　
-[![下载 Firefox 插件][badge-dl-firefox]][link-dl-firefox]
+  <a href="https://github.com/de4321/darkeye/releases/download/v1.2.4/chrome_capture.zip">
+    <img src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Chrome%2FEdge%20%E6%8F%92%E4%BB%B6-blue?style=for-the-badge" alt="下载 Chrome/Edge 插件" />
+  </a>
+  　　
+  <a href="https://github.com/de4321/darkeye/releases/download/v1.2.4/firefox_capture.zip">
+    <img src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Firefox%20%E6%8F%92%E4%BB%B6-blue?style=for-the-badge" alt="下载 Firefox 插件" />
+  </a>
 </div>
 
 ### 插件安装
@@ -250,9 +257,6 @@
 [badge-release]: https://img.shields.io/github/v/release/de4321/darkeye
 [badge-stars]: https://img.shields.io/github/stars/de4321/darkeye?style=social
 [badge-downloads]: https://img.shields.io/github/downloads/de4321/darkeye/total
-[badge-dl-app]: https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Windows-blue?style=for-the-badge&logo=windows
-[badge-dl-chrome]: https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Chrome%2FEdge%20%E6%8F%92%E4%BB%B6-blue?style=for-the-badge
-[badge-dl-firefox]: https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Firefox%20%E6%8F%92%E4%BB%B6-blue?style=for-the-badge
 
 <!-- Links -->
 
@@ -261,6 +265,3 @@
 [link-website]: https://de4321.github.io/darkeye-webpage/
 [link-discord]: https://discord.gg/3thnEguWUk
 [link-releases]: https://github.com/de4321/darkeye/releases
-[link-dl-app]: https://github.com/de4321/darkeye/releases/download/v1.2.4/DarkEye-v1.2.4.zip
-[link-dl-chrome]: https://github.com/de4321/darkeye/releases/download/v1.2.4/chrome_capture.zip
-[link-dl-firefox]: https://github.com/de4321/darkeye/releases/download/v1.2.4/firefox_capture.zip
