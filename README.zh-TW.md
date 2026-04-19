@@ -1,131 +1,284 @@
-# DarkEye - 在暗黑界睜開一隻眼
+<div align="center">
+  <a href="https://de4321.github.io/darkeye-webpage/" target="_blank">
+    <img src="https://raw.githubusercontent.com/de4321/darkeye/main/resources/icons/logo.svg" alt="DarkEye" width="128" />
+  </a>
+  <h1>DarkEye</h1>
+  <p><strong>在暗黑界睜開一隻眼</strong></p>
+  <p>一款完全在本機、注重隱私的成人影片收藏與管理工具，支援瀏覽器外掛沉浸式採集與擬物化 DVD 陳列。</p>
+  <p>基於 PySide6 / Qt Quick 3D、SQLite、本機 FastAPI 與瀏覽器擴充功能協同，並含 C++ 力導向圖加速；集採集、整理、分析與視覺化於一體。</p>
+  <br />
 
-[![README · 简体中文](https://img.shields.io/badge/README%20%C2%B7%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-555555?style=for-the-badge)](README.md)
-[![README · 繁體中文](https://img.shields.io/badge/README%20%C2%B7%20%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87%EF%BC%88%E8%87%BA%E7%81%A3%EF%BC%89-2ea44f?style=for-the-badge)](README.zh-TW.md)
-[![README · 日本語](https://img.shields.io/badge/README%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-555555?style=for-the-badge)](README.ja.md)
+[![README · 简体中文][badge-readme-zh-CN]](README.md)
+[![README · 繁體中文][badge-readme-zh-TW]](README.zh-TW.md)
+[![README · 日本語][badge-readme-ja]](README.ja.md)
 
-> 一款完全在本機、注重隱私的成人影片收藏與管理工具，支援瀏覽器外掛沉浸式採集與擬物化 DVD 陳列。基於 PySide6 / Qt Quick 3D、SQLite、本機 FastAPI 與瀏覽器擴充功能協同，並含 C++ 力導向圖加速；集採集、整理、分析與視覺化於一體。
+![Python][badge-python]
+![Framework][badge-framework]
+![Platform][badge-platform]
+![License][badge-license]
+![GitHub last commit][badge-last-commit]
+![GitHub release][badge-release]
+![GitHub Repo stars][badge-stars]
+![GitHub all releases][badge-downloads]
+
+<br />
+
+[📖 線上文件][link-docs]
+　[🎥 影片介紹][link-video]
+　[🌐 官網][link-website]
+　[💬 Discord][link-discord]
+
+</div>
+
+<p align="center">
+  <a href="#features">特性</a> •
+  <a href="#roadmap">開發方向</a> •
+  <a href="#download">下載與外掛</a> •
+  <a href="#screenshots">介面預覽</a> •
+  <a href="#privacy">隱私與資料</a> •
+  <a href="#migration">遷移與匯入</a> •
+  <a href="#crawler">爬蟲說明</a> •
+  <a href="#development">開發</a> •
+  <a href="#documentation">文件</a> •
+  <a href="#community">社群</a> •
+  <a href="#references">參考專案</a>
+</p>
+
+<div align="center">
+  <a href="https://github.com/de4321/darkeye/releases" target="_blank">
+    <img src="./docs/assets/dvd.jpg" alt="DarkEye 擬物化 DVD 陳列" width="100%" />
+  </a>
+</div>
+
+---
+
+<a id="privacy"></a>
+
+## 隱私與資料
 
 - **資料與連線**：預設資料在程式旁的 `data/`（資料庫、設定、封面與頭像等，可在設定中調整路徑）。不會向第三方上傳你的片庫；連線主要來自爬蟲與資源拉取，以及選用的更新檢查（GitHub Releases）、翻譯（Google 或你自備的 LLM API）等。
 
-![Python](https://img.shields.io/badge/Python-3.13-blue.svg)
-![Framework](https://img.shields.io/badge/framework-PySide6%20(Qt6)-orange)
-![Platform](https://img.shields.io/badge/Platform-Windows-blue)
-![License](https://img.shields.io/github/license/de4321/darkeye)
-![GitHub last commit](https://img.shields.io/github/last-commit/de4321/darkeye)
-![GitHub release](https://img.shields.io/github/v/release/de4321/darkeye)
-![GitHub Repo stars](https://img.shields.io/github/stars/de4321/darkeye?style=social)
-![GitHub all releases](https://img.shields.io/github/downloads/de4321/darkeye/total)
+---
 
-[📖 線上文件](https://de4321.github.io/darkeye/)
-[🎥 影片介紹](https://youtu.be/VCsw1D0ccgY?si=e9typx4kPnzaVFZq)
-[🌐 官網](https://de4321.github.io/darkeye-webpage/)
-[💬 Discord](https://discord.gg/3thnEguWUk)
-
-# 💡 快速開始
-## 下載
-[![下載 Windows 版本](https://img.shields.io/badge/%20下載-Windows%20-blue?style=for-the-badge&logo=windows)](https://github.com/de4321/darkeye/releases/download/v1.2.3/DarkEye-v1.2.3.zip)
-下載程式，解壓，開啟exe即可使用。外掛隨著軟體附帶在目錄下面`extensions`資料夾內。可以不下載下面的選項。
-
-[![下載Chrome/Edge外掛](https://img.shields.io/badge/%20下載-Chrome/Edge外掛%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.3/chrome_capture.zip)按照下面的外掛安裝，否則爬蟲收集功能將不可用。外掛選擇自己的瀏覽器，只下載對應的一個就行了。
-
-[![下載FireFox外掛](https://img.shields.io/badge/%20下載-Firefox外掛%20-blue?style=for-the-badge)](https://github.com/de4321/darkeye/releases/download/v1.2.3/firefox_capture.zip)按照下面的外掛安裝，否則爬蟲收集功能將不可用。外掛選擇自己的瀏覽器，只下載對應的一個就行了。
-
-## 外掛安裝
-👉 https://de4321.github.io/darkeye/usage/#_2
-
-## 使用
-👉 https://de4321.github.io/darkeye/usage/#_3
-
-## 版本遷移
-👉 https://de4321.github.io/darkeye/faq/
-
-現在正常情況下在設定裡點選自動更新就行了，但是這個只更新了軟體的本體，外掛還是要手動去下載更新的。目前似乎找不到一種更好的更新外掛的方式，主要是這個外掛上架不了市場。
-
-版本遷移時注意`更新瀏覽器外掛`，由於爬蟲的特殊性，這個爬蟲很可能老失效。需要反饋然後人工修改。
-
-## Jvedio遷移資料
-👉 https://de4321.github.io/darkeye/usage/#jvedio
-
-# 社群
-
-有問題或想法？歡迎加入 Discord 社群交流：https://discord.gg/3thnEguWUk
-
-- 新手支持
-文件閱讀中若有疑問，歡迎提問；線上文件仍在持續完善中。
-
-- 提前知道進展
-“新功能、開發進展、預釋出版本會先在 Discord 討論”
-
-- 參與方向討論
-“想影響 roadmap，可以來參與討論”
-
-# 參考專案
-
-- [mdcz](https://github.com/ShotHeadman/mdcz) 參考其中從本地影片名字中提取番號的程式碼，並且嘗試去適配其nfo
-- [Jvedio](https://github.com/hitchao/Jvedio) 接入其資料庫，將資料匯出
-- [JavSP](https://github.com/Yuukiy/JavSP) 看看某些網站的爬蟲邏輯
-- [JAV-JHS](https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs) 參考其javdb FC2 資訊
-
-
-# 🚀 開發方向
-- 1.0 基礎工具的完善，包括力導向圖探索影片之間的關係，收藏體驗的增強
-- 2.0 UGC，分散式同步資料
-- 3.0 機器學習推薦演算法
+<a id="features"></a>
 
 ## 特性
-- [x] 影片，女優，男優，標籤的手動新增，增刪查改，部分爬蟲
-- [x] 自慰，做愛，晨勃記錄的手動新增，增刪查改
-- [x] 分析圖表,資料展示,還有部分未完成
-- [x] 擬物化dvd展示
-- [x] 篩選作品頁面
-- [x] chrome/edge/firefox爬蟲外掛，沉浸式摘取資訊，支援javtxt,javlib,javdb互動式採集資訊，
-- [x] 多鏈路爬蟲，主要使用javlib,avdanyuwiki,javtxt,javdb,minnano-av,對於正規片的爬取很有效，且易過盾。
-- [x] 力導向圖，檢視關聯，承受1w節點60幀率
-- [x] 搜尋本地影片，進入爬蟲列表
-- [x] 備份系統，按私庫重建喜歡的番號
-- [x] json驅動外鏈跳轉，可自定義。
-- [x] 主題更改，剩下3D場景沒有更改明亮黑暗
-- [x] 部分截圖功能，女優介面C鍵截圖
-- [x] NFO資料匯入(測試中)
-- [x] Jvedio資料匯出NFO(測試中)
-- [ ] NFO資料匯出(形成共識後開發)
-- [x] 自動檢測下載更新
-- [x] LLM翻譯+一鍵覆蓋翻譯
 
+### 已實現
 
+| **功能** | **說明** | **狀態** |
+| -------- | -------- | -------- |
+| **資料管理** | 影片、女優、男優、標籤的手動新增與增刪查改；部分爬蟲輔助 | ✅ |
+| **記錄** | 自慰、做愛、晨勃記錄的手動新增與增刪查改 | ✅ |
+| **分析與圖表** | 分析圖表與資料展示（仍有部分未完成功能） | ✅ |
+| **擬物化 DVD** | 擬物化 DVD 陳列與收藏體驗 | ✅ |
+| **篩選** | 篩選作品頁面 | ✅ |
+| **瀏覽器擴充** | Chrome / Edge / Firefox 外掛沉浸式摘取；支援 javtxt、javlib、javdb 等互動式採集 | ✅ |
+| **多鏈路爬蟲** | javlib、avdanyuwiki、javtxt、javdb、minnano-av 等；正規片源爬取較有效，且易過盾 | ✅ |
+| **力導向圖** | 檢視關聯；約 1 萬節點下約 60 幀 | ✅ |
+| **本機影片** | 搜尋本機影片並進入爬蟲列表 | ✅ |
+| **備份** | 備份系統，按私庫重建喜歡的番號 | ✅ |
+| **外鏈** | JSON 驅動外鏈跳轉，可自定義 | ✅ |
+| **主題** | 主題切換（3D 場景尚不完全跟隨明／暗） | ✅ |
+| **截圖** | 部分截圖能力；女優介面 `C` 鍵截圖 | ✅ |
+| **NFO 匯入** | NFO 資料匯入（測試中） | ✅ |
+| **mdcz NFO** | [mdcz](https://github.com/ShotHeadman/mdcz) 刮削 NFO 匯入 | ✅ |
+| **Jvedio NFO** | Jvedio 資料匯出 NFO（測試中） | ✅ |
+| **自動更新** | 自動檢測並下載更新 | ✅ |
+| **翻譯** | LLM 翻譯 + 一鍵覆蓋翻譯 | ✅ |
 
-擬物化的dvd
+### 計劃與推進中
+
+| **功能** | **說明** | **狀態** |
+| -------- | -------- | -------- |
+| **NFO 匯出** | 形成共識後開發；各工具實作不一，目前資料欄位仍不齊 | 🔄 |
+
+---
+
+<a id="roadmap"></a>
+
+## 開發方向
+
+- **1.0**：基礎工具完善，含力導向圖探索影片關係、收藏體驗增強
+- **2.0**：UGC、分散式同步資料
+- **3.0**：機器學習推薦演算法
+
+---
+
+<a id="download"></a>
+
+## 下載與外掛
+
+<div align="center">
+
+[![下載 Windows 版本][badge-dl-app]][link-dl-app]
+
+<br />
+
+[![下載 Chrome/Edge 外掛][badge-dl-chrome]][link-dl-chrome]　　
+[![下載 Firefox 外掛][badge-dl-firefox]][link-dl-firefox]
+
+</div>
+
+下載程式並解壓，執行 exe 即可；瀏覽器擴充功能隨軟體附帶在 `extensions` 目錄內。若需爬蟲採集，請依下方文件安裝**對應瀏覽器的一種**外掛。
+
+### 外掛安裝
+
+👉 [線上文件：外掛安裝](https://de4321.github.io/darkeye/usage/#_2)
+
+### 使用說明
+
+👉 [線上文件：使用](https://de4321.github.io/darkeye/usage/#_3)
+
+### 版本與更新
+
+👉 [常見問題：更新與遷移](https://de4321.github.io/darkeye/faq/)
+
+設定中可自動更新**軟體本體**；瀏覽器外掛因無法上架商店，仍需在 [Releases][link-releases] 手動下載更新。遷移版本時請留意**更新瀏覽器外掛**；爬蟲易隨站台策略失效，需回饋後人工維護。軟體不解決代理問題——目標站台能在瀏覽器開啟，一般即可爬取。
+
+---
+
+<a id="migration"></a>
+
+## 遷移與匯入
+
+### mdcz 專案 NFO 匯入
+
+已支援 [mdcz](https://github.com/ShotHeadman/mdcz) 刮削產出的 NFO 匯入。
+
+👉 [線上文件：mdcz NFO](https://de4321.github.io/darkeye/usage/#mdcz-nfo)
+
+### Jvedio 遷移資料
+
+👉 [線上文件：Jvedio](https://de4321.github.io/darkeye/usage/#jvedio)
+
+---
+
+<a id="screenshots"></a>
+
+## 介面預覽
+
+### 擬物化 DVD
+
 ![收藏](docs/assets/dvd.jpg)
+
 ![展開](docs/assets/dvd2.jpg)
+
 ![女優](docs/assets/actress.jpg)
 
-圖譜發現關係
+### 力導向圖
+
 ![力導向圖](docs/assets/directforceview.jpg)
-分析研究資料
+
+### 分析圖表
+
 ![圖表](docs/assets/chart.jpg)
+
+### 瀑布流
+
 ![多作品](docs/assets/mutiwork.jpg)
+
+### 作品編輯
+
 ![編輯介面](docs/assets/edit.jpg)
 
-下面以javtxt為例展示爬蟲外掛，開啟外掛後，會與本地互動，可點選新增，自動啟動爬蟲爬取資訊到本地，另外支援javlib與javdb。注意下面的這個中間的收藏與收錄在網站上是沒有的，只有開啟外掛與本地軟體後才會出現。
-![javtxt網站為例](docs/assets/capture.JPG)
+### 瀏覽器外掛（以 javtxt 為例）
 
-## 爬蟲
-目前爬蟲對於作品只爬取釋出時間，導演，中日文標題與劇情，女優，男優(如果有)，標籤，封面圖片，影片長度，製作商，廠牌，系列，劇照等資訊。
+開啟外掛後與本機互動，可點選新增並自動觸發爬蟲寫入本機，另支援 javlib、javdb。畫面中的「收藏／收錄」等能力僅在連線本機軟體時可用。
 
-對女優資訊的爬取只爬頭像，生日，出道日，三維，身高罩杯，與曾用名，目前沒有曾用名的更新機制。會有一個問題，如果一開始用的日文名是曾用名，則會有問題。
+![javtxt 網站為例](docs/assets/capture.JPG)
 
-測試下來第一次爬蟲一定觸發javlib盾，然後基本上爬100次會遇到javdb的點選盾，互動點掉就行了。
+---
 
-軟體不解決代理問題，目標網站能用瀏覽器開啟就是能爬。
+<a id="crawler"></a>
 
+## 爬蟲說明
 
-# 🚀 開發
-👉 請訪問：https://de4321.github.io/darkeye/development/
+目前爬蟲對作品會盡力取得：釋出時間、導演、中日文標題與劇情、女優、男優（若有）、標籤、封面、片長、製作商、廠牌、系列、劇照等。
 
+對女優資訊主要取得：頭像、生日、出道日、三維、身高罩杯、曾用名（尚無曾用名更新機制；若初始使用曾用名可能導致資料問題）。
 
-# 📚 文件
-👉 完整文件請訪問：https://de4321.github.io/darkeye/
+首次爬取往往會觸發 javlib 盾；約百次量級可能遇到 javdb 點選盾，依頁面提示操作即可。
 
+---
 
+<a id="development"></a>
 
+## 開發
+
+👉 [開發文件](https://de4321.github.io/darkeye/development/)
+
+---
+
+<a id="documentation"></a>
+
+## 文件
+
+👉 [完整線上文件](https://de4321.github.io/darkeye/)
+
+---
+
+<a id="community"></a>
+
+## 社群
+
+有問題或想法？歡迎加入 Discord：[加入社群][link-discord]
+
+- **新手支援**：文件閱讀中有疑問歡迎提問；線上文件持續完善中。
+- **提前獲知進展**：新功能、開發進展與預釋出版本會先在 Discord 討論。
+- **參與方向**：想影響 roadmap，歡迎來討論。
+
+---
+
+<a id="references"></a>
+
+## 參考專案
+
+- [mdcz](https://github.com/ShotHeadman/mdcz)：從本機影片檔名提取番號的程式碼參考，並嘗試適配其 NFO
+- [Jvedio](https://github.com/hitchao/Jvedio)：資料庫接入與匯出
+- [JavSP](https://github.com/Yuukiy/JavSP)：部分站點爬蟲邏輯參考
+- [JAV-JHS](https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs)：javdb、FC2 等資訊參考
+- [JAV_MovieManager](https://github.com/4evergaeul/JAV_MovieManager)
+- [stash](https://github.com/stashapp/stash)
+- [AMMDS](https://github.com/QYG2297248353/AMMDS-Docker)
+- [mdc-ng](https://github.com/mdc-ng/mdc-ng)
+
+---
+
+## 貢獻者
+
+<a href="https://github.com/de4321/darkeye/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=de4321/darkeye" alt="Contributors" width="500" />
+</a>
+
+---
+
+<div align="center" style="color: gray;">DarkEye — 在本機收藏，安心整理。</div>
+
+<!-- Badge images -->
+
+[badge-readme-zh-CN]: https://img.shields.io/badge/README%20%C2%B7%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-555555?style=for-the-badge
+[badge-readme-zh-TW]: https://img.shields.io/badge/README%20%C2%B7%20%E7%B9%81%E9%AB%94%E4%B8%AD%E6%96%87%EF%BC%88%E8%87%BA%E7%81%A3%EF%BC%89-2ea44f?style=for-the-badge
+[badge-readme-ja]: https://img.shields.io/badge/README%20%C2%B7%20%E6%97%A5%E6%9C%AC%E8%AA%9E-555555?style=for-the-badge
+[badge-python]: https://img.shields.io/badge/Python-3.13-blue.svg
+[badge-framework]: https://img.shields.io/badge/framework-PySide6%20(Qt6)-orange
+[badge-platform]: https://img.shields.io/badge/Platform-Windows-blue
+[badge-license]: https://img.shields.io/github/license/de4321/darkeye
+[badge-last-commit]: https://img.shields.io/github/last-commit/de4321/darkeye
+[badge-release]: https://img.shields.io/github/v/release/de4321/darkeye
+[badge-stars]: https://img.shields.io/github/stars/de4321/darkeye?style=social
+[badge-downloads]: https://img.shields.io/github/downloads/de4321/darkeye/total
+[badge-dl-app]: https://img.shields.io/badge/%E4%B8%8B%E8%BC%89-Windows-blue?style=for-the-badge&logo=windows
+[badge-dl-chrome]: https://img.shields.io/badge/%E4%B8%8B%E8%BC%89-Chrome%2FEdge%20%E5%A4%96%E6%8E%9B-blue?style=for-the-badge
+[badge-dl-firefox]: https://img.shields.io/badge/%E4%B8%8B%E8%BC%89-Firefox%20%E5%A4%96%E6%8E%9B-blue?style=for-the-badge
+
+<!-- Links -->
+
+[link-docs]: https://de4321.github.io/darkeye/
+[link-video]: https://youtu.be/VCsw1D0ccgY?si=e9typx4kPnzaVFZq
+[link-website]: https://de4321.github.io/darkeye-webpage/
+[link-discord]: https://discord.gg/3thnEguWUk
+[link-releases]: https://github.com/de4321/darkeye/releases
+[link-dl-app]: https://github.com/de4321/darkeye/releases/download/v1.2.4/DarkEye-v1.2.4.zip
+[link-dl-chrome]: https://github.com/de4321/darkeye/releases/download/v1.2.4/chrome_capture.zip
+[link-dl-firefox]: https://github.com/de4321/darkeye/releases/download/v1.2.4/firefox_capture.zip
