@@ -4,7 +4,7 @@
   </a>
   <h1>DarkEye</h1>
   <p><strong>在暗黑界睁开一只眼</strong></p>
-  <p>一款完全本地、注重隐私的日本成人影片收藏与管理工具，支持浏览器插件沉浸式采集与拟物化 DVD 盒子陈列。集采集、整理、分析与可视化于一体。</p>
+  <p>一款完全本地、注重隐私的日本成人影片收藏与信息管理工具，支持浏览器插件沉浸式采集与拟物化 DVD 盒子陈列。集采集、整理、分析与可视化于一体。</p>
   <br />
 
 [![README · 简体中文][badge-readme-zh-CN]](README.md)
@@ -36,7 +36,7 @@
   <a href="#privacy">隐私与数据</a> •
   <a href="#migration">迁移与导入</a> •
   <a href="#crawler">爬虫说明</a> •
-  <a href="#development">开发</a> •
+  <a href="#development">开发与技术</a> •
   <a href="#community">社群</a> •
   <a href="#references">参考项目</a>
 </p>
@@ -58,9 +58,17 @@
   <a href="https://github.com/de4321/darkeye/releases/download/v1.2.4/DarkEye-v1.2.4.zip">
     <img src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Windows-blue?style=for-the-badge&logo=windows" alt="下载 Windows 版本" />
   </a>
+  　　
+  <a href="https://darkeye.win/DarkEye-v1.2.4.zip">
+    <img src="https://img.shields.io/badge/%E5%A4%87%E7%94%A8%E4%B8%8B%E8%BD%BD-WINDOWS-green?style=for-the-badge&logo=windows" alt="备用下载 Windows" />
+  </a>
 </div>
 
-下载程序并解压，运行 exe 即可；浏览器扩展随软件附带在 `extensions` 目录内,一般情况下无需额外下载插件。若需爬虫采集，请按下方文档安装**对应浏览器的一种**扩展。
+下载程序并解压，运行 exe 即可；浏览器扩展随软件附带在 `extensions` 目录内。若需爬虫采集，请按下方文档安装**对应浏览器的一种**扩展。
+
+### 浏览器扩展安装
+
+👉 [在线文档：浏览器扩展安装](https://de4321.github.io/darkeye/usage/#_2)
 
 除非插件单独更新，一般**不需要**单独下载插件。
 <div align="center">
@@ -73,10 +81,6 @@
   </a>
 </div>
 
-### 插件安装
-
-👉 [在线文档：插件安装](https://de4321.github.io/darkeye/usage/#_2)
-
 ### 使用说明
 
 👉 [在线文档：使用](https://de4321.github.io/darkeye/usage/#_3)
@@ -85,7 +89,9 @@
 
 👉 [常见问题：更新与迁移](https://de4321.github.io/darkeye/faq/)
 
-设置中可自动更新**软件本体**；浏览器扩展因无法上架商店，但是**插件**会在软件`extensions` 目录更新，需要**手动去浏览器重新加载**。插件另外可在[Releases][link-releases] 手动下载。迁移版本时请关注**更新浏览器插件**；爬虫易随站点策略失效，需反馈后人工维护。软件不解决代理问题——目标站点能在浏览器打开，一般即可爬取。
+设置中可自动更新**软件本体**；浏览器扩展因无法上架商店，但是**插件**会在软件`extensions` 目录更新，需要**手动去浏览器重新加载**。插件另外可在[Releases][link-releases] 手动下载。
+
+迁移版本时请**更新浏览器插件**；爬虫易随站点策略失效，需反馈后人工维护。软件不解决代理问题，目标站点能在浏览器打开，一般即可爬取。
 
 ---
 
@@ -201,8 +207,9 @@
 
 <a id="development"></a>
 
-## 开发
-基于 PySide6 / Qt Quick 3D、SQLite、本地 FastAPI 与浏览器扩展协同，并含 C++ 力导向图加速。
+## 开发与技术
+主要技术基于 PySide6 / Qt Quick 3D、SQLite、本地 FastAPI 与浏览器扩展协同，并含 C++ 力导向图加速。
+
 👉 [开发文档](https://de4321.github.io/darkeye/development/)
 
 ---
@@ -242,7 +249,7 @@
 
 ---
 
-<div align="center" style="color: gray;">DarkEye — 本地收藏，安心整理。</div>
+<div align="center" style="color: gray;">DarkEye — 私密书架，随手翻阅。</div>
 
 <!-- Badge images -->
 

@@ -36,7 +36,7 @@
   <a href="#privacy">隱私與資料</a> •
   <a href="#migration">遷移與匯入</a> •
   <a href="#crawler">爬蟲說明</a> •
-  <a href="#development">開發</a> •
+  <a href="#development">開發與技術</a> •
   <a href="#community">社群</a> •
   <a href="#references">參考專案</a>
 </p>
@@ -58,9 +58,17 @@
   <a href="https://github.com/de4321/darkeye/releases/download/v1.2.4/DarkEye-v1.2.4.zip">
     <img src="https://img.shields.io/badge/%E4%B8%8B%E8%BC%89-Windows-blue?style=for-the-badge&logo=windows" alt="下載 Windows 版本" />
   </a>
+  　　
+  <a href="https://darkeye.win/DarkEye-v1.2.4.zip">
+    <img src="https://img.shields.io/badge/%E5%82%99%E7%94%A8%E4%B8%8B%E8%BC%89-WINDOWS-green?style=for-the-badge&logo=windows" alt="備用下載 Windows" />
+  </a>
 </div>
 
-下載程式並解壓，執行 exe 即可；瀏覽器擴充功能隨軟體附帶在 `extensions` 目錄內，一般情況下無需額外下載外掛。若需爬蟲採集，請依下方文件安裝**對應瀏覽器的一種**外掛。
+下載程式並解壓，執行 exe 即可；瀏覽器擴充功能隨軟體附帶在 `extensions` 目錄內。若需爬蟲採集，請依下方文件安裝**對應瀏覽器的一種**外掛。
+
+### 外掛安裝
+
+👉 [線上文件：外掛安裝](https://de4321.github.io/darkeye/usage/#_2)
 
 除非外掛單獨更新，一般**不需要**單獨下載外掛。
 <div align="center">
@@ -73,10 +81,6 @@
   </a>
 </div>
 
-### 外掛安裝
-
-👉 [線上文件：外掛安裝](https://de4321.github.io/darkeye/usage/#_2)
-
 ### 使用說明
 
 👉 [線上文件：使用](https://de4321.github.io/darkeye/usage/#_3)
@@ -85,7 +89,9 @@
 
 👉 [常見問題：更新與遷移](https://de4321.github.io/darkeye/faq/)
 
-設定中可自動更新**軟體本體**；瀏覽器擴充因無法上架商店，但是**外掛**會在軟體 `extensions` 目錄更新，需要**手動在瀏覽器重新載入**。外掛另可在 [Releases][link-releases] 手動下載。遷移版本時請留意**更新瀏覽器外掛**；爬蟲易隨站台策略失效，需回饋後人工維護。軟體不解決代理問題——目標站台能在瀏覽器開啟，一般即可爬取。
+設定中可自動更新**軟體本體**；瀏覽器擴充因無法上架商店，但是**外掛**會在軟體 `extensions` 目錄更新，需要**手動在瀏覽器重新載入**。外掛另外可在 [Releases][link-releases] 手動下載。
+
+遷移版本時請**更新瀏覽器外掛**；爬蟲易隨站台策略失效，需回饋後人工維護。軟體不解決代理問題，目標站台能在瀏覽器開啟，一般即可爬取。
 
 ---
 
@@ -202,9 +208,10 @@
 
 <a id="development"></a>
 
-## 開發
+## 開發與技術
 
-基於 PySide6 / Qt Quick 3D、SQLite、本機 FastAPI 與瀏覽器擴充功能協同，並含 C++ 力導向圖加速。
+主要技術以 PySide6 / Qt Quick 3D、SQLite、本機 FastAPI 與瀏覽器擴充功能協同，並含 C++ 力導向圖加速。
+
 👉 [開發文件](https://de4321.github.io/darkeye/development/)
 
 ---
@@ -225,7 +232,7 @@
 
 ## 參考專案
 
-- [mdcz](https://github.com/ShotHeadman/mdcz)：從本機影片檔名提取番號的程式碼參考，並嘗試適配其 NFO
+- [mdcz](https://github.com/ShotHeadman/mdcz)：本機影片檔名提取番號與 NFO 適配參考
 - [Jvedio](https://github.com/hitchao/Jvedio)：資料庫接入與匯出
 - [JavSP](https://github.com/Yuukiy/JavSP)：部分站點爬蟲邏輯參考
 - [JAV-JHS](https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs)：javdb、FC2 等資訊參考
@@ -244,7 +251,7 @@
 
 ---
 
-<div align="center" style="color: gray;">DarkEye — 在本機收藏，安心整理。</div>
+<div align="center" style="color: gray;">DarkEye — 私密書架，隨手翻閱。</div>
 
 <!-- Badge images -->
 
