@@ -345,10 +345,15 @@ https://raw.githubusercontent.com/de4321/darkeye/refs/heads/main/scripts/jvideo2
 
 以本地有张5060(8G)为例。
 使用llama.cpp或者ollama
+下载已经编译好的版本，没有显卡的选择纯cpu推理，有显卡的选择对应cuda版本或者vulkan
 
-下载
+https://github.com/ggml-org/llama.cpp/releases
+
+下载gguf模型
 
 https://huggingface.co/SakuraLLM/Sakura-7B-Qwen2.5-v1.0-GGUF/tree/main
+或者下面的这个，下面的模型更大更新，效果更好。
+https://huggingface.co/SakuraLLM/Sakura-14B-Qwen3-v1.5-GGUF
 
 下载q4量化的gguf文件，或者其他的LLM大模型，现在更强可以下载更大的。小的下载更好的
 
@@ -378,4 +383,7 @@ http://127.0.0.1:8080/v1
 
 
 
+
+## 数据备份
+数据备份分全量数据与精简备份
 
