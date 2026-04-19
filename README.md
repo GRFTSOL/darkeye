@@ -159,27 +159,17 @@
 
 ## 界面预览
 
-### 拟物化 DVD
-
 ![收藏](docs/assets/dvd.jpg)
 
 ![展开](docs/assets/dvd2.jpg)
 
 ![女优](docs/assets/actress.jpg)
 
-### 力导向图
-
 ![力导向图](docs/assets/directforceview.jpg)
-
-### 分析图表
 
 ![图表](docs/assets/chart.jpg)
 
-### 瀑布流
-
 ![多作品](docs/assets/mutiwork.jpg)
-
-### 作品编辑
 
 ![编辑界面](docs/assets/edit.jpg)
 
