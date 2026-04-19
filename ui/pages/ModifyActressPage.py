@@ -520,7 +520,7 @@ class ViewModel(QObject):
         from utils.utils import translate_text_sync
 
         if self._name_translate_busy:
-            self.msg.show_info("翻译中", "中文名翻译任务正在执行，请稍候。")
+            logging.debug("中文名翻译：任务已在执行，忽略重复触发。")
             return
 
         names = copy.deepcopy(self.get_actress_name() or [])
@@ -534,7 +534,9 @@ class ViewModel(QObject):
                 target_indexes.append(idx)
 
         if not target_indexes:
-            self.msg.show_info("翻译中文名", "没有可翻译的条目（仅翻译中文为空且日文不为空）。")
+            logging.info(
+                "翻译中文名：没有可翻译的条目（仅翻译中文为空且日文不为空）。"
+            )
             return
 
         def _task():
@@ -565,7 +567,6 @@ class ViewModel(QObject):
         worker = Worker(_task)
         wire_worker_finished(worker, self._on_translate_missing_cn_finished)
         QThreadPool.globalInstance().start(worker)
-        self.msg.show_info("翻译中文名", "正在补全空白中文名，请稍候…")
 
     @Slot()
     def translate_overwrite_cn_from_jp(self):
@@ -576,7 +577,7 @@ class ViewModel(QObject):
         from utils.utils import translate_text_sync
 
         if self._name_translate_busy:
-            self.msg.show_info("翻译中", "中文名翻译任务正在执行，请稍候。")
+            logging.debug("覆盖翻译中文名：任务已在执行，忽略重复触发。")
             return
 
         names = copy.deepcopy(self.get_actress_name() or [])
@@ -589,7 +590,7 @@ class ViewModel(QObject):
                 target_indexes.append(idx)
 
         if not target_indexes:
-            self.msg.show_info("覆盖翻译中文名", "没有可翻译的条目（日文名为空）。")
+            logging.info("覆盖翻译中文名：没有可翻译的条目（日文名为空）。")
             return
 
         def _task():
@@ -620,13 +621,12 @@ class ViewModel(QObject):
         worker = Worker(_task)
         wire_worker_finished(worker, self._on_translate_overwrite_cn_finished)
         QThreadPool.globalInstance().start(worker)
-        self.msg.show_info("覆盖翻译中文名", "正在按日文名覆盖翻译中文名，请稍候…")
 
     @Slot(object)
     def _on_translate_overwrite_cn_finished(self, result):
         self._name_translate_busy = False
         if not isinstance(result, dict):
-            self.msg.show_warning("覆盖翻译中文名", "翻译任务失败，请查看日志。", top_level=True)
+            logging.warning("覆盖翻译中文名：翻译任务失败，请查看日志。")
             return
 
         names = result.get("names")
@@ -635,17 +635,17 @@ class ViewModel(QObject):
 
         total = int(result.get("total") or 0)
         filled = int(result.get("filled") or 0)
-        self.msg.show_info(
-            "覆盖翻译中文名",
-            f"翻译完成：共 {total} 条待翻译，成功覆盖 {filled} 条。",
-            top_level=True,
+        logging.info(
+            "覆盖翻译中文名：翻译完成，共 %s 条待翻译，成功覆盖 %s 条。",
+            total,
+            filled,
         )
 
     @Slot(object)
     def _on_translate_missing_cn_finished(self, result):
         self._name_translate_busy = False
         if not isinstance(result, dict):
-            self.msg.show_warning("翻译中文名", "翻译任务失败，请查看日志。", top_level=True)
+            logging.warning("翻译中文名：翻译任务失败，请查看日志。")
             return
 
         names = result.get("names")
@@ -654,10 +654,10 @@ class ViewModel(QObject):
 
         total = int(result.get("total") or 0)
         filled = int(result.get("filled") or 0)
-        self.msg.show_info(
-            "翻译中文名",
-            f"翻译完成：共 {total} 条待翻译，成功填入 {filled} 条。",
-            top_level=True,
+        logging.info(
+            "翻译中文名：翻译完成，共 %s 条待翻译，成功填入 %s 条。",
+            total,
+            filled,
         )
 
     @Slot(object)

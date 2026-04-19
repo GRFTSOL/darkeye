@@ -202,11 +202,11 @@ async def translate_text(
     text: str,
     dest: str = "zh-CN",
     *,
-    timeout_s: float = 12.0,
-    retries: int = 2,
-    backoff_base_s: float = 0.6,
-    fallback: str = "empty",  # "empty" or "source"
-    translation_variant: str = "default",
+    timeout_s: float | None = None,
+    retries: int | None = None,
+    backoff_base_s: float | None = None,
+    fallback: str | None = None,
+    translation_variant: str | None = None,
     use_cache: bool = True,
 ) -> str:
     """
@@ -214,6 +214,10 @@ async def translate_text(
 
     - **fallback="empty"**: 失败返回空字符串（避免把日文写进中文字段）
     - **fallback="source"**: 失败返回原文（适合手动按钮场景）
+
+    timeout_s / retries / backoff_base_s / fallback / translation_variant 缺省时
+    使用设置中的「翻译」运行时配置（get_translation_runtime_settings），
+    勿在此处给数值默认值，否则会覆盖用户在设置里保存的超时与重试。
     """
     src = (text or "").strip()
     if not src:
