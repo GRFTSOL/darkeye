@@ -441,8 +441,8 @@ def get_translation_runtime_settings():
 # ========== 更新清单 URL（随版本发布的 ini，非用户 settings.ini）==========
 _UPDATE_INI = resource_path("resources/config/update.ini")
 # 内置兜底：资源文件缺失或字段无效时使用（与 resources/config/update.ini 保持一致）
-DEFAULT_LATEST_JSON_URL = "https://yinruizhe.asia/latest.json"
-DEFAULT_AVWIKI_LATEST_JSON_URL = "https://yinruizhe.asia/avwiki/avwiki_latest.json"
+DEFAULT_LATEST_JSON_URL = "https://darkeye.win/latest.json"
+DEFAULT_AVWIKI_LATEST_JSON_URL = "https://darkeye.win/avwiki/avwiki_latest.json"
 
 
 def get_latest_json_url() -> str:

@@ -37,7 +37,7 @@
 ## 使用
 👉 https://de4321.github.io/darkeye/usage/#_3
 
-## 版本迁移
+## 版本更新
 👉 https://de4321.github.io/darkeye/faq/
 
 现在正常情况下在设置里点击自动更新就行了，但是这个只更新了软件的本体，插件还是要手动去下载更新的。目前似乎找不到一种更好的更新插件的方式，主要是这个插件上架不了市场。
@@ -113,9 +113,14 @@
 
 图谱发现关系
 ![力导向图](docs/assets/directforceview.jpg)
+
 分析研究数据
 ![图表](docs/assets/chart.jpg)
+
+基础的瀑布流展示
 ![多作品](docs/assets/mutiwork.jpg)
+
+作品编辑界面
 ![编辑界面](docs/assets/edit.jpg)
 
 下面以javtxt为例展示爬虫插件，打开插件后，会与本地交互，可点击添加，自动启动爬虫爬取信息到本地，另外支持javlib与javdb。注意下面的这个中间的收藏与收录在网站上是没有的，只有打开插件与本地软件后才会出现。
