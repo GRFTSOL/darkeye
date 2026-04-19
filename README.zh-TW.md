@@ -4,8 +4,7 @@
   </a>
   <h1>DarkEye</h1>
   <p><strong>在暗黑界睜開一隻眼</strong></p>
-  <p>一款完全在本機、注重隱私的成人影片收藏與管理工具，支援瀏覽器外掛沉浸式採集與擬物化 DVD 陳列。</p>
-  <p>基於 PySide6 / Qt Quick 3D、SQLite、本機 FastAPI 與瀏覽器擴充功能協同，並含 C++ 力導向圖加速；集採集、整理、分析與視覺化於一體。</p>
+  <p>一款完全在本機、注重隱私的日本成人影片收藏與管理工具，支援瀏覽器外掛沉浸式採集與擬物化 DVD 盒子陳列。集採集、整理、分析與視覺化於一體。</p>
   <br />
 
 [![README · 简体中文][badge-readme-zh-CN]](README.md)
@@ -24,39 +23,62 @@
 <br />
 
 [📖 線上文件][link-docs]
-　[🎥 影片介紹][link-video]
-　[🌐 官網][link-website]
-　[💬 Discord][link-discord]
+[🎥 影片介紹][link-video]
+[🌐 官網][link-website]
+[💬 Discord][link-discord]
 
 </div>
 
 <p align="center">
+  <a href="#download">下載與使用</a> •
   <a href="#features">特性</a> •
-  <a href="#roadmap">開發方向</a> •
-  <a href="#download">下載與外掛</a> •
   <a href="#screenshots">介面預覽</a> •
   <a href="#privacy">隱私與資料</a> •
   <a href="#migration">遷移與匯入</a> •
   <a href="#crawler">爬蟲說明</a> •
   <a href="#development">開發</a> •
-  <a href="#documentation">文件</a> •
   <a href="#community">社群</a> •
   <a href="#references">參考專案</a>
 </p>
 
 <div align="center">
   <a href="https://github.com/de4321/darkeye/releases" target="_blank">
-    <img src="./docs/assets/dvd.jpg" alt="DarkEye 擬物化 DVD 陳列" width="100%" />
+    <img src="./docs/assets/show.jpg" alt="DarkEye 擬物化 DVD 陳列" width="100%" />
   </a>
 </div>
 
+
 ---
 
-<a id="privacy"></a>
+<a id="download"></a>
 
-## 隱私與資料
+## 下載與使用
 
-- **資料與連線**：預設資料在程式旁的 `data/`（資料庫、設定、封面與頭像等，可在設定中調整路徑）。不會向第三方上傳你的片庫；連線主要來自爬蟲與資源拉取，以及選用的更新檢查（GitHub Releases）、翻譯（Google 或你自備的 LLM API）等。
+<div align="center">
+[![下載 Windows 版本][badge-dl-app]][link-dl-app]
+</div>
+
+下載程式並解壓，執行 exe 即可；瀏覽器擴充功能隨軟體附帶在 `extensions` 目錄內，一般情況下無需額外下載外掛。若需爬蟲採集，請依下方文件安裝**對應瀏覽器的一種**外掛。
+
+除非外掛單獨更新，一般**不需要**單獨下載外掛。
+<div align="center">
+[![下載 Chrome/Edge 外掛][badge-dl-chrome]][link-dl-chrome]　　
+[![下載 Firefox 外掛][badge-dl-firefox]][link-dl-firefox]
+</div>
+
+### 外掛安裝
+
+👉 [線上文件：外掛安裝](https://de4321.github.io/darkeye/usage/#_2)
+
+### 使用說明
+
+👉 [線上文件：使用](https://de4321.github.io/darkeye/usage/#_3)
+
+### 版本與更新
+
+👉 [常見問題：更新與遷移](https://de4321.github.io/darkeye/faq/)
+
+設定中可自動更新**軟體本體**；瀏覽器擴充因無法上架商店，但是**外掛**會在軟體 `extensions` 目錄更新，需要**手動在瀏覽器重新載入**。外掛另可在 [Releases][link-releases] 手動下載。遷移版本時請留意**更新瀏覽器外掛**；爬蟲易隨站台策略失效，需回饋後人工維護。軟體不解決代理問題——目標站台能在瀏覽器開啟，一般即可爬取。
 
 ---
 
@@ -86,54 +108,12 @@
 | **截圖** | 部分截圖能力；女優介面 `C` 鍵截圖 | ✅ |
 | **自動更新** | 自動檢測並下載更新 | ✅ |
 
+
 ### 計劃與推進中
 
 | **功能** | **說明** | **狀態** |
 | -------- | -------- | -------- |
 | **NFO 匯出** | 形成共識後開發；各工具實作不一，目前資料欄位仍不齊 | 🔄 |
-
----
-
-<a id="roadmap"></a>
-
-## 開發方向
-
-- **1.0**：基礎工具完善，含力導向圖探索影片關係、收藏體驗增強
-- **2.0**：UGC、分散式同步資料
-- **3.0**：機器學習推薦演算法
-
----
-
-<a id="download"></a>
-
-## 下載與外掛
-
-<div align="center">
-
-[![下載 Windows 版本][badge-dl-app]][link-dl-app]
-
-<br />
-
-[![下載 Chrome/Edge 外掛][badge-dl-chrome]][link-dl-chrome]　　
-[![下載 Firefox 外掛][badge-dl-firefox]][link-dl-firefox]
-
-</div>
-
-下載程式並解壓，執行 exe 即可；瀏覽器擴充功能隨軟體附帶在 `extensions` 目錄內。若需爬蟲採集，請依下方文件安裝**對應瀏覽器的一種**外掛。
-
-### 外掛安裝
-
-👉 [線上文件：外掛安裝](https://de4321.github.io/darkeye/usage/#_2)
-
-### 使用說明
-
-👉 [線上文件：使用](https://de4321.github.io/darkeye/usage/#_3)
-
-### 版本與更新
-
-👉 [常見問題：更新與遷移](https://de4321.github.io/darkeye/faq/)
-
-設定中可自動更新**軟體本體**；瀏覽器外掛因無法上架商店，仍需在 [Releases][link-releases] 手動下載更新。遷移版本時請留意**更新瀏覽器外掛**；爬蟲易隨站台策略失效，需回饋後人工維護。軟體不解決代理問題——目標站台能在瀏覽器開啟，一般即可爬取。
 
 ---
 
@@ -150,6 +130,15 @@
 ### Jvedio 遷移資料
 
 👉 [線上文件：Jvedio](https://de4321.github.io/darkeye/usage/#jvedio)
+
+---
+
+<a id="privacy"></a>
+
+## 隱私與資料
+
+- **資料與連線**：預設資料在程式旁的 `data/`（資料庫、設定、封面與頭像等，可在設定中調整路徑）。不會向第三方上傳你的片庫；連線主要來自爬蟲與資源拉取，以及選用的更新檢查（Cloudflare R2）、翻譯（Google 或你自備的 LLM API）等。
+
 
 ---
 
@@ -183,7 +172,7 @@
 
 ### 瀏覽器外掛（以 javtxt 為例）
 
-開啟外掛後與本機互動，可點選新增並自動觸發爬蟲寫入本機，另支援 javlib、javdb。畫面中的「收藏／收錄」等能力僅在連線本機軟體時可用。
+開啟外掛後與本機互動，可點選新增並自動觸發爬蟲寫入本機，另支援 javlib、javdb。介面中的「收藏／收錄」等能力僅在連線本機軟體時可用。
 
 ![javtxt 網站為例](docs/assets/capture.JPG)
 
@@ -199,21 +188,17 @@
 
 首次爬取往往會觸發 javlib 盾；約百次量級可能遇到 javdb 點選盾，依頁面提示操作即可。
 
+目前爬取的主要網站是 javdb、javlibrary、javtxt、avdanyuwiki、minnao-av
+
+
 ---
 
 <a id="development"></a>
 
 ## 開發
 
+基於 PySide6 / Qt Quick 3D、SQLite、本機 FastAPI 與瀏覽器擴充功能協同，並含 C++ 力導向圖加速。
 👉 [開發文件](https://de4321.github.io/darkeye/development/)
-
----
-
-<a id="documentation"></a>
-
-## 文件
-
-👉 [完整線上文件](https://de4321.github.io/darkeye/)
 
 ---
 

@@ -4,8 +4,7 @@
   </a>
   <h1>DarkEye</h1>
   <p><strong>在暗黑界睁开一只眼</strong></p>
-  <p>一款完全本地、注重隐私的日本成人影片收藏与管理工具，支持浏览器插件沉浸式采集与拟物化 DVD 陈列。</p>
-  <p>基于 PySide6 / Qt Quick 3D、SQLite、本地 FastAPI 与浏览器扩展协同，并含 C++ 力导向图加速；集采集、整理、分析与可视化于一体。</p>
+  <p>一款完全本地、注重隐私的日本成人影片收藏与管理工具，支持浏览器插件沉浸式采集与拟物化 DVD 盒子陈列。集采集、整理、分析与可视化于一体。</p>
   <br />
 
 [![README · 简体中文][badge-readme-zh-CN]](README.md)
@@ -24,14 +23,14 @@
 <br />
 
 [📖 在线文档][link-docs]
-　[🎥 视频介绍][link-video]
-　[🌐 官网][link-website]
-　[💬 Discord][link-discord]
+[🎥 视频介绍][link-video]
+[🌐 官网][link-website]
+[💬 Discord][link-discord]
 
 </div>
 
 <p align="center">
-  <a href="#download">下载与插件</a> •
+  <a href="#download">下载与使用</a> •
   <a href="#features">特性</a> •
   <a href="#screenshots">界面预览</a> •
   <a href="#privacy">隐私与数据</a> •
@@ -53,20 +52,19 @@
 
 <a id="download"></a>
 
-## 下载与插件
+## 下载与使用
 
 <div align="center">
-
 [![下载 Windows 版本][badge-dl-app]][link-dl-app]
-
-<br />
-
-[![下载 Chrome/Edge 插件][badge-dl-chrome]][link-dl-chrome]　　
-[![下载 Firefox 插件][badge-dl-firefox]][link-dl-firefox]
-
 </div>
 
-下载程序并解压，运行 exe 即可；浏览器扩展随软件附带在 `extensions` 目录内。若需爬虫采集，请按下方文档安装**对应浏览器的一种**扩展。
+下载程序并解压，运行 exe 即可；浏览器扩展随软件附带在 `extensions` 目录内,一般情况下无需额外下载插件。若需爬虫采集，请按下方文档安装**对应浏览器的一种**扩展。
+
+除非插件单独更新，一般**不需要**单独下载插件。
+<div align="center">
+[![下载 Chrome/Edge 插件][badge-dl-chrome]][link-dl-chrome]　　
+[![下载 Firefox 插件][badge-dl-firefox]][link-dl-firefox]
+</div>
 
 ### 插件安装
 
@@ -80,7 +78,7 @@
 
 👉 [常见问题：更新与迁移](https://de4321.github.io/darkeye/faq/)
 
-设置中可自动更新**软件本体**；浏览器扩展因无法上架商店，仍需在 [Releases][link-releases] 手动下载更新。迁移版本时请关注**更新浏览器插件**；爬虫易随站点策略失效，需反馈后人工维护。软件不解决代理问题——目标站点能在浏览器打开，一般即可爬取。
+设置中可自动更新**软件本体**；浏览器扩展因无法上架商店，但是**插件**会在软件`extensions` 目录更新，需要**手动去浏览器重新加载**。插件另外可在[Releases][link-releases] 手动下载。迁移版本时请关注**更新浏览器插件**；爬虫易随站点策略失效，需反馈后人工维护。软件不解决代理问题——目标站点能在浏览器打开，一般即可爬取。
 
 ---
 
@@ -190,12 +188,14 @@
 
 首次爬取往往会触发 javlib 盾；约百次量级可能遇到 javdb 点击盾，按页面提示操作即可。
 
+目前爬取的主要网站是javdb、javlibrary、javtxt、avdanyuwiki、minnao-av
+
 ---
 
 <a id="development"></a>
 
 ## 开发
-
+基于 PySide6 / Qt Quick 3D、SQLite、本地 FastAPI 与浏览器扩展协同，并含 C++ 力导向图加速。
 👉 [开发文档](https://de4321.github.io/darkeye/development/)
 
 ---
