@@ -537,6 +537,7 @@ class SingleWorkPage(LazyWidget):
 
     def __init__(self):
         super().__init__()
+        self._pending_work_id: int | None = None
 
     def _lazy_load(self):
         logging.info("----------加载单独作品界面----------")
@@ -548,9 +549,21 @@ class SingleWorkPage(LazyWidget):
 
         mainlayout.addWidget(self.cover)
 
+        if self._pending_work_id is not None:
+            pending_work_id = self._pending_work_id
+            self._pending_work_id = None
+            self.update(pending_work_id)
+
     def update(self, work_id):
         """传入一个work_id并更新整个页面"""
         from core.database.query import get_cover_image_url
+
+        if not hasattr(self, "cover"):
+            try:
+                self._pending_work_id = int(work_id)
+            except (TypeError, ValueError):
+                self._pending_work_id = None
+            return
 
         self.cover.work_info.update(work_id)
         self.cover.bg_label.set_cover(get_cover_image_url(work_id))
