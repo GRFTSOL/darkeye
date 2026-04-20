@@ -128,6 +128,12 @@
 | -------- | -------- | -------- |
 | **NFO 匯出** | 形成共識後開發；各工具實作不一，目前資料欄位仍不齊 | 🔄 |
 
+長期規劃與更多細項見 [**更新日誌與路線圖**](docs/CHANGELOG.md)（隨開發滾動更新，不代表固定排期）。方向摘錄：
+
+- **AI 與工具鏈**：如 CLI、對話等探索（見 CHANGELOG `3.x` 路線圖）。
+- **同步與協作**：如 WebDAV、多端備份與 UGC 類資訊方案（見 `2.x`）。
+- **體驗與底層**：標籤與圖譜、介面與匯出、爬蟲與資料庫等持續迭代（見 `1.x`）。
+
 ---
 
 <a id="migration"></a>
@@ -240,6 +246,14 @@
 - [stash](https://github.com/stashapp/stash)
 - [AMMDS](https://github.com/QYG2297248353/AMMDS-Docker)
 - [mdc-ng](https://github.com/mdc-ng/mdc-ng)
+
+---
+
+<a id="license"></a>
+
+## 授權
+
+本專案依 [GNU General Public License v3.0](LICENSE) 授權釋出。
 
 ---
 

@@ -128,6 +128,10 @@
 | -------- | -------- | -------- |
 | **NFO 导出** | 形成共识后开发；各工具实现不一，当前数据字段仍不齐 | 🔄 |
 
+长期规划与更多细项见 [**更新日志与路线图**](docs/CHANGELOG.md)（随开发滚动更新，不代表固定排期）。
+
+
+
 ---
 
 <a id="migration"></a>
@@ -150,7 +154,7 @@
 
 ## 隐私与数据
 
-- **数据与联网**：默认数据在程序旁的 `data/`（数据库、配置、封面与头像等，可在设置中改路径）。不会向第三方上传你的片库；联网主要来自爬虫与资源拉取，以及可选的更新检查（Cloudflare R2）、翻译（Google 或你自配的 LLM API）等。
+- **数据与联网**：默认数据在程序旁的 `data/`（数据库、配置、封面与头像等）。不会向第三方上传你的片库；联网主要来自爬虫与资源拉取，以及可选的更新下载（Cloudflare R2）、翻译（Google 或你自配的 LLM API）等。
 
 
 ---
@@ -191,7 +195,7 @@
 
 首次爬取往往会触发 javlib 盾；约百次量级可能遇到 javdb 点击盾，按页面提示操作即可。
 
-目前爬取的主要网站是javdb、javlibrary、javtxt、avdanyuwiki、minnao-av
+目前爬取的主要网站是javdb、javlibrary、javtxt、avdanyuwiki、minnano-av
 
 ---
 
@@ -200,6 +204,7 @@
 ## 开发与技术
 主要技术基于 PySide6 / Qt Quick 3D、SQLite、本地 FastAPI 与浏览器扩展协同，并含 C++ 力导向图加速。
 
+若想开发，请先阅读下面的文档将软件运行起来。
 👉 [开发文档](https://de4321.github.io/darkeye/development/)
 
 ---
@@ -228,6 +233,14 @@
 - [stash](https://github.com/stashapp/stash)
 - [AMMDS](https://github.com/QYG2297248353/AMMDS-Docker)
 - [mdc-ng](https://github.com/mdc-ng/mdc-ng)
+
+---
+
+<a id="license"></a>
+
+## 许可证
+
+本项目以 [GNU General Public License v3.0](LICENSE) 授权发布。
 
 ---
 
