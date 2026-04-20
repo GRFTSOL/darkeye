@@ -234,6 +234,8 @@
 - [AMMDS](https://github.com/QYG2297248353/AMMDS-Docker)
 - [mdc-ng](https://github.com/mdc-ng/mdc-ng)
 
+
+
 ---
 
 <a id="license"></a>
@@ -243,6 +245,15 @@
 本项目以 [GNU General Public License v3.0](LICENSE) 授权发布。
 
 ---
+## Star History
+
+<a href="https://www.star-history.com/?repos=de4321%2Fdarkeye">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=de4321/darkeye&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=de4321/darkeye&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=de4321/darkeye&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ## 贡献者
 
