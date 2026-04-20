@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QHBoxLayout, QWidget, QVBoxLayout, QLineEdit
 from PySide6.QtCore import Slot, QTimer
 import sqlite3, logging
+import random
 
 from config import DATABASE
 from core.database.db_queue import submit_db_raw
@@ -26,6 +27,8 @@ class ActorPage(LazyWidget):
 
         self.order = "添加逆序"  # 排序默认值
         self.cup = None
+        self.random_seed = random.randint(1, 1_000_000)
+        self.random_seed2 = random.randint(1, 1_000_000)
 
         # self.spacer_widget = QWidget()
         # self.spacer_widget.setFixedHeight(70)
@@ -50,7 +53,7 @@ class ActorPage(LazyWidget):
         )
         # 排序选择器
         self.order_combo = ComboBox()
-        self.order_combo.addItems(["添加顺序", "添加逆序", "封面优先"])
+        self.order_combo.addItems(["随机顺序", "添加顺序", "添加逆序", "封面优先"])
         self.order_combo.setCurrentText(self.order)
 
         self.filter_layout.addWidget(Label("男优"))
@@ -173,6 +176,7 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
         query += where  # 比拼
 
         # 拼order
+        random_order = False
         match self.order:
             case "添加顺序":
                 order = "ORDER BY actor.create_time \n"
@@ -180,8 +184,19 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
                 order = "ORDER BY actor.create_time DESC\n"
             case "封面优先":
                 order = "ORDER BY CASE WHEN actor.image_url IS NOT NULL AND actor.image_url != '' THEN 0 ELSE 1 END"
+            case "随机顺序":
+                order = (
+                    "ORDER BY ("
+                    "((actor.actor_id * ?) % 1000003) + "
+                    "((actor.actor_id * actor.actor_id * ?) % 1000033)"
+                    ") % 1000037, actor.actor_id\n"
+                )
+                random_order = True
 
         if not count:
+            if random_order:
+                params.append(self.random_seed)
+                params.append(self.random_seed2)
             query += f"{order} LIMIT ? OFFSET ?"  # 最后拼这个
             params.extend([page_size, offset])
 
@@ -209,6 +224,9 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
 
     def refresh(self):
         """刷新"""
+        if self.order_combo.currentText() == "随机顺序":
+            self.random_seed = random.randint(1, 1_000_000)
+            self.random_seed2 = random.randint(1, 1_000_000)
         self.lazy_area.reset()
         self.update_info()
 

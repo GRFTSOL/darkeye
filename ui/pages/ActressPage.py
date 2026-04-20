@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QHBoxLayout, QWidget, QVBoxLayout
 
 from PySide6.QtCore import Slot, QTimer
 import sqlite3, logging
+import random
 from typing import Callable
 
 from config import DATABASE
@@ -65,6 +66,8 @@ class ActressPage(LazyWidget):
         self.order = "添加逆序"  # 排序默认值
         self.scope = "公共库范围"
         self.cup = None
+        self.random_seed = random.randint(1, 1_000_000)
+        self.random_seed2 = random.randint(1, 1_000_000)
 
         # self.spacer_widget = QWidget()
         # self.spacer_widget.setFixedHeight(70)
@@ -94,6 +97,7 @@ class ActressPage(LazyWidget):
         self.order_combo = ComboBox()
         self.order_combo.addItems(
             [
+                "随机顺序",
                 "年龄顺序",
                 "年龄逆序",
                 "出道顺序",
@@ -269,6 +273,7 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
             query += where
 
         # 拼order
+        random_order = False
         match self.order:
             case "年龄顺序":
                 order = "ORDER BY actress.birthday DESC\n"
@@ -296,8 +301,19 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
                 )
             case "腰臀比逆序":
                 order = "ORDER BY ROUND(actress.waist * 1.0 / NULLIF(actress.hip, 0), 2) DESC\n"
+            case "随机顺序":
+                order = (
+                    "ORDER BY ("
+                    "((actress.actress_id * ?) % 1000003) + "
+                    "((actress.actress_id * actress.actress_id * ?) % 1000033)"
+                    ") % 1000037, actress.actress_id\n"
+                )
+                random_order = True
 
         if not count:
+            if random_order:
+                params.append(self.random_seed)
+                params.append(self.random_seed2)
             query += f"{order} LIMIT ? OFFSET ?"  # 最后拼这个
             params.extend([page_size, offset])
 
@@ -329,6 +345,9 @@ WHERE cn LIKE ? OR jp LIKE ? OR en LIKE ? OR kana LIKE ?
 
     def refresh(self):
         """刷新"""
+        if self.order_combo.currentText() == "随机顺序":
+            self.random_seed = random.randint(1, 1_000_000)
+            self.random_seed2 = random.randint(1, 1_000_000)
         self.lazy_area.reset()
         self.update_info()
 
