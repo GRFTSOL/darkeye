@@ -120,7 +120,7 @@ class LazyScrollArea(QScrollArea):
         self.waterfall_layout.setContentsMargins(0, 5, 0, 0)
         self.setWidget(content_widget)
 
-        self.page_size = 30
+        self.page_size = 70
         self.current_page = 0
         self.reached_end = False
         self.loading = False

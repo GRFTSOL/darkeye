@@ -131,7 +131,7 @@ class ActressPage(LazyWidget):
         # 加载女优的区域
         self.lazy_area = LazyScrollArea(column_width=150)
         # 大屏幕下初始加载更多卡片，减少“只显示一小部分”的感觉
-        self.lazy_area.set_page_size(60)
+        #self.lazy_area.set_page_size(60)
 
         # 总体布局
         mainlayout = QVBoxLayout(self)
