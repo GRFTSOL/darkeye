@@ -444,6 +444,9 @@ class WorkInfo(TransparentWidget):
         if not self.video_paths:
             self.msg.show_info("提示", "没有可播放的视频")
             return
+        if len(self.video_paths) == 1:
+            play_video(Path(self.video_paths[0]))
+            return
 
         # 创建 QMenu（轻量、非模态、即时弹出）
         menu = QMenu(self)

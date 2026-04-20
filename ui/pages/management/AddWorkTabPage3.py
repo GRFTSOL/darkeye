@@ -1844,6 +1844,9 @@ class AddWorkTabPage3(LazyWidget):
         if not path_strs:
             self.msg.show_info("提示", "没有可播放的视频")
             return
+        if len(path_strs) == 1:
+            play_video(Path(path_strs[0]).expanduser())
+            return
         menu = QMenu(self)
         for path_str in path_strs:
             p = Path(path_str).expanduser()
