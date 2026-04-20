@@ -261,6 +261,47 @@ def _run_main_app():
 
     QTimer.singleShot(2000, lambda: maybe_auto_check_update(window))
 
+    def _maybe_auto_start_llama() -> None:
+        from config import (
+            get_llama_auto_sync_translation,
+            get_llama_batch_size,
+            get_llama_ctx_size,
+            get_llama_gpu_layers,
+            get_llama_host,
+            get_llama_mlock,
+            get_llama_mode,
+            get_llama_model_path,
+            get_llama_port,
+            get_llama_server_exe_path,
+            get_llama_threads,
+            get_llama_threads_batch,
+            get_llama_ubatch_size,
+        )
+        from core.translation.llama_runtime import LlamaLaunchConfig, get_llama_runtime
+
+        runtime = get_llama_runtime()
+        cfg = LlamaLaunchConfig(
+            exe_path=get_llama_server_exe_path(),
+            model_path=get_llama_model_path(),
+            host=get_llama_host(),
+            port=get_llama_port(),
+            mode=get_llama_mode(),
+            ctx_size=get_llama_ctx_size(),
+            threads=get_llama_threads(),
+            threads_batch=get_llama_threads_batch(),
+            batch_size=get_llama_batch_size(),
+            ubatch_size=get_llama_ubatch_size(),
+            gpu_layers=get_llama_gpu_layers(),
+            mlock=get_llama_mlock(),
+        )
+        runtime.maybe_auto_start(
+            cfg,
+            auto_sync_translation=get_llama_auto_sync_translation(),
+        )
+
+    # 主窗口显示后尝试自启 llama（仅在开关启用时生效）
+    QTimer.singleShot(1200, _maybe_auto_start_llama)
+
     # 打印性能分析摘要
     profiler.print_summary()
 

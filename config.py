@@ -417,6 +417,135 @@ def set_translation_fallback(value: str) -> None:
     settings.sync()
 
 
+def get_llama_server_exe_path() -> str:
+    return settings.value("LlamaCpp/ServerExePath", "", type=str).strip()
+
+
+def set_llama_server_exe_path(value: str) -> None:
+    settings.setValue("LlamaCpp/ServerExePath", (value or "").strip())
+    settings.sync()
+
+
+def get_llama_model_path() -> str:
+    return settings.value("LlamaCpp/ModelPath", "", type=str).strip()
+
+
+def set_llama_model_path(value: str) -> None:
+    settings.setValue("LlamaCpp/ModelPath", (value or "").strip())
+    settings.sync()
+
+
+def get_llama_host() -> str:
+    return settings.value("LlamaCpp/Host", "127.0.0.1", type=str).strip() or "127.0.0.1"
+
+
+def set_llama_host(value: str) -> None:
+    settings.setValue("LlamaCpp/Host", (value or "127.0.0.1").strip())
+    settings.sync()
+
+
+def get_llama_port() -> int:
+    return int(settings.value("LlamaCpp/Port", 8080, type=int))
+
+
+def set_llama_port(value: int) -> None:
+    port = int(value)
+    settings.setValue("LlamaCpp/Port", min(65535, max(1, port)))
+    settings.sync()
+
+
+def get_llama_mode() -> str:
+    mode = settings.value("LlamaCpp/Mode", "cpu", type=str).strip().lower()
+    return mode if mode in {"gpu", "cpu"} else "cpu"
+
+
+def set_llama_mode(value: str) -> None:
+    mode = (value or "cpu").strip().lower()
+    settings.setValue("LlamaCpp/Mode", mode if mode in {"gpu", "cpu"} else "cpu")
+    settings.sync()
+
+
+def get_llama_ctx_size() -> int:
+    return int(settings.value("LlamaCpp/CtxSize", 2048, type=int))
+
+
+def set_llama_ctx_size(value: int) -> None:
+    settings.setValue("LlamaCpp/CtxSize", max(256, int(value)))
+    settings.sync()
+
+
+def get_llama_gpu_layers() -> int:
+    return int(settings.value("LlamaCpp/GpuLayers", 99, type=int))
+
+
+def set_llama_gpu_layers(value: int) -> None:
+    settings.setValue("LlamaCpp/GpuLayers", max(0, int(value)))
+    settings.sync()
+
+
+def get_llama_threads() -> int:
+    return int(settings.value("LlamaCpp/Threads", 6, type=int))
+
+
+def set_llama_threads(value: int) -> None:
+    settings.setValue("LlamaCpp/Threads", max(1, int(value)))
+    settings.sync()
+
+
+def get_llama_threads_batch() -> int:
+    return int(settings.value("LlamaCpp/ThreadsBatch", 24, type=int))
+
+
+def set_llama_threads_batch(value: int) -> None:
+    settings.setValue("LlamaCpp/ThreadsBatch", max(1, int(value)))
+    settings.sync()
+
+
+def get_llama_batch_size() -> int:
+    return int(settings.value("LlamaCpp/BatchSize", 512, type=int))
+
+
+def set_llama_batch_size(value: int) -> None:
+    settings.setValue("LlamaCpp/BatchSize", max(1, int(value)))
+    settings.sync()
+
+
+def get_llama_ubatch_size() -> int:
+    return int(settings.value("LlamaCpp/UBatchSize", 256, type=int))
+
+
+def set_llama_ubatch_size(value: int) -> None:
+    settings.setValue("LlamaCpp/UBatchSize", max(1, int(value)))
+    settings.sync()
+
+
+def get_llama_mlock() -> bool:
+    return bool(settings.value("LlamaCpp/Mlock", True, type=bool))
+
+
+def set_llama_mlock(value: bool) -> None:
+    settings.setValue("LlamaCpp/Mlock", bool(value))
+    settings.sync()
+
+
+def get_llama_auto_sync_translation() -> bool:
+    return bool(settings.value("LlamaCpp/AutoSyncTranslation", True, type=bool))
+
+
+def set_llama_auto_sync_translation(value: bool) -> None:
+    settings.setValue("LlamaCpp/AutoSyncTranslation", bool(value))
+    settings.sync()
+
+
+def get_llama_auto_start() -> bool:
+    return bool(settings.value("LlamaCpp/AutoStart", False, type=bool))
+
+
+def set_llama_auto_start(value: bool) -> None:
+    settings.setValue("LlamaCpp/AutoStart", bool(value))
+    settings.sync()
+
+
 def get_translation_engine_settings():
     from core.translation.base import TranslationEngineConfig
 

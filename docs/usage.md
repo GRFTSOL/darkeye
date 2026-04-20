@@ -359,6 +359,23 @@ https://huggingface.co/SakuraLLM/Sakura-14B-Qwen3-v1.5-GGUF
 
 #### llama.cpp
 
+先打开软件中的 `设置 -> 翻译`，使用 **llama.cpp 辅助启动**：
+
+1. 点击 `打开 llama.cpp Releases` 下载对应平台的 `llama-server.exe`
+2. 填写 `llama-server.exe` 与 `GGUF 模型` 路径
+3. 选择模式与预设（推荐先用 `自动(推荐)` 或 `8G 显卡预设`）
+4. 点击 `启动 llama-server`
+5. 点击 `测试 /v1/models`，确认服务可用后会自动回填翻译配置
+6. 回到上方点 `测试翻译` 验证效果
+
+排障建议：
+
+- 显存不足：先降低 `gpu-layers`，或改用 `低显存预设/CPU 预设`
+- 端口占用：改 `port` 或关闭占用程序
+- 本地模式 `API Key` 可以随便填（例如 `local`）
+
+如果你习惯命令行，继续看下面的手动命令方式。
+
 运行参数
 
 在powershell中，定位到编译好的llama-server.exe的位置，修改下面`E:\LLM\sakura-7b-qwen2.5-v1.0-iq4xs.gguf`这个具体模型的位置，然后运行
