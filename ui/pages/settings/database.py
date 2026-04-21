@@ -64,16 +64,26 @@ class DBSettingPage(QWidget):
         self.btn_commit.setVisible(False)
 
         self.btn_backupDB = Button()
-        self.btn_backupDB.setText("备份公共数据库")
-        self.btn_backupDB.setToolTip("将现有的数据库打上时间戳备份")
+        self.btn_backupDB.setText("全量备份公共数据库")
+        self.btn_backupDB.setToolTip("将现有的数据库包括图片打上时间戳备份")
         self.btn_backupDB.setIcon(get_builtin_icon(name="database"))
 
         self.btn_restoreDB = Button()
-        self.btn_restoreDB.setText("还原公共数据库")
+        self.btn_restoreDB.setText("全量还原公共数据库")
         self.btn_restoreDB.setToolTip(
             "在备份的数据库里选择一个数据还原，覆盖现有的数据库"
         )
         self.btn_restoreDB.setIcon(get_builtin_icon(name="database"))
+
+        self.btn_backupDB_simple = Button()
+        self.btn_backupDB_simple.setText("精简备份公共数据库")
+        self.btn_backupDB_simple.setToolTip("仅备份公共数据库 .db 文件")
+        self.btn_backupDB_simple.setIcon(get_builtin_icon(name="database"))
+
+        self.btn_restoreDB_simple = Button()
+        self.btn_restoreDB_simple.setText("精简还原公共数据库")
+        self.btn_restoreDB_simple.setToolTip("从 .db 备份文件还原公共数据库")
+        self.btn_restoreDB_simple.setIcon(get_builtin_icon(name="database"))
 
         self.btn_backupDB2 = Button()
         self.btn_backupDB2.setText("备份私有数据库")
@@ -99,9 +109,11 @@ class DBSettingPage(QWidget):
         layout1.addWidget(self.btn_cover_check, 0, 1)
         layout1.addWidget(self.btn_backupDB, 1, 0)
         layout1.addWidget(self.btn_restoreDB, 1, 1)
-        layout1.addWidget(self.btn_backupDB2, 2, 0)
-        layout1.addWidget(self.btn_restoreDB2, 2, 1)
-        layout1.addWidget(self.btn_rebuildprivatelink, 3, 0, 1, 2)
+        layout1.addWidget(self.btn_backupDB_simple, 2, 0)
+        layout1.addWidget(self.btn_restoreDB_simple, 2, 1)
+        layout1.addWidget(self.btn_backupDB2, 3, 0)
+        layout1.addWidget(self.btn_restoreDB2, 3, 1)
+        layout1.addWidget(self.btn_rebuildprivatelink, 4, 0, 1, 2)
 
         layout = QVBoxLayout(self)
         layout.addLayout(layout1)
@@ -123,6 +135,8 @@ class DBSettingPage(QWidget):
 
         self.btn_backupDB.clicked.connect(self.backup_db_public)
         self.btn_restoreDB.clicked.connect(lambda: self.restore_db_new("public"))
+        self.btn_backupDB_simple.clicked.connect(self.backup_db_public_simple)
+        self.btn_restoreDB_simple.clicked.connect(lambda: self.restore_db("public"))
         self.btn_backupDB2.clicked.connect(self.backup_db_private)
         self.btn_restoreDB2.clicked.connect(lambda: self.restore_db("private"))
         self.btn_rebuildprivatelink.clicked.connect(self.rebuildprivatelink)
@@ -200,6 +214,7 @@ class DBSettingPage(QWidget):
             self,
             "选择一个meta.json",
             str(backup_path),
+            "JSON 文件 (*.json)",
         )
 
         if not file_path:
@@ -249,27 +264,26 @@ class DBSettingPage(QWidget):
             )
             if not dir_path:
                 return
-            path = backup_database(target_path, Path(dir_path))
+            path = backup_database(target_path, Path(dir_path),"darkeye-private")
             self.msg.show_info("备份成功", f"备份数据库到{path}")
         except Exception as e:
             self.msg.show_critical("备份失败", f"{str(e)}")
 
     @Slot()
-    def backup_db(self, access_level: str):
-        if access_level == "public":
-            backup_path = DATABASE_BACKUP_PATH
-            target_path = DATABASE
-        elif access_level == "private":
-            backup_path = PRIVATE_DATABASE_BACKUP_PATH
-            target_path = PRIVATE_DATABASE
-        else:
-            logging.info("错误，未选择等级")
-            return
-
+    def backup_db_public_simple(self):
+        backup_path = DATABASE_BACKUP_PATH
+        target_path = DATABASE
         from core.database.backup_utils import backup_database
 
         try:
-            path = backup_database(target_path, backup_path)
+            dir_path = QFileDialog.getExistingDirectory(
+                self,
+                "选择备份保存位置",
+                str(backup_path),
+            )
+            if not dir_path:
+                return
+            path = backup_database(target_path, Path(dir_path),"darkeye-public")
             self.msg.show_info("备份成功", f"备份数据库到{path}")
         except Exception as e:
             self.msg.show_critical("备份失败", f"{str(e)}")

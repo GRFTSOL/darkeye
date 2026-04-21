@@ -16,16 +16,20 @@ from config import (
 )
 
 
-def backup_database(database: Path, backup_dir: Path) -> str:
+def backup_database(database: Path, backup_dir: Path, filename_prefix: str = "") -> str:
     # 这个也有未知情况下的问题
     # 将目标database文件复制到backup_dir备份的文件夹下并打上时间戳
     # 创建 backup 文件夹
     # backup_dir = os.path.join(os.path.dirname(db_path), "av_backup")
     os.makedirs(backup_dir, exist_ok=True)
 
-    # 时间戳格式的文件名
+    # 时间戳格式的文件名；可选前缀拼在最前面
     timestamp = datetime.now().strftime("backup-%Y-%m-%d-%H-%M-%S.db")
-    backup_path = os.path.join(backup_dir, timestamp)
+    prefix = filename_prefix.strip()
+    if prefix and not prefix.endswith("-"):
+        prefix = f"{prefix}-"
+    backup_name = f"{prefix}{timestamp}"
+    backup_path = os.path.join(backup_dir, backup_name)
 
     src_conn = get_connection(database)
     backup_conn = get_connection(backup_path)
