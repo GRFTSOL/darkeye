@@ -24,6 +24,9 @@ if TYPE_CHECKING:
 
 class ModernScrollMenu(QWidget):
     """导航滚动菜单：顶部 Tab 导航 + 内容区滚动，样式由设计令牌驱动。"""
+    LEFT_TITLE_WIDTH = 100
+    TITLE_CONTENT_GAP = 100
+    RIGHT_PANEL_WIDTH = 800
 
     def __init__(
         self,
@@ -82,14 +85,26 @@ class ModernScrollMenu(QWidget):
             self.nav_buttons[title_text] = btn
 
             section_wrapper = QWidget()
-            sec_layout = QHBoxLayout(section_wrapper)
-            sec_layout.setContentsMargins(0, 10, 0, 10)
+            outer_layout = QHBoxLayout(section_wrapper)
+            outer_layout.setContentsMargins(0, 10, 0, 10)
+            outer_layout.setSpacing(0)
+
+            row_widget = QWidget()
+            row_widget.setFixedWidth(
+                self.LEFT_TITLE_WIDTH + self.TITLE_CONTENT_GAP + self.RIGHT_PANEL_WIDTH
+            )
+            sec_layout = QHBoxLayout(row_widget)
+            sec_layout.setContentsMargins(0, 0, 0, 0)
+            sec_layout.setSpacing(self.TITLE_CONTENT_GAP)
             title_label = QLabel(title_text)
-            title_label.setFixedWidth(100)
+            title_label.setFixedWidth(self.LEFT_TITLE_WIDTH)
             self._title_labels.append(title_label)
             sec_layout.addWidget(title_label)
-            sec_layout.addSpacing(100)
+            widget_instance.setFixedWidth(self.RIGHT_PANEL_WIDTH)
             sec_layout.addWidget(widget_instance)
+            outer_layout.addStretch(1)
+            outer_layout.addWidget(row_widget)
+            outer_layout.addStretch(1)
             self.content_layout.addWidget(section_wrapper)
             self.section_widgets.append((section_wrapper, btn))
             btn.clicked.connect(
