@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import weakref
+from collections import OrderedDict
 from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING
@@ -70,6 +71,9 @@ def cover_url_to_texture_url(image_url: str | None) -> str:
 DVD_TEXTURE_ASYNC_MIN_BYTES = 320_000
 # 缩略图最长边；足够铺满 DVD 模型在屏幕上的采样，过大则浪费解码与显存。
 DVD_TEXTURE_MAX_EDGE = 2048
+DVD_TEXTURE_CACHE_LIMIT = 320
+DVD_THUMB_CACHE_MAX_FILES = 900
+DVD_THUMB_CACHE_MAX_BYTES = 900 * 1024 * 1024
 
 
 def _dvd_thumb_cache_dir() -> Path:
@@ -82,6 +86,37 @@ def _dvd_thumb_cache_path(work_id: int, src_path: Path) -> Path:
     st = src_path.stat()
     name = f"{work_id}_{int(st.st_mtime_ns)}_{st.st_size}.jpg"
     return _dvd_thumb_cache_dir() / name
+
+
+def _trim_dvd_thumb_disk_cache() -> None:
+    """回收旧的 DVD 缩略图缓存，限制文件数与总体积。"""
+    cache_dir = _dvd_thumb_cache_dir()
+    files: list[tuple[float, int, Path]] = []
+    total_bytes = 0
+    try:
+        for p in cache_dir.glob("*.jpg"):
+            try:
+                st = p.stat()
+            except OSError:
+                continue
+            total_bytes += int(st.st_size)
+            files.append((float(st.st_mtime), int(st.st_size), p))
+    except OSError as e:
+        logging.warning("DVD 缩略图目录扫描失败: %s", e)
+        return
+    if len(files) <= DVD_THUMB_CACHE_MAX_FILES and total_bytes <= DVD_THUMB_CACHE_MAX_BYTES:
+        return
+    files.sort(key=lambda x: x[0])
+    while files and (
+        len(files) > DVD_THUMB_CACHE_MAX_FILES
+        or total_bytes > DVD_THUMB_CACHE_MAX_BYTES
+    ):
+        _, sz, path = files.pop(0)
+        try:
+            path.unlink(missing_ok=True)
+            total_bytes -= sz
+        except OSError:
+            continue
 
 
 class DvdCoverThumbRunnable(QRunnable):
@@ -590,9 +625,10 @@ class DvdShelfView(QWidget):
         self._work_ids: list[int] = []
         self._load_start = -1
         self._load_end = -2
-        self._texture_cache: dict[int, str] = {}
+        self._texture_cache: OrderedDict[int, str] = OrderedDict()
         self._thumb_inflight: set[int] = set()
         self._dvd_dir = Path(__file__).resolve().parent.parent.parent / "core" / "dvd"
+        _trim_dvd_thumb_disk_cache()
 
         self._bridge = DvdBridge(self)
         self._dvdThumbReady.connect(self._on_dvd_thumb_ready)
@@ -927,7 +963,9 @@ class DvdShelfView(QWidget):
         """这里一次性设置好所有的work_ids"""
         self._programmatic_open_token += 1
         self._reset_scene_interaction_state()
+        self._clear_quick_texture_sources()
         self._work_ids = work_ids
+        self._prune_texture_cache_for_work_ids(work_ids)
         self._load_start = -1
         self._load_end = -2
         self._update_timer.stop()
@@ -1152,20 +1190,21 @@ class DvdShelfView(QWidget):
         """返回 Quick3D 使用的贴图 URL；大图走后台缩略图，避免主线程解码掉帧。"""
         cached = self._texture_cache.get(wid)
         if cached is not None:
+            self._texture_cache.move_to_end(wid)
             return cached
         if not image_url:
             u = path_to_file_url(MAPS_PATH / "0.png")
-            self._texture_cache[wid] = u
+            self._put_texture_cache(wid, u)
             return u
         full_path = WORKCOVER_PATH / image_url
         if not full_path.exists():
             u = path_to_file_url(MAPS_PATH / "0.png")
-            self._texture_cache[wid] = u
+            self._put_texture_cache(wid, u)
             return u
         thumb = _dvd_thumb_cache_path(wid, full_path)
         if thumb.exists():
             u = path_to_file_url(thumb)
-            self._texture_cache[wid] = u
+            self._put_texture_cache(wid, u)
             return u
         try:
             file_size = full_path.stat().st_size
@@ -1173,7 +1212,7 @@ class DvdShelfView(QWidget):
             file_size = 0
         if 0 < file_size <= DVD_TEXTURE_ASYNC_MIN_BYTES:
             u = path_to_file_url(full_path)
-            self._texture_cache[wid] = u
+            self._put_texture_cache(wid, u)
             return u
         placeholder = path_to_file_url(MAPS_PATH / "0.png")
         if wid in self._thumb_inflight:
@@ -1186,13 +1225,33 @@ class DvdShelfView(QWidget):
 
     def _on_dvd_thumb_ready(self, work_id: int, url: str) -> None:
         self._thumb_inflight.discard(work_id)
-        self._texture_cache[work_id] = url
+        self._put_texture_cache(work_id, url)
         if self._load_start < 0 or self._load_end < self._load_start:
             return
         span = self._work_ids[self._load_start : self._load_end + 1]
         if work_id not in span:
             return
         self._rebuild_visible_texture_props()
+
+    def _put_texture_cache(self, work_id: int, url: str) -> None:
+        self._texture_cache[work_id] = url
+        self._texture_cache.move_to_end(work_id)
+        while len(self._texture_cache) > DVD_TEXTURE_CACHE_LIMIT:
+            self._texture_cache.popitem(last=False)
+
+    def _prune_texture_cache_for_work_ids(self, work_ids: list[int]) -> None:
+        if not self._texture_cache:
+            return
+        allowed = set(work_ids)
+        stale_ids = [wid for wid in self._texture_cache if wid not in allowed]
+        for wid in stale_ids:
+            self._texture_cache.pop(wid, None)
+        while len(self._texture_cache) > DVD_TEXTURE_CACHE_LIMIT:
+            self._texture_cache.popitem(last=False)
+
+    def _clear_quick_texture_sources(self) -> None:
+        """重置数据集前先断开旧纹理引用，给 QtQuick3D 更早释放机会。"""
+        self._update_qml(0, [], 0, 0.0)
 
     def _rebuild_visible_texture_props(self) -> None:
         if self._load_start < 0 or self._load_end < self._load_start:
