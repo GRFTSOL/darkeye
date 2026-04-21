@@ -3,8 +3,8 @@
     <img src="https://raw.githubusercontent.com/de4321/darkeye/main/resources/icons/logo.svg" alt="DarkEye" width="128" />
   </a>
   <h1>DarkEye</h1>
-  <p><strong>在暗黑界睁开一只眼</strong></p>
-  <p>一款完全本地、注重隐私的日本成人影片收藏与信息管理工具，支持浏览器插件沉浸式采集与拟物化 DVD 盒子陈列。集采集、整理、分析与可视化于一体。</p>
+  <p><strong>在本地资料管理中保持清晰与秩序</strong></p>
+  <p>一款完全本地、注重隐私的媒体元数据与个人资料管理工具，支持浏览器插件辅助采集与拟物化 DVD 盒子陈列。集整理、检索、分析与可视化于一体。</p>
   <br />
 
 [![README · 简体中文][badge-readme-zh-CN]](README.md)
@@ -31,11 +31,12 @@
 
 <p align="center">
   <a href="#download">下载与使用</a> •
+  <a href="#compliance">合法合规使用声明</a> •
   <a href="#features">特性</a> •
   <a href="#screenshots">界面预览</a> •
   <a href="#privacy">隐私与数据</a> •
   <a href="#migration">迁移与导入</a> •
-  <a href="#crawler">爬虫说明</a> •
+  <a href="#crawler">刮削说明</a> •
   <a href="#development">开发与技术</a> •
   <a href="#community">社群</a> •
   <a href="#references">参考项目</a>
@@ -64,20 +65,20 @@
   </a>
 </div>
 
-下载程序并解压，运行 exe 即可；浏览器扩展随软件附带在 `extensions` 目录内。若需爬虫采集，请按下方文档安装**对应浏览器的一种**扩展。
+下载程序并解压，运行 exe 即可；浏览器扩展随软件附带在 `extensions` 目录内。若需刮削，请按下方文档安装**对应浏览器的一种**扩展。
 
 ### 浏览器扩展安装
 
 👉 [在线文档：浏览器扩展安装](https://de4321.github.io/darkeye/usage/#_2)
 
-除非插件单独更新，一般**不需要**单独下载插件。
+除非浏览器扩展单独更新，一般**不需要**单独下载浏览器扩展。
 <div align="center">
   <a href="https://github.com/de4321/darkeye/releases/download/v1.2.4/chrome_capture.zip">
-    <img src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Chrome%2FEdge%20%E6%8F%92%E4%BB%B6-blue?style=for-the-badge" alt="下载 Chrome/Edge 插件" />
+    <img src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Chrome%2FEdge%20%E6%8F%92%E4%BB%B6-blue?style=for-the-badge" alt="下载 Chrome/Edge 扩展" />
   </a>
   　　
   <a href="https://github.com/de4321/darkeye/releases/download/v1.2.4/firefox_capture.zip">
-    <img src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Firefox%20%E6%8F%92%E4%BB%B6-blue?style=for-the-badge" alt="下载 Firefox 插件" />
+    <img src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Firefox%20%E6%8F%92%E4%BB%B6-blue?style=for-the-badge" alt="下载 Firefox 扩展" />
   </a>
 </div>
 
@@ -95,6 +96,17 @@
 
 ---
 
+<a id="compliance"></a>
+
+## 合法合规使用声明
+
+- 本工具仅用于管理用户依法拥有、已获授权或可合法处理的数据与元信息。
+- 使用本工具时，请遵守中华人民共和国现行法律法规，包括但不限于《网络安全法》《数据安全法》《个人信息保护法》《著作权法》及相关规定。
+- 严禁将本工具用于非法抓取、侵权传播、绕过网站访问控制、未经授权处理他人数据等行为。
+- 第三方网站内容、接口与访问规则以其平台条款为准，用户应自行确认并承担相应合规责任。
+
+---
+
 <a id="features"></a>
 
 ## 特性
@@ -104,19 +116,19 @@
 | **功能** | **说明** | **状态** |
 | -------- | -------- | -------- |
 | **数据管理** | 影片、女优、男优、标签的手动添加与增删查改；部分爬虫辅助 | ✅ |
-| **私有数据记录** | 撸管、做爱、晨勃记录的手动添加与增删查改 | ✅ |
+| **个人记录** | 自定义记录条目的手动添加与增删查改 | ✅ |
 | **分析与图表** | 分析图表与数据展示（仍有部分未完成功能） | ✅ |
 | **拟物化DVD盒子陈列** | 拟物化 DVD 陈列与收藏体验 | ✅ |
 | **筛选过滤展示** | 筛选作品页面 | ✅ |
 | **浏览器扩展** | Chrome / Edge / Firefox 插件沉浸式摘取；支持 javtxt、javlib、javdb 等交互式采集 | ✅ |
-| **多链路爬虫** | javlib、avdanyuwiki、javtxt、javdb、minnano-av 等；正规片源爬取较有效，且易过盾 | ✅ |
+| **简单刮削** | 采集效果受目标站点公开策略与访问规则影响，详情见文档 | ✅ |
 | **关联图谱** | 查看关联；约 1 万节点下约 60 帧 | ✅ |
 | **翻译** | LLM 翻译 + 一键覆盖翻译 | ✅ |
 | **mdcz NFO导入** | [mdcz](https://github.com/ShotHeadman/mdcz) 刮削 NFO 导入 | ✅ |
 | **Jvedio NFO导入** | Jvedio 数据导出 NFO（测试中） | ✅ |
 | **外链跳转** | JSON 驱动外链跳转外部网站，可自定义 | ✅ |
 | **本地视频链接** | 如果本地存在视频可将视频链接到数据库中 | ✅ |
-| **备份** | 备份系统，按私库重建喜欢的番号 | ✅ |
+| **备份** | 备份系统，用于本地资料归档与恢复 | ✅ |
 | **主题** | 主题切换（3D 场景尚不完全跟随时明/暗） | ✅ |
 | **截图** | 部分截图能力；女优界面 `C` 键截图 | ✅ |
 | **自动更新** | 自动检测并下载更新 | ✅ |
@@ -154,7 +166,7 @@
 
 ## 隐私与数据
 
-- **数据与联网**：默认数据在程序旁的 `data/`（数据库、配置、封面与头像等）。不会向第三方上传你的片库；联网主要来自爬虫与资源拉取，以及可选的更新下载（Cloudflare R2）、翻译（Google 或你自配的 LLM API）等。
+- **数据与联网**：默认数据在程序旁的 `data/`（数据库、配置、封面与头像等）。不会主动向第三方上传你的本地资料；联网主要来自爬虫与资源拉取，以及可选的更新下载（Cloudflare R2）、翻译（Google 或你自配的 LLM API）等。第三方服务由用户自主启用并自行承担合规责任。
 
 
 ---
@@ -187,13 +199,13 @@
 
 <a id="crawler"></a>
 
-## 爬虫说明
+## 刮削说明
 
 目前爬虫对作品会尽力获取：发布时间、导演、中日文标题与剧情、女优、男优（若有）、标签、封面、片长、制作商、厂牌、系列、剧照等。
 
 对女优信息主要获取：头像、生日、出道日、三围、身高罩杯、曾用名（尚无曾用名更新机制；若初始使用曾用名可能导致数据问题）。
 
-首次爬取往往会触发 javlib 盾；约百次量级可能遇到 javdb 点击盾，按页面提示操作即可。
+首次采集可能因目标站点访问策略出现验证或限制，是否可继续取决于站点规则与用户自身访问权限。
 
 目前爬取的主要网站是javdb、javlibrary、javtxt、avdanyuwiki、minnano-av
 
@@ -263,7 +275,7 @@
 
 ---
 
-<div align="center" style="color: gray;">DarkEye — 私密书架，随手翻阅。</div>
+<div align="center" style="color: gray;">DarkEye — 本地资料书架，安全自管。</div>
 
 <!-- Badge images -->
 
