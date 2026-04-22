@@ -4,7 +4,7 @@
   </a>
   <h1>DarkEye</h1>
   <p><strong>洞察与秩序</strong></p>
-  <p>一款完全本地、注重隐私的媒体元数据与个人资料管理工具，支持浏览器插件辅助采集与拟物化 DVD 盒子陈列。集整理、检索、分析与可视化于一体。</p>
+  <p>一个纯本地的个人媒体资料库、元数据编辑器、关系分析器和归档浏览器。</p>
   <br />
 
 [![README · 简体中文][badge-readme-zh-CN]](README.md)
@@ -18,7 +18,6 @@
 ![GitHub last commit][badge-last-commit]
 ![GitHub release][badge-release]
 ![GitHub Repo stars][badge-stars]
-![GitHub all releases][badge-downloads]
 
 <br />
 
@@ -36,7 +35,6 @@
   <a href="#screenshots">界面预览</a> •
   <a href="#privacy">隐私与数据</a> •
   <a href="#migration">迁移与导入</a> •
-  <a href="#crawler">刮削说明</a> •
   <a href="#development">开发与技术</a> •
   <a href="#community">社群</a> •
   <a href="#references">参考项目</a>
@@ -120,8 +118,6 @@
 | **分析与图表** | 分析图表与数据展示（仍有部分未完成功能） | ✅ |
 | **拟物化DVD盒子陈列** | 拟物化 DVD 陈列与收藏体验 | ✅ |
 | **筛选过滤展示** | 筛选作品页面 | ✅ |
-| **浏览器扩展** | Chrome / Edge / Firefox 插件沉浸式摘取；支持 javtxt、javlib、javdb 等交互式采集 | ✅ |
-| **简单刮削** | 采集效果受目标站点公开策略与访问规则影响，详情见文档 | ✅ |
 | **关联图谱** | 查看关联；约 1 万节点下约 60 帧 | ✅ |
 | **翻译** | LLM 翻译 + 一键覆盖翻译 | ✅ |
 | **mdcz NFO导入** | [mdcz](https://github.com/ShotHeadman/mdcz) 刮削 NFO 导入 | ✅ |
@@ -130,7 +126,7 @@
 | **本地视频链接** | 如果本地存在视频可将视频链接到数据库中 | ✅ |
 | **备份** | 备份系统，用于本地资料归档与恢复 | ✅ |
 | **主题** | 主题切换（3D 场景尚不完全跟随时明/暗） | ✅ |
-| **截图** | 部分截图能力；女优界面 `C` 键截图 | ✅ |
+| **截图** | 部分截图能力；女演员界面 `C` 键截图 | ✅ |
 | **自动更新** | 自动检测并下载更新 | ✅ |
 
 
@@ -197,19 +193,7 @@
 
 ---
 
-<a id="crawler"></a>
 
-## 刮削说明
-
-目前爬虫对作品会尽力获取：发布时间、导演、中日文标题与剧情、女优、男优（若有）、标签、封面、片长、制作商、厂牌、系列、剧照等。
-
-对女优信息主要获取：头像、生日、出道日、三围、身高罩杯、曾用名（尚无曾用名更新机制；若初始使用曾用名可能导致数据问题）。
-
-首次采集可能因目标站点访问策略出现验证或限制，是否可继续取决于站点规则与用户自身访问权限。
-
-目前爬取的主要网站是javdb、javlibrary、javtxt、avdanyuwiki、minnano-av
-
----
 
 <a id="development"></a>
 
