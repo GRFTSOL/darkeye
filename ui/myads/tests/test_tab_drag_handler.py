@@ -12,12 +12,12 @@ sys.path.insert(0, str(root_dir))
 
 from PySide6.QtCore import QPoint, QRect, Qt
 
-from ui.demo.tab_drag_handler import (
+from ui.myads.tab_drag_handler import (
     DropZone,
     hit_test,
     execute_drop_action,
 )
-from ui.demo.pane_widget import MIME_TYPE_TAB
+from ui.myads.pane_widget import MIME_TYPE_TAB
 
 
 class TestHitTest:

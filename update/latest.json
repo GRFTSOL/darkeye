@@ -3,7 +3,7 @@
   "latestVersion": "1.2.4",
   "releaseNotes": "mdcz的nfo导入，爬虫的优化，包括其他各种更新详见github，现在浏览器插件放在extensions中，需要手动更新，可以不用去github上下载了",
   "package": {
-    "url": "http://yinruizhe.asia/DarkEye-v1.2.4.tar.zst",
+    "url": "http://darkeye.win/DarkEye-v1.2.4.tar.zst",
     "sha256": "93e87bd791bdfbd2b62a5387e4242140a937dde2a4a4a03d7eb25da6ae7d08bd",
     "size": 80753924
   }

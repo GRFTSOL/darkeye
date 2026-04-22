@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # 把编译的文件打包压缩改名，计算 sha256 和大小，然后生成新的 update/latest.json（含 releaseNotes）
+# 额外生成一个zip
 # 编译后的文件在dist/main.dist中
 
 import hashlib
@@ -36,7 +37,7 @@ def get_version() -> str:
     return "1.0.0"
 
 
-PACKAGE_URL_TEMPLATE = "http://yinruizhe.asia/DarkEye-v{version}.tar.zst"
+PACKAGE_URL_TEMPLATE = "http://darkeye.win/DarkEye-v{version}.tar.zst"
 
 # 每次发版在此填写更新说明（会写入 latest.json 的 releaseNotes）
 RELEASE_NOTES = (

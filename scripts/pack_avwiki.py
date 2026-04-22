@@ -17,7 +17,7 @@ AVWIKI_SRC = ROOT / "resources" / "avwiki"
 OUTPUT_DIR = ROOT / "update" / "avwiki"
 ZIP_NAME = "avwiki.zip"
 MANIFEST_NAME = "avwiki_latest.json"
-DEFAULT_PACKAGE_URL = "https://yinruizhe.asia/avwiki.zip"
+DEFAULT_PACKAGE_URL = "https://darkeye.win/avwiki.zip"
 
 
 def parse_args() -> argparse.Namespace:
