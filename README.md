@@ -109,21 +109,20 @@
 
 | **功能** | **说明** | **状态** |
 | -------- | -------- | -------- |
-| **数据管理** | 影片、女演员、男演员、标签的手动添加与增删查改| ✅ |
+| **数据管理** | 媒体条目、人物与标签等基础数据增删查改 | ✅ |
 | **个人记录** | 自定义记录条目的手动添加与增删查改 | ✅ |
 | **分析与图表** | 分析图表与数据展示（仍有部分未完成功能） | ✅ |
 | **拟物化DVD盒子陈列** | 拟物化 DVD 陈列与收藏体验 | ✅ |
 | **筛选过滤展示** | 筛选作品页面 | ✅ |
 | **关联图谱** | 查看关联；约 1 万节点下约 60 帧 | ✅ |
 | **翻译** | LLM 翻译 + 一键覆盖翻译 | ✅ |
-| **mdcz NFO导入** | [mdcz](https://github.com/ShotHeadman/mdcz)  NFO 导入 | ✅ |
-| **Jvedio NFO导入** | Jvedio 数据导出 NFO（测试中） | ✅ |
 | **外链跳转** | JSON 驱动外链跳转外部网站，可自定义 | ✅ |
 | **本地视频链接** | 如果本地存在视频可将视频链接到数据库中 | ✅ |
 | **备份** | 备份系统，用于本地资料归档与恢复 | ✅ |
 | **主题** | 主题切换（3D 场景尚不完全跟随时明/暗） | ✅ |
-| **截图** | 部分截图能力；女演员界面 `C` 键截图 | ✅ |
 | **自动更新** | 自动检测并下载更新 | ✅ |
+| **mdcz NFO导入** | [mdcz](https://github.com/ShotHeadman/mdcz)  NFO 导入 | ✅ |
+| **Jvedio NFO导入** | Jvedio 数据导出 NFO（测试中） | ✅ |
 
 
 ### 计划与推进中
@@ -200,11 +199,11 @@
 
 ## 参考项目
 
-- [mdcz](https://github.com/ShotHeadman/mdcz)：本地视频名提取番号与 NFO 适配参考
-- [Jvedio](https://github.com/hitchao/Jvedio)：数据库接入与导出
-- [JavSP](https://github.com/Yuukiy/JavSP)：部分站点爬虫逻辑参考
-- [JAV-JHS](https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs)：javdb、FC2 等信息参考
-- [JAV_MovieManager](https://github.com/4evergaeul/JAV_MovieManager)
+- [mdcz](https://github.com/ShotHeadman/mdcz)（迁移兼容参考）
+- [Jvedio](https://github.com/hitchao/Jvedio)（迁移兼容参考）
+- [JavSP](https://github.com/Yuukiy/JavSP)（站点适配思路参考）
+- [JAV-JHS](https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs)（信息整理思路参考）
+- [JAV_MovieManager](https://github.com/4evergaeul/JAV_MovieManager)（媒体管理交互参考）
 - [stash](https://github.com/stashapp/stash)
 - [AMMDS](https://github.com/QYG2297248353/AMMDS-Docker)
 - [mdc-ng](https://github.com/mdc-ng/mdc-ng)

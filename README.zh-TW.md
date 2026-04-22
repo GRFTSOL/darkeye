@@ -115,12 +115,12 @@
 
 | **功能** | **說明** | **狀態** |
 | -------- | -------- | -------- |
-| **數據管理** | 影片、女演員、男演員、標籤的手動新增與增刪查改 | ✅ |
+| **數據管理** | 媒體條目、人物、標籤的手動新增與增刪查改 | ✅ |
 | **個人記錄** | 自定義記錄條目的手動新增與增刪查改 | ✅ |
 | **分析與圖表** | 分析圖表與資料展示（仍有部分未完成功能） | ✅ |
 | **擬物化 DVD 盒子陳列** | 擬物化 DVD 陳列與收藏體驗 | ✅ |
 | **篩選過濾展示** | 篩選作品頁面 | ✅ |
-| **瀏覽器擴充** | Chrome / Edge / Firefox 外掛沉浸式摘取；支援 javtxt、javlib、javdb 等互動式採集 | ✅ |
+| **瀏覽器擴充** | Chrome / Edge / Firefox 外掛沉浸式摘取；支援多站點互動式採集 | ✅ |
 | **簡單刮削** | 採集效果受目標站點公開策略與存取規則影響，詳情見文件 | ✅ |
 | **關聯圖譜** | 檢視關聯；約 1 萬節點下約 60 幀 | ✅ |
 | **翻譯** | LLM 翻譯 + 一鍵覆蓋翻譯 | ✅ |
@@ -201,11 +201,11 @@
 
 ![編輯介面](docs/assets/edit.jpg)
 
-### 瀏覽器外掛（以 javtxt 為例）
+### 瀏覽器外掛（站點示例）
 
-開啟外掛後與本機互動，可點選新增並自動觸發爬蟲寫入本機，另支援 javlib、javdb。介面中的「收藏／收錄」等能力僅在連線本機軟體時可用。
+開啟外掛後與本機互動，可點選新增並自動觸發爬蟲寫入本機。介面中的「收藏／收錄」等能力僅在連線本機軟體時可用。
 
-![javtxt 網站為例](docs/assets/capture.JPG)
+![瀏覽器外掛互動示例](docs/assets/capture.JPG)
 
 ---
 
@@ -219,7 +219,7 @@
 
 首次採集可能因目標站點存取策略出現驗證或限制，是否可繼續取決於站點規則與使用者自身存取權限。
 
-目前刮削的主要網站是javdb、javlibrary、javtxt、avdanyuwiki、minnano-av
+目前刮削支援多個公開資料站點；實際可用站點會隨版本與目標站策略調整，請以線上文件為準。
 
 
 ---
@@ -253,7 +253,7 @@
 - [mdcz](https://github.com/ShotHeadman/mdcz)：本機影片檔名提取番號與 NFO 適配參考
 - [Jvedio](https://github.com/hitchao/Jvedio)：資料庫接入與匯出
 - [JavSP](https://github.com/Yuukiy/JavSP)：部分站點爬蟲邏輯參考
-- [JAV-JHS](https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs)：javdb、FC2 等資訊參考
+- [JAV-JHS](https://sleazyfork.org/zh-CN/scripts/558525-jav-jhs)：站點資訊整理思路參考
 - [JAV_MovieManager](https://github.com/4evergaeul/JAV_MovieManager)
 - [stash](https://github.com/stashapp/stash)
 - [AMMDS](https://github.com/QYG2297248353/AMMDS-Docker)
