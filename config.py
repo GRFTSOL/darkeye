@@ -15,6 +15,9 @@ REQUIRED_PRIVATE_DB_VERSION = "1.1"  # 软件所需要的私有数据库版本
 DEFAULT_CRAWLER_BRIDGE_BASE_URL = "http://127.0.0.1:56789"  # 爬虫服务器地址
 DEFAULT_WORK_API_BASE_URL = "http://127.0.0.1:56789/api/v1/work"
 DEFAULT_ACTRESS_API_BASE_URL = "http://127.0.0.1:56789/api/v1/actress"
+DEFAULT_WEBDAV_BASE_URL = ""
+DEFAULT_WEBDAV_REMOTE_ROOT = "/darkeye"
+DEFAULT_WEBDAV_TIMEOUT_SECONDS = 20
 # ==========================================================
 
 
@@ -346,6 +349,82 @@ def set_actress_api_base_url(url: str) -> None:
         "Crawler/ActressApiBaseUrl",
         normalized or DEFAULT_ACTRESS_API_BASE_URL,
     )
+    settings.sync()
+
+
+def get_webdav_enabled() -> bool:
+    return bool(settings.value("WebDAV/Enabled", False, type=bool))
+
+
+def set_webdav_enabled(enabled: bool) -> None:
+    settings.setValue("WebDAV/Enabled", bool(enabled))
+    settings.sync()
+
+
+def get_webdav_profile_name() -> str:
+    return (
+        settings.value("WebDAV/ProfileName", "default", type=str).strip() or "default"
+    )
+
+
+def set_webdav_profile_name(value: str) -> None:
+    settings.setValue("WebDAV/ProfileName", (value or "default").strip() or "default")
+    settings.sync()
+
+
+def get_webdav_base_url() -> str:
+    val = settings.value("WebDAV/BaseUrl", DEFAULT_WEBDAV_BASE_URL, type=str).strip()
+    return val.rstrip("/")
+
+
+def set_webdav_base_url(value: str) -> None:
+    settings.setValue("WebDAV/BaseUrl", (value or "").strip().rstrip("/"))
+    settings.sync()
+
+
+def get_webdav_remote_root() -> str:
+    raw = settings.value(
+        "WebDAV/RemoteRoot", DEFAULT_WEBDAV_REMOTE_ROOT, type=str
+    ).strip()
+    normalized = raw.replace("\\", "/").strip()
+    if not normalized:
+        return DEFAULT_WEBDAV_REMOTE_ROOT
+    normalized = "/" + normalized.strip("/")
+    return normalized
+
+
+def set_webdav_remote_root(value: str) -> None:
+    normalized = (value or "").replace("\\", "/").strip()
+    if not normalized:
+        normalized = DEFAULT_WEBDAV_REMOTE_ROOT
+    normalized = "/" + normalized.strip("/")
+    settings.setValue("WebDAV/RemoteRoot", normalized)
+    settings.sync()
+
+
+def get_webdav_timeout_seconds() -> int:
+    timeout = int(
+        settings.value(
+            "WebDAV/TimeoutSeconds",
+            DEFAULT_WEBDAV_TIMEOUT_SECONDS,
+            type=int,
+        )
+    )
+    return min(300, max(3, timeout))
+
+
+def set_webdav_timeout_seconds(value: int) -> None:
+    timeout = min(300, max(3, int(value)))
+    settings.setValue("WebDAV/TimeoutSeconds", timeout)
+    settings.sync()
+
+
+def get_webdav_auto_upload_on_backup() -> bool:
+    return bool(settings.value("WebDAV/AutoUploadOnBackup", False, type=bool))
+
+
+def set_webdav_auto_upload_on_backup(value: bool) -> None:
+    settings.setValue("WebDAV/AutoUploadOnBackup", bool(value))
     settings.sync()
 
 
