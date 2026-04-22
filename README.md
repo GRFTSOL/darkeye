@@ -40,11 +40,7 @@
   <a href="#references">参考项目</a>
 </p>
 
-<div align="center">
-  <a href="https://github.com/de4321/darkeye/releases" target="_blank">
-    <img src="./docs/assets/show.jpg" alt="DarkEye 拟物化 DVD 陈列" width="100%" />
-  </a>
-</div>
+
 
 
 ---
@@ -171,17 +167,15 @@
 
 ## 界面预览
 
-![收藏](docs/assets/dvd.jpg)
-
-![展开](docs/assets/dvd2.jpg)
-
-![女优](docs/assets/actress.jpg)
+<div align="center">
+  <a href="https://github.com/de4321/darkeye/releases" target="_blank">
+    <img src="./docs/assets/show.jpg" alt="DarkEye 拟物化 DVD 陈列" width="100%" />
+  </a>
+</div>
 
 ![力导向图](docs/assets/directforceview.jpg)
 
 ![图表](docs/assets/chart.jpg)
-
-![多作品](docs/assets/mutiwork.jpg)
 
 ![编辑界面](docs/assets/edit.jpg)
 

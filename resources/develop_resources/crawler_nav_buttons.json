@@ -1,38 +1,5 @@
 [
   {
-    "name": "javlibrary",
-    "url": "https://www.javlibrary.com/cn/vl_searchbyid.php?keyword={serial}",
-    "description": "获得封面"
-  },
-  {
-    "name": "javdb",
-    "url": "https://javdb.com/search?q={serial}",
-    "description": "获得一般信息"
-  },
-  {
-    "name": "javtxt",
-    "url": "https://javtxt.com/search?type=id&q={serial}",
-    "description": "获得故事与标题，但是没有封面"
-  },
-  {
-    "name": "avdanyuwiki",
-    "url": "https://avdanyuwiki.com/?s={serial}",
-    "serial_transform": "fanza",
-    "description": "作品男优信息"
-  },
-  {
-    "name": "fanza大图封面",
-    "url": "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{serial}/{serial}pl.jpg",
-    "serial_transform": "fanza",
-    "description": "fanza大图封面可能链接"
-  },
-  {
-    "name": "fanza",
-    "url": "https://www.dmm.co.jp/search/=/searchstr={serial}/limit=30/sort=rankprofile",
-    "serial_transform": "fanza",
-    "description": "fanza售卖网站，非日本本土，需日本vpn且特殊插件才能访问"
-  },
-  {
     "name": "金鸡儿奖",
     "url": "https://jinjier.art/",
     "description": "金鸡儿奖网站，挺有意思的"
