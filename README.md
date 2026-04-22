@@ -53,8 +53,8 @@
   <a href="https://github.com/de4321/darkeye/releases/download/v1.2.4/DarkEye-v1.2.4.zip">
     <img src="https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Windows-blue?style=for-the-badge&logo=windows" alt="下载 Windows 版本" />
   </a>
-  　　
-  <a href="https://darkeye.win/DarkEye-v1.2.4.zip">
+
+  <a href="https://darkeye.win/DarkEye-v1.2.3.zip">
     <img src="https://img.shields.io/badge/%E5%A4%87%E7%94%A8%E4%B8%8B%E8%BD%BD-WINDOWS-green?style=for-the-badge&logo=windows" alt="备用下载 Windows" />
   </a>
 </div>
@@ -84,7 +84,7 @@
 
 👉 [常见问题：更新与迁移](https://de4321.github.io/darkeye/faq/)
 
-设置中可自动更新**软件本体**；浏览器扩展因无法上架商店，但是**插件**会在软件`extensions` 目录更新，需要**手动去浏览器重新加载**。插件另外可在[Releases][link-releases] 手动下载。
+设置中可自动更新**软件本体**；软件不会自动更新，但是**插件**会在软件`extensions` 目录更新，需要**手动去浏览器重新加载**。插件另外可在[Releases][link-releases] 手动下载。
 
 迁移版本时请**更新浏览器插件**；
 
@@ -208,8 +208,6 @@
 - [stash](https://github.com/stashapp/stash)
 - [AMMDS](https://github.com/QYG2297248353/AMMDS-Docker)
 - [mdc-ng](https://github.com/mdc-ng/mdc-ng)
-
-
 
 ---
 
