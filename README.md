@@ -185,12 +185,6 @@
 
 ![编辑界面](docs/assets/edit.jpg)
 
-### 浏览器扩展（以 javtxt 为例）
-
-打开扩展后与本机交互，可点击添加并自动触发爬虫写入本地，另支持 javlib、javdb。界面中的「收藏 / 收录」等能力仅在连接本机软件时可用。
-
-![javtxt 网站为例](docs/assets/capture.JPG)
-
 ---
 
 
