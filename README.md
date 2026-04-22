@@ -59,7 +59,7 @@
   </a>
 </div>
 
-下载程序并解压，运行 exe 即可；浏览器扩展随软件附带在 `extensions` 目录内。若需刮削，请按下方文档安装**对应浏览器的一种**扩展。
+下载程序并解压，运行 exe 即可；浏览器扩展随软件附带在 `extensions` 目录内。请按下方文档安装**对应浏览器的一种**扩展。
 
 ### 浏览器扩展安装
 
@@ -86,7 +86,7 @@
 
 设置中可自动更新**软件本体**；浏览器扩展因无法上架商店，但是**插件**会在软件`extensions` 目录更新，需要**手动去浏览器重新加载**。插件另外可在[Releases][link-releases] 手动下载。
 
-迁移版本时请**更新浏览器插件**；爬虫易随站点策略失效，需反馈后人工维护。软件不解决代理问题，目标站点能在浏览器打开，一般即可爬取。
+迁移版本时请**更新浏览器插件**；
 
 ---
 
@@ -116,7 +116,7 @@
 | **筛选过滤展示** | 筛选作品页面 | ✅ |
 | **关联图谱** | 查看关联；约 1 万节点下约 60 帧 | ✅ |
 | **翻译** | LLM 翻译 + 一键覆盖翻译 | ✅ |
-| **mdcz NFO导入** | [mdcz](https://github.com/ShotHeadman/mdcz) 刮削 NFO 导入 | ✅ |
+| **mdcz NFO导入** | [mdcz](https://github.com/ShotHeadman/mdcz)  NFO 导入 | ✅ |
 | **Jvedio NFO导入** | Jvedio 数据导出 NFO（测试中） | ✅ |
 | **外链跳转** | JSON 驱动外链跳转外部网站，可自定义 | ✅ |
 | **本地视频链接** | 如果本地存在视频可将视频链接到数据库中 | ✅ |
@@ -144,7 +144,7 @@
 
 ### mdcz 项目 NFO 导入
 
-已支持 [mdcz](https://github.com/ShotHeadman/mdcz) 刮削产出的 NFO 导入。
+已支持 [mdcz](https://github.com/ShotHeadman/mdcz) 产出的 NFO 导入。
 
 👉 [在线文档：mdcz NFO](https://de4321.github.io/darkeye/usage/#mdcz-nfo)
 
@@ -167,21 +167,12 @@
 
 ## 界面预览
 
-<div align="center">
-  <a href="https://github.com/de4321/darkeye/releases" target="_blank">
-    <img src="./docs/assets/show.jpg" alt="DarkEye 拟物化 DVD 陈列" width="100%" />
-  </a>
-</div>
 
 ![力导向图](docs/assets/directforceview.jpg)
 
 ![图表](docs/assets/chart.jpg)
 
-![编辑界面](docs/assets/edit.jpg)
-
 ---
-
-
 
 <a id="development"></a>
 
