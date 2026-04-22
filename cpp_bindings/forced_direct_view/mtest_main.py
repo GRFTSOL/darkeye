@@ -20,7 +20,7 @@ if hasattr(os, "add_dll_directory"):
 sys.path.insert(0, str(here))       # 确保可以找到 PyForceView.pyd
 
 import PyForceView
-from PyForceView import ForceView, ForceViewOpenGL
+from PyForceView import ForceViewOpenGL
 
 
 def generate_random_graph(n_nodes, avg_degree):
@@ -36,7 +36,7 @@ def generate_random_graph(n_nodes, avg_degree):
     # Random initial positions in a circle (same formula as C++)
     scale = math.sqrt(float(n_nodes)) * 25.0 + 150.0
     pos = [0.0] * (2 * n_nodes)
-    ids = []
+    ids = [None] * n_nodes
     labels = [None] * n_nodes
     radii = [0.0] * n_nodes
 
@@ -94,16 +94,6 @@ def main():
     if use_opengl:
         view = ForceViewOpenGL()
         view.setWindowTitle("ForceView OpenGL Test (Python)")
-        view.resize(1000, 700)
-        view.setGraph(nodenum, edges, pos, ids, labels, radii, node_colors)
-        #view.nodeLeftClicked.connect(on_left_clicked)
-        #view.nodeHovered.connect(on_hovered)
-        #view.fpsUpdated.connect(on_fps)
-        view.show()
-        sys.exit(app.exec())
-    else:
-        view = ForceView()
-        view.setWindowTitle("ForceView C++-style Test (Python)")
         view.resize(1000, 700)
         view.setGraph(nodenum, edges, pos, ids, labels, radii, node_colors)
         #view.nodeLeftClicked.connect(on_left_clicked)

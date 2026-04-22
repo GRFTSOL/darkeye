@@ -120,3 +120,4 @@ report.xml
 temp/
 */.zip
 */.tar.zst
+*/S3-trans.py

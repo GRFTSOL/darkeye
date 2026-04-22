@@ -10,14 +10,14 @@ sys.path.insert(0, str(root_dir))
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 
-from ui.demo.layout_tree import (
+from ui.myads.layout_tree import (
     SplitModelNode,
     PaneModelNode,
     LayoutTreeModel,
     LayoutRenderer,
     LayoutTree,
 )
-from ui.demo.pane_widget import PaneWidget
+from ui.myads.pane_widget import PaneWidget
 
 
 def _ensure_app():

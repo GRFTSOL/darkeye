@@ -26,7 +26,7 @@ $nuitkaArgs = @(
     "--show-memory",
     "--show-modules",
     "--lto=yes",#开启lto优化
-    "--jobs=30",#开28个线程，不让电脑卡死
+    "--jobs=30",#开30个线程，不让电脑卡死
     # 发布版关闭黑框；调试时可改为 --windows-console-mode=force
     "--windows-console-mode=disable",
     "--windows-icon-from-ico=resources/logo.ico",
